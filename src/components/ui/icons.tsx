@@ -40,14 +40,6 @@ export function ProfileIcon(props: IconProps) {
   );
 }
 
-export function ChevronDownIcon(props: IconProps) {
-  return (
-    <svg {...base} {...props}>
-      <path d="m6 9 6 6 6-6" />
-    </svg>
-  );
-}
-
 export function InfoIcon(props: IconProps) {
   return (
     <svg {...base} {...props}>
@@ -160,6 +152,22 @@ export function LaunchIcon(props: IconProps) {
     <svg {...base} {...props}>
       <path d="M5 19 19 5" />
       <path d="M9 5h10v10" />
+    </svg>
+  );
+}
+
+export function PlusIcon(props: IconProps) {
+  return (
+    <svg {...base} {...props}>
+      <path d="M12 5v14M5 12h14" />
+    </svg>
+  );
+}
+
+export function CloseIcon(props: IconProps) {
+  return (
+    <svg {...base} {...props}>
+      <path d="m6 6 12 12M18 6 6 18" />
     </svg>
   );
 }

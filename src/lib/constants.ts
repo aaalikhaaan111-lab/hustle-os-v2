@@ -9,7 +9,7 @@ import {
   ResearchIcon,
   VenturesIcon,
 } from "@/components/ui/icons";
-import type { Department } from "@/types/venture";
+import type { Department, VentureContextFieldConfig } from "@/types/venture";
 
 export interface NavItem {
   label: string;
@@ -61,17 +61,29 @@ export const DEPARTMENTS: Department[] = [
   },
 ];
 
-export const CURRENCIES = [
-  "USD",
-  "EUR",
-  "GBP",
-  "KZT",
-  "AED",
-  "INR",
-  "NGN",
-  "BRL",
-  "JPY",
-  "CAD",
-  "AUD",
-  "SGD",
+export const VENTURE_CONTEXT_FIELDS: VentureContextFieldConfig[] = [
+  { id: "budget", label: "Budget", placeholder: "e.g. $5,000", type: "text" },
+  { id: "deadline", label: "Deadline", placeholder: "", type: "date" },
+  {
+    id: "location",
+    label: "Location",
+    placeholder: "City, country, or remote",
+    type: "text",
+  },
+  {
+    id: "resources",
+    label: "Resources",
+    placeholder: "Time, skills, savings, network",
+    type: "text",
+  },
+];
+
+export const VENTURE_EXAMPLE_PROMPTS = [
+  "Launch an affordable IELTS feedback service",
+  "Help teenagers understand personal finance",
+  "Turn my video editing skill into a business",
 ] as const;
+
+export const VENTURE_DRAFT_STORAGE_KEY = "hustleos.ventureDraft";
+
+export const VENTURE_DESCRIPTION_MIN_LENGTH = 12;

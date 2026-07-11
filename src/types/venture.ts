@@ -14,13 +14,20 @@ export interface Department {
   icon: ComponentType<SVGProps<SVGSVGElement>>;
 }
 
-export interface VentureBrief {
-  mission: string;
-  targetAudience: string;
-  location: string;
-  deadline: string;
+export type VentureContextFieldId = "budget" | "deadline" | "location" | "resources";
+
+export interface VentureContextFieldConfig {
+  id: VentureContextFieldId;
+  label: string;
+  placeholder: string;
+  type: "text" | "date";
+}
+
+export interface VentureDraft {
+  description: string;
   budget: string;
-  currency: string;
+  deadline: string;
+  location: string;
   resources: string;
-  desiredFirstResult: string;
+  createdAt: string;
 }

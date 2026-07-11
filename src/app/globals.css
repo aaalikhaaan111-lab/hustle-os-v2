@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 @theme {
-  --color-base: #080a0d;
+  --color-canvas: #080a0d;
   --color-surface: #101318;
   --color-surface-elevated: #151a21;
   --color-surface-hover: #151a21;
@@ -32,7 +32,7 @@ html {
 }
 
 body {
-  background-color: var(--color-base);
+  background-color: var(--color-canvas);
   color: var(--color-ink);
   font-family: var(--font-sans), Arial, Helvetica, sans-serif;
 }
@@ -50,6 +50,21 @@ body {
 
 .animate-page-in {
   animation: page-in 0.32s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes field-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-field-in {
+  animation: field-in 0.18s ease-out;
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -6,10 +6,10 @@ import { Wordmark } from "@/components/layout/Wordmark";
 
 export function AppShell({ children }: { children: ReactNode }) {
   return (
-    <div className="min-h-screen bg-base">
+    <div className="min-h-screen bg-canvas">
       <Sidebar />
 
-      <header className="sticky top-0 z-40 flex h-14 items-center border-b border-border bg-base/95 px-4 backdrop-blur md:hidden">
+      <header className="sticky top-0 z-40 flex h-14 items-center border-b border-border bg-canvas/95 px-4 backdrop-blur md:hidden">
         <Wordmark />
       </header>
 
