@@ -23,11 +23,21 @@ export interface VentureContextFieldConfig {
   type: "text" | "date";
 }
 
-export interface VentureDraft {
+export interface VentureRecord {
+  id: string;
+  mission: string;
+  budget: string | null;
+  deadline: string | null;
+  location: string | null;
+  resources: string | null;
+  status: string;
+  created_at: string;
+}
+
+export interface CreateVentureInput {
   description: string;
   budget: string;
   deadline: string;
   location: string;
   resources: string;
-  createdAt: string;
 }

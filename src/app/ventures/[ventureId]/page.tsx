@@ -1,10 +1,12 @@
+import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/Badge";
 import { Card, CardContent } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { ClockIcon, DecisionIcon, FileIcon, InfoIcon } from "@/components/ui/icons";
 import { DepartmentCard } from "@/components/venture/DepartmentCard";
-import { DEPARTMENTS } from "@/lib/constants";
+import { DEPARTMENTS, VENTURE_CONTEXT_FIELDS } from "@/lib/constants";
+import { createClient } from "@/lib/supabase/server";
 
 interface VentureRoomPageProps {
   params: Promise<{ ventureId: string }>;
@@ -12,26 +14,55 @@ interface VentureRoomPageProps {
 
 export default async function VentureRoomPage({ params }: VentureRoomPageProps) {
   const { ventureId } = await params;
+  const supabase = await createClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    notFound();
+  }
+
+  const { data: venture, error } = await supabase
+    .from("ventures")
+    .select("id, mission, budget, deadline, location, resources, status, created_at")
+    .eq("id", ventureId)
+    .single();
+
+  if (error || !venture) {
+    notFound();
+  }
+
+  const contextEntries = VENTURE_CONTEXT_FIELDS.filter((field) => venture[field.id]);
 
   return (
     <div className="flex flex-col gap-8">
       <PageHeader
-        eyebrow={`Venture · ${ventureId}`}
+        eyebrow={`Venture · ${venture.status}`}
         title="Venture room"
-        description="This room will hold the mission, decisions, and department work for this venture once it is connected to live data."
-        actions={<Badge variant="muted">Not connected to live data</Badge>}
+        description="This room holds the mission and context you described. Departments will activate as the AI team comes online."
+        actions={<Badge variant="muted">AI team not activated yet</Badge>}
       />
 
       <Card>
         <CardContent className="flex gap-3 py-5">
           <InfoIcon className="mt-0.5 h-5 w-5 shrink-0 text-accent" />
-          <div>
-            <h2 className="text-sm font-semibold text-ink">Mission overview</h2>
-            <p className="mt-1.5 text-sm text-ink-secondary">
-              Once ventures are connected to persistence, the mission, target audience,
-              deadline, and budget captured for venture{" "}
-              <span className="text-ink">{ventureId}</span> will appear here.
+          <div className="flex-1">
+            <h2 className="text-sm font-semibold text-ink">Mission</h2>
+            <p className="mt-1.5 whitespace-pre-wrap text-sm text-ink-secondary">
+              {venture.mission}
             </p>
+            {contextEntries.length > 0 && (
+              <dl className="mt-4 grid gap-x-6 gap-y-2 border-t border-border pt-4 sm:grid-cols-2">
+                {contextEntries.map((field) => (
+                  <div key={field.id} className="flex justify-between gap-4 text-sm">
+                    <dt className="text-ink-secondary">{field.label}</dt>
+                    <dd className="text-right text-ink">{venture[field.id]}</dd>
+                  </div>
+                ))}
+              </dl>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -40,8 +71,8 @@ export default async function VentureRoomPage({ params }: VentureRoomPageProps) 
         <div>
           <h2 className="text-base font-semibold text-ink">Departments</h2>
           <p className="mt-1 text-sm text-ink-secondary">
-            Five coordinated departments will operate this venture. None are connected
-            yet.
+            Five coordinated departments will operate this venture. The AI team has not been
+            activated yet.
           </p>
         </div>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

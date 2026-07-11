@@ -22,7 +22,7 @@ export function DepartmentCard({
           <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-surface-hover text-ink-secondary">
             <Icon className="h-5 w-5" />
           </div>
-          <Badge variant="muted">Not connected</Badge>
+          <Badge variant="muted">AI team not activated yet</Badge>
         </div>
         <div>
           <h3 className="text-sm font-semibold text-ink">{name}</h3>

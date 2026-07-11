@@ -1,17 +1,34 @@
-import { Badge } from "@/components/ui/Badge";
+import { redirect } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/Card";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { ProfileIcon } from "@/components/ui/icons";
+import { LogoutButton } from "@/components/profile/LogoutButton";
+import { ProfileForm } from "@/components/profile/ProfileForm";
+import { createClient } from "@/lib/supabase/server";
 
-const PLACEHOLDER_FIELDS = ["Name", "Email", "Workspace"];
+export default async function ProfilePage() {
+  const supabase = await createClient();
 
-export default function ProfilePage() {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    redirect("/login");
+  }
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("display_name")
+    .eq("id", user.id)
+    .single();
+
   return (
     <div className="flex flex-col gap-8">
       <PageHeader
         title="Profile"
-        description="Your account details will appear here once authentication is connected."
-        actions={<Badge variant="muted">Not connected</Badge>}
+        description="Your account details."
+        actions={<LogoutButton />}
       />
       <Card className="max-w-xl">
         <CardContent className="flex flex-col gap-5 py-5">
@@ -20,20 +37,15 @@ export default function ProfilePage() {
               <ProfileIcon className="h-5 w-5" />
             </div>
             <div>
-              <p className="text-sm font-medium text-ink">No account connected</p>
-              <p className="text-sm text-ink-secondary">
-                Authentication will be added in a future phase.
+              <p className="text-sm font-medium text-ink">
+                {profile?.display_name || "No name set"}
               </p>
+              <p className="text-sm text-ink-secondary">{user.email}</p>
             </div>
           </div>
-          <dl className="divide-y divide-border border-t border-border">
-            {PLACEHOLDER_FIELDS.map((field) => (
-              <div key={field} className="flex items-center justify-between py-2.5 text-sm">
-                <dt className="text-ink-secondary">{field}</dt>
-                <dd className="text-ink-muted">—</dd>
-              </div>
-            ))}
-          </dl>
+          <div className="border-t border-border pt-5">
+            <ProfileForm email={user.email ?? ""} displayName={profile?.display_name ?? ""} />
+          </div>
         </CardContent>
       </Card>
     </div>

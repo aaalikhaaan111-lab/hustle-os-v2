@@ -84,6 +84,6 @@ export const VENTURE_EXAMPLE_PROMPTS = [
   "Turn my video editing skill into a business",
 ] as const;
 
-export const VENTURE_DRAFT_STORAGE_KEY = "hustleos.ventureDraft";
-
 export const VENTURE_DESCRIPTION_MIN_LENGTH = 12;
+
+export const VENTURE_DESCRIPTION_MAX_LENGTH = 4000;
