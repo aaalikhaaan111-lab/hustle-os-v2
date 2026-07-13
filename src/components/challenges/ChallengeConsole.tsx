@@ -80,7 +80,7 @@ export function ChallengeConsole({ challenge, onClose }: ChallengeConsoleProps) 
 
       completeChallenge({
         challengeId: challenge.id,
-        title: challenge.questTitle,
+        title: challenge.questTitle.replace(/^Квест:\s*/, ""),
         emoji: challenge.emoji,
         categoryLabel,
         xp: challenge.xp,

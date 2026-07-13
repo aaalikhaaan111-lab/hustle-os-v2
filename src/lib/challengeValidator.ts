@@ -14,18 +14,21 @@ export interface ValidationResult {
 const MIN_ANSWER_LENGTH = 15;
 const MIN_WORD_COUNT = 4;
 
+// Note: JS regex `\b` only recognizes ASCII word characters, so it never matches around
+// Cyrillic text (no position in a pure-Cyrillic string is a word/non-word transition).
+// These patterns intentionally avoid `\b` for that reason.
 const EVASION_PATTERNS: RegExp[] = [
-  /\bбез понятия\b/i,
-  /\bне зна(ю|ем|ешь)\b/i,
-  /\bлень\b/i,
-  /\bпозже сдела/i,
-  /\bпотом сдела/i,
-  /\bкогда[\s-]нибудь\b/i,
-  /\bхз\b/i,
-  /\bпофиг\b/i,
-  /\bне важно\b/i,
-  /\bкак[\s-]нибудь\b/i,
-  /\bне хочу думать\b/i,
+  /без понятия/i,
+  /не зна(ю|ем|ешь)/i,
+  /(^|\s)лень(\s|$|[.,!?])/i,
+  /позже сдела/i,
+  /потом сдела/i,
+  /когда[\s-]нибудь/i,
+  /(^|\s)хз(\s|$|[.,!?])/i,
+  /пофиг/i,
+  /не важно/i,
+  /как[\s-]нибудь/i,
+  /не хочу думать/i,
   /^(да|нет|ну|окей|ок|норм)\.?$/i,
 ];
 
