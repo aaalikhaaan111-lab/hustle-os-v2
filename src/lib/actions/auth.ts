@@ -28,13 +28,19 @@ export async function loginAction(
   }
 
   const supabase = await createClient();
-  const { error } = await supabase.auth.signInWithPassword({ email, password });
+  const { error, data } = await supabase.auth.signInWithPassword({ email, password });
 
   if (error) {
     return { error: error.message };
   }
 
-  redirect("/ventures");
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("onboarding_completed_at")
+    .eq("id", data.user.id)
+    .maybeSingle();
+
+  redirect(profile?.onboarding_completed_at ? "/dashboard" : "/onboarding");
 }
 
 export async function signupAction(
@@ -58,7 +64,7 @@ export async function signupAction(
   }
 
   if (data.session) {
-    redirect("/ventures");
+    redirect("/onboarding");
   }
 
   return { error: null, success: true };
@@ -68,4 +74,32 @@ export async function signOutAction(): Promise<void> {
   const supabase = await createClient();
   await supabase.auth.signOut();
   redirect("/login");
+}
+
+export async function devAutoLoginAction(): Promise<AuthActionState> {
+  if (process.env.NODE_ENV !== "development" || process.env.DEV_AUTO_LOGIN_ENABLED !== "true") {
+    return { error: "Dev auto-login недоступен." };
+  }
+
+  const email = process.env.DEV_TEST_EMAIL;
+  const password = process.env.DEV_TEST_PASSWORD;
+
+  if (!email || !password) {
+    return { error: "Задай DEV_TEST_EMAIL и DEV_TEST_PASSWORD в .env.local." };
+  }
+
+  const supabase = await createClient();
+  const { error, data } = await supabase.auth.signInWithPassword({ email, password });
+
+  if (error) {
+    return { error: error.message };
+  }
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("onboarding_completed_at")
+    .eq("id", data.user.id)
+    .maybeSingle();
+
+  redirect(profile?.onboarding_completed_at ? "/dashboard" : "/onboarding");
 }

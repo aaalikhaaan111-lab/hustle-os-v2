@@ -5,6 +5,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { ClockIcon, DecisionIcon, FileIcon, InfoIcon } from "@/components/ui/icons";
 import { DepartmentCard } from "@/components/venture/DepartmentCard";
+import { ResearchDepartmentCard } from "@/components/venture/ResearchDepartmentCard";
 import { DEPARTMENTS, VENTURE_CONTEXT_FIELDS } from "@/lib/constants";
 import { createClient } from "@/lib/supabase/server";
 
@@ -26,15 +27,26 @@ export default async function VentureRoomPage({ params }: VentureRoomPageProps) 
 
   const { data: venture, error } = await supabase
     .from("ventures")
-    .select("id, mission, budget, deadline, location, resources, status, created_at")
+    .select(
+      "id, mission, budget, deadline, location, resources, status, created_at, research_report, research_completed_at"
+    )
     .eq("id", ventureId)
-    .single();
+    .eq("owner_id", user.id)
+    .maybeSingle();
 
-  if (error || !venture) {
+  if (error) {
+    // A real query failure (bad column, connection issue, etc.) is not the same
+    // as "this venture doesn't exist" — don't mask it behind a 404.
+    throw new Error(`Failed to load venture: ${error.message}`);
+  }
+
+  if (!venture) {
     notFound();
   }
 
   const contextEntries = VENTURE_CONTEXT_FIELDS.filter((field) => venture[field.id]);
+  const researchDepartment = DEPARTMENTS.find((department) => department.id === "research")!;
+  const otherDepartments = DEPARTMENTS.filter((department) => department.id !== "research");
 
   return (
     <div className="flex flex-col gap-8">
@@ -71,12 +83,17 @@ export default async function VentureRoomPage({ params }: VentureRoomPageProps) 
         <div>
           <h2 className="text-base font-semibold text-ink">Departments</h2>
           <p className="mt-1 text-sm text-ink-secondary">
-            Five coordinated departments will operate this venture. The AI team has not been
-            activated yet.
+            Five coordinated departments will operate this venture. Research is live — the rest
+            activate as the AI team grows.
           </p>
         </div>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {DEPARTMENTS.map((department) => (
+          <ResearchDepartmentCard
+            ventureId={venture.id}
+            description={researchDepartment.description}
+            initialReport={venture.research_report}
+          />
+          {otherDepartments.map((department) => (
             <DepartmentCard
               key={department.id}
               name={department.name}

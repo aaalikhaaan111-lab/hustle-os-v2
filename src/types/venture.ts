@@ -41,3 +41,15 @@ export interface CreateVentureInput {
   location: string;
   resources: string;
 }
+
+export type ResearchConfidence = "low" | "medium" | "high";
+
+export interface ResearchReport {
+  executiveSummary: string;
+  opportunities: string[];
+  risks: string[];
+  questions: string[];
+  assumptions: string[];
+  confidence: ResearchConfidence;
+  confidenceRationale: string;
+}

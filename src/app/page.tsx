@@ -1,29 +1,28 @@
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card, CardContent } from "@/components/ui/Card";
-import { LaunchIcon, MissionIcon, SystemIcon } from "@/components/ui/icons";
 
 const STEPS = [
   {
     step: "01",
-    title: "Describe the mission",
+    emoji: "🎯",
+    title: "Каждый день — новый челлендж",
     description:
-      "Put the venture's mission, audience, and constraints into a single working brief.",
-    icon: MissionIcon,
+      "Никакой скучной теории. Только конкретное действие, которое можно выполнить прямо сегодня.",
   },
   {
     step: "02",
-    title: "Build the venture system",
+    emoji: "⏱️",
+    title: "5–15 минут в день",
     description:
-      "Research, Product, Growth, Finance, and Operations coordinate around that brief.",
-    icon: SystemIcon,
+      "Выбери удобный формат под свой темп — без выгорания и лишнего давления.",
   },
   {
     step: "03",
-    title: "Launch the first real step",
+    emoji: "🌱",
+    title: "Мышление меняется через практику",
     description:
-      "Turn direction into a decision, an asset, or an experiment you can act on today.",
-    icon: LaunchIcon,
+      "Развивай предпринимательское чутьё шаг за шагом, а не по учебнику.",
   },
 ];
 
@@ -32,40 +31,44 @@ export default function Home() {
     <div className="flex flex-col gap-16 py-4 sm:py-6">
       <section className="flex flex-col gap-5">
         <Badge variant="accent" className="w-fit">
-          Venture Operating System
+          Практика, а не теория
         </Badge>
-        <h1 className="max-w-2xl text-4xl font-semibold leading-tight tracking-tight text-ink sm:text-5xl">
-          Turn your mission into a working venture.
+        <h1 className="max-w-2xl break-words text-4xl font-black leading-[1.05] tracking-[-0.03em] text-ink [hyphens:auto] sm:text-5xl sm:max-w-3xl md:text-6xl lg:max-w-4xl lg:text-7xl">
+          Изучай предпринимательство через действие.
         </h1>
         <p className="max-w-xl text-base leading-relaxed text-ink-secondary sm:text-lg">
-          HUSTLE.OS converts entrepreneurial intent into decisions, assets, experiments,
-          and measurable progress — so a mission stops being an idea and starts being a
-          system.
+          Тут не будет скучной теории и часовых лекций. Только 1 практический челлендж
+          каждый день, который развивает бизнес-мышление.
         </p>
-        <div className="flex flex-col gap-3 sm:flex-row">
-          <Button href="/ventures/new" size="lg">
-            Build a venture
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+          <Button href="/signup" size="lg">
+            Начать бесплатно
           </Button>
-          <Button href="/ventures" variant="secondary" size="lg">
-            View ventures
-          </Button>
+          <p className="text-sm text-ink-secondary">
+            Уже есть аккаунт?{" "}
+            <a href="/login" className="font-medium text-accent hover:text-accent-hover">
+              Войти
+            </a>
+          </p>
         </div>
       </section>
 
       <section className="flex flex-col gap-5">
-        <h2 className="text-sm font-semibold uppercase tracking-wider text-ink-muted">
-          How it works
+        <h2 className="text-xs font-bold uppercase tracking-[0.14em] text-ink-muted">
+          Как это работает
         </h2>
         <div className="grid gap-4 sm:grid-cols-3">
-          {STEPS.map(({ step, title, description, icon: Icon }) => (
+          {STEPS.map(({ step, emoji, title, description }) => (
             <Card key={step}>
-              <CardContent className="flex h-full flex-col gap-3 py-5">
+              <CardContent className="flex h-full flex-col gap-3 py-7">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-medium text-ink-muted">{step}</span>
-                  <Icon className="h-5 w-5 text-accent" />
+                  <span className="text-2xl" role="img" aria-hidden>
+                    {emoji}
+                  </span>
                 </div>
                 <div>
-                  <h3 className="text-sm font-semibold text-ink">{title}</h3>
+                  <h3 className="text-sm font-bold text-ink">{title}</h3>
                   <p className="mt-1.5 text-sm text-ink-secondary">{description}</p>
                 </div>
               </CardContent>

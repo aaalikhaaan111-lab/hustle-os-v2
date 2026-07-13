@@ -1,3 +1,5 @@
+import type { ResearchReport } from "@/types/venture";
+
 export interface Database {
   public: {
     Tables: {
@@ -5,18 +7,36 @@ export interface Database {
         Row: {
           id: string;
           display_name: string | null;
+          interests: string[] | null;
+          daily_minutes: number | null;
+          onboarding_completed_at: string | null;
+          xp: number;
+          streak_days: number;
+          last_activity_at: string | null;
           created_at: string;
           updated_at: string;
         };
         Insert: {
           id: string;
           display_name?: string | null;
+          interests?: string[] | null;
+          daily_minutes?: number | null;
+          onboarding_completed_at?: string | null;
+          xp?: number;
+          streak_days?: number;
+          last_activity_at?: string | null;
           created_at?: string;
           updated_at?: string;
         };
         Update: {
           id?: string;
           display_name?: string | null;
+          interests?: string[] | null;
+          daily_minutes?: number | null;
+          onboarding_completed_at?: string | null;
+          xp?: number;
+          streak_days?: number;
+          last_activity_at?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -32,6 +52,8 @@ export interface Database {
           location: string | null;
           resources: string | null;
           status: string;
+          research_report: ResearchReport | null;
+          research_completed_at: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -44,6 +66,8 @@ export interface Database {
           location?: string | null;
           resources?: string | null;
           status?: string;
+          research_report?: ResearchReport | null;
+          research_completed_at?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -56,6 +80,8 @@ export interface Database {
           location?: string | null;
           resources?: string | null;
           status?: string;
+          research_report?: ResearchReport | null;
+          research_completed_at?: string | null;
           created_at?: string;
           updated_at?: string;
         };

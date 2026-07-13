@@ -2,7 +2,15 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import type { Database } from "@/types/supabase";
 
-const PROTECTED_PREFIXES = ["/ventures", "/profile"];
+const PROTECTED_PREFIXES = [
+  "/dashboard",
+  "/challenges",
+  "/courses",
+  "/workshops",
+  "/onboarding",
+  "/profile",
+  "/ventures",
+];
 const AUTH_ROUTES = ["/login", "/signup"];
 
 function matchesPrefix(pathname: string, prefixes: string[]) {
@@ -49,7 +57,7 @@ export async function updateSession(request: NextRequest) {
   }
 
   if (user && isAuthRoute) {
-    return NextResponse.redirect(new URL("/ventures", request.url));
+    return NextResponse.redirect(new URL("/dashboard", request.url));
   }
 
   return supabaseResponse;

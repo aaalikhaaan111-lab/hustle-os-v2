@@ -9,7 +9,8 @@ interface BadgeProps extends HTMLAttributes<HTMLSpanElement> {
 
 const variantStyles: Record<BadgeVariant, string> = {
   default: "bg-surface-hover text-ink-secondary border border-border",
-  accent: "bg-accent-soft text-accent border border-accent/30",
+  accent:
+    "bg-gradient-to-tr from-indigo-50 to-pink-50 text-indigo-600 border border-indigo-100 shadow-[0_2px_12px_rgba(99,102,241,0.12)]",
   muted: "bg-transparent text-ink-muted border border-border",
   outline: "bg-transparent text-ink-secondary border border-border-strong",
 };

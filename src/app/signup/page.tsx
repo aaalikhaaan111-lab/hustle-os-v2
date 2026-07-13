@@ -37,7 +37,7 @@ export default function SignupPage() {
     <div className="mx-auto flex w-full max-w-sm flex-col gap-8 py-12 sm:py-20">
       <div className="flex flex-col items-center gap-2 text-center">
         <h1 className="text-2xl font-semibold tracking-tight text-ink">Create your account</h1>
-        <p className="text-sm text-ink-secondary">Start turning missions into ventures.</p>
+        <p className="text-sm text-ink-secondary">Start with one small challenge a day.</p>
       </div>
 
       <Card>
