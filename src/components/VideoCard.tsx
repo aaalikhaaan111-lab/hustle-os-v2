@@ -37,6 +37,20 @@ function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
+// videoUrl is always "https://www.youtube.com/embed/<ID>" (see src/constants/data.ts).
+function extractYouTubeId(videoUrl: string): string | null {
+  const match = videoUrl.match(/\/embed\/([^/?]+)/);
+  return match ? match[1] : null;
+}
+
+function PlayIcon(props: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" className={props.className} aria-hidden>
+      <path d="M8 5.5v13l11-6.5-11-6.5Z" />
+    </svg>
+  );
+}
+
 // Longest names first so a shorter term can't shadow a match inside a longer one.
 const SORTED_TERMS = [...GLOSSARY].sort((a, b) => b.name.length - a.name.length);
 
@@ -94,6 +108,9 @@ interface VideoCardProps {
 export function VideoCard({ video }: VideoCardProps) {
   const [progress, setProgress] = useState<LearnProgress>(() => emptyProgress(video.checklist.length));
   const [isReady, setIsReady] = useState(false);
+  const [isLoaded, setIsLoaded] = useState(false);
+  const [thumbnailFailed, setThumbnailFailed] = useState(false);
+  const videoId = extractYouTubeId(video.videoUrl);
 
   useEffect(() => {
     // Reads localStorage (unavailable during SSR) — must run post-mount, not
@@ -122,13 +139,53 @@ export function VideoCard({ video }: VideoCardProps) {
     <Card>
       <CardContent className="flex flex-col gap-5 py-8">
         <div className="aspect-video w-full overflow-hidden rounded-xl border border-white/10 bg-black shadow-lg">
-          <iframe
-            className="h-full w-full"
-            src={video.videoUrl}
-            title={video.title}
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
-            allowFullScreen
-          />
+          {isLoaded ? (
+            <iframe
+              className="h-full w-full"
+              src={`${video.videoUrl}?autoplay=1`}
+              title={video.title}
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
+              allowFullScreen
+              loading="lazy"
+            />
+          ) : (
+            <button
+              type="button"
+              onClick={() => setIsLoaded(true)}
+              aria-label={`Воспроизвести: ${video.title}`}
+              className="group relative h-full w-full"
+            >
+              {videoId && !thumbnailFailed ? (
+                // Plain <img>, not next/image: this is a third-party YouTube
+                // thumbnail, not a first-party asset — routing it through
+                // Next's image optimizer would add a remote-pattern config
+                // dependency and an extra network hop for no real benefit here.
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={`https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`}
+                  alt=""
+                  aria-hidden
+                  onError={() => setThumbnailFailed(true)}
+                  className="h-full w-full object-cover"
+                  loading="lazy"
+                />
+              ) : (
+                <div className="flex h-full w-full flex-col items-center justify-center gap-2 bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-500 px-4 text-center">
+                  <span className="text-3xl" role="img" aria-hidden>
+                    🎬
+                  </span>
+                  <span className="line-clamp-2 text-sm font-semibold text-white/90">
+                    {video.title}
+                  </span>
+                </div>
+              )}
+              <span className="absolute inset-0 flex items-center justify-center bg-black/25 transition-colors duration-150 group-hover:bg-black/35">
+                <span className="flex h-14 w-14 items-center justify-center rounded-full bg-white/95 shadow-lg transition-transform duration-150 group-hover:scale-105">
+                  <PlayIcon className="h-6 w-6 translate-x-0.5 text-ink" />
+                </span>
+              </span>
+            </button>
+          )}
         </div>
 
         <div className="flex flex-col gap-2">

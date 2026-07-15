@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/Button";
 import { Card, CardContent } from "@/components/ui/Card";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { ChallengeZeroCard } from "@/components/dashboard/ChallengeZeroCard";
+import { DailyPlanCard } from "@/components/dashboard/DailyPlanCard";
 import { LevelProgressCard } from "@/components/dashboard/LevelProgressCard";
 import { NextGoalCard } from "@/components/dashboard/NextGoalCard";
 import { ActivityFeedCard } from "@/components/dashboard/ActivityFeedCard";
@@ -57,6 +58,8 @@ export default async function DashboardPage() {
         title="Dashboard"
         description="Здесь появляется твой ежедневный прогресс."
       />
+
+      <DailyPlanCard />
 
       <div className="grid gap-6 sm:grid-cols-2">
         <LevelProgressCard />

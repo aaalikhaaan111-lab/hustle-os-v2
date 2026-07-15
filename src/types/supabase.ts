@@ -1,5 +1,3 @@
-import type { ResearchReport } from "@/types/venture";
-
 export interface Database {
   public: {
     Tables: {
@@ -37,51 +35,6 @@ export interface Database {
           xp?: number;
           streak_days?: number;
           last_activity_at?: string | null;
-          created_at?: string;
-          updated_at?: string;
-        };
-        Relationships: [];
-      };
-      ventures: {
-        Row: {
-          id: string;
-          owner_id: string;
-          mission: string;
-          budget: string | null;
-          deadline: string | null;
-          location: string | null;
-          resources: string | null;
-          status: string;
-          research_report: ResearchReport | null;
-          research_completed_at: string | null;
-          created_at: string;
-          updated_at: string;
-        };
-        Insert: {
-          id?: string;
-          owner_id: string;
-          mission: string;
-          budget?: string | null;
-          deadline?: string | null;
-          location?: string | null;
-          resources?: string | null;
-          status?: string;
-          research_report?: ResearchReport | null;
-          research_completed_at?: string | null;
-          created_at?: string;
-          updated_at?: string;
-        };
-        Update: {
-          id?: string;
-          owner_id?: string;
-          mission?: string;
-          budget?: string | null;
-          deadline?: string | null;
-          location?: string | null;
-          resources?: string | null;
-          status?: string;
-          research_report?: ResearchReport | null;
-          research_completed_at?: string | null;
           created_at?: string;
           updated_at?: string;
         };

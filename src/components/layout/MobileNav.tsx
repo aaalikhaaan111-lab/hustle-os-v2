@@ -21,6 +21,7 @@ export function MobileNav() {
           <Link
             key={item.href}
             href={item.href}
+            data-tour-nav={item.href}
             className={cn(
               "flex flex-1 flex-col items-center gap-1 py-2.5 text-[11px] font-medium transition-colors duration-150",
               active ? "text-ink" : "text-ink-muted"

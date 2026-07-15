@@ -6,6 +6,7 @@ import { GameProgressHUD } from "@/components/layout/GameProgressHUD";
 import { PageTransition } from "@/components/layout/PageTransition";
 import { Wordmark } from "@/components/layout/Wordmark";
 import { DevResetBar } from "@/components/dev/DevResetBar";
+import { ProductTour } from "@/components/tour/ProductTour";
 import { GameProgressProvider } from "@/lib/game-progress/GameProgressContext";
 
 export function AppShell({ children }: { children: ReactNode }) {
@@ -27,6 +28,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
 
         <MobileNav />
+        <ProductTour />
         {process.env.NODE_ENV === "development" && <DevResetBar />}
       </div>
     </GameProgressProvider>

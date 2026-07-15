@@ -33,6 +33,7 @@ interface StoredProgress {
 }
 
 interface GameProgressContextValue {
+  userId: string | null;
   xp: number;
   streakDays: number;
   completions: ChallengeCompletion[];
@@ -205,8 +206,8 @@ export function GameProgressProvider({ children }: { children: ReactNode }) {
   );
 
   const value = useMemo(
-    () => ({ xp, streakDays, completions, isReady, isChallengeCompleted, completeChallenge }),
-    [xp, streakDays, completions, isReady, isChallengeCompleted, completeChallenge]
+    () => ({ userId, xp, streakDays, completions, isReady, isChallengeCompleted, completeChallenge }),
+    [userId, xp, streakDays, completions, isReady, isChallengeCompleted, completeChallenge]
   );
 
   return (

@@ -20,17 +20,6 @@ export function HomeIcon(props: IconProps) {
   );
 }
 
-export function VenturesIcon(props: IconProps) {
-  return (
-    <svg {...base} {...props}>
-      <rect x="4" y="4" width="7" height="7" rx="1.5" />
-      <rect x="13" y="4" width="7" height="7" rx="1.5" />
-      <rect x="4" y="13" width="7" height="7" rx="1.5" />
-      <rect x="13" y="13" width="7" height="7" rx="1.5" />
-    </svg>
-  );
-}
-
 export function ProfileIcon(props: IconProps) {
   return (
     <svg {...base} {...props}>
@@ -46,54 +35,6 @@ export function InfoIcon(props: IconProps) {
       <circle cx="12" cy="12" r="8.5" />
       <path d="M12 11v5.5" />
       <path d="M12 8v.01" />
-    </svg>
-  );
-}
-
-export function ResearchIcon(props: IconProps) {
-  return (
-    <svg {...base} {...props}>
-      <circle cx="10.5" cy="10.5" r="6" />
-      <path d="m19 19-4-4" />
-    </svg>
-  );
-}
-
-export function ProductIcon(props: IconProps) {
-  return (
-    <svg {...base} {...props}>
-      <path d="M12 3.5 20 8v8l-8 4.5L4 16V8l8-4.5Z" />
-      <path d="M4 8l8 4.5L20 8" />
-      <path d="M12 12.5V21" />
-    </svg>
-  );
-}
-
-export function GrowthIcon(props: IconProps) {
-  return (
-    <svg {...base} {...props}>
-      <path d="m4 16 5.5-5.5L13 14l7-7" />
-      <path d="M16 7h4v4" />
-    </svg>
-  );
-}
-
-export function FinanceIcon(props: IconProps) {
-  return (
-    <svg {...base} {...props}>
-      <path d="M4 19V10" />
-      <path d="M10 19V6" />
-      <path d="M16 19v-8" />
-      <path d="M20 19V4" />
-    </svg>
-  );
-}
-
-export function OperationsIcon(props: IconProps) {
-  return (
-    <svg {...base} {...props}>
-      <circle cx="12" cy="12" r="2.75" />
-      <path d="M12 3.5v2.3M12 18.2v2.3M20.5 12h-2.3M5.8 12H3.5M17.7 6.3l-1.6 1.6M7.9 16.1l-1.6 1.6M17.7 17.7l-1.6-1.6M7.9 7.9 6.3 6.3" />
     </svg>
   );
 }

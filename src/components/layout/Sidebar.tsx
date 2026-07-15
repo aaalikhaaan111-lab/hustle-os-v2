@@ -30,6 +30,7 @@ export function Sidebar() {
             <Link
               key={item.href}
               href={item.href}
+              data-tour-nav={item.href}
               className={cn(
                 "flex items-center gap-3 rounded-full px-4 py-3 text-[15px] font-bold tracking-tight transition-all duration-200 ease-out active:scale-[0.97]",
                 active
