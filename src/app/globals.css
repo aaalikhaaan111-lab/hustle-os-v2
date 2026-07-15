@@ -115,6 +115,24 @@ body {
   animation: pop-in 0.5s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
+@keyframes glow-pulse {
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 0 rgba(147, 51, 234, 0.45),
+      0 8px 24px rgba(99, 102, 241, 0.35);
+  }
+  50% {
+    box-shadow:
+      0 0 0 14px rgba(147, 51, 234, 0),
+      0 8px 24px rgba(99, 102, 241, 0.35);
+  }
+}
+
+.animate-glow-pulse {
+  animation: glow-pulse 2.2s ease-out infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

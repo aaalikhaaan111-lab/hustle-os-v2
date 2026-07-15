@@ -11,11 +11,12 @@ import { cn } from "@/lib/utils";
 interface ChallengeCardProps {
   challenge: ChallengeDef;
   categoryLabel: string;
+  initialOpen?: boolean;
 }
 
-export function ChallengeCard({ challenge, categoryLabel }: ChallengeCardProps) {
+export function ChallengeCard({ challenge, categoryLabel, initialOpen = false }: ChallengeCardProps) {
   const { isReady, isChallengeCompleted } = useGameProgress();
-  const [isOpen, setIsOpen] = useState(false);
+  const [isOpen, setIsOpen] = useState(initialOpen);
 
   const completed = isReady && isChallengeCompleted(challenge.id);
   const difficulty = DIFFICULTY_META[challenge.difficulty];

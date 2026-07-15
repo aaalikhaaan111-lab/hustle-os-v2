@@ -20,7 +20,11 @@ export default async function OnboardingPage() {
     .maybeSingle();
 
   if (profile?.onboarding_completed_at) {
-    redirect("/dashboard");
+    // Note: Next.js re-runs this server component after completeOnboardingAction
+    // resolves (even though it only revalidates "/dashboard"), so this guard
+    // races the client-side redirect in OnboardingForm's fake-loading timer.
+    // Both must agree on the same destination or whichever fires first wins.
+    redirect("/first-session");
   }
 
   return <OnboardingForm />;

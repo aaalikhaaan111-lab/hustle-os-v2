@@ -5,7 +5,12 @@ import { CHALLENGE_CATALOG } from "@/lib/challenges";
 import { INTEREST_OPTIONS } from "@/lib/constants";
 import { createClient } from "@/lib/supabase/server";
 
-export default async function ChallengesPage() {
+interface ChallengesPageProps {
+  searchParams: Promise<{ open?: string }>;
+}
+
+export default async function ChallengesPage({ searchParams }: ChallengesPageProps) {
+  const { open: openChallengeId } = await searchParams;
   const supabase = await createClient();
 
   const {
@@ -49,6 +54,7 @@ export default async function ChallengesPage() {
               key={challenge.id}
               challenge={challenge}
               categoryLabel={category?.label ?? ""}
+              initialOpen={challenge.id === openChallengeId}
             />
           );
         })}

@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { LoginForm } from "@/components/auth/LoginForm";
 import { DevAutoLoginButton } from "@/components/auth/DevAutoLoginButton";
 
@@ -7,7 +8,9 @@ export default function LoginPage() {
 
   return (
     <>
-      <LoginForm />
+      <Suspense fallback={null}>
+        <LoginForm />
+      </Suspense>
       {showDevAutoLogin && <DevAutoLoginButton />}
     </>
   );

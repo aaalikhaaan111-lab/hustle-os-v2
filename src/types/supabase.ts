@@ -87,6 +87,102 @@ export interface Database {
         };
         Relationships: [];
       };
+      workshop_sessions: {
+        Row: {
+          id: string;
+          code: string;
+          workshop_slug: string;
+          host_id: string;
+          status: "lobby" | "question" | "reveal" | "finished";
+          current_question_index: number;
+          question_started_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          code: string;
+          workshop_slug: string;
+          host_id: string;
+          status?: "lobby" | "question" | "reveal" | "finished";
+          current_question_index?: number;
+          question_started_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          code?: string;
+          workshop_slug?: string;
+          host_id?: string;
+          status?: "lobby" | "question" | "reveal" | "finished";
+          current_question_index?: number;
+          question_started_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      workshop_participants: {
+        Row: {
+          id: string;
+          session_id: string;
+          user_id: string;
+          display_name: string;
+          joined_at: string;
+        };
+        Insert: {
+          id?: string;
+          session_id: string;
+          user_id: string;
+          display_name: string;
+          joined_at?: string;
+        };
+        Update: {
+          id?: string;
+          session_id?: string;
+          user_id?: string;
+          display_name?: string;
+          joined_at?: string;
+        };
+        Relationships: [];
+      };
+      workshop_answers: {
+        Row: {
+          id: string;
+          session_id: string;
+          participant_id: string;
+          question_index: number;
+          selected_option: number;
+          is_correct: boolean;
+          response_ms: number;
+          points_awarded: number;
+          answered_at: string;
+        };
+        Insert: {
+          id?: string;
+          session_id: string;
+          participant_id: string;
+          question_index: number;
+          selected_option: number;
+          is_correct: boolean;
+          response_ms: number;
+          points_awarded?: number;
+          answered_at?: string;
+        };
+        Update: {
+          id?: string;
+          session_id?: string;
+          participant_id?: string;
+          question_index?: number;
+          selected_option?: number;
+          is_correct?: boolean;
+          response_ms?: number;
+          points_awarded?: number;
+          answered_at?: string;
+        };
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;

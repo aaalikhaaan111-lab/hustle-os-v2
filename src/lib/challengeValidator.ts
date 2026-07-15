@@ -11,13 +11,23 @@ export interface ValidationResult {
   reason: string;
 }
 
-const MIN_ANSWER_LENGTH = 15;
-const MIN_WORD_COUNT = 4;
+export interface ValidatorContext {
+  questTitle: string;
+  actionPrompt: string;
+}
+
+// 3-Tier Evaluation Framework
+// Tier 1 (Anti-Cheat/Spam): gibberish, keyboard mash, repeated symbols -> score 0, instant reject.
+// Tier 2 (Depth Check): real but too short/generic, no specifics -> score 3, reject with a concrete prompt.
+// Tier 3 (Core Logic Check): 2-4 sentences showing baseline understanding -> pass, score 7-10.
+// The bar for Tier 3 is deliberately low: we want a real, on-topic answer to pass, not an essay.
+
+const MIN_TIER3_WORDS = 8;
 
 // Note: JS regex `\b` only recognizes ASCII word characters, so it never matches around
 // Cyrillic text (no position in a pure-Cyrillic string is a word/non-word transition).
 // These patterns intentionally avoid `\b` for that reason.
-const EVASION_PATTERNS: RegExp[] = [
+const GENERIC_PATTERNS: RegExp[] = [
   /без понятия/i,
   /не зна(ю|ем|ешь)/i,
   /(^|\s)лень(\s|$|[.,!?])/i,
@@ -30,6 +40,7 @@ const EVASION_PATTERNS: RegExp[] = [
   /как[\s-]нибудь/i,
   /не хочу думать/i,
   /^(да|нет|ну|окей|ок|норм)\.?$/i,
+  /^(cool|nice|ok|okay|good|idk|dunno|whatever)\.?$/i,
 ];
 
 const KEYBOARD_MASH_PATTERNS = [
@@ -43,6 +54,10 @@ const KEYBOARD_MASH_PATTERNS = [
   "1234567",
   "abcdefg",
 ];
+
+// A long unbroken run of consonants (Cyrillic or Latin) almost never occurs in real
+// words in either language — it's a strong signal of random-key mashing like "прлптбаихз".
+const CONSONANT_RUN_PATTERN = /[бвгджзйклмнпрстфхцчшщbcdfghjklmnpqrstvwxyz]{5,}/i;
 
 const FEASIBILITY_WORDS = [
   "план",
@@ -77,6 +92,10 @@ function tokenize(text: string): string[] {
   return (text.toLowerCase().match(/[а-яёa-z]+/gi) ?? []).filter((word) => word.length > 1);
 }
 
+function countSentences(text: string): number {
+  return text.split(/[.!?\n]+/).filter((s) => s.trim().length > 3).length;
+}
+
 function hasRepeatedCharRun(text: string): boolean {
   return /(.)\1{4,}/i.test(text);
 }
@@ -90,6 +109,10 @@ function hasKeyboardMash(text: string): boolean {
   return KEYBOARD_MASH_PATTERNS.some((pattern) => lower.includes(pattern));
 }
 
+function hasLongConsonantRun(text: string): boolean {
+  return CONSONANT_RUN_PATTERN.test(text.replace(/\s/g, ""));
+}
+
 function uniqueWordRatio(words: string[]): number {
   if (words.length === 0) return 0;
   return new Set(words).size / words.length;
@@ -99,84 +122,77 @@ function countMarkerHits(lowerText: string, markers: string[]): number {
   return markers.filter((marker) => lowerText.includes(marker.toLowerCase())).length;
 }
 
+// Tier 3 scoring: a baseline of 7 once an answer has already cleared the spam and
+// genericity gates — small bonuses reward extra rigor, but nothing here can push a
+// passing answer back below the 7/10 pass line.
 function scoreDepth(text: string, words: string[], markerHits: number, markerTotal: number): number {
-  let score = 0;
-
-  if (words.length >= 40) score += 4;
-  else if (words.length >= 20) score += 3;
-  else if (words.length >= 10) score += 2;
-  else if (words.length >= 5) score += 1;
-
-  const sentences = text.split(/[.!?]+/).filter((s) => s.trim().length > 3);
-  if (sentences.length >= 3) score += 2;
-  else if (sentences.length >= 2) score += 1;
-
-  if (/\d/.test(text)) score += 2;
-
+  let score = 7;
+  if (words.length >= 40) score += 1;
+  if (countSentences(text) >= 3) score += 1;
+  if (/\d/.test(text)) score += 1;
   const markerRatio = markerTotal > 0 ? markerHits / markerTotal : 0;
-  score += Math.round(markerRatio * 2);
-
-  return Math.max(0, Math.min(10, score));
+  if (markerRatio >= 0.34) score += 1;
+  return Math.max(7, Math.min(10, score));
 }
 
 function scoreFeasibility(words: string[]): number {
+  let score = 7;
   const lower = words.join(" ");
   const hits = FEASIBILITY_WORDS.filter((word) => lower.includes(word)).length;
-
-  let score = Math.min(6, hits * 1.5);
-  if (words.length >= 15) score += 2;
-  if (/\d/.test(lower)) score += 2;
-
-  return Math.max(0, Math.min(10, Math.round(score)));
+  if (hits >= 1) score += 1;
+  if (hits >= 3) score += 1;
+  if (words.length >= 20) score += 1;
+  return Math.max(7, Math.min(10, score));
 }
 
 function scoreRisk(text: string): number {
+  let score = 7;
   const lower = text.toLowerCase();
   const hits = RISK_WORDS.filter((word) => lower.includes(word)).length;
-
-  let score = Math.min(8, hits * 2);
-  if (lower.length > 30) score += 2;
-
-  return Math.max(0, Math.min(10, score));
+  if (hits >= 1) score += 2;
+  if (hits >= 2) score += 1;
+  return Math.max(7, Math.min(10, score));
 }
 
 function rejection(score: ValidationScore, reason: string): ValidationResult {
   return { passed: false, score, reason };
 }
 
-export function validateChallengeAnswer(rawAnswer: string, markers: string[]): ValidationResult {
+function buildAbstractReason(context: ValidatorContext): string {
+  const topic = context.questTitle.replace(/^Квест:\s*/, "");
+  return `Слишком абстрактно для квеста «${topic}». Ответь конкретнее на задание: ${context.actionPrompt}`;
+}
+
+export function validateChallengeAnswer(
+  rawAnswer: string,
+  markers: string[],
+  context: ValidatorContext
+): ValidationResult {
   const answer = rawAnswer.trim();
   const words = tokenize(answer);
-  const lowFail: ValidationScore = { depth: 1, feasibility: 1, risk: 1, average: 1 };
 
-  if (answer.length < MIN_ANSWER_LENGTH || words.length < MIN_WORD_COUNT) {
-    return rejection(
-      lowFail,
-      "ИИ Hustle.OS отклонил твой отчёт. Оценка: 1/10. Причина: ответ слишком короткий, чтобы в нём была хоть какая-то мысль. Разверни идею подробнее."
-    );
+  const spamScore: ValidationScore = { depth: 0, feasibility: 0, risk: 0, average: 0 };
+  const genericScore: ValidationScore = { depth: 3, feasibility: 3, risk: 3, average: 3 };
+
+  // Tier 1: Anti-Cheat / Spam Check
+  if (
+    answer.length === 0 ||
+    hasRepeatedCharRun(answer) ||
+    hasRepeatedShortCycle(answer) ||
+    hasKeyboardMash(answer) ||
+    hasLongConsonantRun(answer) ||
+    uniqueWordRatio(words) < 0.4
+  ) {
+    return rejection(spamScore, "Обнаружен спам или некорректный ввод. Напишите осмысленный ответ.");
   }
 
-  if (hasRepeatedCharRun(answer) || hasRepeatedShortCycle(answer) || hasKeyboardMash(answer)) {
-    return rejection(
-      lowFail,
-      "ИИ Hustle.OS отклонил твой отчёт. Оценка: 1/10. Причина: похоже на случайный набор символов или удар по клавиатуре, а не осмысленный ответ."
-    );
+  // Tier 2: Depth Check — real words, but too short or too generic to show any thinking.
+  // The reason is built from *this* quest's own title and prompt, never a hardcoded topic.
+  if (words.length < MIN_TIER3_WORDS || GENERIC_PATTERNS.some((pattern) => pattern.test(answer))) {
+    return rejection(genericScore, buildAbstractReason(context));
   }
 
-  if (uniqueWordRatio(words) < 0.4) {
-    return rejection(
-      lowFail,
-      "ИИ Hustle.OS отклонил твой отчёт. Оценка: 1/10. Причина: слишком много повторов одних и тех же слов — это похоже на попытку накрутить объём, а не раскрыть мысль."
-    );
-  }
-
-  if (EVASION_PATTERNS.some((pattern) => pattern.test(answer))) {
-    return rejection(
-      { depth: 1, feasibility: 1, risk: 1, average: 1 },
-      "ИИ Hustle.OS отклонил твой отчёт. Оценка: 1/10. Причина: это похоже на попытку уклониться от задания. Настоящего предпринимателя не останавливает «не знаю» — сформулируй хотя бы гипотезу."
-    );
-  }
-
+  // Tier 3: Core Logic Check — a concise, on-topic answer passes. No essay required.
   const lowerAnswer = answer.toLowerCase();
   const markerHits = countMarkerHits(lowerAnswer, markers);
   const depth = scoreDepth(answer, words, markerHits, markers.length);
@@ -184,19 +200,10 @@ export function validateChallengeAnswer(rawAnswer: string, markers: string[]): V
   const risk = scoreRisk(answer);
   const average = Math.round(((depth + feasibility + risk) / 3) * 10) / 10;
 
-  const score: ValidationScore = { depth, feasibility, risk, average };
-
-  if (average < 5) {
-    return rejection(
-      score,
-      `ИИ Hustle.OS отклонил твой отчёт. Оценка: ${average}/10. Причина: твой ответ слишком абстрактный. Добавь конкретики, опиши цифры или конкретную боль аудитории.`
-    );
-  }
-
   return {
     passed: true,
-    score,
-    reason: "Отчёт принят ИИ Hustle.OS.",
+    score: { depth, feasibility, risk, average },
+    reason: buildPassReason(answer, depth, feasibility, risk),
   };
 }
 
@@ -205,21 +212,55 @@ function truncateSnippet(text: string, maxLength = 70): string {
   return trimmed.length > maxLength ? `${trimmed.slice(0, maxLength).trim()}…` : trimmed;
 }
 
-export function buildMentorVerdict(answer: string, average: number): string {
+function hashString(text: string): number {
+  let hash = 0;
+  for (let i = 0; i < text.length; i++) {
+    hash = (hash * 31 + text.charCodeAt(i)) | 0;
+  }
+  return Math.abs(hash);
+}
+
+// No fixed wrapper sentence — the opener and closer are picked from independent pools
+// (deterministically, from the answer's own content) and the closer is always tied to
+// the actual weakest scoring dimension, so the critique reads differently every time
+// instead of always following the same "твоя идея ... выглядит жизнеспособно" template.
+const OPENERS: ((snippet: string) => string)[] = [
+  (s) => `«${s}» — с этого реально можно стартовать.`,
+  (s) => `Зацепило по делу: «${s}».`,
+  (s) => `Принято: «${s}» звучит как рабочая гипотеза.`,
+  (s) => `По существу — «${s}».`,
+  (s) => `Смотрю на «${s}»: ход мысли верный.`,
+];
+
+const WEAK_DIMENSION_NOTES: Record<"depth" | "feasibility" | "risk", string> = {
+  depth: "Только копни глубже — сейчас не хватает конкретики по сути идеи.",
+  feasibility: "Слабое место — реализуемость: распиши, что именно делаешь на первой неделе.",
+  risk: "Ты не проговорил риски — подумай, что может пойти не так и что тогда делать.",
+};
+
+function pickWeakestDimension(depth: number, feasibility: number, risk: number): "depth" | "feasibility" | "risk" {
+  const entries: ["depth" | "feasibility" | "risk", number][] = [
+    ["depth", depth],
+    ["feasibility", feasibility],
+    ["risk", risk],
+  ];
+  entries.sort((a, b) => a[1] - b[1]);
+  return entries[0][0];
+}
+
+function buildPassReason(answer: string, depth: number, feasibility: number, risk: number): string {
   const sentences = answer
     .split(/[.!?\n]+/)
     .map((s) => s.trim())
     .filter((s) => s.length > 4);
+  const snippet = truncateSnippet(sentences[0] ?? answer);
 
-  const first = sentences[0] ? truncateSnippet(sentences[0]) : truncateSnippet(answer);
-  const second = sentences[1] ? truncateSnippet(sentences[1]) : first;
+  const opener = OPENERS[hashString(answer) % OPENERS.length](snippet);
+  const minScore = Math.min(depth, feasibility, risk);
+  const closer =
+    minScore >= 9
+      ? "Сильно сразу по всем фронтам — двигайся дальше в этом направлении."
+      : WEAK_DIMENSION_NOTES[pickWeakestDimension(depth, feasibility, risk)];
 
-  const tone =
-    average >= 8.5
-      ? "Это выдающийся уровень проработки для новичка."
-      : average >= 7
-        ? "Это сильный, зрелый ход мышления."
-        : "Это уже рабочая гипотеза, с которой можно двигаться дальше.";
-
-  return `ИИ-Вердикт: твоя идея — «${first}» — выглядит жизнеспособно. ${tone} Особенно зацепил момент: «${second}». Твоя награда заслужена!`;
+  return `${opener} ${closer}`;
 }

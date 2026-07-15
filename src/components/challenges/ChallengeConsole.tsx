@@ -7,11 +7,8 @@ import { cn } from "@/lib/utils";
 import { useGameProgress } from "@/lib/game-progress/GameProgressContext";
 import { INTEREST_OPTIONS } from "@/lib/constants";
 import { DIFFICULTY_META, type ChallengeDef } from "@/lib/challenges";
-import {
-  validateChallengeAnswer,
-  buildMentorVerdict,
-  type ValidationResult,
-} from "@/lib/challengeValidator";
+import type { ValidationResult } from "@/lib/challengeValidator";
+import { validateChallengeAnswerAction } from "@/lib/actions/challengeValidation";
 
 type ConsoleStep = "insight" | "quiz" | "reflection" | "checking" | "error" | "success";
 
@@ -54,9 +51,22 @@ function ScoreRow({ label, value }: { label: string; value: number }) {
 interface ChallengeConsoleProps {
   challenge: ChallengeDef;
   onClose: () => void;
+  /**
+   * Skips AI/heuristic validation of the reflection answer — it always
+   * passes. Used for a user's very first challenge, which is meant to be
+   * impossible to fail; real XP is still awarded and the answer is still
+   * saved, only the pass/fail judgment is skipped.
+   */
+  skipValidation?: boolean;
 }
 
-export function ChallengeConsole({ challenge, onClose }: ChallengeConsoleProps) {
+const AUTO_PASS_RESULT: ValidationResult = {
+  passed: true,
+  score: { depth: 0, feasibility: 0, risk: 0, average: 0 },
+  reason: "",
+};
+
+export function ChallengeConsole({ challenge, onClose, skipValidation }: ChallengeConsoleProps) {
   const { completeChallenge } = useGameProgress();
   const [step, setStep] = useState<ConsoleStep>("insight");
   const [quizSelection, setQuizSelection] = useState<number | null>(null);
@@ -69,8 +79,21 @@ export function ChallengeConsole({ challenge, onClose }: ChallengeConsoleProps) 
 
   useEffect(() => {
     if (step !== "checking") return;
-    const timeout = setTimeout(() => {
-      const validation = validateChallengeAnswer(answer, challenge.markers);
+    let cancelled = false;
+
+    async function run() {
+      const [validation] = await Promise.all([
+        skipValidation
+          ? Promise.resolve(AUTO_PASS_RESULT)
+          : validateChallengeAnswerAction(answer, challenge.markers, {
+              questTitle: challenge.questTitle,
+              scenario: challenge.scenario,
+              actionPrompt: challenge.actionPrompt,
+            }),
+        new Promise((resolve) => setTimeout(resolve, CHECKING_DURATION_MS)),
+      ]);
+      if (cancelled) return;
+
       setResult(validation);
 
       if (!validation.passed) {
@@ -85,13 +108,17 @@ export function ChallengeConsole({ challenge, onClose }: ChallengeConsoleProps) 
         categoryLabel,
         xp: challenge.xp,
         answer: answer.trim(),
-        score: validation.score,
+        score: skipValidation ? undefined : validation.score,
       });
       setStep("success");
       fireConfetti();
-    }, CHECKING_DURATION_MS);
-    return () => clearTimeout(timeout);
-  }, [step, answer, challenge, categoryLabel, completeChallenge]);
+    }
+
+    run();
+    return () => {
+      cancelled = true;
+    };
+  }, [step, answer, challenge, categoryLabel, completeChallenge, skipValidation]);
 
   useEffect(() => {
     function handleKey(event: KeyboardEvent) {
@@ -188,7 +215,7 @@ export function ChallengeConsole({ challenge, onClose }: ChallengeConsoleProps) 
                 const showWrong = isSelected && !option.isCorrect;
                 return (
                   <button
-                    key={option.text}
+                    key={index}
                     type="button"
                     onClick={() => setQuizSelection(index)}
                     className={cn(
@@ -224,7 +251,9 @@ export function ChallengeConsole({ challenge, onClose }: ChallengeConsoleProps) 
               {challenge.actionPrompt}
             </h2>
             <p className="text-xs tracking-tight text-ink-muted">
-              ИИ Hustle.OS проверит глубину, реализуемость и учёт рисков — пиши конкретно, без «хз» 🙂
+              {skipValidation
+                ? "Это разминка — просто попробуй сформулировать мысль своими словами 🙂"
+                : "ИИ Ventrio проверит глубину, реализуемость и учёт рисков — пиши конкретно, без «хз» 🙂"}
             </p>
             <textarea
               value={answer}
@@ -239,7 +268,7 @@ export function ChallengeConsole({ challenge, onClose }: ChallengeConsoleProps) 
               onClick={() => setStep("checking")}
               className="w-full"
             >
-              Отправить на ИИ-валидацию
+              {skipValidation ? "Готово →" : "Отправить на ИИ-валидацию"}
             </Button>
           </div>
         )}
@@ -254,7 +283,9 @@ export function ChallengeConsole({ challenge, onClose }: ChallengeConsoleProps) 
               />
             </div>
             <p className="text-lg font-extrabold tracking-tight text-ink">
-              🤖 ИИ Hustle.OS анализирует твой ответ на жизнеспособность...
+              {skipValidation
+                ? "🎯 Засчитываем твой первый результат..."
+                : "🤖 ИИ Ventrio анализирует твой ответ на жизнеспособность..."}
             </p>
           </div>
         )}
@@ -285,23 +316,25 @@ export function ChallengeConsole({ challenge, onClose }: ChallengeConsoleProps) 
               Квест пройден!
             </h2>
             <span className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500 px-5 py-2.5 text-base font-bold text-white shadow-[0_8px_24px_rgba(99,102,241,0.35)]">
-              +{challenge.xp} XP · Оценка {result.score.average}/10
+              {skipValidation ? `+${challenge.xp} XP` : `+${challenge.xp} XP · Оценка ${result.score.average}/10`}
             </span>
 
-            <div className="mt-1 flex w-full flex-col gap-2 rounded-2xl bg-white/70 px-4 py-3 ring-1 ring-inset ring-indigo-100">
-              <ScoreRow label="Глубина проработки" value={result.score.depth} />
-              <ScoreRow label="Реализуемость" value={result.score.feasibility} />
-              <ScoreRow label="Риски" value={result.score.risk} />
-            </div>
+            {!skipValidation && (
+              <>
+                <div className="mt-1 flex w-full flex-col gap-2 rounded-2xl bg-white/70 px-4 py-3 ring-1 ring-inset ring-indigo-100">
+                  <ScoreRow label="Глубина проработки" value={result.score.depth} />
+                  <ScoreRow label="Реализуемость" value={result.score.feasibility} />
+                  <ScoreRow label="Риски" value={result.score.risk} />
+                </div>
 
-            <div className="flex w-full flex-col gap-1.5 rounded-2xl bg-white/70 px-4 py-3 text-left ring-1 ring-inset ring-indigo-100">
-              <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-indigo-600">
-                Вердикт ИИ-Ментора
-              </span>
-              <p className="text-sm tracking-tight text-ink-secondary">
-                {buildMentorVerdict(answer, result.score.average)}
-              </p>
-            </div>
+                <div className="flex w-full flex-col gap-1.5 rounded-2xl bg-white/70 px-4 py-3 text-left ring-1 ring-inset ring-indigo-100">
+                  <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-indigo-600">
+                    Вердикт ИИ-Ментора
+                  </span>
+                  <p className="text-sm tracking-tight text-ink-secondary">{result.reason}</p>
+                </div>
+              </>
+            )}
 
             <Button size="lg" variant="secondary" onClick={onClose} className="mt-2 w-full">
               Закрыть

@@ -7,6 +7,7 @@ import { ChallengeZeroCard } from "@/components/dashboard/ChallengeZeroCard";
 import { LevelProgressCard } from "@/components/dashboard/LevelProgressCard";
 import { NextGoalCard } from "@/components/dashboard/NextGoalCard";
 import { ActivityFeedCard } from "@/components/dashboard/ActivityFeedCard";
+import { CourseProgressCard } from "@/components/dashboard/CourseProgressCard";
 import { INTEREST_OPTIONS } from "@/lib/constants";
 import { createClient } from "@/lib/supabase/server";
 
@@ -37,12 +38,11 @@ export default async function DashboardPage() {
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("interests, daily_minutes")
+    .select("interests")
     .eq("id", user.id)
     .maybeSingle();
 
   const interests = profile?.interests ?? [];
-  const dailyMinutes = profile?.daily_minutes ?? null;
 
   const challengeSubtitle =
     interests.length > 0
@@ -70,38 +70,7 @@ export default async function DashboardPage() {
       </Card>
 
       <div className="grid gap-6 sm:grid-cols-2">
-        <Card>
-          <CardContent className="flex h-full flex-col gap-6 py-9">
-            <div className="flex items-center gap-4">
-              <span className="text-4xl" role="img" aria-hidden>
-                📚
-              </span>
-              <div className="flex flex-col gap-2">
-                <Eyebrow>Курс</Eyebrow>
-                <h3 className="text-xl font-extrabold leading-tight tracking-[-0.02em] text-ink">
-                  Скоро начнётся твой первый курс
-                </h3>
-              </div>
-            </div>
-            <div className="flex flex-col gap-2">
-              <div className="flex items-center justify-between text-xs font-bold tracking-wide text-ink-secondary">
-                <span>Прогресс</span>
-                <span>0%</span>
-              </div>
-              <div className="h-4 w-full overflow-hidden rounded-full bg-zinc-900/[0.04] ring-1 ring-inset ring-white/60 backdrop-blur-sm">
-                <div className="h-full w-0 rounded-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 shadow-[0_0_12px_rgba(147,51,234,0.5)]" />
-              </div>
-              {dailyMinutes !== null && (
-                <p className="text-xs font-medium tracking-tight text-ink-muted">
-                  Цель: {dailyMinutes} минут в день
-                </p>
-              )}
-            </div>
-            <Button href="/courses" variant="secondary" className="mt-auto w-fit">
-              Смотреть курсы
-            </Button>
-          </CardContent>
-        </Card>
+        <CourseProgressCard />
 
         <Card>
           <CardContent className="flex h-full flex-col gap-6 py-9">

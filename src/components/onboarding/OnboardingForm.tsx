@@ -34,7 +34,7 @@ export function OnboardingForm() {
 
     if (phraseIndex >= ONBOARDING_LOADING_PHRASES.length - 1) {
       const timeout = setTimeout(() => {
-        router.push("/dashboard");
+        router.push("/first-session");
       }, PHRASE_INTERVAL_MS);
       return () => clearTimeout(timeout);
     }

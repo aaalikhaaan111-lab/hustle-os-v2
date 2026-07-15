@@ -7,6 +7,7 @@ import { Card, CardContent } from "@/components/ui/Card";
 import { Field } from "@/components/ui/Field";
 import { Input } from "@/components/ui/Input";
 import { InfoIcon } from "@/components/ui/icons";
+import { GoogleSignInButton } from "@/components/auth/GoogleSignInButton";
 import { signupAction, type SignupActionState } from "@/lib/actions/auth";
 
 const initialState: SignupActionState = { error: null, success: false };
@@ -41,7 +42,15 @@ export default function SignupPage() {
       </div>
 
       <Card>
-        <CardContent className="py-5">
+        <CardContent className="flex flex-col gap-5 py-5">
+          <GoogleSignInButton label="Sign up with Google" />
+
+          <div className="flex items-center gap-3">
+            <div className="h-px flex-1 bg-border" />
+            <span className="text-xs font-medium text-ink-muted">or</span>
+            <div className="h-px flex-1 bg-border" />
+          </div>
+
           <form action={formAction} className="flex flex-col gap-4">
             <Field label="Email" htmlFor="email" required>
               <Input

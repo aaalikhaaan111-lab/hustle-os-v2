@@ -70,7 +70,7 @@ export function NextGoalCard() {
 
         <p className="text-sm tracking-tight text-ink-secondary">{quest.description}</p>
 
-        <Button href="/challenges" size="lg" className="w-full sm:w-fit">
+        <Button href={`/challenges?open=${quest.id}`} size="lg" className="w-full sm:w-fit">
           Перейти к квесту
         </Button>
       </CardContent>

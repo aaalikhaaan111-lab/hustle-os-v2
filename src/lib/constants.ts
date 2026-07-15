@@ -35,7 +35,7 @@ export const INTEREST_OPTIONS: InterestOption[] = [
 export const NAV_ITEMS: NavItem[] = [
   { label: "Dashboard", href: "/dashboard", icon: DashboardIcon },
   { label: "Challenges", href: "/challenges", icon: ChallengesIcon },
-  { label: "Courses", href: "/courses", icon: CoursesIcon },
+  { label: "Learn", href: "/courses", icon: CoursesIcon },
   { label: "Workshops", href: "/workshops", icon: WorkshopsIcon },
   { label: "Profile", href: "/profile", icon: ProfileIcon },
 ];

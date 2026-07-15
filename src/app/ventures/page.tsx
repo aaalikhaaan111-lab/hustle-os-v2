@@ -32,7 +32,7 @@ export default async function VenturesPage() {
         <EmptyState
           icon={<VenturesIcon className="h-6 w-6" />}
           title="No ventures yet"
-          description="Start by describing a mission. HUSTLE.OS will turn it into a working venture system."
+          description="Start by describing a mission. Ventrio will turn it into a working venture system."
           action={<Button href="/ventures/new">Build a venture</Button>}
         />
       ) : (

@@ -14,9 +14,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "HUSTLE.OS — Venture Operating System",
+  title: "Ventrio — учись предпринимательству через действие",
   description:
-    "HUSTLE.OS turns a founder's mission into a working venture — decisions, assets, experiments, and measurable progress.",
+    "Ventrio — ежедневные квесты, видео-уроки и живые воркшопы, которые превращают интерес к бизнесу в реальный опыт.",
 };
 
 export default function RootLayout({

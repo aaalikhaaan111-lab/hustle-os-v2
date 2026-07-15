@@ -73,17 +73,12 @@ export function GameProgressProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let cancelled = false;
+    let initializedForUserId: string | null = null;
     const supabase = createClient();
 
-    async function init() {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-
-      if (!user || cancelled) {
-        if (!cancelled) setIsReady(true);
-        return;
-      }
+    async function loadForUser(user: { id: string }) {
+      if (cancelled || initializedForUserId === user.id) return;
+      initializedForUserId = user.id;
 
       const key = storageKey(user.id);
       const stored =
@@ -134,9 +129,32 @@ export function GameProgressProvider({ children }: { children: ReactNode }) {
       setIsReady(true);
     }
 
-    init();
+    // GameProgressProvider is mounted once in the root layout and persists
+    // across client-side (soft) navigations, including the redirect() a
+    // Server Action issues right after login/signup. A one-shot getUser()
+    // check here would permanently miss that login if it ran while the user
+    // was still logged out. onAuthStateChange fires both immediately with
+    // the current session and again on every subsequent sign-in, so it
+    // catches login events that happen after this provider already mounted.
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) {
+        loadForUser(session.user);
+      } else if (!cancelled) {
+        initializedForUserId = null;
+        setUserId(null);
+        setXp(0);
+        setStreakDays(0);
+        setCompletions([]);
+        lastActivityRef.current = null;
+        setIsReady(true);
+      }
+    });
+
     return () => {
       cancelled = true;
+      subscription.unsubscribe();
     };
   }, []);
 

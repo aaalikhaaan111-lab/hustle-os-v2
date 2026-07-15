@@ -8,6 +8,7 @@ const PROTECTED_PREFIXES = [
   "/courses",
   "/workshops",
   "/onboarding",
+  "/first-session",
   "/profile",
   "/ventures",
 ];
