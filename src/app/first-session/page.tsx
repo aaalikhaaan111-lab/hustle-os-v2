@@ -1,14 +1,12 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getCurrentUser } from "@/lib/supabase/currentUser";
 import { CHALLENGE_CATALOG } from "@/lib/challenges";
 import { FirstSessionFlow } from "@/components/first-session/FirstSessionFlow";
 
 export default async function FirstSessionPage() {
   const supabase = await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser(supabase);
 
   if (!user) {
     redirect("/login");

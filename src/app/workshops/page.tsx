@@ -1,11 +1,23 @@
 import { redirect } from "next/navigation";
+import dynamic from "next/dynamic";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Card, CardContent } from "@/components/ui/Card";
-import { UnitEconomicsSimulator } from "@/components/workshops/UnitEconomicsSimulator";
+import { SkeletonCard } from "@/components/ui/Skeleton";
 import { CreateSessionButton } from "@/components/workshops/CreateSessionButton";
 import { JoinSessionForm } from "@/components/workshops/JoinSessionForm";
 import { WORKSHOP_PACKS } from "@/lib/workshops";
 import { createClient } from "@/lib/supabase/server";
+import { getCurrentUser } from "@/lib/supabase/currentUser";
+
+// Deferred to its own chunk: the simulator isn't needed for the initial,
+// above-the-fold join/host flow, so it shouldn't be part of that critical path.
+const UnitEconomicsSimulator = dynamic(
+  () =>
+    import("@/components/workshops/UnitEconomicsSimulator").then(
+      (mod) => mod.UnitEconomicsSimulator
+    ),
+  { loading: () => <SkeletonCard /> }
+);
 
 interface LockedWorkshopCardProps {
   emoji: string;
@@ -38,10 +50,7 @@ function LockedWorkshopCard({ emoji, title, description }: LockedWorkshopCardPro
 
 export default async function WorkshopsPage() {
   const supabase = await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser(supabase);
 
   if (!user) {
     redirect("/login");
@@ -66,8 +75,21 @@ export default async function WorkshopsPage() {
         <h2 className="text-xs font-bold uppercase tracking-[0.14em] text-indigo-600">
           🎮 Живые квизы — собери команду и сыграйте вместе
         </h2>
-        <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
-          <div className="grid gap-4 sm:grid-cols-3">
+        <div className="flex flex-col gap-4 lg:grid lg:grid-cols-[2fr_1fr] lg:items-start lg:gap-6">
+          <Card className="order-1 border-accent/30 bg-accent-soft/40 lg:order-2">
+            <CardContent className="flex flex-col gap-4 py-6">
+              <h3 className="text-base font-extrabold leading-tight tracking-[-0.02em] text-ink">
+                Присоединиться к квизу
+              </h3>
+              <JoinSessionForm defaultDisplayName={defaultDisplayName} />
+            </CardContent>
+          </Card>
+
+          <p className="order-2 text-center text-xs font-semibold uppercase tracking-[0.1em] text-ink-muted lg:hidden">
+            Или создай свой квиз
+          </p>
+
+          <div className="order-3 grid gap-4 sm:grid-cols-3 lg:order-1">
             {WORKSHOP_PACKS.map((pack) => (
               <Card key={pack.slug}>
                 <CardContent className="flex h-full flex-col gap-3 py-6">
@@ -84,15 +106,6 @@ export default async function WorkshopsPage() {
               </Card>
             ))}
           </div>
-
-          <Card>
-            <CardContent className="flex flex-col gap-4 py-6">
-              <h3 className="text-base font-extrabold leading-tight tracking-[-0.02em] text-ink">
-                Войти по коду
-              </h3>
-              <JoinSessionForm defaultDisplayName={defaultDisplayName} />
-            </CardContent>
-          </Card>
         </div>
       </div>
 

@@ -140,7 +140,7 @@ export function ChallengeConsole({ challenge, onClose, skipValidation }: Challen
     >
       <div
         className={cn(
-          "relative w-full max-w-lg rounded-[32px] border p-8 shadow-[0_32px_64px_-16px_rgba(0,0,0,0.15)]",
+          "relative w-full max-w-lg rounded-[32px] border p-6 shadow-[0_32px_64px_-16px_rgba(0,0,0,0.15)] sm:p-8",
           step === "success"
             ? "border-emerald-100 bg-gradient-to-br from-emerald-50 via-white to-indigo-50"
             : "border-t-white/70 border-x-zinc-200/40 border-b-zinc-200/40 bg-white/90"

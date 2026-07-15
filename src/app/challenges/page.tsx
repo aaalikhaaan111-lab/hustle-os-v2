@@ -4,6 +4,7 @@ import { ChallengeCard } from "@/components/challenges/ChallengeCard";
 import { CHALLENGE_CATALOG } from "@/lib/challenges";
 import { INTEREST_OPTIONS } from "@/lib/constants";
 import { createClient } from "@/lib/supabase/server";
+import { getCurrentUser } from "@/lib/supabase/currentUser";
 
 interface ChallengesPageProps {
   searchParams: Promise<{ open?: string }>;
@@ -12,10 +13,7 @@ interface ChallengesPageProps {
 export default async function ChallengesPage({ searchParams }: ChallengesPageProps) {
   const { open: openChallengeId } = await searchParams;
   const supabase = await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser(supabase);
 
   if (!user) {
     redirect("/login");

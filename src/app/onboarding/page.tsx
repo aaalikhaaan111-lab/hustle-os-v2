@@ -1,13 +1,11 @@
 import { redirect } from "next/navigation";
 import { OnboardingForm } from "@/components/onboarding/OnboardingForm";
 import { createClient } from "@/lib/supabase/server";
+import { getCurrentUser } from "@/lib/supabase/currentUser";
 
 export default async function OnboardingPage() {
   const supabase = await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser(supabase);
 
   if (!user) {
     redirect("/login");

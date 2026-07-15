@@ -7,6 +7,7 @@ import { PageTransition } from "@/components/layout/PageTransition";
 import { Wordmark } from "@/components/layout/Wordmark";
 import { DevResetBar } from "@/components/dev/DevResetBar";
 import { ProductTour } from "@/components/tour/ProductTour";
+import { RoutePrefetcher } from "@/components/layout/RoutePrefetcher";
 import { GameProgressProvider } from "@/lib/game-progress/GameProgressContext";
 
 export function AppShell({ children }: { children: ReactNode }) {
@@ -16,7 +17,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         <BackgroundBlobs />
         <Sidebar />
 
-        <header className="sticky top-0 z-40 flex h-14 items-center gap-3 border-b border-border/60 bg-canvas/80 px-4 backdrop-blur-md md:hidden">
+        <header className="sticky top-0 z-40 flex min-h-14 items-center gap-3 border-b border-border/60 bg-canvas/80 px-4 pt-[env(safe-area-inset-top)] backdrop-blur-md md:hidden">
           <Wordmark />
           <GameProgressHUD className="ml-auto" />
         </header>
@@ -29,6 +30,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
         <MobileNav />
         <ProductTour />
+        <RoutePrefetcher />
         {process.env.NODE_ENV === "development" && <DevResetBar />}
       </div>
     </GameProgressProvider>

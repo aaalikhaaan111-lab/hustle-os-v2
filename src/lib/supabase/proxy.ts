@@ -60,5 +60,21 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(new URL("/dashboard", request.url));
   }
 
+  // Forward the identity this fresh, network-validated getUser() call just
+  // confirmed via request headers, so protected Server Components can read
+  // it instead of re-running their own getUser() — the same auth check,
+  // just not repeated a second time per navigation. Rebuilt on top of
+  // `request` (carrying the new headers) while preserving any cookies the
+  // Supabase client already queued via setAll above.
+  if (user) {
+    request.headers.set("x-user-id", user.id);
+    if (user.email) request.headers.set("x-user-email", user.email);
+    const responseWithUser = NextResponse.next({ request });
+    for (const cookie of supabaseResponse.cookies.getAll()) {
+      responseWithUser.cookies.set(cookie);
+    }
+    supabaseResponse = responseWithUser;
+  }
+
   return supabaseResponse;
 }

@@ -80,7 +80,7 @@ export function OnboardingForm() {
   return (
     <div className="mx-auto flex w-full max-w-lg flex-col gap-10 py-10 sm:py-16">
       <div className="flex flex-col items-center gap-2 text-center">
-        <h1 className="text-4xl font-black tracking-[-0.03em] text-ink sm:text-5xl">
+        <h1 className="text-[2rem] font-black leading-[1.08] tracking-[-0.02em] text-ink sm:text-4xl md:text-5xl">
           Расскажи о себе
         </h1>
         <p className="max-w-sm text-sm text-ink-secondary">

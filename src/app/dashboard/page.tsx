@@ -11,6 +11,7 @@ import { ActivityFeedCard } from "@/components/dashboard/ActivityFeedCard";
 import { CourseProgressCard } from "@/components/dashboard/CourseProgressCard";
 import { INTEREST_OPTIONS } from "@/lib/constants";
 import { createClient } from "@/lib/supabase/server";
+import { getCurrentUser } from "@/lib/supabase/currentUser";
 
 function Eyebrow({ children }: { children: ReactNode }) {
   return (
@@ -28,10 +29,7 @@ function interestLabels(interests: string[]): string {
 
 export default async function DashboardPage() {
   const supabase = await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser(supabase);
 
   if (!user) {
     redirect("/login");

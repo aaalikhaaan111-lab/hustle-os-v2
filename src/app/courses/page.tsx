@@ -1,11 +1,19 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import dynamic from "next/dynamic";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { SkillTreePath } from "@/components/courses/SkillTreePath";
+import { SkeletonCard } from "@/components/ui/Skeleton";
 import { VideoCard } from "@/components/VideoCard";
 import { VIDEOS, GLOSSARY } from "@/constants/data";
 import { cn } from "@/lib/utils";
+
+// Deferred to its own chunk: only needed once the user opens this specific
+// tab, so it shouldn't be part of the initial /courses bundle (videos tab).
+const SkillTreePath = dynamic(
+  () => import("@/components/courses/SkillTreePath").then((mod) => mod.SkillTreePath),
+  { loading: () => <SkeletonCard /> }
+);
 
 type AcademyTab = "videos" | "quizzes" | "glossary";
 type SourceFilter = "all" | "en" | "ru";
@@ -18,8 +26,8 @@ const TABS: { id: AcademyTab; label: string; emoji: string }[] = [
 
 const SOURCE_FILTERS: { id: SourceFilter; label: string }[] = [
   { id: "all", label: "Все" },
-  { id: "en", label: "EN (Y Combinator)" },
-  { id: "ru", label: "RU (Эксперты)" },
+  { id: "en", label: "EN" },
+  { id: "ru", label: "RU" },
 ];
 
 export default function CoursesPage() {
@@ -49,7 +57,7 @@ export default function CoursesPage() {
         description="Видео-лекции, интерактивные курсы и глоссарий терминов — всё в одном месте."
       />
 
-      <div className="flex flex-wrap gap-2 rounded-full bg-white/60 p-1.5 ring-1 ring-inset ring-zinc-200/60 backdrop-blur-md sm:inline-flex sm:w-fit">
+      <div className="grid grid-cols-3 gap-1.5 rounded-2xl bg-white/60 p-1.5 ring-1 ring-inset ring-zinc-200/60 backdrop-blur-md sm:inline-flex sm:w-fit sm:gap-2 sm:rounded-full">
         {TABS.map((item) => {
           const active = tab === item.id;
           return (
@@ -58,16 +66,16 @@ export default function CoursesPage() {
               type="button"
               onClick={() => setTab(item.id)}
               className={cn(
-                "flex items-center gap-2 rounded-full px-4 py-2.5 text-sm font-bold tracking-tight transition-all duration-200 ease-out",
+                "flex flex-col items-center justify-center gap-1 rounded-xl px-2 py-2.5 text-center text-[11px] font-bold leading-tight tracking-tight transition-all duration-200 ease-out sm:flex-row sm:gap-2 sm:rounded-full sm:px-4 sm:text-sm",
                 active
                   ? "bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-500 text-white shadow-[0_8px_24px_rgba(99,102,241,0.35)]"
                   : "text-ink-secondary hover:bg-white/70 hover:text-ink"
               )}
             >
-              <span role="img" aria-hidden>
+              <span className="text-base sm:text-base" role="img" aria-hidden>
                 {item.emoji}
               </span>
-              {item.label}
+              <span>{item.label}</span>
             </button>
           );
         })}

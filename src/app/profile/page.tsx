@@ -5,13 +5,11 @@ import { ProfileIcon } from "@/components/ui/icons";
 import { LogoutButton } from "@/components/profile/LogoutButton";
 import { ProfileForm } from "@/components/profile/ProfileForm";
 import { createClient } from "@/lib/supabase/server";
+import { getCurrentUser } from "@/lib/supabase/currentUser";
 
 export default async function ProfilePage() {
   const supabase = await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser(supabase);
 
   if (!user) {
     redirect("/login");

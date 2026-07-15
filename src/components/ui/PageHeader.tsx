@@ -16,7 +16,7 @@ export function PageHeader({ title, description, actions, eyebrow }: PageHeaderP
             {eyebrow}
           </p>
         )}
-        <h1 className="text-4xl font-black tracking-[-0.03em] text-ink sm:text-5xl">
+        <h1 className="text-[2rem] font-black leading-[1.08] tracking-[-0.02em] text-ink sm:text-4xl md:text-5xl">
           {title}
         </h1>
         {description && (

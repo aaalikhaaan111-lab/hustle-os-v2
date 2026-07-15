@@ -6,6 +6,7 @@ import { WorkshopSession } from "@/components/workshops/WorkshopSession";
 import { JoinSessionForm } from "@/components/workshops/JoinSessionForm";
 import { getWorkshopSessionStateAction } from "@/lib/actions/workshops";
 import { createClient } from "@/lib/supabase/server";
+import { getCurrentUser } from "@/lib/supabase/currentUser";
 
 interface WorkshopSessionPageProps {
   params: Promise<{ code: string }>;
@@ -15,15 +16,18 @@ export default async function WorkshopSessionPage({ params }: WorkshopSessionPag
   const { code } = await params;
   const supabase = await createClient();
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // Independent of each other — getCurrentUser is just this page's own
+  // redirect guard, while getWorkshopSessionStateAction runs its own
+  // internal auth check regardless — so they run concurrently instead of
+  // one blocking the other.
+  const [user, { data: state }] = await Promise.all([
+    getCurrentUser(supabase),
+    getWorkshopSessionStateAction(code),
+  ]);
 
   if (!user) {
     redirect("/login");
   }
-
-  const { data: state } = await getWorkshopSessionStateAction(code);
 
   if (!state) {
     return (
