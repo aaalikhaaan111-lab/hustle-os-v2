@@ -5,21 +5,30 @@ export interface QuizOption {
 
 export type QuestDifficulty = "bronze" | "silver" | "gold" | "boss";
 
-export const DIFFICULTY_META: Record<QuestDifficulty, { label: string; className: string }> = {
+export type DifficultyLabelKey =
+  | "difficultyBronze"
+  | "difficultySilver"
+  | "difficultyGold"
+  | "difficultyBoss";
+
+export const DIFFICULTY_META: Record<
+  QuestDifficulty,
+  { labelKey: DifficultyLabelKey; className: string }
+> = {
   bronze: {
-    label: "Бронза",
+    labelKey: "difficultyBronze",
     className: "bg-orange-50 text-orange-700 ring-orange-100",
   },
   silver: {
-    label: "Серебро",
+    labelKey: "difficultySilver",
     className: "bg-zinc-100 text-zinc-700 ring-zinc-200",
   },
   gold: {
-    label: "Золото",
+    labelKey: "difficultyGold",
     className: "bg-amber-50 text-amber-700 ring-amber-200",
   },
   boss: {
-    label: "БОСС-ФАЙТ",
+    labelKey: "difficultyBoss",
     className: "bg-red-50 text-red-700 ring-red-200",
   },
 };

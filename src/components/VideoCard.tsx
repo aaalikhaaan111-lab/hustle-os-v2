@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, type ReactNode } from "react";
+import { useTranslations } from "next-intl";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { cn } from "@/lib/utils";
@@ -106,6 +107,7 @@ interface VideoCardProps {
 }
 
 export function VideoCard({ video }: VideoCardProps) {
+  const t = useTranslations("learn");
   const [progress, setProgress] = useState<LearnProgress>(() => emptyProgress(video.checklist.length));
   const [isReady, setIsReady] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
@@ -152,7 +154,7 @@ export function VideoCard({ video }: VideoCardProps) {
             <button
               type="button"
               onClick={() => setIsLoaded(true)}
-              aria-label={`Воспроизвести: ${video.title}`}
+              aria-label={t("playVideo", { title: video.title })}
               className="group relative h-full w-full"
             >
               {videoId && !thumbnailFailed ? (
@@ -191,9 +193,9 @@ export function VideoCard({ video }: VideoCardProps) {
         <div className="flex flex-col gap-2">
           <div className="flex flex-wrap items-center gap-2">
             <Badge variant={video.source === "en" ? "accent" : "outline"}>
-              {video.source === "en" ? "EN · Y Combinator" : "RU · Эксперты"}
+              {video.source === "en" ? "EN · Y Combinator" : t("sourceRuBadge")}
             </Badge>
-            <Badge variant="outline">Модуль: {video.module}</Badge>
+            <Badge variant="outline">{t("module", { module: video.module })}</Badge>
           </div>
           <h3 className="text-lg font-extrabold leading-tight tracking-[-0.02em] text-ink">{video.title}</h3>
           <p className="text-sm tracking-tight text-ink-secondary">
@@ -204,7 +206,7 @@ export function VideoCard({ video }: VideoCardProps) {
         <div className="flex flex-col gap-3 rounded-2xl bg-accent-soft px-4 py-4 ring-1 ring-inset ring-indigo-100/60">
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-indigo-600">
-              Твой вывод
+              {t("yourTakeaway")}
             </span>
             <span className="text-xs font-bold text-ink-muted">
               {completedCount}/{video.checklist.length}
@@ -251,7 +253,7 @@ export function VideoCard({ video }: VideoCardProps) {
               value={progress.reflection}
               onChange={(event) => setProgress((prev) => ({ ...prev, reflection: event.target.value }))}
               rows={2}
-              placeholder="Запиши свою мысль..."
+              placeholder={t("reflectionPlaceholder")}
               className="w-full resize-none rounded-xl border border-border bg-surface px-3 py-2 text-sm text-ink placeholder:text-ink-muted transition-colors focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/40"
             />
           </div>

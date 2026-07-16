@@ -1,0 +1,477 @@
+{
+  "metadata": {
+    "title": "Ventrio — learn entrepreneurship by doing",
+    "description": "Ventrio — daily quests, video lessons and live workshops that turn an interest in business into real experience."
+  },
+  "common": {
+    "next": "Next",
+    "back": "Back",
+    "close": "Close",
+    "cancel": "Cancel",
+    "save": "Save",
+    "loading": "Loading...",
+    "error": "Error",
+    "tryAgain": "Try again",
+    "skip": "Skip",
+    "continue": "Continue",
+    "or": "or"
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "challenges": "Challenges",
+    "learn": "Learn",
+    "workshops": "Workshops",
+    "profile": "Profile"
+  },
+  "landing": {
+    "badge": "Practice, not theory",
+    "title": "Learn entrepreneurship through action.",
+    "subtitle": "No boring theory or hour-long lectures here. Just 1 practical challenge a day that builds business thinking.",
+    "cta": "Start for free",
+    "haveAccount": "Already have an account?",
+    "login": "Log in",
+    "howItWorks": "How it works",
+    "step1Title": "A new challenge every day",
+    "step1Description": "No boring theory. Just a concrete action you can complete today.",
+    "step2Title": "5–15 minutes a day",
+    "step2Description": "Pick a pace that fits you — no burnout, no pressure.",
+    "step3Title": "Your thinking changes through practice",
+    "step3Description": "Build entrepreneurial instinct step by step, not from a textbook."
+  },
+  "auth": {
+    "loginTitle": "Welcome back",
+    "loginSubtitle": "Log in to continue your daily challenge.",
+    "signupTitle": "Create your account",
+    "signupSubtitle": "Start with one small challenge a day.",
+    "continueWithGoogle": "Continue with Google",
+    "signUpWithGoogle": "Sign up with Google",
+    "redirectingToGoogle": "Redirecting to Google...",
+    "email": "Email",
+    "password": "Password",
+    "passwordHint": "At least 8 characters.",
+    "emailPlaceholder": "you@example.com",
+    "loggingIn": "Logging in...",
+    "creatingAccount": "Creating account...",
+    "createAccount": "Create account",
+    "noAccount": "Don't have an account?",
+    "signUp": "Sign up",
+    "alreadyHaveAccount": "Already have an account?",
+    "checkEmailTitle": "Check your email",
+    "checkEmailDescription": "We sent a confirmation link to finish creating your account.",
+    "backToLogin": "Back to login",
+    "devLogin": "🛠️ Log in as Test (Dev)",
+    "enterEmailPassword": "Enter your email and password.",
+    "passwordTooShort": "Password must be at least 8 characters.",
+    "consentPrefix": "I agree to the",
+    "termsOfUse": "Terms of Use",
+    "and": "and",
+    "privacyPolicy": "Privacy Policy",
+    "consentRequired": "You need to accept the Terms of Use and Privacy Policy.",
+    "googleConsentNotice": "By continuing with Google, you agree to the Terms of Use and Privacy Policy."
+  },
+  "onboarding": {
+    "title": "Tell us about yourself",
+    "subtitle": "This helps us tailor your daily challenges.",
+    "interestsQuestion": "What do you want to improve?",
+    "timeQuestion": "How much time can you spend per day?",
+    "minutes5": "5 minutes",
+    "minutes10": "10 minutes",
+    "minutes15": "15 minutes",
+    "finish": "Finish",
+    "saving": "Saving...",
+    "selectInterest": "Pick at least one direction.",
+    "selectTime": "Choose how much time you can spend per day.",
+    "loadingPhrase1": "🤖 Analyzing your interests...",
+    "loadingPhrase2": "⚡ Combining your chosen directions...",
+    "loadingPhrase3": "🔮 AI is generating your personal track in Ventrio...",
+    "loadingPhrase4": "🚀 Almost there! Creating your profile...",
+    "interestEntrepreneurship": "Entrepreneurship",
+    "interestPersonalFinance": "Personal finance",
+    "interestEconomics": "Economics",
+    "interestBusinessSkills": "Business skills"
+  },
+  "tour": {
+    "skip": "Skip tour",
+    "next": "Next",
+    "done": "Done",
+    "back": "Back",
+    "dashboardMessage": "This is where your plan for today, progress, and streak live.",
+    "challengesMessage": "Short practical tasks that build entrepreneurial thinking.",
+    "learnMessage": "Videos, interactive lessons, and a glossary of entrepreneurship terms.",
+    "workshopsMessage": "Live quizzes where you can compete and learn together.",
+    "profileMessage": "This is where your progress, XP, and personal results are kept."
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "description": "Your daily progress shows up here.",
+    "dailyPlanTitle": "Your plan for today",
+    "firstStepDone": "First step done",
+    "watchLesson": "Watch one short lesson",
+    "watch": "Watch",
+    "completeTodayTask": "Complete today's task",
+    "start": "Start",
+    "tryWorkshop": "Try a Workshop with a friend",
+    "open": "Open",
+    "level": "Level",
+    "xpToNextLevel": "{xp} XP to level \"{level}\"",
+    "maxLevelReached": "Max level reached 🏆",
+    "nextGoal": "Next goal",
+    "allQuestsDone": "You've completed every quest! 🏆",
+    "allQuestsDoneDescription": "Incredible result. Check back later — we're preparing new quests.",
+    "weakDimension": "Weak spot in your answers:",
+    "weakDimensionHelp": "This quest will help you improve exactly that.",
+    "weakDimensionScore": "(average {score}/10)",
+    "dimensionDepth": "Depth",
+    "dimensionFeasibility": "Feasibility",
+    "dimensionRisk": "Risk awareness",
+    "goToQuest": "Go to quest",
+    "challengeZeroBadge": "Challenge #0 · Quick start",
+    "challengeZeroTitle": "Your first win",
+    "challengeZeroPrompt": "Come up with a bold, wild name for your future project or startup, using just two of your favorite words.",
+    "challengeZeroPlaceholder": "e.g. QuantumHoney",
+    "challengeZeroCategory": "Quick start",
+    "activateTrack": "Activate track",
+    "challengeZeroDone": "Done! 🎉 \"{name}\" — great start.",
+    "streakActivated": "Your 1-day streak is active! 🌱 +{xp} XP",
+    "personalizedSubtitle": "We've set up a track based on your interests: {interests}. Start with a quick warm-up 👇",
+    "genericSubtitle": "Start with a quick warm-up while we set up the rest of your track 👇",
+    "workshopsTeaserTitle": "No workshops scheduled yet",
+    "workshopsTeaserSoon": "Soon",
+    "workshopsTeaserBody": "We'll let you know as soon as the first workshop is up.",
+    "allWorkshops": "All workshops",
+    "activityFeedTitle": "Win history",
+    "activityFeedEmpty": "Your first wins will show up here once you complete at least one quest.",
+    "questCompleted": "🏆 Completed quest \"{title}\"",
+    "aiScore": "AI score: {score}/10",
+    "yourVerdict": "Your answer: \"{answer}\"",
+    "courseFallback": "Course",
+    "startFirstLesson": "Start your first lesson",
+    "lessonsCompleted": "Completed {completed} of {total} lessons",
+    "watchLessons": "Watch lessons"
+  },
+  "challenges": {
+    "title": "Challenges",
+    "descriptionPersonalized": "Picked for your interests — choose one and start.",
+    "descriptionGeneric": "Complete onboarding to see a personalized selection. For now, here are all challenges.",
+    "start": "Start challenge",
+    "completed": "Completed ✅",
+    "difficultyBronze": "Bronze",
+    "difficultySilver": "Silver",
+    "difficultyGold": "Gold",
+    "difficultyBoss": "Boss fight",
+    "next": "Next",
+    "close": "Close",
+    "warmupHint": "This is a warm-up — just try putting the thought into your own words 🙂",
+    "aiValidationHint": "Ventrio AI will check depth, feasibility, and risk awareness — be specific, no \"dunno\" answers 🙂",
+    "reflectionPlaceholder": "Write it as it is, no polishing...",
+    "submitForAiCheck": "Submit for AI review",
+    "warmupDone": "Done →",
+    "checkingWarmup": "🎯 Recording your first result...",
+    "checkingAi": "🤖 Ventrio AI is analyzing how viable your answer is...",
+    "validationErrorTitle": "Validation error",
+    "tryAgain": "Try again",
+    "questCompleteTitle": "Quest complete!",
+    "scoreLabel": "Score {score}/10",
+    "depthLabel": "Depth",
+    "feasibilityLabel": "Feasibility",
+    "riskLabel": "Risk awareness",
+    "aiVerdictTitle": "AI mentor verdict",
+    "closeButton": "Close"
+  },
+  "learn": {
+    "title": "Learn",
+    "description": "Video lessons, interactive courses, and a glossary of terms — all in one place.",
+    "tabVideos": "Video lessons",
+    "tabQuizzes": "Interactive courses",
+    "tabGlossary": "Glossary",
+    "filterAll": "All",
+    "filterEn": "EN",
+    "filterRu": "RU",
+    "sourceRuBadge": "RU · Experts",
+    "yourTakeaway": "Your takeaway",
+    "reflectionPlaceholder": "Write down your thought...",
+    "playVideo": "Play: {title}",
+    "glossarySearchPlaceholder": "Search a term...",
+    "glossaryNoResults": "No results for \"{query}\". Try a different term.",
+    "module": "Module: {module}"
+  },
+  "courses": {
+    "moduleBadge": "Module",
+    "lessonLockedAria": "{title} (locked)",
+    "next": "Next",
+    "toSimulation": "To simulation",
+    "toQuiz": "To knowledge check",
+    "microTheory": "Micro-theory · {current}/{total}",
+    "knowledgeCheck": "Knowledge check · {current}/{total}",
+    "wrongAnswer": "Not quite — try another option.",
+    "finishLesson": "Finish lesson",
+    "simulationBadge": "Simulation",
+    "close": "Close",
+    "closeAria": "Close",
+    "lessonComplete": "Lesson complete!",
+    "xpEarned": "+{xp} XP earned!",
+    "lessonClosedNote": "\"{title}\" complete. The next node on the map is now unlocked.",
+    "categoryLabel": "Course",
+    "pricingSetPrice": "Set the product price",
+    "pricingDemand": "Demand",
+    "pricingCosts": "Costs",
+    "pricingProfit": "Profit",
+    "pricingTestButton": "Test hypothesis",
+    "pricingNoDemand": "Not a single customer. The price is too scary.",
+    "pricingLoss": "You went into the red because of high costs!",
+    "pricingSuccess": "That's it — the price with maximum profit! Hypothesis confirmed.",
+    "pricingSuboptimal": "Profitable, but not the maximum. There's a better price out there — try the slider again."
+  },
+  "workshops": {
+    "title": "Workshops & Simulators",
+    "description": "Live quizzes for your team and practical tools for simulating business processes.",
+    "liveQuizzesTitle": "🎮 Live quizzes — gather your team and play together",
+    "joinTitle": "Join a quiz",
+    "orCreateOwn": "Or create your own quiz",
+    "hostButton": "Host 🎙️",
+    "creating": "Creating...",
+    "questionsCount": "{count} questions",
+    "sessionCode": "Session code",
+    "sessionCodePlaceholder": "e.g. K3F9AB",
+    "displayName": "In-game name",
+    "displayNameHint": "This is how other participants will see you",
+    "displayNamePlaceholder": "Your name",
+    "join": "Join 🎮",
+    "joining": "Joining...",
+    "enterCode": "Enter the session code.",
+    "comingSoon": "🔒 Coming soon",
+    "pitchDeckTitle": "Pitch Deck Generator",
+    "pitchDeckDescription": "Build a pitch deck using the problem-solution-traction structure right in your browser. In development.",
+    "custdevTitle": "Customer Discovery Trainer (Mom Test)",
+    "custdevDescription": "Practice asking questions that don't lead the other person toward a nice-sounding answer. In development.",
+    "sessionNotFoundTitle": "Session not found",
+    "sessionNotFoundDescription": "Code \"{code}\" doesn't match an active session. Check the code or ask the host to send a new one.",
+    "backToWorkshops": "Back to all workshops",
+    "alreadyStartedTitle": "The game has already started",
+    "alreadyStartedDescription": "This session is already in progress — you can only join before it starts. Ask the host to create a new one.",
+    "joinWorkshopTitle": "Join the workshop",
+    "sessionCodeLabel": "Session code: {code}",
+    "workshopTitle": "Workshop",
+    "simulatorBadge": "Active simulator",
+    "simulatorTitle": "Unit Economics Simulator",
+    "priceLabel": "Product price",
+    "cacLabel": "Customer acquisition cost (CAC)",
+    "cogsLabel": "Cost of goods sold (COGS)",
+    "conversionLabel": "Site conversion rate",
+    "marginPerUnit": "Margin per unit",
+    "marginPercent": "Margin percent",
+    "profitPerUnit": "Profit per customer",
+    "visitorsPerSale": "Visitors per sale",
+    "profitableModel": "Profitable model — you keep {profit}₽ per customer after CAC and cost of goods.",
+    "unprofitableModel": "Unprofitable model — you lose {loss}₽ per customer. Raise the price, or lower CAC or COGS.",
+    "pointsShort": "points",
+    "contentNotFound": "This workshop's content could not be found.",
+    "lobbyBadge": "Lobby",
+    "lobbyWaitingLabel": "Waiting for players — code",
+    "lobbyShareHint": "Share the code so friends can join via \"Join by code\" on the workshops page.",
+    "noParticipantsYet": "No one has joined yet.",
+    "starting": "Starting...",
+    "startWorkshop": "Start workshop 🚀",
+    "waitingForHost": "Waiting for the host to start the game...",
+    "questionCounter": "Question {current} of {total}",
+    "secondsShort": "s",
+    "answerAccepted": "Answer received ✅ Waiting for others...",
+    "answeredCount": "Answered: {answered} / {total}",
+    "yourAnswer": "👈 your answer",
+    "pointsEarned": "+{points} points 🎉",
+    "missedAnswer": "Missed it — 0 points",
+    "didNotAnswer": "You didn't answer in time",
+    "leaderboard": "Leaderboard",
+    "oneSecond": "One sec...",
+    "finishAndShowPodium": "Finish and show podium 🏆",
+    "nextQuestion": "Next question →",
+    "workshopFinished": "Workshop finished!",
+    "codeLabel": "Code:"
+  },
+  "profile": {
+    "title": "Profile",
+    "description": "Your account details.",
+    "logout": "Log out",
+    "noNameSet": "No name set",
+    "email": "EMAIL",
+    "displayNameLabel": "Display name",
+    "saveChanges": "Save changes",
+    "languageLabel": "Interface language",
+    "languageRussian": "Русский",
+    "languageEnglish": "English",
+    "deleteAccountLink": "Delete account and data",
+    "legalTitle": "Legal",
+    "logoutPending": "Logging out...",
+    "saving": "Saving...",
+    "saved": "Saved.",
+    "displayNamePlaceholder": "Add your name"
+  },
+  "footer": {
+    "privacy": "Privacy",
+    "terms": "Terms of Use",
+    "cookies": "Cookies",
+    "contact": "Contact",
+    "deleteAccount": "Delete account",
+    "rights": "© {year} {productName}. An educational platform for building entrepreneurial thinking."
+  },
+  "legal": {
+    "common": {
+      "lastUpdated": "Effective date: {date}",
+      "contactCta": "Questions? Email us: {email}",
+      "backHome": "Back to home"
+    },
+    "privacy": {
+      "pageTitle": "Privacy Policy",
+      "intro": "This policy explains what data {productName} (the \"Service\") collects, why, and how it's handled. The Service is currently operated by {operatorName} ({operatorCountry}{operatorCityPart}). For any privacy questions, email {contactEmail}.",
+      "sections": [
+        {
+          "title": "What data we collect",
+          "body": "• Signup data: email and password, or — if you sign in with Google — the email, name, and profile data Google shares with us with your consent.\n• Profile data: display name, interests, and preferred daily study time, which you provide during onboarding.\n• Learning progress: XP, activity streak, and workshop participation (answers, correctness, response time, points earned) — stored on our servers.\n• Challenge answers and video reflection notes are stored ONLY locally in your browser (localStorage) and are not kept by us on an ongoing basis — except that challenge answer text is temporarily sent to an AI review service (see \"Who we share data with\" below).\n• Technical data: session and authentication cookies, language preference, and standard infrastructure logs (see below)."
+        },
+        {
+          "title": "Why we use this data",
+          "body": "To create and secure your account, save your learning progress, power live workshops and leaderboards, improve the educational product, and respond to your support requests."
+        },
+        {
+          "title": "Legal basis",
+          "body": "We process data based on the consent you give at signup (the required checkbox) and when signing in with Google (Google's own consent screen), and to the extent necessary to provide the Service itself."
+        },
+        {
+          "title": "Who we share data with",
+          "body": "We do not sell your data. To run the Service, we use the following technical partners (processors):\n• Supabase — database, authentication, and account storage.\n• Vercel — hosting and delivery of the app; keeps standard server request logs.\n• Google OAuth — sign-in with your Google account.\n• YouTube/Google — video lessons are embedded via the YouTube player; once you click \"Play,\" Google may process viewing data according to its own privacy policy.\n• Anthropic (Claude API) — the text of your challenge answer is temporarily sent to Anthropic for automated AI review and feedback; it is not used by Anthropic to train models under the commercial API, and we do not retain it linked to your identity after review.\nEach of these partners may process data on servers located outside your country."
+        },
+        {
+          "title": "International data transfers",
+          "body": "Because our processors (Supabase, Vercel, Google, Anthropic) are global services, data may be processed on servers in different countries. We aim to work only with partners that provide an adequate level of data protection."
+        },
+        {
+          "title": "How long we keep data",
+          "body": "We keep account data for as long as your account is active. After account deletion (see the \"Delete Account\" page), server-side data tied to your profile is removed within a reasonable period. Data saved locally in your browser stays on your device until you clear it yourself."
+        },
+        {
+          "title": "How we protect data",
+          "body": "We use standard security measures (encrypted connections, database-level access restrictions, token-based authorization). No service can guarantee absolute protection against every possible threat, but we aim to follow industry best practices."
+        },
+        {
+          "title": "Your rights",
+          "body": "You can:\n• request access to your data;\n• correct inaccurate data — most fields are editable directly in your Profile;\n• request deletion of your account and associated data.\nTo exercise any of these rights, email {contactEmail} or use the \"Delete Account\" page."
+        },
+        {
+          "title": "Minors",
+          "body": "{productName} is built for users aged {minimumAge} and up. We deliberately avoid collecting unnecessary sensitive data (ID numbers, exact home address, payment details) and is not intended for children under {minimumAge}. If you become aware that a younger child has created an account, please contact us and we'll remove it."
+        },
+        {
+          "title": "Changes to this policy",
+          "body": "We may update this policy as the Service evolves. The effective date is shown at the bottom of this page. We'll try to notify you of significant changes through the Service or via the email you registered with."
+        }
+      ]
+    },
+    "terms": {
+      "pageTitle": "Terms of Use",
+      "intro": "By using {productName} (the \"Service\"), you agree to these terms. If you don't agree, please don't use the Service.",
+      "sections": [
+        {
+          "title": "Acceptance of terms",
+          "body": "By registering for or using the Service, you confirm that you've read and accept these Terms of Use and the Privacy Policy."
+        },
+        {
+          "title": "Minimum age",
+          "body": "The Service is intended for users aged {minimumAge} and up. By registering, you confirm you're at least {minimumAge}."
+        },
+        {
+          "title": "Your account",
+          "body": "You're responsible for keeping your password secure and for all activity under your account. Let us know if you suspect unauthorized access to your account."
+        },
+        {
+          "title": "Educational purpose",
+          "body": "{productName} is an educational platform for building entrepreneurial thinking. Challenges, simulations, workshops, and AI-generated feedback are for learning purposes only and are NOT financial, legal, or investment advice. Any business decisions you make are your own responsibility and risk."
+        },
+        {
+          "title": "Acceptable use",
+          "body": "You may not: break the law, impersonate another person, attempt unauthorized access to the Service or other users' data, post abusive or harmful content, or use the Service to send spam."
+        },
+        {
+          "title": "Workshop conduct",
+          "body": "Workshops are live, group sessions. Participants must treat each other respectfully; abuse, cheating, or disrupting a session may result in removal from the session or restricted access to the Service."
+        },
+        {
+          "title": "Intellectual property",
+          "body": "The Service's content (text, design, challenges, courses) belongs to {productName} or its licensors and is protected by law. You may use it only for your own personal learning."
+        },
+        {
+          "title": "Third-party content",
+          "body": "The Service uses embedded YouTube videos and Google OAuth sign-in. Using these features is also governed by the terms and policies of those services (Google/YouTube), which we don't control."
+        },
+        {
+          "title": "Suspension and termination",
+          "body": "We may restrict or terminate account access for violations of these terms. You can delete your account at any time (see the \"Delete Account\" page)."
+        },
+        {
+          "title": "Disclaimer of warranties",
+          "body": "The Service is provided \"as is,\" without warranties of any kind, express or implied. We don't guarantee uninterrupted operation, error-free performance, or that the Service will meet your specific expectations."
+        },
+        {
+          "title": "Limitation of liability",
+          "body": "To the extent permitted by law, {productName} is not liable for indirect, incidental, or consequential damages arising from your use of the Service."
+        },
+        {
+          "title": "Governing law",
+          "body": "The governing law and jurisdiction for these terms: {governingLaw}. This field is a placeholder and requires confirmation by the product owner before public launch."
+        }
+      ]
+    },
+    "cookies": {
+      "pageTitle": "Cookie Policy",
+      "intro": "{productName} uses a minimal, mostly technically-necessary set of cookies and browser local storage — no advertising or marketing trackers.",
+      "sections": [
+        {
+          "title": "What we use",
+          "body": "• Session/authentication cookies (Supabase) — needed to keep you signed in.\n• Language cookie (NEXT_LOCALE) — remembers your chosen interface language.\n• Browser local storage (localStorage) — stores your learning progress, guided-tour state, and answer drafts on your device so the Service is fast and resilient offline."
+        },
+        {
+          "title": "Embedded YouTube videos",
+          "body": "Videos on the platform load on click — the YouTube player is only embedded on the page after you click \"Play\" yourself. After that, Google may set its own cookies and process viewing data according to its own privacy policy."
+        },
+        {
+          "title": "Why there's no cookie consent banner",
+          "body": "Since we don't use advertising or analytics trackers, only technically-necessary cookies, we don't show an Accept/Reject banner — this page instead serves as the informational notice required by applicable law for technically-necessary cookies."
+        },
+        {
+          "title": "Managing cookies",
+          "body": "You can clear cookies and local storage in your browser settings at any time — note that this will sign you out and reset progress saved locally on that device."
+        }
+      ]
+    },
+    "contact": {
+      "pageTitle": "Contact",
+      "intro": "For anything — privacy questions, using the Service, technical support, or account deletion — reach out directly.",
+      "emailLabel": "Email",
+      "responseNote": "We try to respond within a reasonable time, but can't yet guarantee an exact response time."
+    },
+    "deleteAccount": {
+      "pageTitle": "Delete Account",
+      "intro": "You can request full deletion of your {productName} account and its associated data at any time.",
+      "whatGetsDeleted": {
+        "title": "What gets deleted",
+        "body": "Once deletion is confirmed, we'll delete your sign-in account (email/Google) and all server-side data tied to it: your profile, interests, XP and activity streak, and workshop participation and answers."
+      },
+      "whatStays": {
+        "title": "What isn't deleted automatically",
+        "body": "Challenge progress and video reflection notes are stored only locally in the browser on the devices you used. We can't remotely erase this data — you can do it yourself by clearing site data in your browser settings on each device."
+      },
+      "howTo": {
+        "title": "How to request deletion",
+        "body": "Right now, account deletion is handled manually by our team — there's no automatic \"Delete now\" button yet. Email {contactEmail} with the subject \"Delete account\" from the email address linked to your account (or include it in the message if you sign in with Google). We'll verify your identity and delete the account within a reasonable time."
+      },
+      "limitationNote": "Note: account deletion isn't instant or fully automated — that's a deliberate choice, so we never delete data by mistake without confirmation."
+    }
+  },
+  "errors": {
+    "notFoundTitle": "Page not found",
+    "notFoundDescription": "This page doesn't exist, or it has been moved.",
+    "backHome": "Back to home",
+    "genericTitle": "Something went wrong",
+    "genericDescription": "An unexpected error occurred. Please try again.",
+    "tryAgain": "Try again"
+  }
+}

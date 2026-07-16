@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import dynamic from "next/dynamic";
+import { getTranslations } from "next-intl/server";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Card, CardContent } from "@/components/ui/Card";
 import { SkeletonCard } from "@/components/ui/Skeleton";
@@ -23,9 +24,10 @@ interface LockedWorkshopCardProps {
   emoji: string;
   title: string;
   description: string;
+  comingSoonLabel: string;
 }
 
-function LockedWorkshopCard({ emoji, title, description }: LockedWorkshopCardProps) {
+function LockedWorkshopCard({ emoji, title, description, comingSoonLabel }: LockedWorkshopCardProps) {
   return (
     <Card className="pointer-events-none opacity-60 grayscale">
       <CardContent className="flex flex-col gap-4 py-8">
@@ -35,7 +37,7 @@ function LockedWorkshopCard({ emoji, title, description }: LockedWorkshopCardPro
           </span>
           <div className="flex flex-col gap-1">
             <span className="inline-flex w-fit items-center gap-1 rounded-full bg-zinc-100 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-[0.12em] text-zinc-500">
-              🔒 Скоро
+              {comingSoonLabel}
             </span>
             <h3 className="text-lg font-extrabold leading-tight tracking-[-0.02em] text-ink">
               {title}
@@ -64,29 +66,28 @@ export default async function WorkshopsPage() {
 
   const defaultDisplayName = profile?.display_name?.trim() || user.email?.split("@")[0] || "";
 
+  const t = await getTranslations("workshops");
+
   return (
     <div className="flex flex-col gap-8">
-      <PageHeader
-        title="Воркшопы и Симуляторы"
-        description="Живые квизы для команды и практические инструменты для симуляции бизнес-процессов."
-      />
+      <PageHeader title={t("title")} description={t("description")} />
 
       <div className="flex flex-col gap-4">
         <h2 className="text-xs font-bold uppercase tracking-[0.14em] text-indigo-600">
-          🎮 Живые квизы — собери команду и сыграйте вместе
+          {t("liveQuizzesTitle")}
         </h2>
         <div className="flex flex-col gap-4 lg:grid lg:grid-cols-[2fr_1fr] lg:items-start lg:gap-6">
           <Card className="order-1 border-accent/30 bg-accent-soft/40 lg:order-2">
             <CardContent className="flex flex-col gap-4 py-6">
               <h3 className="text-base font-extrabold leading-tight tracking-[-0.02em] text-ink">
-                Присоединиться к квизу
+                {t("joinTitle")}
               </h3>
               <JoinSessionForm defaultDisplayName={defaultDisplayName} />
             </CardContent>
           </Card>
 
           <p className="order-2 text-center text-xs font-semibold uppercase tracking-[0.1em] text-ink-muted lg:hidden">
-            Или создай свой квиз
+            {t("orCreateOwn")}
           </p>
 
           <div className="order-3 grid gap-4 sm:grid-cols-3 lg:order-1">
@@ -99,7 +100,7 @@ export default async function WorkshopsPage() {
                   </h3>
                   <p className="flex-1 text-xs tracking-tight text-ink-secondary">{pack.description}</p>
                   <p className="text-[11px] font-semibold text-ink-muted">
-                    {pack.questions.length} вопросов
+                    {t("questionsCount", { count: pack.questions.length })}
                   </p>
                   <CreateSessionButton slug={pack.slug} />
                 </CardContent>
@@ -114,13 +115,15 @@ export default async function WorkshopsPage() {
       <div className="grid gap-6 sm:grid-cols-2">
         <LockedWorkshopCard
           emoji="🎬"
-          title="Генератор Питч-Деков"
-          description="Собери питч-дек по структуре проблема-решение-тракшн прямо в браузере. Уже в разработке."
+          title={t("pitchDeckTitle")}
+          description={t("pitchDeckDescription")}
+          comingSoonLabel={t("comingSoon")}
         />
         <LockedWorkshopCard
           emoji="🧪"
-          title="Кастдев-Тренажер (Тест Мамы)"
-          description="Потренируйся задавать вопросы, которые не подсказывают собеседнику приятный ответ. Уже в разработке."
+          title={t("custdevTitle")}
+          description={t("custdevDescription")}
+          comingSoonLabel={t("comingSoon")}
         />
       </div>
     </div>

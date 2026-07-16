@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 import { NAV_ITEMS } from "@/lib/constants";
 import { Wordmark } from "@/components/layout/Wordmark";
@@ -14,6 +15,7 @@ function isActive(pathname: string, href: string) {
 
 export function Sidebar() {
   const pathname = usePathname();
+  const t = useTranslations("nav");
 
   return (
     <aside className="fixed inset-y-0 left-0 z-20 hidden w-64 flex-col border-r border-t-white/60 border-zinc-200/30 bg-white/65 backdrop-blur-2xl md:flex">
@@ -44,7 +46,7 @@ export function Sidebar() {
                   active ? "text-white" : "text-ink-muted"
                 )}
               />
-              {item.label}
+              {t(item.labelKey)}
             </Link>
           );
         })}

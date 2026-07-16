@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import confetti from "canvas-confetti";
+import { useLocale, useTranslations } from "next-intl";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/utils";
 import { useGameProgress } from "@/lib/game-progress/GameProgressContext";
@@ -14,7 +15,10 @@ type ConsoleStep = "insight" | "quiz" | "reflection" | "checking" | "error" | "s
 
 const PROGRESS_STEPS: ConsoleStep[] = ["insight", "quiz", "reflection", "checking", "success"];
 const CHECKING_DURATION_MS = 2000;
-const QUIZ_OPTION_LABELS = ["А", "Б", "В", "Г"];
+const QUIZ_OPTION_LABELS: Record<string, string[]> = {
+  ru: ["А", "Б", "В", "Г"],
+  en: ["A", "B", "C", "D"],
+};
 
 function fireConfetti() {
   const colors = ["#4f46e5", "#9333ea", "#ec4899"];
@@ -67,14 +71,18 @@ const AUTO_PASS_RESULT: ValidationResult = {
 };
 
 export function ChallengeConsole({ challenge, onClose, skipValidation }: ChallengeConsoleProps) {
+  const t = useTranslations("challenges");
+  const locale = useLocale();
+  const optionLabels = QUIZ_OPTION_LABELS[locale] ?? QUIZ_OPTION_LABELS.en;
+  const tInterests = useTranslations("onboarding");
   const { completeChallenge } = useGameProgress();
   const [step, setStep] = useState<ConsoleStep>("insight");
   const [quizSelection, setQuizSelection] = useState<number | null>(null);
   const [answer, setAnswer] = useState("");
   const [result, setResult] = useState<ValidationResult | null>(null);
 
-  const categoryLabel =
-    INTEREST_OPTIONS.find((option) => option.id === challenge.categoryId)?.label ?? "";
+  const categoryOption = INTEREST_OPTIONS.find((option) => option.id === challenge.categoryId);
+  const categoryLabel = categoryOption ? tInterests(categoryOption.labelKey) : "";
   const difficulty = DIFFICULTY_META[challenge.difficulty];
 
   useEffect(() => {
@@ -150,7 +158,7 @@ export function ChallengeConsole({ challenge, onClose, skipValidation }: Challen
           <button
             type="button"
             onClick={onClose}
-            aria-label="Закрыть"
+            aria-label={t("close")}
             className="absolute right-5 top-5 flex h-8 w-8 items-center justify-center rounded-full text-ink-muted transition-colors hover:bg-zinc-100 hover:text-ink"
           >
             ✕
@@ -184,7 +192,7 @@ export function ChallengeConsole({ challenge, onClose, skipValidation }: Challen
                     difficulty.className
                   )}
                 >
-                  {difficulty.label}
+                  {t(difficulty.labelKey)}
                 </span>
                 <h2 className="text-xl font-black leading-tight tracking-[-0.02em] text-ink">
                   {challenge.questTitle}
@@ -198,7 +206,7 @@ export function ChallengeConsole({ challenge, onClose, skipValidation }: Challen
               {challenge.insight}
             </p>
             <Button size="lg" onClick={() => setStep("quiz")} className="w-full">
-              Дальше
+              {t("next")}
             </Button>
           </div>
         )}
@@ -226,7 +234,7 @@ export function ChallengeConsole({ challenge, onClose, skipValidation }: Challen
                         "border-zinc-100/60 bg-white/70 text-ink-secondary hover:border-zinc-200 hover:text-ink"
                     )}
                   >
-                    {QUIZ_OPTION_LABELS[index]}) {option.text}
+                    {optionLabels[index]}) {option.text}
                   </button>
                 );
               })}
@@ -240,7 +248,7 @@ export function ChallengeConsole({ challenge, onClose, skipValidation }: Challen
               onClick={() => setStep("reflection")}
               className="w-full"
             >
-              Дальше
+              {t("next")}
             </Button>
           </div>
         )}
@@ -251,15 +259,13 @@ export function ChallengeConsole({ challenge, onClose, skipValidation }: Challen
               {challenge.actionPrompt}
             </h2>
             <p className="text-xs tracking-tight text-ink-muted">
-              {skipValidation
-                ? "Это разминка — просто попробуй сформулировать мысль своими словами 🙂"
-                : "ИИ Ventrio проверит глубину, реализуемость и учёт рисков — пиши конкретно, без «хз» 🙂"}
+              {skipValidation ? t("warmupHint") : t("aiValidationHint")}
             </p>
             <textarea
               value={answer}
               onChange={(event) => setAnswer(event.target.value)}
               rows={5}
-              placeholder="Пиши как есть, без причёсывания..."
+              placeholder={t("reflectionPlaceholder")}
               className="w-full resize-none rounded-2xl border border-border bg-surface px-4 py-3 text-sm text-ink placeholder:text-ink-muted transition-colors focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/40"
             />
             <Button
@@ -268,7 +274,7 @@ export function ChallengeConsole({ challenge, onClose, skipValidation }: Challen
               onClick={() => setStep("checking")}
               className="w-full"
             >
-              {skipValidation ? "Готово →" : "Отправить на ИИ-валидацию"}
+              {skipValidation ? t("warmupDone") : t("submitForAiCheck")}
             </Button>
           </div>
         )}
@@ -283,9 +289,7 @@ export function ChallengeConsole({ challenge, onClose, skipValidation }: Challen
               />
             </div>
             <p className="text-lg font-extrabold tracking-tight text-ink">
-              {skipValidation
-                ? "🎯 Засчитываем твой первый результат..."
-                : "🤖 ИИ Ventrio анализирует твой ответ на жизнеспособность..."}
+              {skipValidation ? t("checkingWarmup") : t("checkingAi")}
             </p>
           </div>
         )}
@@ -296,13 +300,13 @@ export function ChallengeConsole({ challenge, onClose, skipValidation }: Challen
               ⚠️
             </span>
             <h2 className="text-xl font-extrabold tracking-[-0.02em] text-ink">
-              Ошибка валидации
+              {t("validationErrorTitle")}
             </h2>
             <p className="text-sm leading-relaxed tracking-tight text-ink-secondary">
               {result.reason}
             </p>
             <Button size="lg" onClick={() => setStep("reflection")} className="w-full">
-              Попробовать снова
+              {t("tryAgain")}
             </Button>
           </div>
         )}
@@ -313,23 +317,23 @@ export function ChallengeConsole({ challenge, onClose, skipValidation }: Challen
               🎉
             </span>
             <h2 className="text-3xl font-black tracking-[-0.02em] text-ink">
-              Квест пройден!
+              {t("questCompleteTitle")}
             </h2>
             <span className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500 px-5 py-2.5 text-base font-bold text-white shadow-[0_8px_24px_rgba(99,102,241,0.35)]">
-              {skipValidation ? `+${challenge.xp} XP` : `+${challenge.xp} XP · Оценка ${result.score.average}/10`}
+              {skipValidation ? `+${challenge.xp} XP` : `+${challenge.xp} XP · ${t("scoreLabel", { score: result.score.average })}`}
             </span>
 
             {!skipValidation && (
               <>
                 <div className="mt-1 flex w-full flex-col gap-2 rounded-2xl bg-white/70 px-4 py-3 ring-1 ring-inset ring-indigo-100">
-                  <ScoreRow label="Глубина проработки" value={result.score.depth} />
-                  <ScoreRow label="Реализуемость" value={result.score.feasibility} />
-                  <ScoreRow label="Риски" value={result.score.risk} />
+                  <ScoreRow label={t("depthLabel")} value={result.score.depth} />
+                  <ScoreRow label={t("feasibilityLabel")} value={result.score.feasibility} />
+                  <ScoreRow label={t("riskLabel")} value={result.score.risk} />
                 </div>
 
                 <div className="flex w-full flex-col gap-1.5 rounded-2xl bg-white/70 px-4 py-3 text-left ring-1 ring-inset ring-indigo-100">
                   <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-indigo-600">
-                    Вердикт ИИ-Ментора
+                    {t("aiVerdictTitle")}
                   </span>
                   <p className="text-sm tracking-tight text-ink-secondary">{result.reason}</p>
                 </div>
@@ -337,7 +341,7 @@ export function ChallengeConsole({ challenge, onClose, skipValidation }: Challen
             )}
 
             <Button size="lg" variant="secondary" onClick={onClose} className="mt-2 w-full">
-              Закрыть
+              {t("closeButton")}
             </Button>
           </div>
         )}

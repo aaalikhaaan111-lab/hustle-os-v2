@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/utils";
 import { calcPricingOutcome, type PricingSimulationConfig } from "@/constants/courses";
@@ -9,32 +10,19 @@ type TestOutcome = "no-demand" | "loss" | "suboptimal" | "success";
 
 interface TestResult {
   outcome: TestOutcome;
-  message: string;
 }
 
 function classifyOutcome(price: number, profit: number, demand: number, config: PricingSimulationConfig): TestResult {
   if (demand <= 0) {
-    return {
-      outcome: "no-demand",
-      message: "Ни одного клиента. Цена слишком пугающая.",
-    };
+    return { outcome: "no-demand" };
   }
   if (profit < 0) {
-    return {
-      outcome: "loss",
-      message: "Вы ушли в минус из-за высокой себестоимости!",
-    };
+    return { outcome: "loss" };
   }
   if (price >= config.sweetSpotMin && price <= config.sweetSpotMax) {
-    return {
-      outcome: "success",
-      message: "Это она — цена с максимальной прибылью! Гипотеза подтверждена.",
-    };
+    return { outcome: "success" };
   }
-  return {
-    outcome: "suboptimal",
-    message: "Прибыльно, но не по максимуму. Есть цена и получше — подвигай слайдер ещё.",
-  };
+  return { outcome: "suboptimal" };
 }
 
 interface PricingSimulatorProps {
@@ -43,6 +31,13 @@ interface PricingSimulatorProps {
 }
 
 export function PricingSimulator({ config, onSweetSpotFound }: PricingSimulatorProps) {
+  const t = useTranslations("courses");
+  const OUTCOME_MESSAGES: Record<TestOutcome, string> = {
+    "no-demand": t("pricingNoDemand"),
+    loss: t("pricingLoss"),
+    success: t("pricingSuccess"),
+    suboptimal: t("pricingSuboptimal"),
+  };
   const [price, setPrice] = useState(config.defaultPrice);
   const [result, setResult] = useState<TestResult | null>(null);
 
@@ -60,7 +55,7 @@ export function PricingSimulator({ config, onSweetSpotFound }: PricingSimulatorP
     <div className="flex flex-col gap-5">
       <div className="flex flex-col gap-3 rounded-2xl bg-accent-soft px-5 py-4 ring-1 ring-inset ring-indigo-100/60">
         <div className="flex items-center justify-between">
-          <span className="text-sm font-bold text-ink">Установи цену продукта</span>
+          <span className="text-sm font-bold text-ink">{t("pricingSetPrice")}</span>
           <span className="text-lg font-black text-ink">${price}</span>
         </div>
         <input
@@ -83,11 +78,11 @@ export function PricingSimulator({ config, onSweetSpotFound }: PricingSimulatorP
 
       <div className="grid grid-cols-3 gap-3">
         <div className="flex flex-col gap-1 rounded-2xl bg-white/70 px-3 py-3 text-center ring-1 ring-inset ring-indigo-100">
-          <span className="text-[10px] font-bold uppercase tracking-wide text-ink-muted">Спрос</span>
+          <span className="text-[10px] font-bold uppercase tracking-wide text-ink-muted">{t("pricingDemand")}</span>
           <span className="text-lg font-black text-ink">{Math.round(demand)}</span>
         </div>
         <div className="flex flex-col gap-1 rounded-2xl bg-white/70 px-3 py-3 text-center ring-1 ring-inset ring-indigo-100">
-          <span className="text-[10px] font-bold uppercase tracking-wide text-ink-muted">Расходы</span>
+          <span className="text-[10px] font-bold uppercase tracking-wide text-ink-muted">{t("pricingCosts")}</span>
           <span className="text-lg font-black text-ink">${Math.round(totalCost)}</span>
         </div>
         <div
@@ -96,7 +91,7 @@ export function PricingSimulator({ config, onSweetSpotFound }: PricingSimulatorP
             profit >= 0 ? "bg-success-soft ring-success/30" : "bg-danger-soft ring-danger/30"
           )}
         >
-          <span className="text-[10px] font-bold uppercase tracking-wide text-ink-muted">Прибыль</span>
+          <span className="text-[10px] font-bold uppercase tracking-wide text-ink-muted">{t("pricingProfit")}</span>
           <span className={cn("text-lg font-black", profit >= 0 ? "text-success" : "text-danger")}>
             ${Math.round(profit)}
           </span>
@@ -112,12 +107,12 @@ export function PricingSimulator({ config, onSweetSpotFound }: PricingSimulatorP
             result.outcome === "suboptimal" && "bg-warning-soft text-warning"
           )}
         >
-          {result.message}
+          {OUTCOME_MESSAGES[result.outcome]}
         </p>
       )}
 
       <Button size="lg" onClick={handleTest} className="w-full">
-        Тестировать гипотезу
+        {t("pricingTestButton")}
       </Button>
     </div>
   );

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { COURSE_MODULES, ALL_LESSONS, isLessonUnlocked, type CourseLesson } from "@/constants/courses";
 import { useGameProgress } from "@/lib/game-progress/GameProgressContext";
 import { LessonNode } from "@/components/courses/LessonNode";
@@ -9,6 +10,7 @@ import { LessonConsole } from "@/components/courses/LessonConsole";
 const ZIGZAG_OFFSETS = [0, 56, 84, 56, 0, -56, -84, -56];
 
 export function SkillTreePath() {
+  const t = useTranslations("courses");
   const { isReady, completions, isChallengeCompleted } = useGameProgress();
   const [activeLesson, setActiveLesson] = useState<CourseLesson | null>(null);
 
@@ -20,7 +22,7 @@ export function SkillTreePath() {
         <div key={courseModule.id} className="flex flex-col gap-10">
           <div className="mx-auto flex max-w-md flex-col items-center gap-2 text-center">
             <span className="inline-flex w-fit items-center rounded-full bg-gradient-to-tr from-indigo-50 to-pink-50 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.14em] text-indigo-600 ring-1 ring-inset ring-indigo-100">
-              Модуль
+              {t("moduleBadge")}
             </span>
             <h2 className="text-2xl font-black tracking-[-0.02em] text-ink">{courseModule.title}</h2>
             <p className="text-sm tracking-tight text-ink-secondary">{courseModule.description}</p>

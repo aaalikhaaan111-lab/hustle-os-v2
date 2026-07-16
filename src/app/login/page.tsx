@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import { LoginForm } from "@/components/auth/LoginForm";
 import { DevAutoLoginButton } from "@/components/auth/DevAutoLoginButton";
+import { PublicFooter } from "@/components/layout/PublicFooter";
 
 export default function LoginPage() {
   const showDevAutoLogin =
@@ -12,6 +13,9 @@ export default function LoginPage() {
         <LoginForm />
       </Suspense>
       {showDevAutoLogin && <DevAutoLoginButton />}
+      <div className="mx-auto w-full max-w-sm">
+        <PublicFooter />
+      </div>
     </>
   );
 }

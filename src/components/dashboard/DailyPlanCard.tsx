@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { CheckIcon } from "@/components/ui/icons";
@@ -13,13 +14,15 @@ function todayStamp(): string {
 }
 
 interface PlanItem {
-  label: string;
+  labelKey: "firstStepDone" | "watchLesson" | "completeTodayTask" | "tryWorkshop";
+  ctaKey?: "watch" | "start" | "open";
   done: boolean;
   href?: string;
-  cta?: string;
 }
 
 function PlanRow({ item }: { item: PlanItem }) {
+  const t = useTranslations("dashboard");
+
   return (
     <li className="flex items-center gap-3 py-2">
       <span
@@ -36,11 +39,11 @@ function PlanRow({ item }: { item: PlanItem }) {
           item.done && "text-ink-muted line-through"
         )}
       >
-        {item.label}
+        {t(item.labelKey)}
       </span>
       {!item.done && item.href && (
         <Button href={item.href} variant="ghost" size="sm">
-          {item.cta ?? "Перейти"}
+          {t(item.ctaKey ?? "open")}
         </Button>
       )}
     </li>
@@ -48,6 +51,7 @@ function PlanRow({ item }: { item: PlanItem }) {
 }
 
 export function DailyPlanCard() {
+  const t = useTranslations("dashboard");
   const { completions, isReady } = useGameProgress();
 
   if (!isReady) return null;
@@ -58,24 +62,24 @@ export function DailyPlanCard() {
   const recommendation = recommendNextQuest(completions);
 
   const items: PlanItem[] = [
-    { label: "Первый шаг выполнен", done: completions.length > 0 },
+    { labelKey: "firstStepDone", done: completions.length > 0 },
     {
-      label: "Посмотреть один короткий урок",
+      labelKey: "watchLesson",
       done: courseProgress.completedLessons > 0,
       href: "/courses",
-      cta: "Смотреть",
+      ctaKey: "watch",
     },
     {
-      label: "Выполнить сегодняшнее задание",
+      labelKey: "completeTodayTask",
       done: completedToday,
       href: recommendation ? `/challenges?open=${recommendation.quest.id}` : "/challenges",
-      cta: "Начать",
+      ctaKey: "start",
     },
     {
-      label: "Попробовать Workshop с другом",
+      labelKey: "tryWorkshop",
       done: false,
       href: "/workshops",
-      cta: "Открыть",
+      ctaKey: "open",
     },
   ];
 
@@ -83,11 +87,11 @@ export function DailyPlanCard() {
     <Card>
       <CardContent className="flex flex-col gap-1 py-8">
         <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-indigo-600">
-          Твой план на сегодня
+          {t("dailyPlanTitle")}
         </span>
         <ul className="mt-2 flex flex-col divide-y divide-zinc-100">
           {items.map((item) => (
-            <PlanRow key={item.label} item={item} />
+            <PlanRow key={item.labelKey} item={item} />
           ))}
         </ul>
       </CardContent>

@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { syncLocaleCookieAfterLogin } from "@/lib/actions/locale";
 
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url);
@@ -30,6 +31,8 @@ export async function GET(request: NextRequest) {
     .select("onboarding_completed_at")
     .eq("id", data.user.id)
     .maybeSingle();
+
+  await syncLocaleCookieAfterLogin(supabase, data.user.id);
 
   const destination = profile?.onboarding_completed_at ? "/dashboard" : "/onboarding";
   return NextResponse.redirect(`${origin}${destination}`);

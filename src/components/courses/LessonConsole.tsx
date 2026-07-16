@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import confetti from "canvas-confetti";
+import { useLocale, useTranslations } from "next-intl";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/utils";
 import { useGameProgress } from "@/lib/game-progress/GameProgressContext";
@@ -10,7 +11,10 @@ import type { CourseLesson } from "@/constants/courses";
 
 type ConsoleStep = "theory" | "quiz" | "simulation" | "victory";
 
-const QUIZ_OPTION_LABELS = ["А", "Б", "В", "Г"];
+const QUIZ_OPTION_LABELS: Record<string, string[]> = {
+  ru: ["А", "Б", "В", "Г"],
+  en: ["A", "B", "C", "D"],
+};
 
 function fireConfetti() {
   const colors = ["#4f46e5", "#9333ea", "#ec4899"];
@@ -33,6 +37,9 @@ interface LessonConsoleProps {
 }
 
 export function LessonConsole({ lesson, onClose }: LessonConsoleProps) {
+  const t = useTranslations("courses");
+  const locale = useLocale();
+  const optionLabels = QUIZ_OPTION_LABELS[locale] ?? QUIZ_OPTION_LABELS.en;
   const { completeChallenge } = useGameProgress();
   const [step, setStep] = useState<ConsoleStep>("theory");
   const [slideIndex, setSlideIndex] = useState(0);
@@ -51,7 +58,7 @@ export function LessonConsole({ lesson, onClose }: LessonConsoleProps) {
       challengeId: lesson.id,
       title: lesson.title,
       emoji: lesson.emoji,
-      categoryLabel: "Курс",
+      categoryLabel: t("categoryLabel"),
       xp: lesson.xpReward,
       answer: "",
     });
@@ -115,7 +122,7 @@ export function LessonConsole({ lesson, onClose }: LessonConsoleProps) {
           <button
             type="button"
             onClick={onClose}
-            aria-label="Закрыть"
+            aria-label={t("closeAria")}
             className="absolute right-5 top-5 flex h-8 w-8 items-center justify-center rounded-full text-ink-muted transition-colors hover:bg-zinc-100 hover:text-ink"
           >
             ✕
@@ -142,7 +149,7 @@ export function LessonConsole({ lesson, onClose }: LessonConsoleProps) {
               </span>
               <div className="flex flex-col gap-1.5">
                 <span className="inline-flex w-fit items-center rounded-full bg-gradient-to-tr from-indigo-50 to-pink-50 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-[0.12em] text-indigo-600 ring-1 ring-inset ring-indigo-100">
-                  Микро-теория · {slideIndex + 1}/{lesson.slides.length}
+                  {t("microTheory", { current: slideIndex + 1, total: lesson.slides.length })}
                 </span>
                 <h2 className="text-xl font-black leading-tight tracking-[-0.02em] text-ink">
                   {slide.title}
@@ -154,10 +161,10 @@ export function LessonConsole({ lesson, onClose }: LessonConsoleProps) {
             </p>
             <Button size="lg" onClick={handleNextSlide} className="w-full">
               {!isLastSlide
-                ? "Дальше"
+                ? t("next")
                 : lesson.type === "simulation"
-                  ? "К симуляции"
-                  : "К проверке знаний"}
+                  ? t("toSimulation")
+                  : t("toQuiz")}
             </Button>
           </div>
         )}
@@ -165,7 +172,7 @@ export function LessonConsole({ lesson, onClose }: LessonConsoleProps) {
         {step === "quiz" && lesson.type === "quiz" && question && (
           <div key={questionIndex} className="animate-pop-in flex flex-col gap-5">
             <span className="inline-flex w-fit items-center rounded-full bg-gradient-to-tr from-indigo-50 to-pink-50 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-[0.12em] text-indigo-600 ring-1 ring-inset ring-indigo-100">
-              Проверка знаний · {questionIndex + 1}/{lesson.quiz.length}
+              {t("knowledgeCheck", { current: questionIndex + 1, total: lesson.quiz.length })}
             </span>
             <h2 className="text-xl font-extrabold tracking-[-0.02em] text-ink">
               {question.question}
@@ -188,13 +195,13 @@ export function LessonConsole({ lesson, onClose }: LessonConsoleProps) {
                         "border-zinc-100/60 bg-white/70 text-ink-secondary hover:border-zinc-200 hover:text-ink"
                     )}
                   >
-                    {QUIZ_OPTION_LABELS[index]}) {option.text}
+                    {optionLabels[index]}) {option.text}
                   </button>
                 );
               })}
             </div>
             {selectedOption && !selectedOption.isCorrect && (
-              <p className="text-xs font-medium text-danger">Не совсем — попробуй другой вариант.</p>
+              <p className="text-xs font-medium text-danger">{t("wrongAnswer")}</p>
             )}
             <Button
               size="lg"
@@ -202,7 +209,7 @@ export function LessonConsole({ lesson, onClose }: LessonConsoleProps) {
               onClick={handleNextQuestion}
               className="w-full"
             >
-              {isLastQuestion ? "Завершить урок" : "Дальше"}
+              {isLastQuestion ? t("finishLesson") : t("next")}
             </Button>
           </div>
         )}
@@ -210,7 +217,7 @@ export function LessonConsole({ lesson, onClose }: LessonConsoleProps) {
         {step === "simulation" && lesson.type === "simulation" && (
           <div className="animate-pop-in flex flex-col gap-5">
             <span className="inline-flex w-fit items-center rounded-full bg-gradient-to-tr from-indigo-50 to-pink-50 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-[0.12em] text-indigo-600 ring-1 ring-inset ring-indigo-100">
-              Симуляция
+              {t("simulationBadge")}
             </span>
             <h2 className="text-xl font-extrabold tracking-[-0.02em] text-ink">{lesson.title}</h2>
             {lesson.videoUrl && (
@@ -231,15 +238,15 @@ export function LessonConsole({ lesson, onClose }: LessonConsoleProps) {
             <span className="text-6xl" role="img" aria-hidden>
               🎉
             </span>
-            <h2 className="text-3xl font-black tracking-[-0.02em] text-ink">Урок пройден!</h2>
+            <h2 className="text-3xl font-black tracking-[-0.02em] text-ink">{t("lessonComplete")}</h2>
             <span className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500 px-5 py-2.5 text-base font-bold text-white shadow-[0_8px_24px_rgba(99,102,241,0.35)]">
-              +{lesson.xpReward} XP Earned!
+              {t("xpEarned", { xp: lesson.xpReward })}
             </span>
             <p className="text-sm leading-relaxed tracking-tight text-ink-secondary">
-              «{lesson.title}» закрыт. Следующий узел на карте уже разблокирован.
+              {t("lessonClosedNote", { title: lesson.title })}
             </p>
             <Button size="lg" variant="secondary" onClick={onClose} className="mt-2 w-full">
-              Закрыть
+              {t("close")}
             </Button>
           </div>
         )}

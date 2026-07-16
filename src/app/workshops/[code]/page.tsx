@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { getTranslations } from "next-intl/server";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Button } from "@/components/ui/Button";
@@ -29,15 +30,17 @@ export default async function WorkshopSessionPage({ params }: WorkshopSessionPag
     redirect("/login");
   }
 
+  const t = await getTranslations("workshops");
+
   if (!state) {
     return (
       <div className="flex flex-col gap-8">
-        <PageHeader title="Воркшоп" />
+        <PageHeader title={t("workshopTitle")} />
         <EmptyState
           icon={<span className="text-2xl">🔍</span>}
-          title="Сессия не найдена"
-          description={`Код «${code.toUpperCase()}» не соответствует активной сессии. Проверь код или попроси хоста прислать новый.`}
-          action={<Button href="/workshops">Ко всем воркшопам</Button>}
+          title={t("sessionNotFoundTitle")}
+          description={t("sessionNotFoundDescription", { code: code.toUpperCase() })}
+          action={<Button href="/workshops">{t("backToWorkshops")}</Button>}
         />
       </div>
     );
@@ -47,12 +50,12 @@ export default async function WorkshopSessionPage({ params }: WorkshopSessionPag
     if (state.status !== "lobby") {
       return (
         <div className="flex flex-col gap-8">
-          <PageHeader title="Воркшоп" />
+          <PageHeader title={t("workshopTitle")} />
           <EmptyState
             icon={<span className="text-2xl">⏳</span>}
-            title="Игра уже началась"
-            description="Эта сессия уже в процессе — присоединиться можно только до старта. Попроси хоста создать новую."
-            action={<Button href="/workshops">Ко всем воркшопам</Button>}
+            title={t("alreadyStartedTitle")}
+            description={t("alreadyStartedDescription")}
+            action={<Button href="/workshops">{t("backToWorkshops")}</Button>}
           />
         </div>
       );
@@ -67,7 +70,10 @@ export default async function WorkshopSessionPage({ params }: WorkshopSessionPag
 
     return (
       <div className="flex flex-col gap-8">
-        <PageHeader title="Присоединиться к воркшопу" description={`Код сессии: ${state.code}`} />
+        <PageHeader
+          title={t("joinWorkshopTitle")}
+          description={t("sessionCodeLabel", { code: state.code })}
+        />
         <div className="max-w-sm">
           <JoinSessionForm defaultDisplayName={defaultDisplayName} fixedCode={state.code} />
         </div>
@@ -77,7 +83,7 @@ export default async function WorkshopSessionPage({ params }: WorkshopSessionPag
 
   return (
     <div className="flex flex-col gap-8">
-      <PageHeader title="Воркшоп" />
+      <PageHeader title={t("workshopTitle")} />
       <WorkshopSession initialState={state} />
     </div>
   );

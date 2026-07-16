@@ -1,17 +1,11 @@
 import { CHALLENGE_CATALOG, DIFFICULTY_ORDER, type ChallengeDef } from "@/lib/challenges";
 import type { ChallengeCompletion } from "@/lib/game-progress/GameProgressContext";
 
-type Dimension = "depth" | "feasibility" | "risk";
-
-const DIMENSION_LABELS: Record<Dimension, string> = {
-  depth: "Глубина проработки",
-  feasibility: "Реализуемость",
-  risk: "Учёт рисков",
-};
+export type Dimension = "depth" | "feasibility" | "risk";
 
 export interface QuestRecommendation {
   quest: ChallengeDef;
-  weakDimensionLabel: string | null;
+  weakDimension: Dimension | null;
   weakDimensionScore: number | null;
 }
 
@@ -53,7 +47,7 @@ export function recommendNextQuest(completions: ChallengeCompletion[]): QuestRec
 
   return {
     quest,
-    weakDimensionLabel: weakDimension ? DIMENSION_LABELS[weakDimension] : null,
+    weakDimension,
     weakDimensionScore: weakScore,
   };
 }

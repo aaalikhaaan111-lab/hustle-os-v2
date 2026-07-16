@@ -2,20 +2,21 @@
 
 import { useCallback, useEffect, useLayoutEffect, useState } from "react";
 import { usePathname } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/Button";
 import { NAV_ITEMS } from "@/lib/constants";
 import { useGameProgress } from "@/lib/game-progress/GameProgressContext";
 import { readTourState, writeTourState, type TourState } from "@/lib/tour/tourStorage";
 
-const TOUR_MESSAGES: Record<string, string> = {
-  "/dashboard": "Здесь находится твой план на сегодня, прогресс и серия дней.",
-  "/challenges": "Короткие практические задания, которые развивают предпринимательское мышление.",
-  "/courses": "Видео, интерактивные уроки и глоссарий предпринимательских терминов.",
-  "/workshops": "Живые квизы, где можно соревноваться и учиться вместе.",
-  "/profile": "Здесь хранится твой прогресс, XP и личные результаты.",
+const TOUR_MESSAGE_KEYS: Record<string, "dashboardMessage" | "challengesMessage" | "learnMessage" | "workshopsMessage" | "profileMessage"> = {
+  "/dashboard": "dashboardMessage",
+  "/challenges": "challengesMessage",
+  "/courses": "learnMessage",
+  "/workshops": "workshopsMessage",
+  "/profile": "profileMessage",
 };
 
-const TOUR_STEPS = NAV_ITEMS.filter((item) => item.href in TOUR_MESSAGES);
+const TOUR_STEPS = NAV_ITEMS.filter((item) => item.href in TOUR_MESSAGE_KEYS);
 
 // The tooltip card has a fixed width (see className below); its height is
 // content-dependent, so positioning below always anchors from a top edge and
@@ -49,6 +50,8 @@ function clamp(value: number, min: number, max: number): number {
 export function ProductTour() {
   const { userId, isReady } = useGameProgress();
   const pathname = usePathname();
+  const t = useTranslations("tour");
+  const tNav = useTranslations("nav");
   const [state, setState] = useState<TourState | null>(null);
   const [targetRect, setTargetRect] = useState<Rect | null>(null);
 
@@ -164,7 +167,7 @@ export function ProductTour() {
       <div
         role="dialog"
         aria-modal="true"
-        aria-label={`Тур: ${step.label}`}
+        aria-label={tNav(step.labelKey)}
         className="fixed w-[280px] max-w-[calc(100vw-24px)] rounded-2xl border border-white/70 bg-white p-5 shadow-[0_24px_48px_-12px_rgba(0,0,0,0.35)] transition-all duration-300 ease-out"
         style={tooltipStyle}
       >
@@ -178,9 +181,9 @@ export function ProductTour() {
             />
           ))}
         </div>
-        <h3 className="text-base font-extrabold tracking-[-0.02em] text-ink">{step.label}</h3>
+        <h3 className="text-base font-extrabold tracking-[-0.02em] text-ink">{tNav(step.labelKey)}</h3>
         <p className="mt-1.5 text-sm leading-relaxed tracking-tight text-ink-secondary">
-          {TOUR_MESSAGES[step.href]}
+          {t(TOUR_MESSAGE_KEYS[step.href])}
         </p>
         <div className="mt-4 flex items-center justify-between gap-2">
           <button
@@ -188,7 +191,7 @@ export function ProductTour() {
             onClick={closeTour}
             className="text-xs font-semibold text-ink-muted transition-colors hover:text-ink"
           >
-            Пропустить тур
+            {t("skip")}
           </button>
           <div className="flex items-center gap-2">
             {!isFirst && (
@@ -198,7 +201,7 @@ export function ProductTour() {
                 size="sm"
                 onClick={() => persist({ ...state, step: state.step - 1 })}
               >
-                Назад
+                {t("back")}
               </Button>
             )}
             <Button
@@ -212,7 +215,7 @@ export function ProductTour() {
                 }
               }}
             >
-              {isLast ? "Готово" : "Далее"}
+              {isLast ? t("done") : t("next")}
             </Button>
           </div>
         </div>

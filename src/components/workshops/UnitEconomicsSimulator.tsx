@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useTranslations } from "next-intl";
 import { Card, CardContent } from "@/components/ui/Card";
 import { cn } from "@/lib/utils";
 
@@ -81,6 +82,7 @@ function ResultTile({
 }
 
 export function UnitEconomicsSimulator() {
+  const t = useTranslations("workshops");
   const [price, setPrice] = useState(1500);
   const [cac, setCac] = useState(400);
   const [cogs, setCogs] = useState(600);
@@ -110,18 +112,18 @@ export function UnitEconomicsSimulator() {
           </span>
           <div className="flex flex-col gap-1">
             <span className="inline-flex w-fit items-center rounded-full bg-gradient-to-tr from-indigo-50 to-pink-50 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.14em] text-indigo-600 ring-1 ring-inset ring-indigo-100">
-              Активный симулятор
+              {t("simulatorBadge")}
             </span>
             <h3 className="text-xl font-extrabold tracking-[-0.02em] text-ink">
-              Симулятор Юнит-Экономики
+              {t("simulatorTitle")}
             </h3>
           </div>
         </div>
 
         <div className="grid gap-5 sm:grid-cols-2">
-          <SliderField label="Цена продукта" value={price} min={100} max={5000} step={50} unit="₽" onChange={setPrice} />
+          <SliderField label={t("priceLabel")} value={price} min={100} max={5000} step={50} unit="₽" onChange={setPrice} />
           <SliderField
-            label="Стоимость привлечения клиента (CAC)"
+            label={t("cacLabel")}
             value={cac}
             min={0}
             max={2000}
@@ -130,7 +132,7 @@ export function UnitEconomicsSimulator() {
             onChange={setCac}
           />
           <SliderField
-            label="Себестоимость выполнения заказа (COGS)"
+            label={t("cogsLabel")}
             value={cogs}
             min={0}
             max={3000}
@@ -139,7 +141,7 @@ export function UnitEconomicsSimulator() {
             onChange={setCogs}
           />
           <SliderField
-            label="Конверсия сайта"
+            label={t("conversionLabel")}
             value={conversionRate}
             min={0.5}
             max={10}
@@ -150,15 +152,15 @@ export function UnitEconomicsSimulator() {
         </div>
 
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <ResultTile label="Маржа с единицы" value={`${grossMarginPerUnit}₽`} />
-          <ResultTile label="Маржинальность" value={`${grossMarginPercent.toFixed(0)}%`} />
+          <ResultTile label={t("marginPerUnit")} value={`${grossMarginPerUnit}₽`} />
+          <ResultTile label={t("marginPercent")} value={`${grossMarginPercent.toFixed(0)}%`} />
           <ResultTile
-            label="Прибыль с клиента"
+            label={t("profitPerUnit")}
             value={`${profitPerUnit}₽`}
             tone={isProfitable ? "success" : "danger"}
           />
           <ResultTile
-            label="Визитов на 1 продажу"
+            label={t("visitorsPerSale")}
             value={Number.isFinite(visitorsNeededPerSale) ? `${visitorsNeededPerSale}` : "—"}
           />
         </div>
@@ -173,8 +175,8 @@ export function UnitEconomicsSimulator() {
             {isProfitable ? "✅" : "⚠️"}
           </span>
           {isProfitable
-            ? `Прибыльная модель — с каждого клиента остаётся ${profitPerUnit}₽ после CAC и себестоимости.`
-            : `Убыточная модель — теряете ${Math.abs(profitPerUnit)}₽ с каждого клиента. Подними цену, снизь CAC или COGS.`}
+            ? t("profitableModel", { profit: profitPerUnit })
+            : t("unprofitableModel", { loss: Math.abs(profitPerUnit) })}
         </div>
       </CardContent>
     </Card>

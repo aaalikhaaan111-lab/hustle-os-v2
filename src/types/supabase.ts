@@ -11,6 +11,11 @@ export interface Database {
           xp: number;
           streak_days: number;
           last_activity_at: string | null;
+          // Added by supabase/migrations/*_add_profile_locale.sql, which is
+          // NOT executed automatically — this column may not exist yet in
+          // the live database. See src/lib/actions/locale.ts for the
+          // corresponding runtime fallback.
+          locale: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -23,6 +28,7 @@ export interface Database {
           xp?: number;
           streak_days?: number;
           last_activity_at?: string | null;
+          locale?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -35,6 +41,7 @@ export interface Database {
           xp?: number;
           streak_days?: number;
           last_activity_at?: string | null;
+          locale?: string | null;
           created_at?: string;
           updated_at?: string;
         };

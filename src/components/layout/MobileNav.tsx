@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 import { NAV_ITEMS } from "@/lib/constants";
 
@@ -12,6 +13,7 @@ function isActive(pathname: string, href: string) {
 
 export function MobileNav() {
   const pathname = usePathname();
+  const t = useTranslations("nav");
 
   return (
     <nav className="fixed inset-x-0 bottom-0 z-20 flex border-t border-border/60 bg-canvas/80 pb-[env(safe-area-inset-bottom)] backdrop-blur-md md:hidden">
@@ -30,7 +32,7 @@ export function MobileNav() {
             <item.icon
               className={cn("h-5 w-5 transition-colors duration-150", active && "text-accent")}
             />
-            {item.label}
+            {t(item.labelKey)}
           </Link>
         );
       })}

@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { getTranslations } from "next-intl/server";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { ChallengeCard } from "@/components/challenges/ChallengeCard";
 import { CHALLENGE_CATALOG } from "@/lib/challenges";
@@ -32,14 +33,15 @@ export default async function ChallengesPage({ searchParams }: ChallengesPagePro
       : [];
   const challenges = personalized.length > 0 ? personalized : CHALLENGE_CATALOG;
 
+  const t = await getTranslations("challenges");
+  const tInterests = await getTranslations("onboarding");
+
   return (
     <div className="flex flex-col gap-8">
       <PageHeader
-        title="Challenges"
+        title={t("title")}
         description={
-          personalized.length > 0
-            ? "Подборка под твои интересы — выбирай и начинай."
-            : "Пройди онбординг, чтобы увидеть персональную подборку. А пока — все челленджи."
+          personalized.length > 0 ? t("descriptionPersonalized") : t("descriptionGeneric")
         }
       />
       <div className="grid gap-6 sm:grid-cols-2">
@@ -51,7 +53,7 @@ export default async function ChallengesPage({ searchParams }: ChallengesPagePro
             <ChallengeCard
               key={challenge.id}
               challenge={challenge}
-              categoryLabel={category?.label ?? ""}
+              categoryLabel={category ? tInterests(category.labelKey) : ""}
               initialOpen={challenge.id === openChallengeId}
             />
           );

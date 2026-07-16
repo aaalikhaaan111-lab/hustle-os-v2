@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/Button";
 import { Card, CardContent } from "@/components/ui/Card";
 import { ChallengeConsole } from "@/components/challenges/ChallengeConsole";
@@ -15,6 +16,7 @@ interface ChallengeCardProps {
 }
 
 export function ChallengeCard({ challenge, categoryLabel, initialOpen = false }: ChallengeCardProps) {
+  const t = useTranslations("challenges");
   const { isReady, isChallengeCompleted } = useGameProgress();
   const [isOpen, setIsOpen] = useState(initialOpen);
 
@@ -36,7 +38,7 @@ export function ChallengeCard({ challenge, categoryLabel, initialOpen = false }:
                   difficulty.className
                 )}
               >
-                {difficulty.label}
+                {t(difficulty.labelKey)}
               </span>
             </div>
             <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-amber-50 px-2.5 py-1 text-xs font-bold text-amber-600 ring-1 ring-inset ring-amber-100">
@@ -62,7 +64,7 @@ export function ChallengeCard({ challenge, categoryLabel, initialOpen = false }:
             onClick={() => setIsOpen(true)}
             className="mt-auto w-full sm:w-fit"
           >
-            {completed ? "Пройдено ✅" : "Начать выполнять"}
+            {completed ? t("completed") : t("start")}
           </Button>
         </CardContent>
       </Card>

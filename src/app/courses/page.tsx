@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import dynamic from "next/dynamic";
+import { useTranslations } from "next-intl";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { SkeletonCard } from "@/components/ui/Skeleton";
 import { VideoCard } from "@/components/VideoCard";
@@ -18,19 +19,20 @@ const SkillTreePath = dynamic(
 type AcademyTab = "videos" | "quizzes" | "glossary";
 type SourceFilter = "all" | "en" | "ru";
 
-const TABS: { id: AcademyTab; label: string; emoji: string }[] = [
-  { id: "videos", label: "Видео-лекции", emoji: "🎥" },
-  { id: "quizzes", label: "Интерактивные курсы", emoji: "✍️" },
-  { id: "glossary", label: "Глоссарий терминов", emoji: "📖" },
+const TABS: { id: AcademyTab; labelKey: "tabVideos" | "tabQuizzes" | "tabGlossary"; emoji: string }[] = [
+  { id: "videos", labelKey: "tabVideos", emoji: "🎥" },
+  { id: "quizzes", labelKey: "tabQuizzes", emoji: "✍️" },
+  { id: "glossary", labelKey: "tabGlossary", emoji: "📖" },
 ];
 
-const SOURCE_FILTERS: { id: SourceFilter; label: string }[] = [
-  { id: "all", label: "Все" },
-  { id: "en", label: "EN" },
-  { id: "ru", label: "RU" },
+const SOURCE_FILTERS: { id: SourceFilter; labelKey: "filterAll" | "filterEn" | "filterRu" }[] = [
+  { id: "all", labelKey: "filterAll" },
+  { id: "en", labelKey: "filterEn" },
+  { id: "ru", labelKey: "filterRu" },
 ];
 
 export default function CoursesPage() {
+  const t = useTranslations("learn");
   const [tab, setTab] = useState<AcademyTab>("videos");
   const [sourceFilter, setSourceFilter] = useState<SourceFilter>("all");
   const [glossaryQuery, setGlossaryQuery] = useState("");
@@ -52,10 +54,7 @@ export default function CoursesPage() {
 
   return (
     <div className="flex flex-col gap-8">
-      <PageHeader
-        title="Learn"
-        description="Видео-лекции, интерактивные курсы и глоссарий терминов — всё в одном месте."
-      />
+      <PageHeader title={t("title")} description={t("description")} />
 
       <div className="grid grid-cols-3 gap-1.5 rounded-2xl bg-white/60 p-1.5 ring-1 ring-inset ring-zinc-200/60 backdrop-blur-md sm:inline-flex sm:w-fit sm:gap-2 sm:rounded-full">
         {TABS.map((item) => {
@@ -75,7 +74,7 @@ export default function CoursesPage() {
               <span className="text-base sm:text-base" role="img" aria-hidden>
                 {item.emoji}
               </span>
-              <span>{item.label}</span>
+              <span>{t(item.labelKey)}</span>
             </button>
           );
         })}
@@ -98,7 +97,7 @@ export default function CoursesPage() {
                       : "border-border text-ink-secondary hover:border-border-strong hover:text-ink"
                   )}
                 >
-                  {filter.label}
+                  {t(filter.labelKey)}
                 </button>
               );
             })}
@@ -120,7 +119,7 @@ export default function CoursesPage() {
             type="text"
             value={glossaryQuery}
             onChange={(event) => setGlossaryQuery(event.target.value)}
-            placeholder="Поиск термина..."
+            placeholder={t("glossarySearchPlaceholder")}
             className="w-full max-w-sm rounded-xl border border-border bg-surface px-4 py-2.5 text-sm text-ink placeholder:text-ink-muted transition-colors focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/40"
           />
 
@@ -130,7 +129,7 @@ export default function CoursesPage() {
                 🔍
               </span>
               <p className="max-w-md text-sm tracking-tight text-ink-secondary">
-                Ничего не нашлось по запросу «{glossaryQuery}». Попробуй другой термин.
+                {t("glossaryNoResults", { query: glossaryQuery })}
               </p>
             </div>
           ) : (

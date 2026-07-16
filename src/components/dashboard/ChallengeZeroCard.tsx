@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import confetti from "canvas-confetti";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { cn } from "@/lib/utils";
@@ -30,6 +31,7 @@ interface ChallengeZeroCardProps {
 }
 
 export function ChallengeZeroCard({ subtitle }: ChallengeZeroCardProps) {
+  const t = useTranslations("dashboard");
   const { isReady, completions, isChallengeCompleted, completeChallenge } = useGameProgress();
   const [projectName, setProjectName] = useState("");
   const [justCompleted, setJustCompleted] = useState(false);
@@ -43,9 +45,9 @@ export function ChallengeZeroCard({ subtitle }: ChallengeZeroCardProps) {
     if (!trimmed) return;
     completeChallenge({
       challengeId: CHALLENGE_ZERO_ID,
-      title: "Твоя первая победа",
+      title: t("challengeZeroTitle"),
       emoji: "🎯",
-      categoryLabel: "Быстрый старт",
+      categoryLabel: t("challengeZeroCategory"),
       xp: CHALLENGE_ZERO_XP,
       answer: trimmed,
     });
@@ -61,10 +63,10 @@ export function ChallengeZeroCard({ subtitle }: ChallengeZeroCardProps) {
         </span>
         <div className="flex flex-col gap-2">
           <span className="inline-flex w-fit items-center rounded-full bg-gradient-to-tr from-indigo-50 to-pink-50 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.14em] text-indigo-600 shadow-[0_2px_12px_rgba(99,102,241,0.12)] ring-1 ring-inset ring-indigo-100">
-            Челлендж №0 · Быстрый старт
+            {t("challengeZeroBadge")}
           </span>
           <h3 className="text-3xl font-black leading-[1.05] tracking-[-0.02em] text-ink">
-            Твоя первая победа
+            {t("challengeZeroTitle")}
           </h3>
         </div>
       </div>
@@ -82,15 +84,14 @@ export function ChallengeZeroCard({ subtitle }: ChallengeZeroCardProps) {
         >
           <div className="rounded-2xl bg-accent-soft px-5 py-4 ring-1 ring-inset ring-indigo-100/60">
             <p className="text-sm font-medium tracking-tight text-ink-secondary">
-              Придумай крутое, безумное название для своего будущего проекта или
-              стартапа, используя всего два любимых слова.
+              {t("challengeZeroPrompt")}
             </p>
           </div>
           <div className="flex flex-col gap-3 sm:flex-row">
             <Input
               value={projectName}
               onChange={(event) => setProjectName(event.target.value)}
-              placeholder="Например: КвантМёд"
+              placeholder={t("challengeZeroPlaceholder")}
               maxLength={60}
               disabled={completed}
               className="sm:flex-1"
@@ -101,7 +102,7 @@ export function ChallengeZeroCard({ subtitle }: ChallengeZeroCardProps) {
               size="lg"
               className="w-full sm:w-fit"
             >
-              Активировать трек
+              {t("activateTrack")}
             </Button>
           </div>
         </div>
@@ -121,7 +122,7 @@ export function ChallengeZeroCard({ subtitle }: ChallengeZeroCardProps) {
             )}
           >
             <p className="text-sm font-bold text-ink">
-              Выполнено! 🎉 «{completedName}» — отличное начало.
+              {t("challengeZeroDone", { name: completedName })}
             </p>
           </div>
           <span
@@ -130,7 +131,7 @@ export function ChallengeZeroCard({ subtitle }: ChallengeZeroCardProps) {
               justCompleted && "animate-pop-in"
             )}
           >
-            Твой 1-day streak активирован! 🌱 +{CHALLENGE_ZERO_XP} XP
+            {t("streakActivated", { xp: CHALLENGE_ZERO_XP })}
           </span>
         </div>
       </div>

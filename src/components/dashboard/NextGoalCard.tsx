@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { useGameProgress } from "@/lib/game-progress/GameProgressContext";
@@ -7,7 +8,15 @@ import { recommendNextQuest } from "@/lib/game-progress/recommendation";
 import { DIFFICULTY_META } from "@/lib/challenges";
 import { cn } from "@/lib/utils";
 
+const DIMENSION_KEYS = {
+  depth: "dimensionDepth",
+  feasibility: "dimensionFeasibility",
+  risk: "dimensionRisk",
+} as const;
+
 export function NextGoalCard() {
+  const t = useTranslations("dashboard");
+  const tChallenges = useTranslations("challenges");
   const { completions, isReady } = useGameProgress();
 
   if (!isReady) return null;
@@ -19,33 +28,34 @@ export function NextGoalCard() {
       <Card>
         <CardContent className="flex flex-col gap-2 py-8">
           <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-indigo-600">
-            Ближайшая цель
+            {t("nextGoal")}
           </span>
           <h3 className="text-xl font-extrabold tracking-[-0.02em] text-ink">
-            Ты прошёл все квесты! 🏆
+            {t("allQuestsDone")}
           </h3>
           <p className="text-sm tracking-tight text-ink-secondary">
-            Невероятный результат. Загляни на дашборд позже — мы готовим новые квесты.
+            {t("allQuestsDoneDescription")}
           </p>
         </CardContent>
       </Card>
     );
   }
 
-  const { quest, weakDimensionLabel, weakDimensionScore } = recommendation;
+  const { quest, weakDimension, weakDimensionScore } = recommendation;
   const difficulty = DIFFICULTY_META[quest.difficulty];
 
   return (
     <Card>
       <CardContent className="flex flex-col gap-4 py-8">
         <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-indigo-600">
-          Ближайшая цель
+          {t("nextGoal")}
         </span>
 
-        {weakDimensionLabel && (
+        {weakDimension && (
           <p className="rounded-2xl bg-accent-soft px-4 py-3 text-sm tracking-tight text-ink-secondary">
-            Слабое место по твоим ответам: <strong className="text-ink">{weakDimensionLabel}</strong>{" "}
-            (в среднем {weakDimensionScore}/10). Этот квест поможет подтянуть именно это.
+            {t("weakDimension")}{" "}
+            <strong className="text-ink">{t(DIMENSION_KEYS[weakDimension])}</strong>{" "}
+            {t("weakDimensionScore", { score: weakDimensionScore ?? 0 })}. {t("weakDimensionHelp")}
           </p>
         )}
 
@@ -60,7 +70,7 @@ export function NextGoalCard() {
                 difficulty.className
               )}
             >
-              {difficulty.label}
+              {tChallenges(difficulty.labelKey)}
             </span>
             <h3 className="text-lg font-extrabold leading-tight tracking-[-0.02em] text-ink">
               {quest.questTitle}
@@ -71,7 +81,7 @@ export function NextGoalCard() {
         <p className="text-sm tracking-tight text-ink-secondary">{quest.description}</p>
 
         <Button href={`/challenges?open=${quest.id}`} size="lg" className="w-full sm:w-fit">
-          Перейти к квесту
+          {t("goToQuest")}
         </Button>
       </CardContent>
     </Card>

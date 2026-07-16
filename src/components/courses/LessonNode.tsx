@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 import type { CourseLesson } from "@/constants/courses";
 
@@ -13,6 +14,8 @@ interface LessonNodeProps {
 }
 
 export function LessonNode({ lesson, unlocked, completed, isActive, offset, onOpen }: LessonNodeProps) {
+  const t = useTranslations("courses");
+
   return (
     <div
       className="flex flex-col items-center gap-2 transition-transform duration-500 ease-out"
@@ -22,7 +25,7 @@ export function LessonNode({ lesson, unlocked, completed, isActive, offset, onOp
         type="button"
         disabled={!unlocked}
         onClick={onOpen}
-        aria-label={unlocked ? lesson.title : `${lesson.title} (заблокировано)`}
+        aria-label={unlocked ? lesson.title : t("lessonLockedAria", { title: lesson.title })}
         className={cn(
           "flex h-20 w-20 items-center justify-center rounded-full text-3xl transition-all duration-300 ease-out",
           completed &&

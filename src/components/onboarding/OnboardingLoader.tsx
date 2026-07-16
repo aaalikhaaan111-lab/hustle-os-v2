@@ -1,17 +1,17 @@
+"use client";
+
+import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 
-export const ONBOARDING_LOADING_PHRASES = [
-  "🤖 Анализируем твои интересы...",
-  "⚡ Скрещиваем выбранные направления...",
-  "🔮 ИИ генерирует твой личный трек в Ventrio...",
-  "🚀 Почти готово! Создаём твой профиль...",
-];
+const PHRASE_KEYS = ["loadingPhrase1", "loadingPhrase2", "loadingPhrase3", "loadingPhrase4"] as const;
 
 interface OnboardingLoaderProps {
   phraseIndex: number;
 }
 
 export function OnboardingLoader({ phraseIndex }: OnboardingLoaderProps) {
+  const t = useTranslations("onboarding");
+
   return (
     <div className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-8 bg-white/60 backdrop-blur-2xl">
       <div className="relative flex h-20 w-20 items-center justify-center">
@@ -28,13 +28,13 @@ export function OnboardingLoader({ phraseIndex }: OnboardingLoaderProps) {
         aria-live="polite"
         className="animate-phrase-in max-w-sm px-6 text-center text-xl font-extrabold tracking-tight text-ink sm:text-2xl"
       >
-        {ONBOARDING_LOADING_PHRASES[phraseIndex]}
+        {t(PHRASE_KEYS[phraseIndex])}
       </p>
 
       <div className="flex gap-2">
-        {ONBOARDING_LOADING_PHRASES.map((phrase, i) => (
+        {PHRASE_KEYS.map((key, i) => (
           <span
-            key={phrase}
+            key={key}
             className={cn(
               "h-1.5 w-6 rounded-full transition-all duration-500 ease-in-out",
               i <= phraseIndex

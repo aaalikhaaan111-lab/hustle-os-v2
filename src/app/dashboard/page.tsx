@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { redirect } from "next/navigation";
+import { getTranslations } from "next-intl/server";
 import { Button } from "@/components/ui/Button";
 import { Card, CardContent } from "@/components/ui/Card";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -21,12 +22,6 @@ function Eyebrow({ children }: { children: ReactNode }) {
   );
 }
 
-function interestLabels(interests: string[]): string {
-  return interests
-    .map((id) => INTEREST_OPTIONS.find((option) => option.id === id)?.label ?? id)
-    .join(", ");
-}
-
 export default async function DashboardPage() {
   const supabase = await createClient();
   const user = await getCurrentUser(supabase);
@@ -43,19 +38,25 @@ export default async function DashboardPage() {
 
   const interests = profile?.interests ?? [];
 
+  const t = await getTranslations("dashboard");
+  const tInterests = await getTranslations("onboarding");
+  const tNav = await getTranslations("nav");
+
+  const interestLabels = interests
+    .map((id) => {
+      const option = INTEREST_OPTIONS.find((o) => o.id === id);
+      return option ? tInterests(option.labelKey) : id;
+    })
+    .join(", ");
+
   const challengeSubtitle =
     interests.length > 0
-      ? `Мы настроили трек под твои интересы: ${interestLabels(
-          interests
-        )}. Начни с быстрой разминки 👇`
-      : "Начни с быстрой разминки, а мы тем временем настроим остальной трек под тебя 👇";
+      ? t("personalizedSubtitle", { interests: interestLabels })
+      : t("genericSubtitle");
 
   return (
     <div className="flex flex-col gap-8">
-      <PageHeader
-        title="Dashboard"
-        description="Здесь появляется твой ежедневный прогресс."
-      />
+      <PageHeader title={t("title")} description={t("description")} />
 
       <DailyPlanCard />
 
@@ -80,25 +81,25 @@ export default async function DashboardPage() {
                 🗓️
               </span>
               <div className="flex flex-col gap-2">
-                <Eyebrow>Воркшопы</Eyebrow>
+                <Eyebrow>{tNav("workshops")}</Eyebrow>
                 <h3 className="text-xl font-extrabold leading-tight tracking-[-0.02em] text-ink">
-                  Пока нет запланированных встреч
+                  {t("workshopsTeaserTitle")}
                 </h3>
               </div>
             </div>
             <div className="flex items-center gap-3 rounded-2xl border border-t-white/70 border-x-zinc-200/40 border-b-zinc-200/40 bg-white/70 px-4 py-3 shadow-sm backdrop-blur-md">
               <div className="flex h-12 w-12 shrink-0 flex-col items-center justify-center rounded-xl bg-gradient-to-br from-indigo-100 to-pink-100">
                 <span className="text-[9px] font-bold uppercase tracking-wide text-ink-muted">
-                  Скоро
+                  {t("workshopsTeaserSoon")}
                 </span>
                 <span className="text-lg font-extrabold text-ink">?</span>
               </div>
               <p className="text-sm tracking-tight text-ink-secondary">
-                Сообщим, как только появится первый воркшоп.
+                {t("workshopsTeaserBody")}
               </p>
             </div>
             <Button href="/workshops" variant="secondary" className="mt-auto w-fit">
-              Все воркшопы
+              {t("allWorkshops")}
             </Button>
           </CardContent>
         </Card>

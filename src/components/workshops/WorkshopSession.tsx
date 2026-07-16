@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import confetti from "canvas-confetti";
+import { useLocale, useTranslations } from "next-intl";
 import { Button } from "@/components/ui/Button";
 import { Card, CardContent } from "@/components/ui/Card";
 import { AnimatedNumber } from "@/components/ui/AnimatedNumber";
@@ -19,7 +20,10 @@ import {
 
 const POLL_INTERVAL_MS = 2000;
 const REVEAL_AUTO_ADVANCE_MS = 6000;
-const OPTION_LABELS = ["А", "Б", "В", "Г"];
+const OPTION_LABELS: Record<string, string[]> = {
+  ru: ["А", "Б", "В", "Г"],
+  en: ["A", "B", "C", "D"],
+};
 const OPTION_COLORS = [
   "from-rose-500 to-red-500",
   "from-blue-500 to-indigo-500",
@@ -39,13 +43,16 @@ function fireConfetti() {
 }
 
 function Podium({ place, name, score }: { place: 1 | 2 | 3; name: string; score: number }) {
+  const t = useTranslations("workshops");
   const heights = { 1: "h-32", 2: "h-24", 3: "h-16" };
   const medals = { 1: "🥇", 2: "🥈", 3: "🥉" };
   return (
     <div className="flex flex-col items-center gap-2">
       <span className="text-3xl">{medals[place]}</span>
       <span className="max-w-[100px] truncate text-sm font-bold text-ink">{name}</span>
-      <span className="text-xs font-semibold text-ink-muted">{score} очков</span>
+      <span className="text-xs font-semibold text-ink-muted">
+        {score} {t("pointsShort")}
+      </span>
       <div
         className={cn(
           "w-20 rounded-t-xl bg-gradient-to-b from-indigo-500 to-purple-600",
@@ -61,6 +68,9 @@ interface WorkshopSessionProps {
 }
 
 export function WorkshopSession({ initialState }: WorkshopSessionProps) {
+  const t = useTranslations("workshops");
+  const locale = useLocale();
+  const optionLabels = OPTION_LABELS[locale] ?? OPTION_LABELS.en;
   const [state, setState] = useState(initialState);
   const [pollError, setPollError] = useState<string | null>(null);
   const [selectedOption, setSelectedOption] = useState<number | null>(null);
@@ -195,7 +205,7 @@ export function WorkshopSession({ initialState }: WorkshopSessionProps) {
     return (
       <Card>
         <CardContent className="py-10 text-center text-sm text-ink-secondary">
-          Контент этого воркшопа не найден.
+          {t("contentNotFound")}
         </CardContent>
       </Card>
     );
@@ -211,7 +221,7 @@ export function WorkshopSession({ initialState }: WorkshopSessionProps) {
           <div>
             <p className="text-sm font-extrabold tracking-tight text-ink">{pack.title}</p>
             <p className="text-xs text-ink-muted">
-              Код: <span className="font-mono font-bold tracking-widest">{state.code}</span>
+              {t("codeLabel")} <span className="font-mono font-bold tracking-widest">{state.code}</span>
             </p>
           </div>
         </div>
@@ -223,18 +233,16 @@ export function WorkshopSession({ initialState }: WorkshopSessionProps) {
           <CardContent className="animate-pop-in flex flex-col items-center gap-6 py-10 text-center">
             <span className="text-5xl">{pack.emoji}</span>
             <div>
-              <p className="text-xs font-bold uppercase tracking-[0.14em] text-indigo-600">Лобби</p>
+              <p className="text-xs font-bold uppercase tracking-[0.14em] text-indigo-600">{t("lobbyBadge")}</p>
               <h2 className="mt-2 text-2xl font-black tracking-[-0.02em] text-ink">
-                Ждём участников — код <span className="font-mono">{state.code}</span>
+                {t("lobbyWaitingLabel")} <span className="font-mono">{state.code}</span>
               </h2>
-              <p className="mt-2 text-sm text-ink-secondary">
-                Поделись кодом, чтобы друзья присоединились через «Войти по коду» на странице воркшопов.
-              </p>
+              <p className="mt-2 text-sm text-ink-secondary">{t("lobbyShareHint")}</p>
             </div>
 
             <div className="flex w-full max-w-sm flex-col gap-2">
               {state.participants.length === 0 ? (
-                <p className="text-sm text-ink-muted">Пока никто не присоединился.</p>
+                <p className="text-sm text-ink-muted">{t("noParticipantsYet")}</p>
               ) : (
                 state.participants.map((p) => (
                   <div
@@ -255,10 +263,10 @@ export function WorkshopSession({ initialState }: WorkshopSessionProps) {
                 disabled={hostActionPending}
                 onClick={() => handleHostAction(() => startWorkshopSessionAction(state.sessionId))}
               >
-                {hostActionPending ? "Запускаем..." : "Начать воркшоп 🚀"}
+                {hostActionPending ? t("starting") : t("startWorkshop")}
               </Button>
             ) : (
-              <p className="text-sm font-semibold text-ink-muted">Ждём, пока хост запустит игру...</p>
+              <p className="text-sm font-semibold text-ink-muted">{t("waitingForHost")}</p>
             )}
           </CardContent>
         </Card>
@@ -269,7 +277,10 @@ export function WorkshopSession({ initialState }: WorkshopSessionProps) {
           <CardContent className="animate-pop-in flex flex-col gap-6 py-8">
             <div className="flex items-center justify-between">
               <span className="text-xs font-bold uppercase tracking-[0.14em] text-indigo-600">
-                Вопрос {state.currentQuestionIndex + 1} из {pack.questions.length}
+                {t("questionCounter", {
+                  current: state.currentQuestionIndex + 1,
+                  total: pack.questions.length,
+                })}
               </span>
               <span
                 className={cn(
@@ -279,7 +290,8 @@ export function WorkshopSession({ initialState }: WorkshopSessionProps) {
                     : "bg-accent-soft text-accent"
                 )}
               >
-                {remainingMs === null ? "…" : Math.ceil(remainingMs / 1000)}с
+                {remainingMs === null ? "…" : Math.ceil(remainingMs / 1000)}
+                {t("secondsShort")}
               </span>
             </div>
 
@@ -304,7 +316,7 @@ export function WorkshopSession({ initialState }: WorkshopSessionProps) {
                     )}
                   >
                     <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white/25 text-xs">
-                      {OPTION_LABELS[index]}
+                      {optionLabels[index]}
                     </span>
                     {option}
                   </button>
@@ -315,11 +327,14 @@ export function WorkshopSession({ initialState }: WorkshopSessionProps) {
             {answerError && <p className="text-xs font-semibold text-danger">{answerError}</p>}
             {isLocked && !answerError && (
               <p className="text-center text-sm font-semibold text-success">
-                Ответ принят ✅ Ждём остальных...
+                {t("answerAccepted")}
               </p>
             )}
             <p className="text-center text-xs text-ink-muted">
-              Ответили: {state.answeredCount} / {state.participants.length}
+              {t("answeredCount", {
+                answered: state.answeredCount,
+                total: state.participants.length,
+              })}
             </p>
           </CardContent>
         </Card>
@@ -346,11 +361,11 @@ export function WorkshopSession({ initialState }: WorkshopSessionProps) {
                     )}
                   >
                     <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-black/5 text-xs">
-                      {OPTION_LABELS[index]}
+                      {optionLabels[index]}
                     </span>
                     {option}
                     {isCorrectOption && <span className="ml-auto">✅</span>}
-                    {wasMine && !isCorrectOption && <span className="ml-auto">👈 твой ответ</span>}
+                    {wasMine && !isCorrectOption && <span className="ml-auto">{t("yourAnswer")}</span>}
                   </div>
                 );
               })}
@@ -360,19 +375,19 @@ export function WorkshopSession({ initialState }: WorkshopSessionProps) {
               {state.myLastAnswer ? (
                 state.myLastAnswer.isCorrect ? (
                   <p className="text-lg font-black text-success">
-                    +<AnimatedNumber value={state.myLastAnswer.pointsAwarded} /> очков 🎉
+                    +<AnimatedNumber value={state.myLastAnswer.pointsAwarded} /> {t("pointsShort")} 🎉
                   </p>
                 ) : (
-                  <p className="text-lg font-black text-danger">Мимо — 0 очков</p>
+                  <p className="text-lg font-black text-danger">{t("missedAnswer")}</p>
                 )
               ) : (
-                <p className="text-sm font-semibold text-ink-muted">Ты не успел(а) ответить</p>
+                <p className="text-sm font-semibold text-ink-muted">{t("didNotAnswer")}</p>
               )}
             </div>
 
             <div className="flex flex-col gap-2">
               <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-indigo-600">
-                Таблица лидеров
+                {t("leaderboard")}
               </span>
               {state.participants.slice(0, 5).map((p, index) => (
                 <div
@@ -401,10 +416,10 @@ export function WorkshopSession({ initialState }: WorkshopSessionProps) {
                 }}
               >
                 {hostActionPending
-                  ? "Секунду..."
+                  ? t("oneSecond")
                   : isLastQuestion
-                    ? "Завершить и показать подиум 🏆"
-                    : "Следующий вопрос →"}
+                    ? t("finishAndShowPodium")
+                    : t("nextQuestion")}
               </Button>
             )}
           </CardContent>
@@ -415,7 +430,7 @@ export function WorkshopSession({ initialState }: WorkshopSessionProps) {
         <Card>
           <CardContent className="animate-pop-in flex flex-col items-center gap-8 py-10 text-center">
             <span className="text-5xl">🏆</span>
-            <h2 className="text-3xl font-black tracking-[-0.02em] text-ink">Воркшоп завершён!</h2>
+            <h2 className="text-3xl font-black tracking-[-0.02em] text-ink">{t("workshopFinished")}</h2>
 
             {state.participants.length > 0 && (
               <div className="flex items-end justify-center gap-4">
@@ -458,7 +473,7 @@ export function WorkshopSession({ initialState }: WorkshopSessionProps) {
             </div>
 
             <Button size="lg" variant="secondary" href="/workshops">
-              Ко всем воркшопам
+              {t("backToWorkshops")}
             </Button>
           </CardContent>
         </Card>

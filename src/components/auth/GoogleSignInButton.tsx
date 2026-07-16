@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/Button";
 import { createClient } from "@/lib/supabase/client";
 
@@ -29,9 +30,13 @@ function GoogleIcon() {
 
 interface GoogleSignInButtonProps {
   label?: string;
+  /** When true, the button is disabled — used on signup to gate first-time
+   * OAuth on the same Terms/Privacy consent as the email form. */
+  disabled?: boolean;
 }
 
-export function GoogleSignInButton({ label = "Continue with Google" }: GoogleSignInButtonProps) {
+export function GoogleSignInButton({ label, disabled }: GoogleSignInButtonProps) {
+  const t = useTranslations("auth");
   const [isPending, setIsPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -63,11 +68,11 @@ export function GoogleSignInButton({ label = "Continue with Google" }: GoogleSig
         type="button"
         variant="outline"
         onClick={handleClick}
-        disabled={isPending}
+        disabled={isPending || disabled}
         className="w-full"
       >
         <GoogleIcon />
-        {isPending ? "Redirecting to Google..." : label}
+        {isPending ? t("redirectingToGoogle") : (label ?? t("continueWithGoogle"))}
       </Button>
       {error && <p className="text-sm text-danger">{error}</p>}
     </div>

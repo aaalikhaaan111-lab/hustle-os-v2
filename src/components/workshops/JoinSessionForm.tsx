@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition, type FormEvent } from "react";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/Button";
 import { Field } from "@/components/ui/Field";
 import { Input } from "@/components/ui/Input";
@@ -13,6 +14,7 @@ interface JoinSessionFormProps {
 }
 
 export function JoinSessionForm({ defaultDisplayName, fixedCode }: JoinSessionFormProps) {
+  const t = useTranslations("workshops");
   const [code, setCode] = useState(fixedCode ?? "");
   const [displayName, setDisplayName] = useState(defaultDisplayName);
   const [error, setError] = useState<string | null>(null);
@@ -21,7 +23,7 @@ export function JoinSessionForm({ defaultDisplayName, fixedCode }: JoinSessionFo
   function handleSubmit(event: FormEvent) {
     event.preventDefault();
     if (!code.trim()) {
-      setError("Введи код сессии.");
+      setError(t("enterCode"));
       return;
     }
     setError(null);
@@ -37,28 +39,28 @@ export function JoinSessionForm({ defaultDisplayName, fixedCode }: JoinSessionFo
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-4">
       {!fixedCode && (
-        <Field label="Код сессии" htmlFor="workshop-code" required>
+        <Field label={t("sessionCode")} htmlFor="workshop-code" required>
           <Input
             id="workshop-code"
             value={code}
             onChange={(event) => setCode(event.target.value.toUpperCase())}
-            placeholder="Например, K3F9AB"
+            placeholder={t("sessionCodePlaceholder")}
             maxLength={8}
             className="font-mono tracking-widest"
           />
         </Field>
       )}
-      <Field label="Имя в игре" htmlFor="workshop-display-name" hint="Так тебя увидят остальные участники">
+      <Field label={t("displayName")} htmlFor="workshop-display-name" hint={t("displayNameHint")}>
         <Input
           id="workshop-display-name"
           value={displayName}
           onChange={(event) => setDisplayName(event.target.value)}
-          placeholder="Твоё имя"
+          placeholder={t("displayNamePlaceholder")}
         />
       </Field>
       {error && <p className="text-xs font-semibold text-danger">{error}</p>}
       <Button type="submit" disabled={isPending} className="w-full">
-        {isPending ? "Входим..." : "Присоединиться 🎮"}
+        {isPending ? t("joining") : t("join")}
       </Button>
     </form>
   );

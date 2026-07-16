@@ -1,7 +1,9 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { getTranslations } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
+import { syncLocaleCookieAfterLogin } from "@/lib/actions/locale";
 
 export interface AuthActionState {
   error: string | null;
@@ -21,10 +23,11 @@ export async function loginAction(
   _prevState: AuthActionState,
   formData: FormData
 ): Promise<AuthActionState> {
+  const t = await getTranslations("auth");
   const { email, password } = readCredentials(formData);
 
   if (!email || !password) {
-    return { error: "Enter your email and password." };
+    return { error: t("enterEmailPassword") };
   }
 
   const supabase = await createClient();
@@ -40,6 +43,8 @@ export async function loginAction(
     .eq("id", data.user.id)
     .maybeSingle();
 
+  await syncLocaleCookieAfterLogin(supabase, data.user.id);
+
   redirect(profile?.onboarding_completed_at ? "/dashboard" : "/onboarding");
 }
 
@@ -47,13 +52,18 @@ export async function signupAction(
   _prevState: SignupActionState,
   formData: FormData
 ): Promise<SignupActionState> {
+  const t = await getTranslations("auth");
   const { email, password } = readCredentials(formData);
+  const consent = formData.get("consent") === "on";
 
   if (!email || !password) {
-    return { error: "Enter your email and password.", success: false };
+    return { error: t("enterEmailPassword"), success: false };
   }
   if (password.length < 8) {
-    return { error: "Password must be at least 8 characters.", success: false };
+    return { error: t("passwordTooShort"), success: false };
+  }
+  if (!consent) {
+    return { error: t("consentRequired"), success: false };
   }
 
   const supabase = await createClient();
@@ -63,7 +73,8 @@ export async function signupAction(
     return { error: error.message, success: false };
   }
 
-  if (data.session) {
+  if (data.session && data.user) {
+    await syncLocaleCookieAfterLogin(supabase, data.user.id);
     redirect("/onboarding");
   }
 
@@ -100,6 +111,8 @@ export async function devAutoLoginAction(): Promise<AuthActionState> {
     .select("onboarding_completed_at")
     .eq("id", data.user.id)
     .maybeSingle();
+
+  await syncLocaleCookieAfterLogin(supabase, data.user.id);
 
   redirect(profile?.onboarding_completed_at ? "/dashboard" : "/onboarding");
 }

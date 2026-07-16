@@ -1,10 +1,12 @@
 "use client";
 
 import { useTransition } from "react";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/Button";
 import { signOutAction } from "@/lib/actions/auth";
 
 export function LogoutButton() {
+  const t = useTranslations("profile");
   const [isPending, startTransition] = useTransition();
 
   return (
@@ -13,7 +15,7 @@ export function LogoutButton() {
       disabled={isPending}
       onClick={() => startTransition(() => signOutAction())}
     >
-      {isPending ? "Logging out..." : "Log out"}
+      {isPending ? t("logoutPending") : t("logout")}
     </Button>
   );
 }
