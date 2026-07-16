@@ -57,7 +57,16 @@ export async function updateSession(request: NextRequest) {
   }
 
   if (user && isAuthRoute) {
-    return NextResponse.redirect(new URL("/dashboard", request.url));
+    // Not hardcoded to /dashboard: a genuinely new user who navigates back to
+    // /login or /signup while authenticated but not yet onboarded must land
+    // on /onboarding, never be routed past it.
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("onboarding_completed_at")
+      .eq("id", user.id)
+      .maybeSingle();
+    const destination = profile?.onboarding_completed_at ? "/dashboard" : "/onboarding";
+    return NextResponse.redirect(new URL(destination, request.url));
   }
 
   // Forward the identity this fresh, network-validated getUser() call just

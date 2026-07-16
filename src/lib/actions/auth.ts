@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
 import { syncLocaleCookieAfterLogin } from "@/lib/actions/locale";
+import { buildRedirectUrl } from "@/lib/site";
 
 export interface AuthActionState {
   error: string | null;
@@ -11,6 +12,12 @@ export interface AuthActionState {
 
 export interface SignupActionState extends AuthActionState {
   success: boolean;
+  email: string | null;
+}
+
+export interface ResendActionState {
+  status: "idle" | "sent" | "error";
+  error: string | null;
 }
 
 function readCredentials(formData: FormData) {
@@ -57,20 +64,26 @@ export async function signupAction(
   const consent = formData.get("consent") === "on";
 
   if (!email || !password) {
-    return { error: t("enterEmailPassword"), success: false };
+    return { error: t("enterEmailPassword"), success: false, email: null };
   }
   if (password.length < 8) {
-    return { error: t("passwordTooShort"), success: false };
+    return { error: t("passwordTooShort"), success: false, email: null };
   }
   if (!consent) {
-    return { error: t("consentRequired"), success: false };
+    return { error: t("consentRequired"), success: false, email: null };
   }
 
   const supabase = await createClient();
-  const { data, error } = await supabase.auth.signUp({ email, password });
+  const { data, error } = await supabase.auth.signUp({
+    email,
+    password,
+    options: {
+      emailRedirectTo: buildRedirectUrl("/auth/callback?next=/onboarding"),
+    },
+  });
 
   if (error) {
-    return { error: error.message, success: false };
+    return { error: error.message, success: false, email: null };
   }
 
   if (data.session && data.user) {
@@ -78,7 +91,41 @@ export async function signupAction(
     redirect("/onboarding");
   }
 
-  return { error: null, success: true };
+  return { error: null, success: true, email };
+}
+
+export async function resendConfirmationEmailAction(
+  _prevState: ResendActionState,
+  formData: FormData
+): Promise<ResendActionState> {
+  const t = await getTranslations("auth");
+  const email = String(formData.get("email") ?? "").trim();
+
+  if (!email) {
+    return { status: "error", error: t("enterEmailPassword") };
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase.auth.resend({
+    type: "signup",
+    email,
+    options: {
+      emailRedirectTo: buildRedirectUrl("/auth/callback?next=/onboarding"),
+    },
+  });
+
+  if (error) {
+    const message = error.message.toLowerCase();
+    if (error.status === 429 || message.includes("rate limit") || message.includes("security purposes")) {
+      return { status: "error", error: t("resendRateLimited") };
+    }
+    if (message.includes("already confirmed") || message.includes("already registered")) {
+      return { status: "error", error: t("resendAlreadyConfirmed") };
+    }
+    return { status: "error", error: error.message };
+  }
+
+  return { status: "sent", error: null };
 }
 
 export async function signOutAction(): Promise<void> {

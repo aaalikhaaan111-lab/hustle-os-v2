@@ -8,33 +8,21 @@ import { Button } from "@/components/ui/Button";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Field } from "@/components/ui/Field";
 import { Input } from "@/components/ui/Input";
-import { InfoIcon } from "@/components/ui/icons";
 import { GoogleSignInButton } from "@/components/auth/GoogleSignInButton";
+import { ConfirmEmailPending } from "@/components/auth/ConfirmEmailPending";
 import { signupAction, type SignupActionState } from "@/lib/actions/auth";
 
-const initialState: SignupActionState = { error: null, success: false };
+const initialState: SignupActionState = { error: null, success: false, email: null };
 
 export function SignupForm() {
   const t = useTranslations("auth");
   const tCommon = useTranslations("common");
   const [state, formAction, isPending] = useActionState(signupAction, initialState);
   const [consent, setConsent] = useState(false);
+  const [showConsentNotice, setShowConsentNotice] = useState(false);
 
-  if (state.success) {
-    return (
-      <div className="mx-auto flex max-w-sm flex-col items-center gap-5 py-16 text-center animate-page-in">
-        <div className="flex h-11 w-11 items-center justify-center rounded-full bg-accent-soft text-accent">
-          <InfoIcon className="h-5 w-5" />
-        </div>
-        <div>
-          <h1 className="text-xl font-semibold text-ink">{t("checkEmailTitle")}</h1>
-          <p className="mt-2 text-sm text-ink-secondary">{t("checkEmailDescription")}</p>
-        </div>
-        <Button href="/login" variant="secondary">
-          {t("backToLogin")}
-        </Button>
-      </div>
-    );
+  if (state.success && state.email) {
+    return <ConfirmEmailPending email={state.email} />;
   }
 
   const consentLabel = (
@@ -60,10 +48,18 @@ export function SignupForm() {
       <Card>
         <CardContent className="flex flex-col gap-5 py-5">
           <div className="flex flex-col gap-2">
-            <GoogleSignInButton label={t("signUpWithGoogle")} disabled={!consent} />
+            <GoogleSignInButton
+              label={t("signUpWithGoogle")}
+              requireConsent
+              consentGiven={consent}
+              onConsentMissing={() => setShowConsentNotice(true)}
+            />
             <p className="text-center text-[11px] leading-relaxed text-ink-muted">
               {t("googleConsentNotice")}
             </p>
+            {showConsentNotice && !consent && (
+              <p className="text-center text-xs font-medium text-danger">{t("consentRequired")}</p>
+            )}
           </div>
 
           <div className="flex items-center gap-3">
@@ -100,7 +96,10 @@ export function SignupForm() {
                 type="checkbox"
                 name="consent"
                 checked={consent}
-                onChange={(event) => setConsent(event.target.checked)}
+                onChange={(event) => {
+                  setConsent(event.target.checked);
+                  if (event.target.checked) setShowConsentNotice(false);
+                }}
                 className="mt-0.5 h-4 w-4 shrink-0 rounded border-border-strong text-accent focus:ring-2 focus:ring-accent/40"
               />
               {consentLabel}

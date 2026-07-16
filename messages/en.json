@@ -67,7 +67,14 @@
     "and": "and",
     "privacyPolicy": "Privacy Policy",
     "consentRequired": "You need to accept the Terms of Use and Privacy Policy.",
-    "googleConsentNotice": "By continuing with Google, you agree to the Terms of Use and Privacy Policy."
+    "googleConsentNotice": "By continuing with Google, you agree to the Terms of Use and Privacy Policy.",
+    "resendIn": "Resend email in {seconds}s",
+    "resendButton": "Resend confirmation email",
+    "resendSending": "Sending...",
+    "resendSuccess": "Email resent.",
+    "resendRateLimited": "Too many attempts. Wait a bit and try again.",
+    "resendAlreadyConfirmed": "This email is already confirmed — you can log in.",
+    "changeEmail": "Change email"
   },
   "onboarding": {
     "title": "Tell us about yourself",

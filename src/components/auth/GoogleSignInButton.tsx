@@ -30,17 +30,31 @@ function GoogleIcon() {
 
 interface GoogleSignInButtonProps {
   label?: string;
-  /** When true, the button is disabled — used on signup to gate first-time
-   * OAuth on the same Terms/Privacy consent as the email form. */
-  disabled?: boolean;
+  /** On signup, first-time Google sign-in still requires Terms/Privacy
+   * consent — but instead of disabling the button outright (which read as
+   * a broken, permanently-greyed-out control to real users), we let it stay
+   * clickable and surface a validation message via onConsentMissing. */
+  requireConsent?: boolean;
+  consentGiven?: boolean;
+  onConsentMissing?: () => void;
 }
 
-export function GoogleSignInButton({ label, disabled }: GoogleSignInButtonProps) {
+export function GoogleSignInButton({
+  label,
+  requireConsent,
+  consentGiven,
+  onConsentMissing,
+}: GoogleSignInButtonProps) {
   const t = useTranslations("auth");
   const [isPending, setIsPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function handleClick() {
+    if (requireConsent && !consentGiven) {
+      onConsentMissing?.();
+      return;
+    }
+
     setError(null);
     setIsPending(true);
     const supabase = createClient();
@@ -68,7 +82,7 @@ export function GoogleSignInButton({ label, disabled }: GoogleSignInButtonProps)
         type="button"
         variant="outline"
         onClick={handleClick}
-        disabled={isPending || disabled}
+        disabled={isPending}
         className="w-full"
       >
         <GoogleIcon />
