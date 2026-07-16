@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/Button";
 import { createClient } from "@/lib/supabase/client";
+import { buildRedirectUrl } from "@/lib/site";
 
 function GoogleIcon() {
   return (
@@ -62,7 +63,15 @@ export function GoogleSignInButton({
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
+        // Deliberately NOT window.location.origin — Vercel preview
+        // deployments each get a unique hash-based origin that can never
+        // all be added to Supabase's Redirect URLs allowlist. Using an
+        // unlisted origin makes Supabase silently fall back to its
+        // configured Site URL instead of honoring `redirectTo`, which is
+        // what stranded OAuth users on the landing page. The canonical
+        // origin is always allowlisted, regardless of which URL the app
+        // was actually opened from.
+        redirectTo: buildRedirectUrl("/auth/callback"),
       },
     });
 

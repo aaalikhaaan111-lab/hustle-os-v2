@@ -10,10 +10,12 @@ export async function GET(request: NextRequest) {
   const oauthError = searchParams.get("error_description") ?? searchParams.get("error");
 
   if (oauthError) {
+    console.error("Auth callback: provider returned an error:", oauthError);
     return NextResponse.redirect(`${origin}/login?error=${encodeURIComponent(oauthError)}`);
   }
 
   if (!code) {
+    console.error("Auth callback: no `code` param on the request:", request.url);
     return NextResponse.redirect(
       `${origin}/login?error=${encodeURIComponent("Missing authorization code from the confirmation link.")}`
     );
@@ -23,6 +25,7 @@ export async function GET(request: NextRequest) {
   const { data, error } = await supabase.auth.exchangeCodeForSession(code);
 
   if (error || !data.user) {
+    console.error("Auth callback: exchangeCodeForSession failed:", error?.message);
     return NextResponse.redirect(
       `${origin}/login?error=${encodeURIComponent(error?.message ?? "Sign-in failed. Please try again.")}`
     );

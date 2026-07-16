@@ -67,6 +67,7 @@
     "and": "and",
     "privacyPolicy": "Privacy Policy",
     "consentRequired": "You need to accept the Terms of Use and Privacy Policy.",
+    "googleConsentValidation": "Please accept the Terms of Use and Privacy Policy first.",
     "googleConsentNotice": "By continuing with Google, you agree to the Terms of Use and Privacy Policy.",
     "resendIn": "Resend email in {seconds}s",
     "resendButton": "Resend confirmation email",

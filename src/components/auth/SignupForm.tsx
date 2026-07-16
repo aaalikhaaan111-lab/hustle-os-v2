@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import Link from "next/link";
 import { useActionState } from "react";
 import { useTranslations } from "next-intl";
@@ -20,9 +20,15 @@ export function SignupForm() {
   const [state, formAction, isPending] = useActionState(signupAction, initialState);
   const [consent, setConsent] = useState(false);
   const [showConsentNotice, setShowConsentNotice] = useState(false);
+  const consentCheckboxRef = useRef<HTMLInputElement>(null);
 
   if (state.success && state.email) {
     return <ConfirmEmailPending email={state.email} />;
+  }
+
+  function handleConsentMissing() {
+    setShowConsentNotice(true);
+    consentCheckboxRef.current?.focus();
   }
 
   const consentLabel = (
@@ -52,13 +58,15 @@ export function SignupForm() {
               label={t("signUpWithGoogle")}
               requireConsent
               consentGiven={consent}
-              onConsentMissing={() => setShowConsentNotice(true)}
+              onConsentMissing={handleConsentMissing}
             />
             <p className="text-center text-[11px] leading-relaxed text-ink-muted">
               {t("googleConsentNotice")}
             </p>
             {showConsentNotice && !consent && (
-              <p className="text-center text-xs font-medium text-danger">{t("consentRequired")}</p>
+              <p className="text-center text-xs font-medium text-danger">
+                {t("googleConsentValidation")}
+              </p>
             )}
           </div>
 
@@ -93,6 +101,7 @@ export function SignupForm() {
 
             <label className="flex items-start gap-2.5 text-xs leading-relaxed text-ink-secondary">
               <input
+                ref={consentCheckboxRef}
                 type="checkbox"
                 name="consent"
                 checked={consent}
@@ -100,7 +109,9 @@ export function SignupForm() {
                   setConsent(event.target.checked);
                   if (event.target.checked) setShowConsentNotice(false);
                 }}
-                className="mt-0.5 h-4 w-4 shrink-0 rounded border-border-strong text-accent focus:ring-2 focus:ring-accent/40"
+                className={`mt-0.5 h-4 w-4 shrink-0 rounded border-border-strong text-accent focus:ring-2 focus:ring-accent/40 ${
+                  showConsentNotice && !consent ? "ring-2 ring-danger" : ""
+                }`}
               />
               {consentLabel}
             </label>
