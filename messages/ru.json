@@ -75,7 +75,8 @@
     "resendSuccess": "Письмо отправлено повторно.",
     "resendRateLimited": "Слишком много попыток. Подожди немного и попробуй снова.",
     "resendAlreadyConfirmed": "Этот email уже подтверждён — можешь войти.",
-    "changeEmail": "Изменить email"
+    "changeEmail": "Изменить email",
+    "googleSignInFailed": "Не удалось выполнить вход через Google. Попробуйте ещё раз в том же браузере."
   },
   "onboarding": {
     "title": "Расскажи о себе",

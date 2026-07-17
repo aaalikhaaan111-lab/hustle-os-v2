@@ -76,7 +76,10 @@ export function GoogleSignInButton({
     });
 
     if (error) {
-      setError(error.message);
+      // Keep the raw Supabase error out of the UI — log it for debugging
+      // and show a concise, localized message instead.
+      console.error("Google sign-in failed:", error.message);
+      setError(t("googleSignInFailed"));
       setIsPending(false);
       return;
     }

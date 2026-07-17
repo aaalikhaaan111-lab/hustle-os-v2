@@ -75,7 +75,8 @@
     "resendSuccess": "Email resent.",
     "resendRateLimited": "Too many attempts. Wait a bit and try again.",
     "resendAlreadyConfirmed": "This email is already confirmed — you can log in.",
-    "changeEmail": "Change email"
+    "changeEmail": "Change email",
+    "googleSignInFailed": "Google sign-in could not be completed. Please try again in the same browser."
   },
   "onboarding": {
     "title": "Tell us about yourself",

@@ -11,24 +11,23 @@ export async function GET(request: NextRequest) {
 
   if (oauthError) {
     console.error("Auth callback: provider returned an error:", oauthError);
-    return NextResponse.redirect(`${origin}/login?error=${encodeURIComponent(oauthError)}`);
+    return NextResponse.redirect(`${origin}/login?error=oauth_failed`);
   }
 
   if (!code) {
     console.error("Auth callback: no `code` param on the request:", request.url);
-    return NextResponse.redirect(
-      `${origin}/login?error=${encodeURIComponent("Missing authorization code from the confirmation link.")}`
-    );
+    return NextResponse.redirect(`${origin}/login?error=oauth_failed`);
   }
 
   const supabase = await createClient();
   const { data, error } = await supabase.auth.exchangeCodeForSession(code);
 
   if (error || !data.user) {
+    // Technical detail (e.g. "PKCE code verifier not found in storage")
+    // stays server-side only — the login page shows a localized generic
+    // message keyed off `error=oauth_failed` instead.
     console.error("Auth callback: exchangeCodeForSession failed:", error?.message);
-    return NextResponse.redirect(
-      `${origin}/login?error=${encodeURIComponent(error?.message ?? "Sign-in failed. Please try again.")}`
-    );
+    return NextResponse.redirect(`${origin}/login?error=oauth_failed`);
   }
 
   const { data: profile } = await supabase

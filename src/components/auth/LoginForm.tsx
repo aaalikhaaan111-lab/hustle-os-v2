@@ -18,7 +18,8 @@ export function LoginForm() {
   const tCommon = useTranslations("common");
   const [state, formAction, isPending] = useActionState(loginAction, initialState);
   const searchParams = useSearchParams();
-  const oauthError = searchParams.get("error");
+  const oauthErrorCode = searchParams.get("error");
+  const oauthError = oauthErrorCode ? t("googleSignInFailed") : null;
   const displayError = state.error || oauthError;
 
   return (
