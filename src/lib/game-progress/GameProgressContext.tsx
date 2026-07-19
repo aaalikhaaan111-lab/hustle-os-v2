@@ -10,6 +10,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { usePathname } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { syncGameProgressAction } from "@/lib/actions/game-progress";
 import type { ValidationScore } from "@/lib/challengeValidator";
@@ -65,99 +66,131 @@ function computeStreak(previousStamp: string | null, previousStreak: number): nu
 }
 
 export function GameProgressProvider({ children }: { children: ReactNode }) {
+  const pathname = usePathname();
   const [userId, setUserId] = useState<string | null>(null);
   const [xp, setXp] = useState(0);
   const [streakDays, setStreakDays] = useState(0);
   const [completions, setCompletions] = useState<ChallengeCompletion[]>([]);
   const [isReady, setIsReady] = useState(false);
   const lastActivityRef = useRef<string | null>(null);
+  const initializedForUserIdRef = useRef<string | null>(null);
 
-  useEffect(() => {
-    let cancelled = false;
-    let initializedForUserId: string | null = null;
+  const loadForUser = useCallback(async (user: { id: string }) => {
+    if (initializedForUserIdRef.current === user.id) return;
+    initializedForUserIdRef.current = user.id;
+
     const supabase = createClient();
+    const key = storageKey(user.id);
+    const stored = typeof window !== "undefined" ? window.localStorage.getItem(key) : null;
 
-    async function loadForUser(user: { id: string }) {
-      if (cancelled || initializedForUserId === user.id) return;
-      initializedForUserId = user.id;
-
-      const key = storageKey(user.id);
-      const stored =
-        typeof window !== "undefined" ? window.localStorage.getItem(key) : null;
-
-      if (stored) {
-        try {
-          const parsed = JSON.parse(stored) as StoredProgress;
-          setUserId(user.id);
-          setXp(parsed.xp ?? 0);
-          setStreakDays(parsed.streakDays ?? 0);
-          setCompletions(parsed.completions ?? []);
-          lastActivityRef.current = parsed.lastActivityAt ?? null;
-          setIsReady(true);
-          return;
-        } catch {
-          // fall through to a fresh remote fetch
-        }
+    if (stored) {
+      try {
+        const parsed = JSON.parse(stored) as StoredProgress;
+        setUserId(user.id);
+        setXp(parsed.xp ?? 0);
+        setStreakDays(parsed.streakDays ?? 0);
+        setCompletions(parsed.completions ?? []);
+        lastActivityRef.current = parsed.lastActivityAt ?? null;
+        setIsReady(true);
+        return;
+      } catch {
+        // fall through to a fresh remote fetch
       }
-
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("xp, streak_days, last_activity_at")
-        .eq("id", user.id)
-        .maybeSingle();
-
-      if (cancelled) return;
-
-      const seedXp = profile?.xp ?? 0;
-      const seedStreak = profile?.streak_days ?? 0;
-      const seedLastActivity = profile?.last_activity_at
-        ? String(profile.last_activity_at).slice(0, 10)
-        : null;
-
-      setUserId(user.id);
-      setXp(seedXp);
-      setStreakDays(seedStreak);
-      lastActivityRef.current = seedLastActivity;
-      window.localStorage.setItem(
-        key,
-        JSON.stringify({
-          xp: seedXp,
-          streakDays: seedStreak,
-          lastActivityAt: seedLastActivity,
-          completions: [],
-        } satisfies StoredProgress)
-      );
-      setIsReady(true);
     }
 
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("xp, streak_days, last_activity_at")
+      .eq("id", user.id)
+      .maybeSingle();
+
+    const seedXp = profile?.xp ?? 0;
+    const seedStreak = profile?.streak_days ?? 0;
+    const seedLastActivity = profile?.last_activity_at
+      ? String(profile.last_activity_at).slice(0, 10)
+      : null;
+
+    setUserId(user.id);
+    setXp(seedXp);
+    setStreakDays(seedStreak);
+    lastActivityRef.current = seedLastActivity;
+    window.localStorage.setItem(
+      key,
+      JSON.stringify({
+        xp: seedXp,
+        streakDays: seedStreak,
+        lastActivityAt: seedLastActivity,
+        completions: [],
+      } satisfies StoredProgress)
+    );
+    setIsReady(true);
+  }, []);
+
+  const clearUser = useCallback(() => {
+    initializedForUserIdRef.current = null;
+    setUserId(null);
+    setXp(0);
+    setStreakDays(0);
+    setCompletions([]);
+    lastActivityRef.current = null;
+    setIsReady(true);
+  }, []);
+
+  useEffect(() => {
+    const supabase = createClient();
+
     // GameProgressProvider is mounted once in the root layout and persists
-    // across client-side (soft) navigations, including the redirect() a
-    // Server Action issues right after login/signup. A one-shot getUser()
-    // check here would permanently miss that login if it ran while the user
-    // was still logged out. onAuthStateChange fires both immediately with
-    // the current session and again on every subsequent sign-in, so it
-    // catches login events that happen after this provider already mounted.
+    // across client-side (soft) navigations. onAuthStateChange fires
+    // immediately with whatever session exists at mount time, and again on
+    // every subsequent sign-in/sign-out the BROWSER Supabase client itself
+    // initiates (e.g. the Google OAuth flow, or calling supabase.auth.* from
+    // client code) — but not for a session change made purely server-side.
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session?.user) {
         loadForUser(session.user);
-      } else if (!cancelled) {
-        initializedForUserId = null;
-        setUserId(null);
-        setXp(0);
-        setStreakDays(0);
-        setCompletions([]);
-        lastActivityRef.current = null;
-        setIsReady(true);
+      } else {
+        clearUser();
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [loadForUser, clearUser]);
+
+  // Email/password login, signup, and dev-login all authenticate via a
+  // Server Action that sets the session cookie and calls redirect() — a soft
+  // client-side navigation. The browser Supabase client's onAuthStateChange
+  // above only fires for auth actions *it* initiates, so it never learns
+  // about a session a Server Action just established or cleared: without
+  // this, userId stays stuck at whatever it was when this provider first
+  // mounted (e.g. null while briefly logged out) until a hard page reload.
+  // Re-checking on every pathname change — the same idiom ProductTour uses
+  // to pick up a just-written localStorage record — is what actually catches
+  // that login/logout. getSession() reads the cookie-backed session the
+  // @supabase/ssr browser client already keeps in sync, with no network
+  // round trip, so this stays cheap even on every navigation — unlike
+  // getUser(), which re-validates against the Auth server every call and
+  // would mean a request per page change.
+  useEffect(() => {
+    let cancelled = false;
+    const supabase = createClient();
+
+    supabase.auth.getSession().then(({ data }) => {
+      if (cancelled) return;
+      if (data.session?.user) {
+        loadForUser(data.session.user);
+      } else if (initializedForUserIdRef.current !== null) {
+        clearUser();
       }
     });
 
     return () => {
       cancelled = true;
-      subscription.unsubscribe();
     };
-  }, []);
+  }, [pathname, loadForUser, clearUser]);
 
   const persist = useCallback(
     (nextXp: number, nextStreak: number, nextLastActivity: string, nextCompletions: ChallengeCompletion[]) => {

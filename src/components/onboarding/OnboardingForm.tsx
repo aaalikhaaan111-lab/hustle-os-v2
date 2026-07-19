@@ -38,10 +38,6 @@ export function OnboardingForm() {
 
     if (phraseIndex >= PHRASE_COUNT - 1) {
       const timeout = setTimeout(() => {
-        // New user flow: guide them through the tour (which ends with an
-        // explicit offer to start the first challenge) before any challenge
-        // opens — so kick off the tour, then land on the dashboard.
-        if (userId) startTour(userId);
         router.push("/dashboard");
       }, PHRASE_INTERVAL_MS);
       return () => clearTimeout(timeout);
@@ -51,7 +47,7 @@ export function OnboardingForm() {
       setPhraseIndex((index) => index + 1);
     }, PHRASE_INTERVAL_MS);
     return () => clearTimeout(timeout);
-  }, [isGenerating, phraseIndex, router, userId]);
+  }, [isGenerating, phraseIndex, router]);
 
   function toggleInterest(id: string) {
     setInterests((prev) =>
@@ -82,6 +78,13 @@ export function OnboardingForm() {
         setError(result.error);
         return;
       }
+      // Started here — synchronously as soon as the save succeeds — rather
+      // than after the loader animation below: completing this action also
+      // marks onboarding done server-side, and Next.js revalidates the
+      // current /onboarding route immediately afterward, which can redirect
+      // to /dashboard (server-side) before the animation's own timer ever
+      // fires. That race must not cost the user their guided tour.
+      if (userId) startTour(userId);
       setPhraseIndex(0);
       setIsGenerating(true);
     });
