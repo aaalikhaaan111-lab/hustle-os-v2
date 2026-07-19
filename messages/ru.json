@@ -56,6 +56,7 @@
     "noAccount": "Нет аккаунта?",
     "signUp": "Зарегистрироваться",
     "alreadyHaveAccount": "Уже есть аккаунт?",
+    "logIn": "Войти",
     "checkEmailTitle": "Проверь почту",
     "checkEmailDescription": "Мы отправили ссылку для подтверждения на твой email.",
     "backToLogin": "Назад ко входу",

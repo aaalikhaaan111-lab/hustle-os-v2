@@ -127,7 +127,7 @@ export function SignupForm() {
       <p className="text-center text-sm text-ink-secondary">
         {t("alreadyHaveAccount")}{" "}
         <Link href="/login" className="font-medium text-accent hover:text-accent-hover">
-          {t("loginTitle")}
+          {t("logIn")}
         </Link>
       </p>
     </div>
