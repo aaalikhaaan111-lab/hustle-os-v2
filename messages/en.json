@@ -1,7 +1,7 @@
 {
   "metadata": {
     "title": "Ventrio — learn entrepreneurship by doing",
-    "description": "Ventrio — daily quests, video lessons and live workshops that turn an interest in business into real experience."
+    "description": "Ventrio — daily quests, video lessons and live Play sessions that turn an interest in business into real experience."
   },
   "common": {
     "next": "Next",
@@ -20,7 +20,7 @@
     "dashboard": "Dashboard",
     "challenges": "Challenges",
     "learn": "Learn",
-    "workshops": "Workshops",
+    "workshops": "Play",
     "profile": "Profile"
   },
   "landing": {
@@ -119,7 +119,7 @@
     "watch": "Watch",
     "completeTodayTask": "Complete today's task",
     "start": "Start",
-    "tryWorkshop": "Try a Workshop with a friend",
+    "tryWorkshop": "Try Play with a friend",
     "open": "Open",
     "level": "Level",
     "xpToNextLevel": "{xp} XP to level \"{level}\"",
@@ -144,10 +144,10 @@
     "streakActivated": "Your 1-day streak is active! 🌱 +{xp} XP",
     "personalizedSubtitle": "We've set up a track based on your interests: {interests}. Start with a quick warm-up 👇",
     "genericSubtitle": "Start with a quick warm-up while we set up the rest of your track 👇",
-    "workshopsTeaserTitle": "No workshops scheduled yet",
+    "workshopsTeaserTitle": "No Play sessions scheduled yet",
     "workshopsTeaserSoon": "Soon",
-    "workshopsTeaserBody": "We'll let you know as soon as the first workshop is up.",
-    "allWorkshops": "All workshops",
+    "workshopsTeaserBody": "We'll let you know as soon as the first Play session is up.",
+    "allWorkshops": "All Play sessions",
     "activityFeedTitle": "Win history",
     "activityFeedEmpty": "Your first wins will show up here once you complete at least one quest.",
     "questCompleted": "🏆 Completed quest \"{title}\"",
@@ -232,7 +232,7 @@
     "pricingSuboptimal": "Profitable, but not the maximum. There's a better price out there — try the slider again."
   },
   "workshops": {
-    "title": "Workshops & Simulators",
+    "title": "Play & Simulators",
     "description": "Live quizzes for your team and practical tools for simulating business processes.",
     "liveQuizzesTitle": "🎮 Live quizzes — gather your team and play together",
     "joinTitle": "Join a quiz",
@@ -255,12 +255,12 @@
     "custdevDescription": "Practice asking questions that don't lead the other person toward a nice-sounding answer. In development.",
     "sessionNotFoundTitle": "Session not found",
     "sessionNotFoundDescription": "Code \"{code}\" doesn't match an active session. Check the code or ask the host to send a new one.",
-    "backToWorkshops": "Back to all workshops",
+    "backToWorkshops": "Back to Play",
     "alreadyStartedTitle": "The game has already started",
     "alreadyStartedDescription": "This session is already in progress — you can only join before it starts. Ask the host to create a new one.",
-    "joinWorkshopTitle": "Join the workshop",
+    "joinWorkshopTitle": "Join the game",
     "sessionCodeLabel": "Session code: {code}",
-    "workshopTitle": "Workshop",
+    "workshopTitle": "Play",
     "simulatorBadge": "Active simulator",
     "simulatorTitle": "Unit Economics Simulator",
     "priceLabel": "Product price",
@@ -274,13 +274,13 @@
     "profitableModel": "Profitable model — you keep {profit}₽ per customer after CAC and cost of goods.",
     "unprofitableModel": "Unprofitable model — you lose {loss}₽ per customer. Raise the price, or lower CAC or COGS.",
     "pointsShort": "points",
-    "contentNotFound": "This workshop's content could not be found.",
+    "contentNotFound": "This session's content could not be found.",
     "lobbyBadge": "Lobby",
     "lobbyWaitingLabel": "Waiting for players — code",
-    "lobbyShareHint": "Share the code so friends can join via \"Join by code\" on the workshops page.",
+    "lobbyShareHint": "Share the code so friends can join via \"Join by code\" on the Play page.",
     "noParticipantsYet": "No one has joined yet.",
     "starting": "Starting...",
-    "startWorkshop": "Start workshop 🚀",
+    "startWorkshop": "Start game 🚀",
     "waitingForHost": "Waiting for the host to start the game...",
     "questionCounter": "Question {current} of {total}",
     "secondsShort": "s",
@@ -294,7 +294,7 @@
     "oneSecond": "One sec...",
     "finishAndShowPodium": "Finish and show podium 🏆",
     "nextQuestion": "Next question →",
-    "workshopFinished": "Workshop finished!",
+    "workshopFinished": "Game finished!",
     "codeLabel": "Code:"
   },
   "profile": {
@@ -335,11 +335,11 @@
       "sections": [
         {
           "title": "What data we collect",
-          "body": "• Signup data: email and password, or — if you sign in with Google — the email, name, and profile data Google shares with us with your consent.\n• Profile data: display name, interests, and preferred daily study time, which you provide during onboarding.\n• Learning progress: XP, activity streak, and workshop participation (answers, correctness, response time, points earned) — stored on our servers.\n• Challenge answers and video reflection notes are stored ONLY locally in your browser (localStorage) and are not kept by us on an ongoing basis — except that challenge answer text is temporarily sent to an AI review service (see \"Who we share data with\" below).\n• Technical data: session and authentication cookies, language preference, and standard infrastructure logs (see below)."
+          "body": "• Signup data: email and password, or — if you sign in with Google — the email, name, and profile data Google shares with us with your consent.\n• Profile data: display name, interests, and preferred daily study time, which you provide during onboarding.\n• Learning progress: XP, activity streak, and Play session participation (answers, correctness, response time, points earned) — stored on our servers.\n• Challenge answers and video reflection notes are stored ONLY locally in your browser (localStorage) and are not kept by us on an ongoing basis — except that challenge answer text is temporarily sent to an AI review service (see \"Who we share data with\" below).\n• Technical data: session and authentication cookies, language preference, and standard infrastructure logs (see below)."
         },
         {
           "title": "Why we use this data",
-          "body": "To create and secure your account, save your learning progress, power live workshops and leaderboards, improve the educational product, and respond to your support requests."
+          "body": "To create and secure your account, save your learning progress, power live Play sessions and leaderboards, improve the educational product, and respond to your support requests."
         },
         {
           "title": "Legal basis",
@@ -393,15 +393,15 @@
         },
         {
           "title": "Educational purpose",
-          "body": "{productName} is an educational platform for building entrepreneurial thinking. Challenges, simulations, workshops, and AI-generated feedback are for learning purposes only and are NOT financial, legal, or investment advice. Any business decisions you make are your own responsibility and risk."
+          "body": "{productName} is an educational platform for building entrepreneurial thinking. Challenges, simulations, Play sessions, and AI-generated feedback are for learning purposes only and are NOT financial, legal, or investment advice. Any business decisions you make are your own responsibility and risk."
         },
         {
           "title": "Acceptable use",
           "body": "You may not: break the law, impersonate another person, attempt unauthorized access to the Service or other users' data, post abusive or harmful content, or use the Service to send spam."
         },
         {
-          "title": "Workshop conduct",
-          "body": "Workshops are live, group sessions. Participants must treat each other respectfully; abuse, cheating, or disrupting a session may result in removal from the session or restricted access to the Service."
+          "title": "Conduct in Play sessions",
+          "body": "Play sessions are live, group sessions. Participants must treat each other respectfully; abuse, cheating, or disrupting a session may result in removal from the session or restricted access to the Service."
         },
         {
           "title": "Intellectual property",
@@ -462,7 +462,7 @@
       "intro": "You can request full deletion of your {productName} account and its associated data at any time.",
       "whatGetsDeleted": {
         "title": "What gets deleted",
-        "body": "Once deletion is confirmed, we'll delete your sign-in account (email/Google) and all server-side data tied to it: your profile, interests, XP and activity streak, and workshop participation and answers."
+        "body": "Once deletion is confirmed, we'll delete your sign-in account (email/Google) and all server-side data tied to it: your profile, interests, XP and activity streak, and Play session participation and answers."
       },
       "whatStays": {
         "title": "What isn't deleted automatically",
