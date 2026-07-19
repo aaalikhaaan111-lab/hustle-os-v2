@@ -140,15 +140,16 @@ export function ChallengeConsole({ challenge, onClose, skipValidation }: Challen
   const selectedOption = quizSelection !== null ? challenge.quizOptions[quizSelection] : null;
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-white/70 p-4 backdrop-blur-2xl"
-      onClick={(event) => {
-        if (event.target === event.currentTarget && step !== "checking") onClose();
-      }}
-    >
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-white/70 backdrop-blur-2xl">
       <div
-        className={cn(
-          "relative w-full max-w-lg rounded-[32px] border p-6 shadow-[0_32px_64px_-16px_rgba(0,0,0,0.15)] sm:p-8",
+        className="flex min-h-full items-center justify-center p-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-[max(1rem,env(safe-area-inset-top))]"
+        onClick={(event) => {
+          if (event.target === event.currentTarget && step !== "checking") onClose();
+        }}
+      >
+        <div
+          className={cn(
+            "relative w-full max-w-lg rounded-[32px] border p-6 shadow-[0_32px_64px_-16px_rgba(0,0,0,0.15)] sm:p-8",
           step === "success"
             ? "border-emerald-100 bg-gradient-to-br from-emerald-50 via-white to-indigo-50"
             : "border-t-white/70 border-x-zinc-200/40 border-b-zinc-200/40 bg-white/90"
@@ -345,6 +346,7 @@ export function ChallengeConsole({ challenge, onClose, skipValidation }: Challen
             </Button>
           </div>
         )}
+        </div>
       </div>
     </div>
   );
