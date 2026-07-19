@@ -27,7 +27,7 @@ export function LevelProgressCard() {
             <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-indigo-600">
               {t("level")} {level.level}
             </span>
-            <h3 className="text-2xl font-black tracking-[-0.02em] text-ink">{level.name}</h3>
+            <h3 className="text-2xl font-black tracking-[-0.02em] text-ink">{t(level.nameKey)}</h3>
           </div>
           <span className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-tr from-indigo-50 to-pink-50 px-3 py-1.5 text-sm font-bold text-indigo-600 ring-1 ring-inset ring-indigo-100">
             <span role="img" aria-hidden>
@@ -48,7 +48,7 @@ export function LevelProgressCard() {
             {nextLevel
               ? t("xpToNextLevel", {
                   xp: Math.max(nextLevel.floor - xp, 0),
-                  level: nextLevel.name,
+                  level: t(nextLevel.nameKey),
                 })
               : t("maxLevelReached")}
           </p>
