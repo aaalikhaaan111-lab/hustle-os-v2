@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/Button";
 import { Card, CardContent } from "@/components/ui/Card";
 import { AnimatedNumber } from "@/components/ui/AnimatedNumber";
 import { cn } from "@/lib/utils";
+import { pick } from "@/i18n/content";
 import { getWorkshopPack } from "@/lib/workshops";
 import {
   advanceWorkshopQuestionAction,
@@ -90,6 +91,7 @@ export function WorkshopSession({ initialState }: WorkshopSessionProps) {
   const pack = getWorkshopPack(state.workshopSlug);
   const question = pack?.questions[state.currentQuestionIndex];
   const isLastQuestion = pack ? state.currentQuestionIndex >= pack.questions.length - 1 : false;
+  const questionOptions = question ? pick(question.options, locale) : [];
 
   // ── Poll for the latest session state ──────────────────────────────────
   useEffect(() => {
@@ -219,7 +221,7 @@ export function WorkshopSession({ initialState }: WorkshopSessionProps) {
         <div className="flex items-center gap-3">
           <span className="text-2xl">{pack.emoji}</span>
           <div>
-            <p className="text-sm font-extrabold tracking-tight text-ink">{pack.title}</p>
+            <p className="text-sm font-extrabold tracking-tight text-ink">{pick(pack.title, locale)}</p>
             <p className="text-xs text-ink-muted">
               {t("codeLabel")} <span className="font-mono font-bold tracking-widest">{state.code}</span>
             </p>
@@ -296,11 +298,11 @@ export function WorkshopSession({ initialState }: WorkshopSessionProps) {
             </div>
 
             <h2 className="text-xl font-extrabold leading-tight tracking-[-0.02em] text-ink">
-              {question.prompt}
+              {pick(question.prompt, locale)}
             </h2>
 
             <div className="grid gap-3 sm:grid-cols-2">
-              {question.options.map((option, index) => {
+              {questionOptions.map((option, index) => {
                 const isSelected = selectedOption === index;
                 return (
                   <button
@@ -344,10 +346,10 @@ export function WorkshopSession({ initialState }: WorkshopSessionProps) {
         <Card>
           <CardContent className="animate-pop-in flex flex-col gap-6 py-8">
             <h2 className="text-center text-xl font-extrabold tracking-[-0.02em] text-ink">
-              {question.prompt}
+              {pick(question.prompt, locale)}
             </h2>
             <div className="grid gap-3 sm:grid-cols-2">
-              {question.options.map((option, index) => {
+              {questionOptions.map((option, index) => {
                 const isCorrectOption = index === question.correctIndex;
                 const wasMine = state.myLastAnswer?.selectedOption === index;
                 return (

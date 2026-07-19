@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { Card, CardContent } from "@/components/ui/Card";
 import { cn } from "@/lib/utils";
 
@@ -15,15 +15,16 @@ interface SliderFieldProps {
   onChange: (value: number) => void;
 }
 
+function formatWithUnit(value: number, unit: string): string {
+  return unit === "$" ? `${unit}${value}` : `${value}${unit}`;
+}
+
 function SliderField({ label, value, min, max, step, unit, onChange }: SliderFieldProps) {
   return (
     <div className="flex flex-col gap-2">
       <div className="flex items-center justify-between">
         <span className="text-sm font-bold text-ink">{label}</span>
-        <span className="text-sm font-black text-ink">
-          {value}
-          {unit}
-        </span>
+        <span className="text-sm font-black text-ink">{formatWithUnit(value, unit)}</span>
       </div>
       <input
         type="range"
@@ -35,14 +36,8 @@ function SliderField({ label, value, min, max, step, unit, onChange }: SliderFie
         className="h-2 w-full cursor-pointer appearance-none rounded-full bg-zinc-900/[0.08] accent-indigo-600"
       />
       <div className="flex justify-between text-[11px] font-medium text-ink-muted">
-        <span>
-          {min}
-          {unit}
-        </span>
-        <span>
-          {max}
-          {unit}
-        </span>
+        <span>{formatWithUnit(min, unit)}</span>
+        <span>{formatWithUnit(max, unit)}</span>
       </div>
     </div>
   );
@@ -83,6 +78,8 @@ function ResultTile({
 
 export function UnitEconomicsSimulator() {
   const t = useTranslations("workshops");
+  const locale = useLocale();
+  const currency = locale === "ru" ? "₽" : "$";
   const [price, setPrice] = useState(1500);
   const [cac, setCac] = useState(400);
   const [cogs, setCogs] = useState(600);
@@ -121,14 +118,14 @@ export function UnitEconomicsSimulator() {
         </div>
 
         <div className="grid gap-5 sm:grid-cols-2">
-          <SliderField label={t("priceLabel")} value={price} min={100} max={5000} step={50} unit="₽" onChange={setPrice} />
+          <SliderField label={t("priceLabel")} value={price} min={100} max={5000} step={50} unit={currency} onChange={setPrice} />
           <SliderField
             label={t("cacLabel")}
             value={cac}
             min={0}
             max={2000}
             step={10}
-            unit="₽"
+            unit={currency}
             onChange={setCac}
           />
           <SliderField
@@ -137,7 +134,7 @@ export function UnitEconomicsSimulator() {
             min={0}
             max={3000}
             step={10}
-            unit="₽"
+            unit={currency}
             onChange={setCogs}
           />
           <SliderField
@@ -152,11 +149,11 @@ export function UnitEconomicsSimulator() {
         </div>
 
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <ResultTile label={t("marginPerUnit")} value={`${grossMarginPerUnit}₽`} />
+          <ResultTile label={t("marginPerUnit")} value={formatWithUnit(grossMarginPerUnit, currency)} />
           <ResultTile label={t("marginPercent")} value={`${grossMarginPercent.toFixed(0)}%`} />
           <ResultTile
             label={t("profitPerUnit")}
-            value={`${profitPerUnit}₽`}
+            value={formatWithUnit(profitPerUnit, currency)}
             tone={isProfitable ? "success" : "danger"}
           />
           <ResultTile

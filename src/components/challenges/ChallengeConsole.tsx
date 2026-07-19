@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import { useGameProgress } from "@/lib/game-progress/GameProgressContext";
 import { INTEREST_OPTIONS } from "@/lib/constants";
 import { DIFFICULTY_META, type ChallengeDef } from "@/lib/challenges";
+import { pick } from "@/i18n/content";
 import type { ValidationResult } from "@/lib/challengeValidator";
 import { validateChallengeAnswerAction } from "@/lib/actions/challengeValidation";
 
@@ -84,6 +85,12 @@ export function ChallengeConsole({ challenge, onClose, skipValidation }: Challen
   const categoryOption = INTEREST_OPTIONS.find((option) => option.id === challenge.categoryId);
   const categoryLabel = categoryOption ? tInterests(categoryOption.labelKey) : "";
   const difficulty = DIFFICULTY_META[challenge.difficulty];
+  const questTitle = pick(challenge.questTitle, locale);
+  const scenario = pick(challenge.scenario, locale);
+  const insight = pick(challenge.insight, locale);
+  const quizQuestion = pick(challenge.quizQuestion, locale);
+  const correctAnswerHint = pick(challenge.correctAnswerHint, locale);
+  const actionPrompt = pick(challenge.actionPrompt, locale);
 
   useEffect(() => {
     if (step !== "checking") return;
@@ -93,10 +100,11 @@ export function ChallengeConsole({ challenge, onClose, skipValidation }: Challen
       const [validation] = await Promise.all([
         skipValidation
           ? Promise.resolve(AUTO_PASS_RESULT)
-          : validateChallengeAnswerAction(answer, challenge.markers, {
-              questTitle: challenge.questTitle,
-              scenario: challenge.scenario,
-              actionPrompt: challenge.actionPrompt,
+          : validateChallengeAnswerAction(answer, pick(challenge.markers, locale), {
+              questTitle,
+              scenario,
+              actionPrompt,
+              locale,
             }),
         new Promise((resolve) => setTimeout(resolve, CHECKING_DURATION_MS)),
       ]);
@@ -111,7 +119,7 @@ export function ChallengeConsole({ challenge, onClose, skipValidation }: Challen
 
       completeChallenge({
         challengeId: challenge.id,
-        title: challenge.questTitle.replace(/^Квест:\s*/, ""),
+        title: questTitle.replace(/^(Квест|Quest):\s*/, ""),
         emoji: challenge.emoji,
         categoryLabel,
         xp: challenge.xp,
@@ -126,7 +134,7 @@ export function ChallengeConsole({ challenge, onClose, skipValidation }: Challen
     return () => {
       cancelled = true;
     };
-  }, [step, answer, challenge, categoryLabel, completeChallenge, skipValidation]);
+  }, [step, answer, challenge, categoryLabel, completeChallenge, skipValidation, questTitle, scenario, actionPrompt, locale]);
 
   useEffect(() => {
     function handleKey(event: KeyboardEvent) {
@@ -196,15 +204,15 @@ export function ChallengeConsole({ challenge, onClose, skipValidation }: Challen
                   {t(difficulty.labelKey)}
                 </span>
                 <h2 className="text-xl font-black leading-tight tracking-[-0.02em] text-ink">
-                  {challenge.questTitle}
+                  {questTitle}
                 </h2>
               </div>
             </div>
             <p className="rounded-2xl bg-accent-soft px-4 py-3 text-sm italic leading-relaxed tracking-tight text-ink-secondary">
-              {challenge.scenario}
+              {scenario}
             </p>
             <p className="text-sm leading-relaxed tracking-tight text-ink-secondary">
-              {challenge.insight}
+              {insight}
             </p>
             <Button size="lg" onClick={() => setStep("quiz")} className="w-full">
               {t("next")}
@@ -215,7 +223,7 @@ export function ChallengeConsole({ challenge, onClose, skipValidation }: Challen
         {step === "quiz" && (
           <div className="animate-pop-in flex flex-col gap-5">
             <h2 className="text-xl font-extrabold tracking-[-0.02em] text-ink">
-              {challenge.quizQuestion}
+              {quizQuestion}
             </h2>
             <div className="flex flex-col gap-3">
               {challenge.quizOptions.map((option, index) => {
@@ -235,13 +243,13 @@ export function ChallengeConsole({ challenge, onClose, skipValidation }: Challen
                         "border-zinc-100/60 bg-white/70 text-ink-secondary hover:border-zinc-200 hover:text-ink"
                     )}
                   >
-                    {optionLabels[index]}) {option.text}
+                    {optionLabels[index]}) {pick(option.text, locale)}
                   </button>
                 );
               })}
             </div>
             {selectedOption && !selectedOption.isCorrect && (
-              <p className="text-xs font-medium text-danger">{challenge.correctAnswerHint}</p>
+              <p className="text-xs font-medium text-danger">{correctAnswerHint}</p>
             )}
             <Button
               size="lg"
@@ -257,7 +265,7 @@ export function ChallengeConsole({ challenge, onClose, skipValidation }: Challen
         {step === "reflection" && (
           <div className="animate-pop-in flex flex-col gap-5">
             <h2 className="text-xl font-extrabold tracking-[-0.02em] text-ink">
-              {challenge.actionPrompt}
+              {actionPrompt}
             </h2>
             <p className="text-xs tracking-tight text-ink-muted">
               {skipValidation ? t("warmupHint") : t("aiValidationHint")}

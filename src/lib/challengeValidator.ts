@@ -1,3 +1,6 @@
+import type { Locale } from "@/i18n/locale";
+import { pick, type Localized } from "@/i18n/content";
+
 export interface ValidationScore {
   depth: number;
   feasibility: number;
@@ -14,6 +17,7 @@ export interface ValidationResult {
 export interface ValidatorContext {
   questTitle: string;
   actionPrompt: string;
+  locale: Locale | string;
 }
 
 // 3-Tier Evaluation Framework
@@ -41,6 +45,13 @@ const GENERIC_PATTERNS: RegExp[] = [
   /не хочу думать/i,
   /^(да|нет|ну|окей|ок|норм)\.?$/i,
   /^(cool|nice|ok|okay|good|idk|dunno|whatever)\.?$/i,
+  /no idea/i,
+  /don'?t know/i,
+  /(^|\s)lazy(\s|$|[.,!?])/i,
+  /('ll|will) do (it|this) later/i,
+  /some ?day/i,
+  /doesn'?t matter/i,
+  /don'?t want to think/i,
 ];
 
 const KEYBOARD_MASH_PATTERNS = [
@@ -72,6 +83,15 @@ const FEASIBILITY_WORDS = [
   "тест",
   "бюджет",
   "срок",
+  "plan",
+  "step",
+  "week",
+  "start",
+  "launch",
+  "test",
+  "budget",
+  "deadline",
+  "check",
 ];
 
 const RISK_WORDS = [
@@ -86,6 +106,15 @@ const RISK_WORDS = [
   "но ",
   "однако",
   "если не",
+  "risk",
+  "problem",
+  "difficult",
+  "might not",
+  "may not",
+  "downside",
+  "competitor",
+  "however",
+  "if not",
 ];
 
 function tokenize(text: string): string[] {
@@ -158,9 +187,16 @@ function rejection(score: ValidationScore, reason: string): ValidationResult {
   return { passed: false, score, reason };
 }
 
+const SPAM_MESSAGE: Localized = {
+  en: "Spam or gibberish detected. Please write a real answer.",
+  ru: "Обнаружен спам или некорректный ввод. Напишите осмысленный ответ.",
+};
+
 function buildAbstractReason(context: ValidatorContext): string {
-  const topic = context.questTitle.replace(/^Квест:\s*/, "");
-  return `Слишком абстрактно для квеста «${topic}». Ответь конкретнее на задание: ${context.actionPrompt}`;
+  const topic = context.questTitle.replace(/^(Квест|Quest):\s*/, "");
+  return context.locale === "ru"
+    ? `Слишком абстрактно для квеста «${topic}». Ответь конкретнее на задание: ${context.actionPrompt}`
+    : `Too vague for the "${topic}" quest. Be more specific about the task: ${context.actionPrompt}`;
 }
 
 export function validateChallengeAnswer(
@@ -183,7 +219,7 @@ export function validateChallengeAnswer(
     hasLongConsonantRun(answer) ||
     uniqueWordRatio(words) < 0.4
   ) {
-    return rejection(spamScore, "Обнаружен спам или некорректный ввод. Напишите осмысленный ответ.");
+    return rejection(spamScore, pick(SPAM_MESSAGE, context.locale));
   }
 
   // Tier 2: Depth Check — real words, but too short or too generic to show any thinking.
@@ -203,7 +239,7 @@ export function validateChallengeAnswer(
   return {
     passed: true,
     score: { depth, feasibility, risk, average },
-    reason: buildPassReason(answer, depth, feasibility, risk),
+    reason: buildPassReason(answer, depth, feasibility, risk, context.locale),
   };
 }
 
@@ -223,19 +259,37 @@ function hashString(text: string): number {
 // No fixed wrapper sentence — the opener and closer are picked from independent pools
 // (deterministically, from the answer's own content) and the closer is always tied to
 // the actual weakest scoring dimension, so the critique reads differently every time
-// instead of always following the same "твоя идея ... выглядит жизнеспособно" template.
-const OPENERS: ((snippet: string) => string)[] = [
-  (s) => `«${s}» — с этого реально можно стартовать.`,
-  (s) => `Зацепило по делу: «${s}».`,
-  (s) => `Принято: «${s}» звучит как рабочая гипотеза.`,
-  (s) => `По существу — «${s}».`,
-  (s) => `Смотрю на «${s}»: ход мысли верный.`,
-];
+// instead of always following the same templated shape.
+const OPENERS: Localized<((snippet: string) => string)[]> = {
+  en: [
+    (s) => `"${s}" — that's a real place to start.`,
+    (s) => `That part landed: "${s}".`,
+    (s) => `Noted: "${s}" sounds like a workable hypothesis.`,
+    (s) => `Getting to the point — "${s}".`,
+    (s) => `Looking at "${s}": the thinking checks out.`,
+  ],
+  ru: [
+    (s) => `«${s}» — с этого реально можно стартовать.`,
+    (s) => `Зацепило по делу: «${s}».`,
+    (s) => `Принято: «${s}» звучит как рабочая гипотеза.`,
+    (s) => `По существу — «${s}».`,
+    (s) => `Смотрю на «${s}»: ход мысли верный.`,
+  ],
+};
 
-const WEAK_DIMENSION_NOTES: Record<"depth" | "feasibility" | "risk", string> = {
-  depth: "Только копни глубже — сейчас не хватает конкретики по сути идеи.",
-  feasibility: "Слабое место — реализуемость: распиши, что именно делаешь на первой неделе.",
-  risk: "Ты не проговорил риски — подумай, что может пойти не так и что тогда делать.",
+const WEAK_DIMENSION_NOTES: Record<"depth" | "feasibility" | "risk", Localized> = {
+  depth: {
+    en: "Just dig a little deeper — right now it's missing specifics about the idea itself.",
+    ru: "Только копни глубже — сейчас не хватает конкретики по сути идеи.",
+  },
+  feasibility: {
+    en: "The weak spot is feasibility: spell out exactly what you'd do in the first week.",
+    ru: "Слабое место — реализуемость: распиши, что именно делаешь на первой неделе.",
+  },
+  risk: {
+    en: "You didn't mention any risks — think about what could go wrong and what you'd do then.",
+    ru: "Ты не проговорил риски — подумай, что может пойти не так и что тогда делать.",
+  },
 };
 
 function pickWeakestDimension(depth: number, feasibility: number, risk: number): "depth" | "feasibility" | "risk" {
@@ -248,19 +302,31 @@ function pickWeakestDimension(depth: number, feasibility: number, risk: number):
   return entries[0][0];
 }
 
-function buildPassReason(answer: string, depth: number, feasibility: number, risk: number): string {
+const STRONG_ACROSS_BOARD: Localized = {
+  en: "Strong across the board right away — keep pushing in this direction.",
+  ru: "Сильно сразу по всем фронтам — двигайся дальше в этом направлении.",
+};
+
+function buildPassReason(
+  answer: string,
+  depth: number,
+  feasibility: number,
+  risk: number,
+  locale: Locale | string
+): string {
   const sentences = answer
     .split(/[.!?\n]+/)
     .map((s) => s.trim())
     .filter((s) => s.length > 4);
   const snippet = truncateSnippet(sentences[0] ?? answer);
 
-  const opener = OPENERS[hashString(answer) % OPENERS.length](snippet);
+  const openers = pick(OPENERS, locale);
+  const opener = openers[hashString(answer) % openers.length](snippet);
   const minScore = Math.min(depth, feasibility, risk);
   const closer =
     minScore >= 9
-      ? "Сильно сразу по всем фронтам — двигайся дальше в этом направлении."
-      : WEAK_DIMENSION_NOTES[pickWeakestDimension(depth, feasibility, risk)];
+      ? pick(STRONG_ACROSS_BOARD, locale)
+      : pick(WEAK_DIMENSION_NOTES[pickWeakestDimension(depth, feasibility, risk)], locale);
 
   return `${opener} ${closer}`;
 }

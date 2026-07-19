@@ -1,6 +1,6 @@
 "use client";
 
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { useGameProgress } from "@/lib/game-progress/GameProgressContext";
@@ -8,11 +8,12 @@ import { getCourseProgress } from "@/constants/courses";
 
 export function CourseProgressCard() {
   const t = useTranslations("dashboard");
+  const locale = useLocale();
   const { completions, isReady } = useGameProgress();
 
   if (!isReady) return null;
 
-  const progress = getCourseProgress(completions);
+  const progress = getCourseProgress(completions, locale);
 
   return (
     <Card>
@@ -26,7 +27,9 @@ export function CourseProgressCard() {
               {progress.activeModuleTitle || t("courseFallback")}
             </span>
             <h3 className="text-xl font-extrabold leading-tight tracking-[-0.02em] text-ink">
-              {progress.currentLessonTitle || t("startFirstLesson")}
+              {progress.allDone
+                ? t("allLessonsDone")
+                : progress.currentLessonTitle || t("startFirstLesson")}
             </h3>
           </div>
         </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { CheckIcon } from "@/components/ui/icons";
@@ -52,11 +52,12 @@ function PlanRow({ item }: { item: PlanItem }) {
 
 export function DailyPlanCard() {
   const t = useTranslations("dashboard");
+  const locale = useLocale();
   const { completions, isReady } = useGameProgress();
 
   if (!isReady) return null;
 
-  const courseProgress = getCourseProgress(completions);
+  const courseProgress = getCourseProgress(completions, locale);
   const today = todayStamp();
   const completedToday = completions.some((c) => c.completedAt.startsWith(today));
   const recommendation = recommendNextQuest(completions);

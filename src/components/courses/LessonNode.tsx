@@ -1,7 +1,8 @@
 "use client";
 
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
+import { pick } from "@/i18n/content";
 import type { CourseLesson } from "@/constants/courses";
 
 interface LessonNodeProps {
@@ -15,6 +16,8 @@ interface LessonNodeProps {
 
 export function LessonNode({ lesson, unlocked, completed, isActive, offset, onOpen }: LessonNodeProps) {
   const t = useTranslations("courses");
+  const locale = useLocale();
+  const title = pick(lesson.title, locale);
 
   return (
     <div
@@ -25,7 +28,7 @@ export function LessonNode({ lesson, unlocked, completed, isActive, offset, onOp
         type="button"
         disabled={!unlocked}
         onClick={onOpen}
-        aria-label={unlocked ? lesson.title : t("lessonLockedAria", { title: lesson.title })}
+        aria-label={unlocked ? title : t("lessonLockedAria", { title })}
         className={cn(
           "flex h-20 w-20 items-center justify-center rounded-full text-3xl transition-all duration-300 ease-out",
           completed &&
@@ -44,7 +47,7 @@ export function LessonNode({ lesson, unlocked, completed, isActive, offset, onOp
             unlocked ? "text-ink" : "text-ink-muted"
           )}
         >
-          {lesson.title}
+          {title}
         </span>
         <span className="text-[10px] font-medium text-ink-muted">+{lesson.xpReward} XP</span>
       </div>

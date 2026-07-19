@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useState, type ReactNode } from "react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { cn } from "@/lib/utils";
+import { pick } from "@/i18n/content";
 import { GLOSSARY, type VideoCourse } from "@/constants/data";
 
 interface LearnProgress {
@@ -108,7 +109,13 @@ interface VideoCardProps {
 
 export function VideoCard({ video }: VideoCardProps) {
   const t = useTranslations("learn");
-  const [progress, setProgress] = useState<LearnProgress>(() => emptyProgress(video.checklist.length));
+  const locale = useLocale();
+  const title = pick(video.title, locale);
+  const moduleName = pick(video.module, locale);
+  const description = pick(video.description, locale);
+  const checklist = pick(video.checklist, locale);
+  const takeaway = pick(video.takeaway, locale);
+  const [progress, setProgress] = useState<LearnProgress>(() => emptyProgress(checklist.length));
   const [isReady, setIsReady] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
   const [thumbnailFailed, setThumbnailFailed] = useState(false);
@@ -118,9 +125,9 @@ export function VideoCard({ video }: VideoCardProps) {
     // Reads localStorage (unavailable during SSR) — must run post-mount, not
     // during render, to keep the first client render matching the server's.
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    setProgress(loadProgress(video.id, video.checklist.length));
+    setProgress(loadProgress(video.id, checklist.length));
     setIsReady(true);
-  }, [video.id, video.checklist.length]);
+  }, [video.id, checklist.length]);
 
   useEffect(() => {
     if (!isReady) return;
@@ -145,7 +152,7 @@ export function VideoCard({ video }: VideoCardProps) {
             <iframe
               className="h-full w-full"
               src={`${video.videoUrl}?autoplay=1`}
-              title={video.title}
+              title={title}
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
               allowFullScreen
               loading="lazy"
@@ -154,7 +161,7 @@ export function VideoCard({ video }: VideoCardProps) {
             <button
               type="button"
               onClick={() => setIsLoaded(true)}
-              aria-label={t("playVideo", { title: video.title })}
+              aria-label={t("playVideo", { title })}
               className="group relative h-full w-full"
             >
               {videoId && !thumbnailFailed ? (
@@ -177,7 +184,7 @@ export function VideoCard({ video }: VideoCardProps) {
                     🎬
                   </span>
                   <span className="line-clamp-2 text-sm font-semibold text-white/90">
-                    {video.title}
+                    {title}
                   </span>
                 </div>
               )}
@@ -195,11 +202,11 @@ export function VideoCard({ video }: VideoCardProps) {
             <Badge variant={video.source === "en" ? "accent" : "outline"}>
               {video.source === "en" ? "EN · Y Combinator" : t("sourceRuBadge")}
             </Badge>
-            <Badge variant="outline">{t("module", { module: video.module })}</Badge>
+            <Badge variant="outline">{t("module", { module: moduleName })}</Badge>
           </div>
-          <h3 className="text-lg font-extrabold leading-tight tracking-[-0.02em] text-ink">{video.title}</h3>
+          <h3 className="text-lg font-extrabold leading-tight tracking-[-0.02em] text-ink">{title}</h3>
           <p className="text-sm tracking-tight text-ink-secondary">
-            {renderDescriptionWithTerms(video.description)}
+            {locale === "ru" ? renderDescriptionWithTerms(description) : description}
           </p>
         </div>
 
@@ -209,12 +216,12 @@ export function VideoCard({ video }: VideoCardProps) {
               {t("yourTakeaway")}
             </span>
             <span className="text-xs font-bold text-ink-muted">
-              {completedCount}/{video.checklist.length}
+              {completedCount}/{checklist.length}
             </span>
           </div>
 
           <ul className="flex flex-col gap-2">
-            {video.checklist.map((item, index) => {
+            {checklist.map((item, index) => {
               const checked = progress.checked[index] ?? false;
               return (
                 <li key={index}>
@@ -248,7 +255,7 @@ export function VideoCard({ video }: VideoCardProps) {
           </ul>
 
           <div className="flex flex-col gap-1.5 pt-1">
-            <label className="text-xs font-semibold text-ink-secondary">{video.takeaway}</label>
+            <label className="text-xs font-semibold text-ink-secondary">{takeaway}</label>
             <textarea
               value={progress.reflection}
               onChange={(event) => setProgress((prev) => ({ ...prev, reflection: event.target.value }))}

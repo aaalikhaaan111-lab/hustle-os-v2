@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/utils";
 import { useGameProgress } from "@/lib/game-progress/GameProgressContext";
 import { InteractiveSimulation } from "@/components/courses/InteractiveSimulation";
+import { pick } from "@/i18n/content";
 import type { CourseLesson } from "@/constants/courses";
 
 type ConsoleStep = "theory" | "quiz" | "simulation" | "victory";
@@ -46,6 +47,7 @@ export function LessonConsole({ lesson, onClose }: LessonConsoleProps) {
   const [questionIndex, setQuestionIndex] = useState(0);
   const [selection, setSelection] = useState<number | null>(null);
 
+  const lessonTitle = pick(lesson.title, locale);
   const slide = lesson.slides[slideIndex];
   const isLastSlide = slideIndex === lesson.slides.length - 1;
   const question = lesson.type === "quiz" ? lesson.quiz[questionIndex] : null;
@@ -56,7 +58,7 @@ export function LessonConsole({ lesson, onClose }: LessonConsoleProps) {
     if (step !== "victory") return;
     completeChallenge({
       challengeId: lesson.id,
-      title: lesson.title,
+      title: lessonTitle,
       emoji: lesson.emoji,
       categoryLabel: t("categoryLabel"),
       xp: lesson.xpReward,
@@ -152,12 +154,12 @@ export function LessonConsole({ lesson, onClose }: LessonConsoleProps) {
                   {t("microTheory", { current: slideIndex + 1, total: lesson.slides.length })}
                 </span>
                 <h2 className="text-xl font-black leading-tight tracking-[-0.02em] text-ink">
-                  {slide.title}
+                  {pick(slide.title, locale)}
                 </h2>
               </div>
             </div>
             <p className="rounded-2xl bg-accent-soft px-4 py-3 text-sm leading-relaxed tracking-tight text-ink-secondary">
-              {slide.body}
+              {pick(slide.body, locale)}
             </p>
             <Button size="lg" onClick={handleNextSlide} className="w-full">
               {!isLastSlide
@@ -175,7 +177,7 @@ export function LessonConsole({ lesson, onClose }: LessonConsoleProps) {
               {t("knowledgeCheck", { current: questionIndex + 1, total: lesson.quiz.length })}
             </span>
             <h2 className="text-xl font-extrabold tracking-[-0.02em] text-ink">
-              {question.question}
+              {pick(question.question, locale)}
             </h2>
             <div className="flex flex-col gap-3">
               {question.options.map((option, index) => {
@@ -195,7 +197,7 @@ export function LessonConsole({ lesson, onClose }: LessonConsoleProps) {
                         "border-zinc-100/60 bg-white/70 text-ink-secondary hover:border-zinc-200 hover:text-ink"
                     )}
                   >
-                    {optionLabels[index]}) {option.text}
+                    {optionLabels[index]}) {pick(option.text, locale)}
                   </button>
                 );
               })}
@@ -219,11 +221,11 @@ export function LessonConsole({ lesson, onClose }: LessonConsoleProps) {
             <span className="inline-flex w-fit items-center rounded-full bg-gradient-to-tr from-indigo-50 to-pink-50 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-[0.12em] text-indigo-600 ring-1 ring-inset ring-indigo-100">
               {t("simulationBadge")}
             </span>
-            <h2 className="text-xl font-extrabold tracking-[-0.02em] text-ink">{lesson.title}</h2>
+            <h2 className="text-xl font-extrabold tracking-[-0.02em] text-ink">{lessonTitle}</h2>
             {lesson.videoUrl && (
               <iframe
                 src={lesson.videoUrl}
-                title={lesson.title}
+                title={lessonTitle}
                 className="aspect-video w-full rounded-2xl"
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                 allowFullScreen
@@ -243,7 +245,7 @@ export function LessonConsole({ lesson, onClose }: LessonConsoleProps) {
               {t("xpEarned", { xp: lesson.xpReward })}
             </span>
             <p className="text-sm leading-relaxed tracking-tight text-ink-secondary">
-              {t("lessonClosedNote", { title: lesson.title })}
+              {t("lessonClosedNote", { title: lessonTitle })}
             </p>
             <Button size="lg" variant="secondary" onClick={onClose} className="mt-2 w-full">
               {t("close")}

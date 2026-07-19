@@ -1,6 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { getTranslations } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
 import { calculateAwardedPoints, generateSessionCode, getWorkshopPack } from "@/lib/workshops";
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -8,6 +9,7 @@ import type { Database } from "@/types/supabase";
 
 type Client = SupabaseClient<Database>;
 type SessionRow = Database["public"]["Tables"]["workshop_sessions"]["Row"];
+type Translator = Awaited<ReturnType<typeof getTranslations>>;
 
 const ANSWER_GRACE_MS = 1500; // network latency tolerance on top of the question's time limit
 const MAX_CODE_ATTEMPTS = 5;
@@ -54,9 +56,9 @@ async function loadSessionById(supabase: Client, sessionId: string) {
   return supabase.from("workshop_sessions").select("*").eq("id", sessionId).maybeSingle();
 }
 
-function assertHost(session: SessionRow, userId: string): string | null {
+function assertHost(session: SessionRow, userId: string, t: Translator): string | null {
   if (session.host_id !== userId) {
-    return "Только хост сессии может это сделать.";
+    return t("hostOnly");
   }
   return null;
 }
@@ -79,15 +81,16 @@ async function setCurrentQuestion(supabase: Client, sessionId: string, questionI
 export async function createWorkshopSessionAction(
   workshopSlug: string
 ): Promise<{ error: string | null }> {
+  const t = await getTranslations("workshops");
   const pack = getWorkshopPack(workshopSlug);
   if (!pack) {
-    return { error: "Неизвестный воркшоп." };
+    return { error: t("unknownWorkshop") };
   }
 
   const supabase = await createClient();
   const user = await requireUser(supabase);
   if (!user) {
-    return { error: "Твоя сессия истекла. Войди снова." };
+    return { error: t("sessionExpired") };
   }
 
   const { data: profile } = await supabase
@@ -95,7 +98,7 @@ export async function createWorkshopSessionAction(
     .select("display_name")
     .eq("id", user.id)
     .maybeSingle();
-  const displayName = profile?.display_name?.trim() || user.email?.split("@")[0] || "Хост";
+  const displayName = profile?.display_name?.trim() || user.email?.split("@")[0] || t("defaultHostName");
 
   let code = "";
   let sessionId: string | null = null;
@@ -115,12 +118,12 @@ export async function createWorkshopSessionAction(
     }
     if (error && error.code !== "23505") {
       console.error("createWorkshopSessionAction: insert workshop_sessions failed:", error);
-      return { error: "Не удалось создать сессию. Попробуй ещё раз." };
+      return { error: t("createSessionFailed") };
     }
   }
 
   if (!sessionId) {
-    return { error: "Не удалось подобрать код сессии. Попробуй ещё раз." };
+    return { error: t("codeGenerationFailed") };
   }
 
   const { error: joinError } = await supabase
@@ -129,7 +132,7 @@ export async function createWorkshopSessionAction(
 
   if (joinError) {
     console.error("createWorkshopSessionAction: insert workshop_participants failed:", joinError);
-    return { error: "Сессия создана, но не удалось присоединить хоста как игрока." };
+    return { error: t("hostJoinFailed") };
   }
 
   redirect(`/workshops/${code}`);
@@ -142,20 +145,21 @@ export async function joinWorkshopSessionAction(
   code: string,
   displayName: string
 ): Promise<{ error: string | null }> {
+  const t = await getTranslations("workshops");
   const trimmedCode = code.trim().toUpperCase();
   if (!trimmedCode) {
-    return { error: "Введи код сессии." };
+    return { error: t("enterCode") };
   }
 
   const supabase = await createClient();
   const user = await requireUser(supabase);
   if (!user) {
-    return { error: "Твоя сессия истекла. Войди снова." };
+    return { error: t("sessionExpired") };
   }
 
   const { data: session, error: sessionError } = await loadSessionByCode(supabase, trimmedCode);
   if (sessionError || !session) {
-    return { error: "Сессия с таким кодом не найдена." };
+    return { error: t("sessionNotFoundByCode") };
   }
 
   const { data: existingParticipant } = await supabase
@@ -170,10 +174,10 @@ export async function joinWorkshopSessionAction(
   }
 
   if (session.status !== "lobby") {
-    return { error: "Игра уже началась — присоединиться нельзя." };
+    return { error: t("gameAlreadyStarted") };
   }
 
-  const name = displayName.trim() || user.email?.split("@")[0] || "Игрок";
+  const name = displayName.trim() || user.email?.split("@")[0] || t("defaultPlayerName");
 
   const { error: joinError } = await supabase
     .from("workshop_participants")
@@ -181,7 +185,7 @@ export async function joinWorkshopSessionAction(
 
   if (joinError) {
     console.error("joinWorkshopSessionAction: insert workshop_participants failed:", joinError);
-    return { error: "Не удалось присоединиться. Попробуй ещё раз." };
+    return { error: t("joinFailed") };
   }
 
   redirect(`/workshops/${session.code}`);
@@ -193,15 +197,16 @@ export async function joinWorkshopSessionAction(
 export async function getWorkshopSessionStateAction(
   code: string
 ): Promise<{ error: string | null; data: WorkshopSessionState | null }> {
+  const t = await getTranslations("workshops");
   const supabase = await createClient();
   const user = await requireUser(supabase);
   if (!user) {
-    return { error: "Твоя сессия истекла. Войди снова.", data: null };
+    return { error: t("sessionExpired"), data: null };
   }
 
   const { data: session, error: sessionError } = await loadSessionByCode(supabase, code);
   if (sessionError || !session) {
-    return { error: "Сессия с таким кодом не найдена.", data: null };
+    return { error: t("sessionNotFoundByCode"), data: null };
   }
 
   const [{ data: participants }, { data: answers }] = await Promise.all([
@@ -277,18 +282,19 @@ export async function getWorkshopSessionStateAction(
 // 4. Start session (host, lobby -> question 0)
 // ─────────────────────────────────────────────────────────────────────────
 export async function startWorkshopSessionAction(sessionId: string): Promise<{ error: string | null }> {
+  const t = await getTranslations("workshops");
   const supabase = await createClient();
   const user = await requireUser(supabase);
-  if (!user) return { error: "Твоя сессия истекла. Войди снова." };
+  if (!user) return { error: t("sessionExpired") };
 
   const { data: session, error: sessionError } = await loadSessionById(supabase, sessionId);
-  if (sessionError || !session) return { error: "Сессия не найдена." };
+  if (sessionError || !session) return { error: t("sessionNotFound") };
 
-  const hostError = assertHost(session, user.id);
+  const hostError = assertHost(session, user.id, t);
   if (hostError) return { error: hostError };
 
   if (session.status !== "lobby") {
-    return { error: "Сессия уже началась." };
+    return { error: t("sessionAlreadyStarted") };
   }
 
   const { count } = await supabase
@@ -297,13 +303,13 @@ export async function startWorkshopSessionAction(sessionId: string): Promise<{ e
     .eq("session_id", sessionId);
 
   if (!count || count === 0) {
-    return { error: "В лобби нет участников." };
+    return { error: t("noParticipants") };
   }
 
   const { error } = await setCurrentQuestion(supabase, sessionId, 0);
   if (error) {
     console.error("startWorkshopSessionAction: setCurrentQuestion failed:", error);
-    return { error: "Не удалось начать сессию." };
+    return { error: t("startFailed") };
   }
   return { error: null };
 }
@@ -315,25 +321,26 @@ export async function startWorkshopQuestionAction(
   sessionId: string,
   questionIndex: number
 ): Promise<{ error: string | null }> {
+  const t = await getTranslations("workshops");
   const supabase = await createClient();
   const user = await requireUser(supabase);
-  if (!user) return { error: "Твоя сессия истекла. Войди снова." };
+  if (!user) return { error: t("sessionExpired") };
 
   const { data: session, error: sessionError } = await loadSessionById(supabase, sessionId);
-  if (sessionError || !session) return { error: "Сессия не найдена." };
+  if (sessionError || !session) return { error: t("sessionNotFound") };
 
-  const hostError = assertHost(session, user.id);
+  const hostError = assertHost(session, user.id, t);
   if (hostError) return { error: hostError };
 
   const pack = getWorkshopPack(session.workshop_slug);
   if (!pack || questionIndex < 0 || questionIndex >= pack.questions.length) {
-    return { error: "Такого вопроса нет в этом воркшопе." };
+    return { error: t("questionNotFound") };
   }
 
   const { error } = await setCurrentQuestion(supabase, sessionId, questionIndex);
   if (error) {
     console.error("startWorkshopQuestionAction: setCurrentQuestion failed:", error);
-    return { error: "Не удалось запустить вопрос." };
+    return { error: t("startQuestionFailed") };
   }
   return { error: null };
 }
@@ -346,34 +353,35 @@ export async function submitWorkshopAnswerAction(
   questionIndex: number,
   selectedOption: number
 ): Promise<{ error: string | null; isCorrect?: boolean; pointsAwarded?: number }> {
+  const t = await getTranslations("workshops");
   const supabase = await createClient();
   const user = await requireUser(supabase);
-  if (!user) return { error: "Твоя сессия истекла. Войди снова." };
+  if (!user) return { error: t("sessionExpired") };
 
   const { data: session, error: sessionError } = await loadSessionById(supabase, sessionId);
-  if (sessionError || !session) return { error: "Сессия не найдена." };
+  if (sessionError || !session) return { error: t("sessionNotFound") };
 
   if (session.status !== "question" || session.current_question_index !== questionIndex) {
-    return { error: "Этот вопрос больше не активен." };
+    return { error: t("questionNotActive") };
   }
 
   if (!session.question_started_at) {
-    return { error: "Вопрос ещё не запущен." };
+    return { error: t("questionNotStarted") };
   }
 
   const pack = getWorkshopPack(session.workshop_slug);
   const question = pack?.questions[questionIndex];
   if (!pack || !question) {
-    return { error: "Вопрос не найден." };
+    return { error: t("questionMissing") };
   }
 
   const elapsedMs = Date.now() - new Date(session.question_started_at).getTime();
   if (elapsedMs > question.timeLimitSeconds * 1000 + ANSWER_GRACE_MS) {
-    return { error: "Время вышло — ответ не засчитан." };
+    return { error: t("timeUp") };
   }
 
-  if (selectedOption < 0 || selectedOption >= question.options.length) {
-    return { error: "Некорректный вариант ответа." };
+  if (selectedOption < 0 || selectedOption >= question.options.en.length) {
+    return { error: t("invalidOption") };
   }
 
   const { data: participant } = await supabase
@@ -384,7 +392,7 @@ export async function submitWorkshopAnswerAction(
     .maybeSingle();
 
   if (!participant) {
-    return { error: "Ты не участник этой сессии." };
+    return { error: t("notParticipant") };
   }
 
   const isCorrect = selectedOption === question.correctIndex;
@@ -402,10 +410,10 @@ export async function submitWorkshopAnswerAction(
 
   if (insertError) {
     if (insertError.code === "23505") {
-      return { error: "Ты уже ответил на этот вопрос." };
+      return { error: t("alreadyAnswered") };
     }
     console.error("submitWorkshopAnswerAction: insert workshop_answers failed:", insertError);
-    return { error: "Не удалось отправить ответ." };
+    return { error: t("submitFailed") };
   }
 
   return { error: null, isCorrect, pointsAwarded };
@@ -415,18 +423,19 @@ export async function submitWorkshopAnswerAction(
 // 7. Reveal answer (host, question -> reveal)
 // ─────────────────────────────────────────────────────────────────────────
 export async function revealWorkshopAnswerAction(sessionId: string): Promise<{ error: string | null }> {
+  const t = await getTranslations("workshops");
   const supabase = await createClient();
   const user = await requireUser(supabase);
-  if (!user) return { error: "Твоя сессия истекла. Войди снова." };
+  if (!user) return { error: t("sessionExpired") };
 
   const { data: session, error: sessionError } = await loadSessionById(supabase, sessionId);
-  if (sessionError || !session) return { error: "Сессия не найдена." };
+  if (sessionError || !session) return { error: t("sessionNotFound") };
 
-  const hostError = assertHost(session, user.id);
+  const hostError = assertHost(session, user.id, t);
   if (hostError) return { error: hostError };
 
   if (session.status !== "question") {
-    return { error: "Сейчас нельзя раскрыть ответ." };
+    return { error: t("cannotRevealNow") };
   }
 
   const { error } = await supabase
@@ -436,7 +445,7 @@ export async function revealWorkshopAnswerAction(sessionId: string): Promise<{ e
 
   if (error) {
     console.error("revealWorkshopAnswerAction: update workshop_sessions failed:", error);
-    return { error: "Не удалось раскрыть ответ." };
+    return { error: t("revealFailed") };
   }
   return { error: null };
 }
@@ -445,30 +454,31 @@ export async function revealWorkshopAnswerAction(sessionId: string): Promise<{ e
 // 8. Advance to next question (host, reveal -> question N+1)
 // ─────────────────────────────────────────────────────────────────────────
 export async function advanceWorkshopQuestionAction(sessionId: string): Promise<{ error: string | null }> {
+  const t = await getTranslations("workshops");
   const supabase = await createClient();
   const user = await requireUser(supabase);
-  if (!user) return { error: "Твоя сессия истекла. Войди снова." };
+  if (!user) return { error: t("sessionExpired") };
 
   const { data: session, error: sessionError } = await loadSessionById(supabase, sessionId);
-  if (sessionError || !session) return { error: "Сессия не найдена." };
+  if (sessionError || !session) return { error: t("sessionNotFound") };
 
-  const hostError = assertHost(session, user.id);
+  const hostError = assertHost(session, user.id, t);
   if (hostError) return { error: hostError };
 
   if (session.status !== "reveal") {
-    return { error: "Сейчас нельзя перейти к следующему вопросу." };
+    return { error: t("cannotAdvanceNow") };
   }
 
   const pack = getWorkshopPack(session.workshop_slug);
   const nextIndex = session.current_question_index + 1;
   if (!pack || nextIndex >= pack.questions.length) {
-    return { error: "Это был последний вопрос — заверши сессию." };
+    return { error: t("lastQuestionFinish") };
   }
 
   const { error } = await setCurrentQuestion(supabase, sessionId, nextIndex);
   if (error) {
     console.error("advanceWorkshopQuestionAction: setCurrentQuestion failed:", error);
-    return { error: "Не удалось перейти к следующему вопросу." };
+    return { error: t("advanceFailed") };
   }
   return { error: null };
 }
@@ -477,18 +487,19 @@ export async function advanceWorkshopQuestionAction(sessionId: string): Promise<
 // 9. Finish session (host, reveal -> finished)
 // ─────────────────────────────────────────────────────────────────────────
 export async function finishWorkshopSessionAction(sessionId: string): Promise<{ error: string | null }> {
+  const t = await getTranslations("workshops");
   const supabase = await createClient();
   const user = await requireUser(supabase);
-  if (!user) return { error: "Твоя сессия истекла. Войди снова." };
+  if (!user) return { error: t("sessionExpired") };
 
   const { data: session, error: sessionError } = await loadSessionById(supabase, sessionId);
-  if (sessionError || !session) return { error: "Сессия не найдена." };
+  if (sessionError || !session) return { error: t("sessionNotFound") };
 
-  const hostError = assertHost(session, user.id);
+  const hostError = assertHost(session, user.id, t);
   if (hostError) return { error: hostError };
 
   if (session.status !== "reveal" && session.status !== "question") {
-    return { error: "Сессию нельзя завершить сейчас." };
+    return { error: t("cannotFinishNow") };
   }
 
   const { error } = await supabase
@@ -498,7 +509,7 @@ export async function finishWorkshopSessionAction(sessionId: string): Promise<{ 
 
   if (error) {
     console.error("finishWorkshopSessionAction: update workshop_sessions failed:", error);
-    return { error: "Не удалось завершить сессию." };
+    return { error: t("finishFailed") };
   }
   return { error: null };
 }

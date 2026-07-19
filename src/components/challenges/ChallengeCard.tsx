@@ -1,12 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { Button } from "@/components/ui/Button";
 import { Card, CardContent } from "@/components/ui/Card";
 import { ChallengeConsole } from "@/components/challenges/ChallengeConsole";
 import { useGameProgress } from "@/lib/game-progress/GameProgressContext";
 import { DIFFICULTY_META, type ChallengeDef } from "@/lib/challenges";
+import { pick } from "@/i18n/content";
 import { cn } from "@/lib/utils";
 
 interface ChallengeCardProps {
@@ -17,6 +18,7 @@ interface ChallengeCardProps {
 
 export function ChallengeCard({ challenge, categoryLabel, initialOpen = false }: ChallengeCardProps) {
   const t = useTranslations("challenges");
+  const locale = useLocale();
   const { isReady, isChallengeCompleted } = useGameProgress();
   const [isOpen, setIsOpen] = useState(initialOpen);
 
@@ -51,11 +53,11 @@ export function ChallengeCard({ challenge, categoryLabel, initialOpen = false }:
               {challenge.emoji}
             </span>
             <h3 className="text-xl font-extrabold leading-tight tracking-[-0.02em] text-ink">
-              {challenge.questTitle}
+              {pick(challenge.questTitle, locale)}
             </h3>
           </div>
 
-          <p className="text-sm tracking-tight text-ink-secondary">{challenge.description}</p>
+          <p className="text-sm tracking-tight text-ink-secondary">{pick(challenge.description, locale)}</p>
 
           <Button
             type="button"

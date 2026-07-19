@@ -1,12 +1,13 @@
 import { redirect } from "next/navigation";
 import dynamic from "next/dynamic";
-import { getTranslations } from "next-intl/server";
+import { getLocale, getTranslations } from "next-intl/server";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Card, CardContent } from "@/components/ui/Card";
 import { SkeletonCard } from "@/components/ui/Skeleton";
 import { CreateSessionButton } from "@/components/workshops/CreateSessionButton";
 import { JoinSessionForm } from "@/components/workshops/JoinSessionForm";
 import { WORKSHOP_PACKS } from "@/lib/workshops";
+import { pick } from "@/i18n/content";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/supabase/currentUser";
 
@@ -67,6 +68,7 @@ export default async function WorkshopsPage() {
   const defaultDisplayName = profile?.display_name?.trim() || user.email?.split("@")[0] || "";
 
   const t = await getTranslations("workshops");
+  const locale = await getLocale();
 
   return (
     <div className="flex flex-col gap-8">
@@ -96,9 +98,9 @@ export default async function WorkshopsPage() {
                 <CardContent className="flex h-full flex-col gap-3 py-6">
                   <span className="text-3xl">{pack.emoji}</span>
                   <h3 className="text-base font-extrabold leading-tight tracking-[-0.02em] text-ink">
-                    {pack.title}
+                    {pick(pack.title, locale)}
                   </h3>
-                  <p className="flex-1 text-xs tracking-tight text-ink-secondary">{pack.description}</p>
+                  <p className="flex-1 text-xs tracking-tight text-ink-secondary">{pick(pack.description, locale)}</p>
                   <p className="text-[11px] font-semibold text-ink-muted">
                     {t("questionsCount", { count: pack.questions.length })}
                   </p>

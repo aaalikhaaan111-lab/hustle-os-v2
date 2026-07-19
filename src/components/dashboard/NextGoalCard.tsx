@@ -1,11 +1,12 @@
 "use client";
 
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { useGameProgress } from "@/lib/game-progress/GameProgressContext";
 import { recommendNextQuest } from "@/lib/game-progress/recommendation";
 import { DIFFICULTY_META } from "@/lib/challenges";
+import { pick } from "@/i18n/content";
 import { cn } from "@/lib/utils";
 
 const DIMENSION_KEYS = {
@@ -17,6 +18,7 @@ const DIMENSION_KEYS = {
 export function NextGoalCard() {
   const t = useTranslations("dashboard");
   const tChallenges = useTranslations("challenges");
+  const locale = useLocale();
   const { completions, isReady } = useGameProgress();
 
   if (!isReady) return null;
@@ -73,12 +75,12 @@ export function NextGoalCard() {
               {tChallenges(difficulty.labelKey)}
             </span>
             <h3 className="text-lg font-extrabold leading-tight tracking-[-0.02em] text-ink">
-              {quest.questTitle}
+              {pick(quest.questTitle, locale)}
             </h3>
           </div>
         </div>
 
-        <p className="text-sm tracking-tight text-ink-secondary">{quest.description}</p>
+        <p className="text-sm tracking-tight text-ink-secondary">{pick(quest.description, locale)}</p>
 
         <Button href={`/challenges?open=${quest.id}`} size="lg" className="w-full sm:w-fit">
           {t("goToQuest")}
