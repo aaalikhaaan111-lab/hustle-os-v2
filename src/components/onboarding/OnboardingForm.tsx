@@ -9,6 +9,8 @@ import { cn } from "@/lib/utils";
 import { completeOnboardingAction } from "@/lib/actions/onboarding";
 import { INTEREST_OPTIONS, TOPIC_OPTIONS } from "@/lib/constants";
 import { OnboardingLoader } from "@/components/onboarding/OnboardingLoader";
+import { useGameProgress } from "@/lib/game-progress/GameProgressContext";
+import { startTour } from "@/lib/tour/tourStorage";
 
 const TIME_OPTIONS = [
   { minutes: 5, labelKey: "minutes5" },
@@ -22,6 +24,7 @@ const PHRASE_COUNT = 4;
 export function OnboardingForm() {
   const t = useTranslations("onboarding");
   const router = useRouter();
+  const { userId } = useGameProgress();
   const [interests, setInterests] = useState<string[]>([]);
   const [topics, setTopics] = useState<string[]>([]);
   const [dailyMinutes, setDailyMinutes] = useState<number | null>(null);
@@ -35,7 +38,11 @@ export function OnboardingForm() {
 
     if (phraseIndex >= PHRASE_COUNT - 1) {
       const timeout = setTimeout(() => {
-        router.push("/first-session");
+        // New user flow: guide them through the tour (which ends with an
+        // explicit offer to start the first challenge) before any challenge
+        // opens — so kick off the tour, then land on the dashboard.
+        if (userId) startTour(userId);
+        router.push("/dashboard");
       }, PHRASE_INTERVAL_MS);
       return () => clearTimeout(timeout);
     }
@@ -44,7 +51,7 @@ export function OnboardingForm() {
       setPhraseIndex((index) => index + 1);
     }, PHRASE_INTERVAL_MS);
     return () => clearTimeout(timeout);
-  }, [isGenerating, phraseIndex, router]);
+  }, [isGenerating, phraseIndex, router, userId]);
 
   function toggleInterest(id: string) {
     setInterests((prev) =>

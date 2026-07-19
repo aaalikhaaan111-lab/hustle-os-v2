@@ -4,7 +4,6 @@ import { useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { ChallengeConsole } from "@/components/challenges/ChallengeConsole";
 import { useGameProgress } from "@/lib/game-progress/GameProgressContext";
-import { startTour } from "@/lib/tour/tourStorage";
 import type { ChallengeDef } from "@/lib/challenges";
 
 interface FirstSessionFlowProps {
@@ -13,7 +12,7 @@ interface FirstSessionFlowProps {
 
 export function FirstSessionFlow({ firstChallenge }: FirstSessionFlowProps) {
   const router = useRouter();
-  const { isReady, isChallengeCompleted, userId } = useGameProgress();
+  const { isReady, isChallengeCompleted } = useGameProgress();
 
   // If this user already completed the seed challenge (e.g. they refreshed
   // after finishing, or navigated back here), don't replay it — just send
@@ -37,12 +36,8 @@ export function FirstSessionFlow({ firstChallenge }: FirstSessionFlowProps) {
       challenge={firstChallenge}
       skipValidation
       onClose={() => {
-        // Only kick off the guided tour if the challenge actually completed
-        // (the user might close early via Escape/backdrop click) — ProductTour
-        // (mounted globally) picks this up on its own next render.
-        if (isChallengeCompleted(firstChallenge.id) && userId) {
-          startTour(userId);
-        }
+        // The guided tour has already run (before this challenge was offered),
+        // so closing here just returns the user to the dashboard.
         router.push("/dashboard");
       }}
     />
