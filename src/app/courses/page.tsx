@@ -103,6 +103,10 @@ export default function CoursesPage() {
             })}
           </div>
 
+          <p className="-mt-2 text-xs leading-relaxed tracking-tight text-ink-muted">
+            {t("videosNote")}
+          </p>
+
           <div className="grid gap-6 sm:grid-cols-2">
             {filteredVideos.map((video) => (
               <VideoCard key={video.id} video={video} />
