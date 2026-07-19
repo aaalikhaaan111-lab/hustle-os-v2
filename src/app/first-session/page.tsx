@@ -18,7 +18,7 @@ export default async function FirstSessionPage() {
     .eq("id", user.id)
     .maybeSingle();
 
-  const primaryInterest = profile?.interests?.[0];
+  const primaryInterest = profile?.interests?.find((id) => !id.startsWith("topic:"));
   const categoryChallenges = primaryInterest
     ? CHALLENGE_CATALOG.filter((challenge) => challenge.categoryId === primaryInterest)
     : CHALLENGE_CATALOG;

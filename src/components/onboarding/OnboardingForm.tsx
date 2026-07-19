@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/Button";
 import { CheckIcon } from "@/components/ui/icons";
 import { cn } from "@/lib/utils";
 import { completeOnboardingAction } from "@/lib/actions/onboarding";
-import { INTEREST_OPTIONS } from "@/lib/constants";
+import { INTEREST_OPTIONS, TOPIC_OPTIONS } from "@/lib/constants";
 import { OnboardingLoader } from "@/components/onboarding/OnboardingLoader";
 
 const TIME_OPTIONS = [
@@ -23,6 +23,7 @@ export function OnboardingForm() {
   const t = useTranslations("onboarding");
   const router = useRouter();
   const [interests, setInterests] = useState<string[]>([]);
+  const [topics, setTopics] = useState<string[]>([]);
   const [dailyMinutes, setDailyMinutes] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -52,6 +53,12 @@ export function OnboardingForm() {
     setError(null);
   }
 
+  function toggleTopic(id: string) {
+    setTopics((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+    );
+  }
+
   function handleSubmit() {
     if (interests.length === 0) {
       setError(t("selectInterest"));
@@ -63,7 +70,7 @@ export function OnboardingForm() {
     }
     setError(null);
     startTransition(async () => {
-      const result = await completeOnboardingAction(interests, dailyMinutes);
+      const result = await completeOnboardingAction(interests, dailyMinutes, topics);
       if (result?.error) {
         setError(result.error);
         return;
@@ -108,6 +115,34 @@ export function OnboardingForm() {
                   <CheckIcon className="absolute right-3 top-3 h-4 w-4 text-accent" />
                 )}
                 <span className="text-xl" role="img" aria-hidden>
+                  {option.emoji}
+                </span>
+                {t(option.labelKey)}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-4">
+        <h2 className="text-base font-bold text-ink">{t("topicsQuestion")}</h2>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+          {TOPIC_OPTIONS.map((option) => {
+            const selected = topics.includes(option.id);
+            return (
+              <button
+                key={option.id}
+                type="button"
+                disabled={isPending}
+                onClick={() => toggleTopic(option.id)}
+                className={cn(
+                  "relative flex items-center gap-2 rounded-2xl border px-3.5 py-3 text-left text-sm font-semibold transition-all duration-300 ease-out hover:scale-[1.02] active:scale-[0.97] disabled:opacity-60 disabled:hover:scale-100",
+                  selected
+                    ? "border-accent bg-accent-soft text-accent shadow-[0_8px_20px_rgba(99,102,241,0.15)]"
+                    : "border-zinc-100/60 bg-white/70 text-ink-secondary shadow-sm backdrop-blur-md hover:border-zinc-200 hover:text-ink"
+                )}
+              >
+                <span className="text-lg" role="img" aria-hidden>
                   {option.emoji}
                 </span>
                 {t(option.labelKey)}

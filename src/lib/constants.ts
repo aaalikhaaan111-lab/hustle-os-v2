@@ -34,6 +34,46 @@ export const INTEREST_OPTIONS: InterestOption[] = [
   { id: "business-skills", labelKey: "interestBusinessSkills", emoji: "🛠️" },
 ];
 
+// The onboarding "What are you interested in?" answers are stored alongside the
+// existing "what to improve" interests in the same `profiles.interests` array
+// (no schema change), namespaced with this prefix so the two sets never collide
+// and readers of the improve-interests can filter these out. These topic tags
+// are collected only — they intentionally do NOT drive personalization.
+export const TOPIC_INTEREST_PREFIX = "topic:";
+
+export function isTopicInterest(id: string): boolean {
+  return id.startsWith(TOPIC_INTEREST_PREFIX);
+}
+
+export type TopicLabelKey =
+  | "topicBusiness"
+  | "topicTechnology"
+  | "topicContent"
+  | "topicDesign"
+  | "topicFinance"
+  | "topicGaming"
+  | "topicSports"
+  | "topicEducation"
+  | "topicOther";
+
+export interface TopicOption {
+  id: string;
+  labelKey: TopicLabelKey;
+  emoji: string;
+}
+
+export const TOPIC_OPTIONS: TopicOption[] = [
+  { id: "business", labelKey: "topicBusiness", emoji: "💼" },
+  { id: "technology", labelKey: "topicTechnology", emoji: "💻" },
+  { id: "content", labelKey: "topicContent", emoji: "🎬" },
+  { id: "design", labelKey: "topicDesign", emoji: "🎨" },
+  { id: "finance", labelKey: "topicFinance", emoji: "📈" },
+  { id: "gaming", labelKey: "topicGaming", emoji: "🎮" },
+  { id: "sports", labelKey: "topicSports", emoji: "⚽" },
+  { id: "education", labelKey: "topicEducation", emoji: "📚" },
+  { id: "other", labelKey: "topicOther", emoji: "✨" },
+];
+
 export const NAV_ITEMS: NavItem[] = [
   { labelKey: "dashboard", href: "/dashboard", icon: DashboardIcon },
   { labelKey: "challenges", href: "/challenges", icon: ChallengesIcon },

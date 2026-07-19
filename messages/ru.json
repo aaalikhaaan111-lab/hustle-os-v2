@@ -97,7 +97,19 @@
     "interestEntrepreneurship": "Предпринимательство",
     "interestPersonalFinance": "Личные финансы",
     "interestEconomics": "Экономика",
-    "interestBusinessSkills": "Бизнес-навыки"
+    "interestBusinessSkills": "Бизнес-навыки",
+    "topicsQuestion": "Чем ты интересуешься?",
+    "topicBusiness": "Бизнес",
+    "topicTechnology": "Технологии",
+    "topicContent": "Создание контента",
+    "topicDesign": "Дизайн",
+    "topicFinance": "Финансы",
+    "topicGaming": "Игры",
+    "topicSports": "Спорт",
+    "topicEducation": "Образование",
+    "topicOther": "Другое",
+    "errorSession": "Сессия истекла. Пожалуйста, войди снова.",
+    "errorSaveFailed": "Не удалось сохранить ответы. Попробуй ещё раз."
   },
   "tour": {
     "skip": "Пропустить тур",

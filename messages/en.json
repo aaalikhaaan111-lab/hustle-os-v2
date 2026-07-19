@@ -97,7 +97,19 @@
     "interestEntrepreneurship": "Entrepreneurship",
     "interestPersonalFinance": "Personal finance",
     "interestEconomics": "Economics",
-    "interestBusinessSkills": "Business skills"
+    "interestBusinessSkills": "Business skills",
+    "topicsQuestion": "What are you interested in?",
+    "topicBusiness": "Business",
+    "topicTechnology": "Technology",
+    "topicContent": "Content creation",
+    "topicDesign": "Design",
+    "topicFinance": "Finance",
+    "topicGaming": "Gaming",
+    "topicSports": "Sports",
+    "topicEducation": "Education",
+    "topicOther": "Other",
+    "errorSession": "Your session expired. Please log in again.",
+    "errorSaveFailed": "Couldn't save your answers. Please try again."
   },
   "tour": {
     "skip": "Skip tour",

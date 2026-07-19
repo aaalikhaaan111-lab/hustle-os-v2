@@ -10,7 +10,7 @@ import { LevelProgressCard } from "@/components/dashboard/LevelProgressCard";
 import { NextGoalCard } from "@/components/dashboard/NextGoalCard";
 import { ActivityFeedCard } from "@/components/dashboard/ActivityFeedCard";
 import { CourseProgressCard } from "@/components/dashboard/CourseProgressCard";
-import { INTEREST_OPTIONS } from "@/lib/constants";
+import { INTEREST_OPTIONS, isTopicInterest } from "@/lib/constants";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/supabase/currentUser";
 
@@ -36,7 +36,10 @@ export default async function DashboardPage() {
     .eq("id", user.id)
     .maybeSingle();
 
-  const interests = profile?.interests ?? [];
+  // Drop the "what are you interested in?" topic tags (namespaced with a
+  // prefix) — they're collected during onboarding but intentionally don't
+  // drive the personalized copy, which reflects the improve-interests only.
+  const interests = (profile?.interests ?? []).filter((id) => !isTopicInterest(id));
 
   const t = await getTranslations("dashboard");
   const tInterests = await getTranslations("onboarding");
