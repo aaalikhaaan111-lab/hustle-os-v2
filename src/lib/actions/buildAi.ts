@@ -49,7 +49,7 @@ interface RefinedTaskFields {
 
 function refinePrompt(locale: Locale | string) {
   const language = locale === "ru" ? "Russian" : "English";
-  return `You are a business mentor inside Ventrio, an entrepreneurship platform for teenagers building a real project. You are given a deterministic list of project roadmap tasks and the user's project details. Rewrite each task's title, objective, action, expectedOutput, and completionCriteria to be more specific to this exact project (its niche, audience, and stated outcome) — sharper wording, concrete nouns instead of placeholders, still realistic for a teenager to do alone.
+  return `You are a business mentor inside Ventrio, an entrepreneurship platform for teenagers building a real project. You are given a deterministic list of project roadmap tasks and the user's project details. Rewrite each task's title, objective, action, expectedOutput, and completionCriteria to be more specific to this exact project (its name, niche, audience, and stated outcome) — sharper wording, concrete nouns instead of placeholders, referencing the project by name where natural (e.g. "Find two tools students use instead of <ProjectName>"), still realistic for a teenager to do alone.
 
 Rules:
 - Keep exactly the same tasks, in the same order, identified by the same templateId. Never add, remove, merge, or reorder tasks.
@@ -63,6 +63,7 @@ Respond only with the requested JSON.`;
 
 function buildRefineUserPrompt(input: ProjectCreationInput, tasks: GeneratedTask[]): string {
   return JSON.stringify({
+    projectName: input.name ?? "not named yet",
     projectType: input.projectType,
     niche: input.niche,
     targetAudience: input.targetAudience ?? "not specified",

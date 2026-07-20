@@ -442,7 +442,11 @@
     "snapMainRisk": "Main risk",
     "snapOpen": "Open",
     "stageReady": "Ready",
-    "xpShort": "{xp} XP"
+    "xpShort": "{xp} XP",
+    "tailorTasks": "Tailor tasks to my project",
+    "tailoring": "Tailoring...",
+    "tailorDone": "Tasks tailored to your project.",
+    "tailorNoChange": "Your tasks are already specific to your project."
   },
   "workshops": {
     "title": "Play & Simulators",

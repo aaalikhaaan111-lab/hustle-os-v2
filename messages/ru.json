@@ -442,7 +442,11 @@
     "snapMainRisk": "Главный риск",
     "snapOpen": "Открыть",
     "stageReady": "Готово",
-    "xpShort": "{xp} XP"
+    "xpShort": "{xp} XP",
+    "tailorTasks": "Настроить задачи под мой проект",
+    "tailoring": "Настраиваем...",
+    "tailorDone": "Задачи настроены под твой проект.",
+    "tailorNoChange": "Задачи уже конкретны для твоего проекта."
   },
   "workshops": {
     "title": "Play и Симуляторы",

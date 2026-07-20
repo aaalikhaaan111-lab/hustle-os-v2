@@ -13,7 +13,17 @@ import {
 import { generatePathway } from "@/lib/build/pathwayTemplates";
 import { getActiveProject, getProjectOutputs, getProjectTasks, computeProgress } from "@/lib/build/queries";
 import { refineProjectPathwayAction, generateProjectSummaryAction } from "@/lib/actions/buildAi";
-import type { ProjectCreationInput, ProjectPitch, ProjectSummary } from "@/lib/build/types";
+import type {
+  GeneratedTask,
+  IntendedOutcome,
+  PathwayMode,
+  ProjectCreationInput,
+  ProjectPitch,
+  ProjectSummary,
+  ProjectType,
+  StartingStage,
+  TimeAvailability,
+} from "@/lib/build/types";
 
 const NAME_MAX_LENGTH = 80;
 const AUDIENCE_MAX_LENGTH = 200;
@@ -128,6 +138,107 @@ export async function createProjectAction(input: ProjectCreationInput): Promise<
   revalidatePath("/dashboard");
 
   return { error: null, projectId: project.id };
+}
+
+export interface RefineTasksResult {
+  error: string | null;
+  refined: number;
+}
+
+// Explicit, user-triggered refinement of an existing project's tasks (for
+// projects whose tasks are still generic — e.g. created while AI was
+// unavailable). Refines ONLY pending tasks, never completed ones, so it can
+// never rewrite work the user has already done. Falls back to leaving tasks
+// unchanged when AI is unavailable or its output fails validation.
+export async function refineExistingTasksAction(projectId: string): Promise<RefineTasksResult> {
+  const t = await getTranslations("build");
+  const locale = await getLocale();
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) return { error: t("errorSession"), refined: 0 };
+
+  const { data: project } = await supabase
+    .from("projects")
+    .select("*")
+    .eq("id", projectId)
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  if (!project) return { error: t("errorProjectNotFound"), refined: 0 };
+
+  const tasks = await getProjectTasks(supabase, projectId);
+  const pending = tasks.filter((task) => task.status !== "completed");
+  if (pending.length === 0) return { error: null, refined: 0 };
+
+  const input: ProjectCreationInput = {
+    name: project.name,
+    projectType: project.project_type as ProjectType,
+    niche: project.niche,
+    startingStage: project.starting_stage as StartingStage,
+    targetAudience: project.target_audience,
+    intendedOutcome: project.intended_outcome as IntendedOutcome,
+    timeAvailability: project.time_availability as TimeAvailability,
+    pathwayMode: project.pathway_mode as PathwayMode,
+  };
+
+  // Use each pending task's own id as the refinement key so results map back
+  // to the exact rows.
+  const generated: GeneratedTask[] = pending.map((task) => ({
+    templateId: task.id,
+    stage: task.stage,
+    orderIndex: task.order_index,
+    title: task.title,
+    objective: task.objective,
+    whyItMatters: task.why_it_matters,
+    action: task.action,
+    expectedOutput: task.expected_output,
+    estimatedTime: task.estimated_time,
+    completionCriteria: task.completion_criteria,
+    outputKind: task.output_kind,
+    xp: task.xp,
+    recommendedLessonId: task.recommended_lesson_id ?? undefined,
+  }));
+
+  const refined = await refineProjectPathwayAction(input, generated, locale);
+  const originalById = new Map(generated.map((g) => [g.templateId, g]));
+
+  let count = 0;
+  for (const r of refined) {
+    const original = originalById.get(r.templateId);
+    if (!original) continue;
+    const changed =
+      r.title !== original.title ||
+      r.objective !== original.objective ||
+      r.action !== original.action ||
+      r.expectedOutput !== original.expectedOutput ||
+      r.completionCriteria !== original.completionCriteria;
+    if (!changed) continue;
+
+    // status = pending guard is belt-and-suspenders: `pending` was already
+    // filtered, but this makes it impossible to rewrite a task that got
+    // completed in between.
+    const { error } = await supabase
+      .from("project_tasks")
+      .update({
+        title: r.title,
+        objective: r.objective,
+        action: r.action,
+        expected_output: r.expectedOutput,
+        completion_criteria: r.completionCriteria,
+      })
+      .eq("id", r.templateId)
+      .eq("user_id", user.id)
+      .eq("status", "pending");
+    if (!error) count += 1;
+  }
+
+  if (count > 0) {
+    revalidatePath("/build/workspace");
+  }
+  return { error: null, refined: count };
 }
 
 export interface SaveTaskOutputResult {

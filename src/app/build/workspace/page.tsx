@@ -12,6 +12,7 @@ import { getCurrentProject, getProjectTasks, getProjectOutputs } from "@/lib/bui
 import { STAGE_LABELS } from "@/lib/build/pathwayTemplates";
 import { PROJECT_TYPE_OPTIONS } from "@/lib/build/options";
 import { buildSnapshot, destinationGoalKey } from "@/lib/build/snapshot";
+import { RefineTasksButton } from "@/components/build/RefineTasksButton";
 
 export default async function ProjectWorkspacePage() {
   const supabase = await createClient();
@@ -192,6 +193,7 @@ export default async function ProjectWorkspacePage() {
       )}
 
       {/* ─── Pathway stages with visible completed outputs ─── */}
+      {nextTask && <RefineTasksButton projectId={project.id} />}
       <div className="flex flex-col gap-6">
         {stageOrder.map((stage) => {
           const stageTasks = tasksByStage.get(stage) ?? [];
