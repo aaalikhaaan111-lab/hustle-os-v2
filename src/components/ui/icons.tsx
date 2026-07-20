@@ -170,6 +170,16 @@ export function CoursesIcon(props: IconProps) {
   );
 }
 
+export function BuildIcon(props: IconProps) {
+  return (
+    <svg {...base} {...props}>
+      <path d="M14.5 6.5 18 10l-7.5 7.5L7 14z" />
+      <path d="m13 8 3 3" />
+      <path d="M4 20l2.5-.5.7-2.7L10 14" />
+    </svg>
+  );
+}
+
 export function WorkshopsIcon(props: IconProps) {
   return (
     <svg {...base} {...props}>

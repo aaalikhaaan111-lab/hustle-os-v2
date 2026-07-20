@@ -1,5 +1,6 @@
 import type { ComponentType, SVGProps } from "react";
 import {
+  BuildIcon,
   ChallengesIcon,
   CoursesIcon,
   DashboardIcon,
@@ -7,7 +8,7 @@ import {
   WorkshopsIcon,
 } from "@/components/ui/icons";
 
-export type NavLabelKey = "dashboard" | "challenges" | "learn" | "workshops" | "profile";
+export type NavLabelKey = "dashboard" | "challenges" | "learn" | "build" | "workshops" | "profile";
 
 export interface NavItem {
   labelKey: NavLabelKey;
@@ -78,6 +79,7 @@ export const NAV_ITEMS: NavItem[] = [
   { labelKey: "dashboard", href: "/dashboard", icon: DashboardIcon },
   { labelKey: "challenges", href: "/challenges", icon: ChallengesIcon },
   { labelKey: "learn", href: "/courses", icon: CoursesIcon },
+  { labelKey: "build", href: "/build", icon: BuildIcon },
   { labelKey: "workshops", href: "/workshops", icon: WorkshopsIcon },
   { labelKey: "profile", href: "/profile", icon: ProfileIcon },
 ];

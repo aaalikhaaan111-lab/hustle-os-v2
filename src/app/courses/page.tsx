@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { Suspense, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
+import { useSearchParams } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { SkeletonCard } from "@/components/ui/Skeleton";
@@ -32,10 +33,25 @@ const SOURCE_FILTERS: { id: SourceFilter; labelKey: "filterAll" | "filterEn" | "
   { id: "ru", labelKey: "filterRu" },
 ];
 
+const VALID_TABS: AcademyTab[] = ["videos", "quizzes", "glossary"];
+
 export default function CoursesPage() {
+  return (
+    <Suspense fallback={<SkeletonCard />}>
+      <CoursesPageContent />
+    </Suspense>
+  );
+}
+
+function CoursesPageContent() {
   const t = useTranslations("learn");
   const locale = useLocale();
-  const [tab, setTab] = useState<AcademyTab>("videos");
+  const searchParams = useSearchParams();
+  const requestedTab = searchParams.get("tab");
+  const initialTab = (VALID_TABS as string[]).includes(requestedTab ?? "")
+    ? (requestedTab as AcademyTab)
+    : "videos";
+  const [tab, setTab] = useState<AcademyTab>(initialTab);
   const [sourceFilter, setSourceFilter] = useState<SourceFilter>("all");
   const [glossaryQuery, setGlossaryQuery] = useState("");
 

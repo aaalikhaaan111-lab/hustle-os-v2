@@ -10,9 +10,11 @@ import { LevelProgressCard } from "@/components/dashboard/LevelProgressCard";
 import { NextGoalCard } from "@/components/dashboard/NextGoalCard";
 import { ActivityFeedCard } from "@/components/dashboard/ActivityFeedCard";
 import { CourseProgressCard } from "@/components/dashboard/CourseProgressCard";
+import { BuildProjectCard } from "@/components/dashboard/BuildProjectCard";
 import { INTEREST_OPTIONS, isTopicInterest } from "@/lib/constants";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/supabase/currentUser";
+import { getCurrentProject, getProjectTasks } from "@/lib/build/queries";
 
 function Eyebrow({ children }: { children: ReactNode }) {
   return (
@@ -57,6 +59,10 @@ export default async function DashboardPage() {
       ? t("personalizedSubtitle", { interests: interestLabels })
       : t("genericSubtitle");
 
+  const activeProject = await getCurrentProject(supabase, user.id);
+  const projectTasks = activeProject ? await getProjectTasks(supabase, activeProject.id) : [];
+  const nextProjectTask = projectTasks.find((task) => task.status !== "completed");
+
   return (
     <div className="flex flex-col gap-8">
       <PageHeader title={t("title")} description={t("description")} />
@@ -76,6 +82,13 @@ export default async function DashboardPage() {
 
       <div className="grid gap-6 sm:grid-cols-2">
         <CourseProgressCard />
+
+        <BuildProjectCard
+          hasProject={!!activeProject}
+          projectName={activeProject?.name ?? undefined}
+          progress={activeProject?.progress ?? 0}
+          nextTaskTitle={nextProjectTask?.title ?? null}
+        />
 
         <Card>
           <CardContent className="flex h-full flex-col gap-6 py-9">

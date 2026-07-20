@@ -6,6 +6,7 @@ const PROTECTED_PREFIXES = [
   "/dashboard",
   "/challenges",
   "/courses",
+  "/build",
   "/workshops",
   "/onboarding",
   "/first-session",
