@@ -53,13 +53,16 @@ function PlayIcon(props: { className?: string }) {
   );
 }
 
+// This inline term-matching only ever runs against Russian descriptions (see
+// the locale === "ru" gate around renderDescriptionWithTerms below), so it
+// always matches against the Russian name/definition/example specifically.
 // Longest names first so a shorter term can't shadow a match inside a longer one.
-const SORTED_TERMS = [...GLOSSARY].sort((a, b) => b.name.length - a.name.length);
+const SORTED_TERMS = [...GLOSSARY].sort((a, b) => b.name.ru.length - a.name.ru.length);
 
 // Unicode-aware boundary via lookaround (\p{L}/\p{N}) instead of \b, since JS's
 // \b is ASCII-only and never matches correctly around Cyrillic words.
 const TERM_PATTERN = new RegExp(
-  `(?<![\\p{L}\\p{N}])(${SORTED_TERMS.map((term) => escapeRegExp(term.name)).join("|")})(?![\\p{L}\\p{N}])`,
+  `(?<![\\p{L}\\p{N}])(${SORTED_TERMS.map((term) => escapeRegExp(term.name.ru)).join("|")})(?![\\p{L}\\p{N}])`,
   "gu"
 );
 
@@ -77,14 +80,14 @@ function GlossaryTermSpan({ termId }: { termId: string }) {
         onClick={() => setOpen((v) => !v)}
         className="cursor-help border-b-2 border-dotted border-purple-500 font-bold text-purple-600 transition-colors hover:text-purple-500 dark:border-purple-400 dark:text-purple-400"
       >
-        {term.name}
+        {term.name.ru}
       </button>
       {open && (
         <span className="animate-pop-in absolute bottom-full left-1/2 z-50 mb-2 w-64 -translate-x-1/2 rounded-xl border border-white/10 bg-slate-900/90 p-3 text-left text-xs text-white shadow-2xl backdrop-blur-md">
-          <span className="mb-1 block text-sm font-bold text-white">{term.name}</span>
-          <span className="mb-2 block leading-relaxed text-white/80">{term.definition}</span>
+          <span className="mb-1 block text-sm font-bold text-white">{term.name.ru}</span>
+          <span className="mb-2 block leading-relaxed text-white/80">{term.definition.ru}</span>
           <span className="block rounded-lg bg-white/10 px-2.5 py-2 italic leading-relaxed text-white/70">
-            «{term.example}»
+            «{term.example.ru}»
           </span>
         </span>
       )}
@@ -95,7 +98,7 @@ function GlossaryTermSpan({ termId }: { termId: string }) {
 function renderDescriptionWithTerms(text: string): ReactNode {
   const parts = text.split(TERM_PATTERN);
   return parts.map((part, index) => {
-    const matched = SORTED_TERMS.find((term) => term.name === part);
+    const matched = SORTED_TERMS.find((term) => term.name.ru === part);
     if (matched) {
       return <GlossaryTermSpan key={`${matched.id}-${index}`} termId={matched.id} />;
     }

@@ -13,9 +13,9 @@ export interface VideoCourse {
 
 export interface GlossaryTerm {
   id: string;
-  name: string;
-  definition: string;
-  example: string;
+  name: Localized;
+  definition: Localized;
+  example: Localized;
 }
 
 export const VIDEOS: VideoCourse[] = [
@@ -1182,302 +1182,602 @@ export const VIDEOS: VideoCourse[] = [
 export const GLOSSARY: GlossaryTerm[] = [
   {
     id: "MVP",
-    name: "MVP",
-    definition: "Минимально жизнеспособный продукт — урезанная версия продукта для проверки гипотезы.",
-    example: "Стойка с кофе вместо открытия огромной кофейни — это MVP кофейного бизнеса.",
+    name: { en: "MVP", ru: "MVP" },
+    definition: {
+      en: "Minimum Viable Product — a stripped-down version of a product built just to test a hypothesis.",
+      ru: "Минимально жизнеспособный продукт — урезанная версия продукта для проверки гипотезы.",
+    },
+    example: {
+      en: "A coffee cart instead of opening a huge café — that's the MVP of a coffee business.",
+      ru: "Стойка с кофе вместо открытия огромной кофейни — это MVP кофейного бизнеса.",
+    },
   },
   {
     id: "LTV",
-    name: "LTV",
-    definition: "Пожизненная ценность клиента — вся прибыль, которую он приносит за время использования продукта.",
-    example: "Клиент платит 10$/мес и остаётся на год — LTV = 120$.",
+    name: { en: "LTV", ru: "LTV" },
+    definition: {
+      en: "Lifetime Value — all the profit a customer brings in over their entire time using the product.",
+      ru: "Пожизненная ценность клиента — вся прибыль, которую он приносит за время использования продукта.",
+    },
+    example: {
+      en: "A customer pays $10/month and stays for a year — LTV = $120.",
+      ru: "Клиент платит 10$/мес и остаётся на год — LTV = 120$.",
+    },
   },
   {
     id: "CAC",
-    name: "CAC",
-    definition: "Стоимость привлечения одного клиента через рекламу или продажи.",
-    example: "Потратили 1000$ на рекламу, получили 10 клиентов — CAC = 100$.",
+    name: { en: "CAC", ru: "CAC" },
+    definition: {
+      en: "The cost of acquiring one customer through ads or sales.",
+      ru: "Стоимость привлечения одного клиента через рекламу или продажи.",
+    },
+    example: {
+      en: "You spend $1,000 on ads and get 10 customers — CAC = $100.",
+      ru: "Потратили 1000$ на рекламу, получили 10 клиентов — CAC = 100$.",
+    },
   },
   {
     id: "BURN_RATE",
-    name: "Burn Rate",
-    definition: "Скорость, с которой стартап тратит деньги со счёта каждый месяц.",
-    example: "Расходы 500 000 руб/мес при нулевой выручке — Burn Rate = 500 000 руб.",
+    name: { en: "Burn Rate", ru: "Burn Rate" },
+    definition: {
+      en: "The speed at which a startup spends money from its account each month.",
+      ru: "Скорость, с которой стартап тратит деньги со счёта каждый месяц.",
+    },
+    example: {
+      en: "Spending $6,000/month with zero revenue — Burn Rate = $6,000.",
+      ru: "Расходы 500 000 руб/мес при нулевой выручке — Burn Rate = 500 000 руб.",
+    },
   },
   {
     id: "CHURN_RATE",
-    name: "Churn Rate",
-    definition: "Доля клиентов, которые перестали пользоваться продуктом за период.",
-    example: "Было 200 подписчиков, ушло 10 за месяц — Churn Rate = 5%.",
+    name: { en: "Churn Rate", ru: "Churn Rate" },
+    definition: {
+      en: "The share of customers who stopped using the product over a given period.",
+      ru: "Доля клиентов, которые перестали пользоваться продуктом за период.",
+    },
+    example: {
+      en: "You had 200 subscribers and lost 10 in a month — Churn Rate = 5%.",
+      ru: "Было 200 подписчиков, ушло 10 за месяц — Churn Rate = 5%.",
+    },
   },
   {
     id: "RUNWAY",
-    name: "Runway",
-    definition: "Сколько месяцев бизнес проживёт на текущие деньги при текущем Burn Rate.",
-    example: "На счету 600 000 руб, тратите 100 000 руб в месяц — Runway = 6 месяцев.",
+    name: { en: "Runway", ru: "Runway" },
+    definition: {
+      en: "How many months a business can survive on its current money at the current burn rate.",
+      ru: "Сколько месяцев бизнес проживёт на текущие деньги при текущем Burn Rate.",
+    },
+    example: {
+      en: "You have $7,000 in the bank and spend $1,000/month — Runway = 7 months.",
+      ru: "На счету 600 000 руб, тратите 100 000 руб в месяц — Runway = 6 месяцев.",
+    },
   },
   {
     id: "TAM",
-    name: "TAM",
-    definition: "Total Addressable Market — общий объём рынка, если бы продукт занял 100% спроса.",
-    example: "Рынок доставки еды в стране оценивается в 50 млрд руб — это TAM.",
+    name: { en: "TAM", ru: "TAM" },
+    definition: {
+      en: "Total Addressable Market — the total size of the market if a product captured 100% of demand.",
+      ru: "Total Addressable Market — общий объём рынка, если бы продукт занял 100% спроса.",
+    },
+    example: {
+      en: "The food delivery market in a country is valued at $600 million — that's the TAM.",
+      ru: "Рынок доставки еды в стране оценивается в 50 млрд руб — это TAM.",
+    },
   },
   {
     id: "SAM",
-    name: "SAM",
-    definition: "Serviceable Available Market — часть TAM, которую реально может обслужить твоя бизнес-модель.",
-    example: "Из всего рынка доставки еды твой SAM — это только крупные города с твоей логистикой.",
+    name: { en: "SAM", ru: "SAM" },
+    definition: {
+      en: "Serviceable Available Market — the part of the TAM your business model can realistically serve.",
+      ru: "Serviceable Available Market — часть TAM, которую реально может обслужить твоя бизнес-модель.",
+    },
+    example: {
+      en: "Out of the whole food delivery market, your SAM is just the big cities your logistics can reach.",
+      ru: "Из всего рынка доставки еды твой SAM — это только крупные города с твоей логистикой.",
+    },
   },
   {
     id: "SOM",
-    name: "SOM",
-    definition: "Serviceable Obtainable Market — реалистичная доля рынка, которую можно занять за 1-3 года.",
-    example: "При текущих ресурсах твой SOM — это 2% от SAM в первый год.",
+    name: { en: "SOM", ru: "SOM" },
+    definition: {
+      en: "Serviceable Obtainable Market — the realistic market share you can capture in 1–3 years.",
+      ru: "Serviceable Obtainable Market — реалистичная доля рынка, которую можно занять за 1-3 года.",
+    },
+    example: {
+      en: "With your current resources, your SOM is 2% of the SAM in the first year.",
+      ru: "При текущих ресурсах твой SOM — это 2% от SAM в первый год.",
+    },
   },
   {
     id: "COHORT_ANALYSIS",
-    name: "Когортный анализ",
-    definition: "Метод отслеживания поведения групп пользователей, пришедших в один и тот же период.",
-    example: "Когортный анализ показал, что пользователи из ноябрьской когорты платят дольше, чем из январской.",
+    name: { en: "Cohort Analysis", ru: "Когортный анализ" },
+    definition: {
+      en: "A method for tracking the behavior of groups of users who joined during the same period.",
+      ru: "Метод отслеживания поведения групп пользователей, пришедших в один и тот же период.",
+    },
+    example: {
+      en: "Cohort analysis showed that users from the November cohort pay for longer than those from January.",
+      ru: "Когортный анализ показал, что пользователи из ноябрьской когорты платят дольше, чем из январской.",
+    },
   },
   {
     id: "UNIT_ECONOMICS",
-    name: "Юнит-экономика",
-    definition: "Метод расчёта прибыльности одной единицы товара или одного клиента.",
-    example: "Если с одной подписки остаётся 300 руб прибыли после всех расходов — это здоровая юнит-экономика.",
+    name: { en: "Unit Economics", ru: "Юнит-экономика" },
+    definition: {
+      en: "A way of calculating the profitability of a single unit of product or a single customer.",
+      ru: "Метод расчёта прибыльности одной единицы товара или одного клиента.",
+    },
+    example: {
+      en: "If one subscription leaves $4 in profit after all costs — that's healthy unit economics.",
+      ru: "Если с одной подписки остаётся 300 руб прибыли после всех расходов — это здоровая юнит-экономика.",
+    },
   },
   {
     id: "MRR",
-    name: "MRR",
-    definition: "Monthly Recurring Revenue — ежемесячная периодическая выручка от подписок.",
-    example: "100 клиентов платят по 1000 руб в месяц — MRR = 100 000 руб.",
+    name: { en: "MRR", ru: "MRR" },
+    definition: {
+      en: "Monthly Recurring Revenue — the predictable monthly revenue from subscriptions.",
+      ru: "Monthly Recurring Revenue — ежемесячная периодическая выручка от подписок.",
+    },
+    example: {
+      en: "100 customers pay $10/month — MRR = $1,000.",
+      ru: "100 клиентов платят по 1000 руб в месяц — MRR = 100 000 руб.",
+    },
   },
   {
     id: "ARR",
-    name: "ARR",
-    definition: "Annual Recurring Revenue — годовая периодическая выручка, обычно MRR × 12.",
-    example: "При MRR в 100 000 руб годовой ARR составит 1 200 000 руб.",
+    name: { en: "ARR", ru: "ARR" },
+    definition: {
+      en: "Annual Recurring Revenue — yearly recurring revenue, usually MRR × 12.",
+      ru: "Annual Recurring Revenue — годовая периодическая выручка, обычно MRR × 12.",
+    },
+    example: {
+      en: "With MRR of $1,000, annual ARR comes out to $12,000.",
+      ru: "При MRR в 100 000 руб годовой ARR составит 1 200 000 руб.",
+    },
   },
   {
     id: "ARPU",
-    name: "ARPU",
-    definition: "Average Revenue Per User — средняя выручка с одного пользователя за период.",
-    example: "Выручка 500 000 руб при 1000 активных пользователей — ARPU = 500 руб.",
+    name: { en: "ARPU", ru: "ARPU" },
+    definition: {
+      en: "Average Revenue Per User — the average revenue from one user over a period.",
+      ru: "Average Revenue Per User — средняя выручка с одного пользователя за период.",
+    },
+    example: {
+      en: "Revenue of $5,000 with 1,000 active users — ARPU = $5.",
+      ru: "Выручка 500 000 руб при 1000 активных пользователей — ARPU = 500 руб.",
+    },
   },
   {
     id: "NPS",
-    name: "NPS",
-    definition: "Net Promoter Score — индекс готовности клиентов рекомендовать продукт другим.",
-    example: "NPS выше 50 считается отличным показателем лояльности клиентов.",
+    name: { en: "NPS", ru: "NPS" },
+    definition: {
+      en: "Net Promoter Score — an index of how willing customers are to recommend a product to others.",
+      ru: "Net Promoter Score — индекс готовности клиентов рекомендовать продукт другим.",
+    },
+    example: {
+      en: "An NPS above 50 is considered an excellent customer loyalty score.",
+      ru: "NPS выше 50 считается отличным показателем лояльности клиентов.",
+    },
   },
   {
     id: "RETENTION_RATE",
-    name: "Retention Rate",
-    definition: "Доля пользователей, которые продолжают пользоваться продуктом спустя время.",
-    example: "Retention Rate 40% на 30-й день считается хорошим показателем для мобильного приложения.",
+    name: { en: "Retention Rate", ru: "Retention Rate" },
+    definition: {
+      en: "The share of users who keep using a product over time.",
+      ru: "Доля пользователей, которые продолжают пользоваться продуктом спустя время.",
+    },
+    example: {
+      en: "A 40% Day-30 Retention Rate is considered a good score for a mobile app.",
+      ru: "Retention Rate 40% на 30-й день считается хорошим показателем для мобильного приложения.",
+    },
   },
   {
     id: "PMF",
-    name: "Product-Market Fit",
-    definition: "Состояние, когда продукт по-настоящему решает проблему рынка и спрос растёт органически.",
-    example: "Product-Market Fit наступил, когда клиенты сами начали рекомендовать сервис друзьям.",
+    name: { en: "Product-Market Fit", ru: "Product-Market Fit" },
+    definition: {
+      en: "The state where a product truly solves a market problem and demand grows organically.",
+      ru: "Состояние, когда продукт по-настоящему решает проблему рынка и спрос растёт органически.",
+    },
+    example: {
+      en: "Product-Market Fit hit once customers started recommending the service to friends on their own.",
+      ru: "Product-Market Fit наступил, когда клиенты сами начали рекомендовать сервис друзьям.",
+    },
   },
   {
     id: "PIVOT",
-    name: "Пивот",
-    definition: "Резкое изменение курса или бизнес-модели стартапа.",
-    example: "Сервис доставки еды для офисов не взлетел — команда сделала пивот в доставку обедов на дом.",
+    name: { en: "Pivot", ru: "Пивот" },
+    definition: {
+      en: "A sharp change in a startup's direction or business model.",
+      ru: "Резкое изменение курса или бизнес-модели стартапа.",
+    },
+    example: {
+      en: "A food delivery service for offices didn't take off — the team pivoted into home meal delivery.",
+      ru: "Сервис доставки еды для офисов не взлетел — команда сделала пивот в доставку обедов на дом.",
+    },
   },
   {
     id: "CUSTDEV",
-    name: "CustDev",
-    definition: "Customer Development — методология проверки гипотез через интервью с реальными клиентами.",
-    example: "CustDev показал, что пользователи готовы платить за автоматизацию, а не за аналитику.",
+    name: { en: "CustDev", ru: "CustDev" },
+    definition: {
+      en: "Customer Development — a methodology for testing hypotheses through interviews with real customers.",
+      ru: "Customer Development — методология проверки гипотез через интервью с реальными клиентами.",
+    },
+    example: {
+      en: "CustDev showed that users were willing to pay for automation, not analytics.",
+      ru: "CustDev показал, что пользователи готовы платить за автоматизацию, а не за аналитику.",
+    },
   },
   {
     id: "VESTING",
-    name: "Вестинг",
-    definition: "Постепенное получение прав на долю в компании в течение оговорённого срока.",
-    example: "Вестинг на 4 года с cliff в 1 год означает, что первую долю сооснователь получит только через год.",
+    name: { en: "Vesting", ru: "Вестинг" },
+    definition: {
+      en: "Gradually earning the rights to a company stake over an agreed period.",
+      ru: "Постепенное получение прав на долю в компании в течение оговорённого срока.",
+    },
+    example: {
+      en: "A 4-year vesting schedule with a 1-year cliff means a co-founder only gets their first shares after a year.",
+      ru: "Вестинг на 4 года с cliff в 1 год означает, что первую долю сооснователь получит только через год.",
+    },
   },
   {
     id: "CAP_TABLE",
-    name: "Cap Table",
-    definition: "Таблица капитализации — документ, показывающий, кому и сколько принадлежит в компании.",
-    example: "В Cap Table внесли доли обоих сооснователей и опционный пул для будущих сотрудников.",
+    name: { en: "Cap Table", ru: "Cap Table" },
+    definition: {
+      en: "Capitalization table — a document showing who owns how much of the company.",
+      ru: "Таблица капитализации — документ, показывающий, кому и сколько принадлежит в компании.",
+    },
+    example: {
+      en: "The Cap Table lists both co-founders' shares and an option pool for future employees.",
+      ru: "В Cap Table внесли доли обоих сооснователей и опционный пул для будущих сотрудников.",
+    },
   },
   {
     id: "TERM_SHEET",
-    name: "Term Sheet",
-    definition: "Документ с основными условиями инвестиционной сделки до подписания финального договора.",
-    example: "Инвестор прислал Term Sheet с оценкой компании в 2 млн долларов.",
+    name: { en: "Term Sheet", ru: "Term Sheet" },
+    definition: {
+      en: "A document with the key terms of an investment deal, before the final agreement is signed.",
+      ru: "Документ с основными условиями инвестиционной сделки до подписания финального договора.",
+    },
+    example: {
+      en: "The investor sent a Term Sheet valuing the company at $2 million.",
+      ru: "Инвестор прислал Term Sheet с оценкой компании в 2 млн долларов.",
+    },
   },
   {
     id: "SEED_ROUND",
-    name: "Посевной раунд",
-    definition: "Первый институциональный раунд инвестиций для проверки гипотезы и найма первой команды.",
-    example: "На посевном раунде стартап привлёк 150 000 долларов на разработку MVP.",
+    name: { en: "Seed Round", ru: "Посевной раунд" },
+    definition: {
+      en: "The first institutional funding round, used to test a hypothesis and hire the first team.",
+      ru: "Первый институциональный раунд инвестиций для проверки гипотезы и найма первой команды.",
+    },
+    example: {
+      en: "In the seed round, the startup raised $150,000 to build the MVP.",
+      ru: "На посевном раунде стартап привлёк 150 000 долларов на разработку MVP.",
+    },
   },
   {
     id: "SERIES_A",
-    name: "Раунд A",
-    definition: "Первый крупный раунд инвестиций после подтверждённого Product-Market Fit.",
-    example: "После роста выручки в 3 раза за год стартап закрыл Раунд A на 5 млн долларов.",
+    name: { en: "Series A", ru: "Раунд A" },
+    definition: {
+      en: "The first major funding round after confirmed product-market fit.",
+      ru: "Первый крупный раунд инвестиций после подтверждённого Product-Market Fit.",
+    },
+    example: {
+      en: "After tripling revenue in a year, the startup closed a $5 million Series A.",
+      ru: "После роста выручки в 3 раза за год стартап закрыл Раунд A на 5 млн долларов.",
+    },
   },
   {
     id: "BOOTSTRAPPING",
-    name: "Бутстрэппинг",
-    definition: "Развитие бизнеса на собственные средства или выручку, без внешних инвестиций.",
-    example: "Команда работала по бутстрэппингу два года, пока продукт не начал приносить прибыль сам.",
+    name: { en: "Bootstrapping", ru: "Бутстрэппинг" },
+    definition: {
+      en: "Growing a business on your own money or revenue, with no outside investment.",
+      ru: "Развитие бизнеса на собственные средства или выручку, без внешних инвестиций.",
+    },
+    example: {
+      en: "The team bootstrapped for two years until the product started turning a profit on its own.",
+      ru: "Команда работала по бутстрэппингу два года, пока продукт не начал приносить прибыль сам.",
+    },
   },
   {
     id: "BREAKEVEN",
-    name: "Точка безубыточности",
-    definition: "Объём продаж, при котором доходы сравнялись с расходами, а прибыли ещё нет.",
-    example: "Аренда и зарплаты стоят 100 000 руб в месяц, маржа с чашки кофе — 100 руб. Точка безубыточности — 1000 чашек.",
+    name: { en: "Break-Even Point", ru: "Точка безубыточности" },
+    definition: {
+      en: "The sales volume at which revenue equals costs, with no profit yet.",
+      ru: "Объём продаж, при котором доходы сравнялись с расходами, а прибыли ещё нет.",
+    },
+    example: {
+      en: "Rent and salaries cost $2,000/month, margin per coffee is $2 — Break-Even Point is 1,000 cups.",
+      ru: "Аренда и зарплаты стоят 100 000 руб в месяц, маржа с чашки кофе — 100 руб. Точка безубыточности — 1000 чашек.",
+    },
   },
   {
     id: "GROSS_MARGIN",
-    name: "Валовая маржа",
-    definition: "Доля выручки, остающаяся после вычета прямых затрат на производство продукта или услуги.",
-    example: "Продукт продаётся за 1000 руб, себестоимость — 300 руб, валовая маржа — 70%.",
+    name: { en: "Gross Margin", ru: "Валовая маржа" },
+    definition: {
+      en: "The share of revenue left after subtracting the direct cost of producing a product or service.",
+      ru: "Доля выручки, остающаяся после вычета прямых затрат на производство продукта или услуги.",
+    },
+    example: {
+      en: "A product sells for $20, costs $6 to make — gross margin is 70%.",
+      ru: "Продукт продаётся за 1000 руб, себестоимость — 300 руб, валовая маржа — 70%.",
+    },
   },
   {
     id: "NET_MARGIN",
-    name: "Чистая маржа",
-    definition: "Доля выручки, остающаяся как прибыль после вычета всех расходов бизнеса.",
-    example: "При выручке 1 млн руб и чистой прибыли 100 000 руб чистая маржа равна 10%.",
+    name: { en: "Net Margin", ru: "Чистая маржа" },
+    definition: {
+      en: "The share of revenue left as profit after subtracting all of a business's expenses.",
+      ru: "Доля выручки, остающаяся как прибыль после вычета всех расходов бизнеса.",
+    },
+    example: {
+      en: "With $1 million in revenue and $100,000 in net profit, net margin is 10%.",
+      ru: "При выручке 1 млн руб и чистой прибыли 100 000 руб чистая маржа равна 10%.",
+    },
   },
   {
     id: "B2B",
-    name: "B2B",
-    definition: "Business-to-Business — модель продаж, где клиент — другая компания.",
-    example: "CRM-система для отделов продаж — классический пример B2B-продукта.",
+    name: { en: "B2B", ru: "B2B" },
+    definition: {
+      en: "Business-to-Business — a sales model where the customer is another company.",
+      ru: "Business-to-Business — модель продаж, где клиент — другая компания.",
+    },
+    example: {
+      en: "A CRM system for sales teams is a classic B2B product.",
+      ru: "CRM-система для отделов продаж — классический пример B2B-продукта.",
+    },
   },
   {
     id: "B2C",
-    name: "B2C",
-    definition: "Business-to-Consumer — модель продаж, где клиент — конечный потребитель.",
-    example: "Приложение для доставки еды частным пользователям работает по модели B2C.",
+    name: { en: "B2C", ru: "B2C" },
+    definition: {
+      en: "Business-to-Consumer — a sales model where the customer is the end user.",
+      ru: "Business-to-Consumer — модель продаж, где клиент — конечный потребитель.",
+    },
+    example: {
+      en: "A food delivery app for individual users runs on a B2C model.",
+      ru: "Приложение для доставки еды частным пользователям работает по модели B2C.",
+    },
   },
   {
     id: "SAAS",
-    name: "SaaS",
-    definition: "Software as a Service — модель продажи софта по подписке через облако.",
-    example: "Сервис для учёта финансов, доступный по подписке в браузере, — типичный SaaS.",
+    name: { en: "SaaS", ru: "SaaS" },
+    definition: {
+      en: "Software as a Service — a model for selling software by subscription through the cloud.",
+      ru: "Software as a Service — модель продажи софта по подписке через облако.",
+    },
+    example: {
+      en: "A finance-tracking service you access by subscription in your browser is a typical SaaS.",
+      ru: "Сервис для учёта финансов, доступный по подписке в браузере, — типичный SaaS.",
+    },
   },
   {
     id: "CTR",
-    name: "CTR",
-    definition: "Click-Through Rate — доля увидевших рекламу, которые кликнули по ней.",
-    example: "Объявление показали 1000 раз, кликнули 20 человек — CTR = 2%.",
+    name: { en: "CTR", ru: "CTR" },
+    definition: {
+      en: "Click-Through Rate — the share of people who saw an ad and clicked on it.",
+      ru: "Click-Through Rate — доля увидевших рекламу, которые кликнули по ней.",
+    },
+    example: {
+      en: "An ad was shown 1,000 times, 20 people clicked — CTR = 2%.",
+      ru: "Объявление показали 1000 раз, кликнули 20 человек — CTR = 2%.",
+    },
   },
   {
     id: "CPA",
-    name: "CPA",
-    definition: "Cost Per Acquisition — стоимость одного целевого действия (заявки, покупки) от рекламы.",
-    example: "Потратили 5000 руб на рекламу, получили 25 заявок — CPA = 200 руб.",
+    name: { en: "CPA", ru: "CPA" },
+    definition: {
+      en: "Cost Per Acquisition — the cost of one target action (a lead, a purchase) from an ad.",
+      ru: "Cost Per Acquisition — стоимость одного целевого действия (заявки, покупки) от рекламы.",
+    },
+    example: {
+      en: "You spend $50 on ads and get 25 leads — CPA = $2.",
+      ru: "Потратили 5000 руб на рекламу, получили 25 заявок — CPA = 200 руб.",
+    },
   },
   {
     id: "CPC",
-    name: "CPC",
-    definition: "Cost Per Click — стоимость одного клика по рекламному объявлению.",
-    example: "Бюджет 10 000 руб принёс 500 кликов — CPC = 20 руб.",
+    name: { en: "CPC", ru: "CPC" },
+    definition: {
+      en: "Cost Per Click — the cost of one click on an ad.",
+      ru: "Cost Per Click — стоимость одного клика по рекламному объявлению.",
+    },
+    example: {
+      en: "A $100 budget brought 500 clicks — CPC = $0.20.",
+      ru: "Бюджет 10 000 руб принёс 500 кликов — CPC = 20 руб.",
+    },
   },
   {
     id: "CPM",
-    name: "CPM",
-    definition: "Cost Per Mille — стоимость 1000 показов рекламного объявления.",
-    example: "Реклама с CPM в 300 руб за 10 000 показов обойдётся в 3000 руб.",
+    name: { en: "CPM", ru: "CPM" },
+    definition: {
+      en: "Cost Per Mille — the cost of 1,000 ad impressions.",
+      ru: "Cost Per Mille — стоимость 1000 показов рекламного объявления.",
+    },
+    example: {
+      en: "An ad with a $3 CPM for 10,000 impressions costs $30.",
+      ru: "Реклама с CPM в 300 руб за 10 000 показов обойдётся в 3000 руб.",
+    },
   },
   {
     id: "CONVERSION_RATE",
-    name: "Конверсия",
-    definition: "Доля пользователей, совершивших целевое действие, от всех посетителей.",
-    example: "Из 1000 посетителей лендинга 30 оставили заявку — конверсия 3%.",
+    name: { en: "Conversion Rate", ru: "Конверсия" },
+    definition: {
+      en: "The share of visitors who completed a target action, out of all visitors.",
+      ru: "Доля пользователей, совершивших целевое действие, от всех посетителей.",
+    },
+    example: {
+      en: "Out of 1,000 landing page visitors, 30 left a lead — conversion rate is 3%.",
+      ru: "Из 1000 посетителей лендинга 30 оставили заявку — конверсия 3%.",
+    },
   },
   {
     id: "FUNNEL",
-    name: "Воронка продаж",
-    definition: "Последовательность этапов, которые проходит клиент от первого контакта до покупки.",
-    example: "Воронка продаж: посетил сайт → оставил email → получил демо → оплатил подписку.",
+    name: { en: "Sales Funnel", ru: "Воронка продаж" },
+    definition: {
+      en: "The sequence of steps a customer goes through from first contact to purchase.",
+      ru: "Последовательность этапов, которые проходит клиент от первого контакта до покупки.",
+    },
+    example: {
+      en: "Sales funnel: visited the site → left an email → got a demo → paid for a subscription.",
+      ru: "Воронка продаж: посетил сайт → оставил email → получил демо → оплатил подписку.",
+    },
   },
   {
     id: "ONBOARDING",
-    name: "Онбординг",
-    definition: "Процесс первого знакомства пользователя с продуктом, ведущий его к первой ценности.",
-    example: "Хороший онбординг доводит нового пользователя до Aha-момента за первые 5 минут.",
+    name: { en: "Onboarding", ru: "Онбординг" },
+    definition: {
+      en: "The process of a user's first encounter with a product, guiding them to its first value.",
+      ru: "Процесс первого знакомства пользователя с продуктом, ведущий его к первой ценности.",
+    },
+    example: {
+      en: "Good onboarding gets a new user to the \"aha\" moment within the first 5 minutes.",
+      ru: "Хороший онбординг доводит нового пользователя до Aha-момента за первые 5 минут.",
+    },
   },
   {
     id: "AHA_MOMENT",
-    name: "Aha-момент",
-    definition: "Момент, в который пользователь впервые ощущает реальную ценность продукта.",
-    example: "В мессенджере Aha-момент наступает, когда пользователь отправляет первое сообщение другу.",
+    name: { en: "Aha Moment", ru: "Aha-момент" },
+    definition: {
+      en: "The moment a user first feels the real value of a product.",
+      ru: "Момент, в который пользователь впервые ощущает реальную ценность продукта.",
+    },
+    example: {
+      en: "In a messaging app, the aha moment happens when a user sends their first message to a friend.",
+      ru: "В мессенджере Aha-момент наступает, когда пользователь отправляет первое сообщение другу.",
+    },
   },
   {
     id: "TRACTION",
-    name: "Тракшн",
-    definition: "Измеримое доказательство роста: продажи, повторные покупки, растущий спрос.",
-    example: "50 платящих клиентов и рост на 20% в месяц — это тракшн, который убеждает инвестора.",
+    name: { en: "Traction", ru: "Тракшн" },
+    definition: {
+      en: "Measurable proof of growth: sales, repeat purchases, growing demand.",
+      ru: "Измеримое доказательство роста: продажи, повторные покупки, растущий спрос.",
+    },
+    example: {
+      en: "50 paying customers and 20% month-over-month growth — that's traction that convinces an investor.",
+      ru: "50 платящих клиентов и рост на 20% в месяц — это тракшн, который убеждает инвестора.",
+    },
   },
   {
     id: "PITCH_DECK",
-    name: "Питч-дек",
-    definition: "Короткая презентация проекта для инвестора, обычно из 10-12 слайдов.",
-    example: "В питч-деке фаундер показал слайды с проблемой, решением, рынком и командой.",
+    name: { en: "Pitch Deck", ru: "Питч-дек" },
+    definition: {
+      en: "A short project presentation for an investor, usually 10–12 slides.",
+      ru: "Короткая презентация проекта для инвестора, обычно из 10-12 слайдов.",
+    },
+    example: {
+      en: "In the pitch deck, the founder showed slides on the problem, the solution, the market, and the team.",
+      ru: "В питч-деке фаундер показал слайды с проблемой, решением, рынком и командой.",
+    },
   },
   {
     id: "ELEVATOR_PITCH",
-    name: "Питч в лифте",
-    definition: "Максимально короткая, в одну-две фразы, презентация идеи проекта.",
-    example: "Питч в лифте: «Мы — Uber для доставки лекарств за 30 минут».",
+    name: { en: "Elevator Pitch", ru: "Питч в лифте" },
+    definition: {
+      en: "The shortest possible presentation of a project's idea, in one or two sentences.",
+      ru: "Максимально короткая, в одну-две фразы, презентация идеи проекта.",
+    },
+    example: {
+      en: "Elevator pitch: \"We're Uber for delivering medicine in 30 minutes.\"",
+      ru: "Питч в лифте: «Мы — Uber для доставки лекарств за 30 минут».",
+    },
   },
   {
     id: "DUE_DILIGENCE",
-    name: "Дью-дилидженс",
-    definition: "Проверка компании инвестором перед сделкой: финансы, юридические риски, метрики.",
-    example: "Перед подписанием Term Sheet инвестор запросил документы для дью-дилидженс.",
+    name: { en: "Due Diligence", ru: "Дью-дилидженс" },
+    definition: {
+      en: "An investor's review of a company before a deal: finances, legal risks, metrics.",
+      ru: "Проверка компании инвестором перед сделкой: финансы, юридические риски, метрики.",
+    },
+    example: {
+      en: "Before signing the Term Sheet, the investor requested documents for due diligence.",
+      ru: "Перед подписанием Term Sheet инвестор запросил документы для дью-дилидженс.",
+    },
   },
   {
     id: "EQUITY",
-    name: "Доля в компании",
-    definition: "Часть компании, принадлежащая конкретному человеку или инвестору.",
-    example: "Сооснователи разделили доли в компании поровну — по 50% каждому.",
+    name: { en: "Equity", ru: "Доля в компании" },
+    definition: {
+      en: "The part of a company owned by a specific person or investor.",
+      ru: "Часть компании, принадлежащая конкретному человеку или инвестору.",
+    },
+    example: {
+      en: "The co-founders split the company's equity evenly — 50% each.",
+      ru: "Сооснователи разделили доли в компании поровну — по 50% каждому.",
+    },
   },
   {
     id: "DILUTION",
-    name: "Размытие доли",
-    definition: "Уменьшение процента владения компанией после привлечения новых инвесторов.",
-    example: "После раунда A доля основателя размылась с 60% до 45%.",
+    name: { en: "Dilution", ru: "Размытие доли" },
+    definition: {
+      en: "A decrease in ownership percentage after new investors come in.",
+      ru: "Уменьшение процента владения компанией после привлечения новых инвесторов.",
+    },
+    example: {
+      en: "After the Series A, the founder's equity was diluted from 60% to 45%.",
+      ru: "После раунда A доля основателя размылась с 60% до 45%.",
+    },
   },
   {
     id: "ANGEL_INVESTOR",
-    name: "Бизнес-ангел",
-    definition: "Частный инвестор, вкладывающий личные деньги в стартапы на ранней стадии.",
-    example: "Бизнес-ангел вложил 20 000 долларов в обмен на 5% компании на посевном раунде.",
+    name: { en: "Angel Investor", ru: "Бизнес-ангел" },
+    definition: {
+      en: "A private investor who puts their own money into early-stage startups.",
+      ru: "Частный инвестор, вкладывающий личные деньги в стартапы на ранней стадии.",
+    },
+    example: {
+      en: "An angel investor put in $20,000 in exchange for 5% of the company at the seed round.",
+      ru: "Бизнес-ангел вложил 20 000 долларов в обмен на 5% компании на посевном раунде.",
+    },
   },
   {
     id: "VENTURE_CAPITAL",
-    name: "Венчурный капитал",
-    definition: "Инвестиции фондов в компании с высоким потенциалом роста и риска.",
-    example: "Фонд венчурного капитала инвестировал в 20 стартапов, ожидая, что окупятся 2-3 из них.",
+    name: { en: "Venture Capital", ru: "Венчурный капитал" },
+    definition: {
+      en: "Fund investments into companies with high growth potential and high risk.",
+      ru: "Инвестиции фондов в компании с высоким потенциалом роста и риска.",
+    },
+    example: {
+      en: "A venture capital fund invested in 20 startups, expecting only 2–3 of them to pay off.",
+      ru: "Фонд венчурного капитала инвестировал в 20 стартапов, ожидая, что окупятся 2-3 из них.",
+    },
   },
   {
     id: "ACCELERATOR",
-    name: "Акселератор",
-    definition: "Программа поддержки стартапов с менторством, обучением и часто небольшими инвестициями.",
-    example: "Стартап прошёл трёхмесячную программу акселератора и получил доступ к сети инвесторов.",
+    name: { en: "Accelerator", ru: "Акселератор" },
+    definition: {
+      en: "A startup support program with mentorship, training, and often small investments.",
+      ru: "Программа поддержки стартапов с менторством, обучением и часто небольшими инвестициями.",
+    },
+    example: {
+      en: "The startup went through a three-month accelerator program and got access to a network of investors.",
+      ru: "Стартап прошёл трёхмесячную программу акселератора и получил доступ к сети инвесторов.",
+    },
   },
   {
     id: "INCUBATOR",
-    name: "Инкубатор",
-    definition: "Организация, помогающая запустить стартап с нуля: офис, менторство, иногда финансирование.",
-    example: "Инкубатор при университете предоставил студенческой команде рабочее место и первых менторов.",
+    name: { en: "Incubator", ru: "Инкубатор" },
+    definition: {
+      en: "An organization that helps launch a startup from scratch: office space, mentorship, sometimes funding.",
+      ru: "Организация, помогающая запустить стартап с нуля: офис, менторство, иногда финансирование.",
+    },
+    example: {
+      en: "A university incubator gave the student team a workspace and their first mentors.",
+      ru: "Инкубатор при университете предоставил студенческой команде рабочее место и первых менторов.",
+    },
   },
   {
     id: "EXIT",
-    name: "Экзит",
-    definition: "Продажа компании или выход инвестора из капитала — через M&A или IPO.",
-    example: "Инвестор получил экзит, когда стартап был куплен крупной корпорацией через 5 лет.",
+    name: { en: "Exit", ru: "Экзит" },
+    definition: {
+      en: "Selling a company or an investor cashing out of their stake — through an M&A or an IPO.",
+      ru: "Продажа компании или выход инвестора из капитала — через M&A или IPO.",
+    },
+    example: {
+      en: "The investor got their exit when the startup was acquired by a large corporation five years later.",
+      ru: "Инвестор получил экзит, когда стартап был куплен крупной корпорацией через 5 лет.",
+    },
   },
 ];

@@ -2,11 +2,12 @@
 
 import { useMemo, useState } from "react";
 import dynamic from "next/dynamic";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { SkeletonCard } from "@/components/ui/Skeleton";
 import { VideoCard } from "@/components/VideoCard";
 import { VIDEOS, GLOSSARY } from "@/constants/data";
+import { pick } from "@/i18n/content";
 import { cn } from "@/lib/utils";
 
 // Deferred to its own chunk: only needed once the user opens this specific
@@ -33,6 +34,7 @@ const SOURCE_FILTERS: { id: SourceFilter; labelKey: "filterAll" | "filterEn" | "
 
 export default function CoursesPage() {
   const t = useTranslations("learn");
+  const locale = useLocale();
   const [tab, setTab] = useState<AcademyTab>("videos");
   const [sourceFilter, setSourceFilter] = useState<SourceFilter>("all");
   const [glossaryQuery, setGlossaryQuery] = useState("");
@@ -44,13 +46,16 @@ export default function CoursesPage() {
 
   const filteredGlossary = useMemo(() => {
     const query = glossaryQuery.trim().toLowerCase();
-    const sorted = [...GLOSSARY].sort((a, b) => a.name.localeCompare(b.name, "ru"));
+    const sorted = [...GLOSSARY].sort((a, b) =>
+      pick(a.name, locale).localeCompare(pick(b.name, locale), locale)
+    );
     if (!query) return sorted;
     return sorted.filter(
       (term) =>
-        term.name.toLowerCase().includes(query) || term.definition.toLowerCase().includes(query)
+        pick(term.name, locale).toLowerCase().includes(query) ||
+        pick(term.definition, locale).toLowerCase().includes(query)
     );
-  }, [glossaryQuery]);
+  }, [glossaryQuery, locale]);
 
   return (
     <div className="flex flex-col gap-8">
@@ -143,10 +148,10 @@ export default function CoursesPage() {
                   key={term.id}
                   className="flex flex-col gap-2 rounded-2xl border border-t-white/70 border-x-zinc-200/40 border-b-zinc-200/40 bg-white/80 px-5 py-4 shadow-sm backdrop-blur-md"
                 >
-                  <h3 className="text-base font-extrabold tracking-[-0.01em] text-ink">{term.name}</h3>
-                  <p className="text-sm tracking-tight text-ink-secondary">{term.definition}</p>
+                  <h3 className="text-base font-extrabold tracking-[-0.01em] text-ink">{pick(term.name, locale)}</h3>
+                  <p className="text-sm tracking-tight text-ink-secondary">{pick(term.definition, locale)}</p>
                   <p className="rounded-lg bg-accent-soft px-3 py-2 text-xs italic leading-relaxed text-ink-secondary">
-                    «{term.example}»
+                    {locale === "ru" ? `«${pick(term.example, locale)}»` : `"${pick(term.example, locale)}"`}
                   </p>
                 </div>
               ))}
