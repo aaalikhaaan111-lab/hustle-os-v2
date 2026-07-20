@@ -127,6 +127,21 @@ export interface GeneratedTask {
 }
 
 // ============================================================================
+// AI review of a task answer
+// ============================================================================
+
+export type TaskReviewStatus = "ready" | "needs_work";
+
+export interface TaskReview {
+  status: TaskReviewStatus;
+  summary: string;
+  strengths: string[];
+  missingPoints: string[];
+  nextImprovement: string;
+  improvedExample?: string;
+}
+
+// ============================================================================
 // Pitch / summary
 // ============================================================================
 

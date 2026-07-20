@@ -446,7 +446,17 @@
     "tailorTasks": "Tailor tasks to my project",
     "tailoring": "Tailoring...",
     "tailorDone": "Tasks tailored to your project.",
-    "tailorNoChange": "Your tasks are already specific to your project."
+    "tailorNoChange": "Your tasks are already specific to your project.",
+    "submitForReview": "Submit for review",
+    "resubmitForReview": "Update and re-check",
+    "reviewing": "Reviewing your answer...",
+    "reviewReady": "Ready",
+    "reviewNeedsWork": "Needs work",
+    "reviewCompleteHint": "Task complete!",
+    "reviewStrengths": "What's working",
+    "reviewMissing": "What's missing",
+    "reviewNext": "Next improvement",
+    "reviewExample": "Example (not your answer)"
   },
   "workshops": {
     "title": "Play & Simulators",

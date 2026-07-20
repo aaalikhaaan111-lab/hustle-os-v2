@@ -446,7 +446,17 @@
     "tailorTasks": "Настроить задачи под мой проект",
     "tailoring": "Настраиваем...",
     "tailorDone": "Задачи настроены под твой проект.",
-    "tailorNoChange": "Задачи уже конкретны для твоего проекта."
+    "tailorNoChange": "Задачи уже конкретны для твоего проекта.",
+    "submitForReview": "Отправить на проверку",
+    "resubmitForReview": "Обновить и проверить снова",
+    "reviewing": "Проверяем твой ответ...",
+    "reviewReady": "Готово",
+    "reviewNeedsWork": "Нужно доработать",
+    "reviewCompleteHint": "Задача выполнена!",
+    "reviewStrengths": "Что получилось",
+    "reviewMissing": "Чего не хватает",
+    "reviewNext": "Что улучшить",
+    "reviewExample": "Пример (не твой ответ)"
   },
   "workshops": {
     "title": "Play и Симуляторы",

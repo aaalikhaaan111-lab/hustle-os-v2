@@ -2,7 +2,13 @@
 
 import Anthropic from "@anthropic-ai/sdk";
 import type { Locale } from "@/i18n/locale";
-import type { GeneratedTask, ProjectCreationInput, ProjectPitch, ProjectSummary } from "@/lib/build/types";
+import type {
+  GeneratedTask,
+  ProjectCreationInput,
+  ProjectPitch,
+  ProjectSummary,
+  TaskReview,
+} from "@/lib/build/types";
 
 // ============================================================================
 // Pathway refinement
@@ -309,6 +315,144 @@ export async function generateProjectSummaryAction(
     if (!isValidSummaryResponse(parsed)) return null;
 
     return parsed;
+  } catch {
+    return null;
+  }
+}
+
+// ============================================================================
+// Task answer review
+// ============================================================================
+// A focused review of the user's answer to one Build task, before the task can
+// be marked complete. Returns null when the API key is missing, the call
+// fails, or the output fails validation — callers fall back to the
+// deterministic review (src/lib/build/reviewFallback.ts).
+
+const REVIEW_SCHEMA = {
+  type: "object",
+  properties: {
+    status: { type: "string", enum: ["ready", "needs_work"] },
+    summary: { type: "string" },
+    strengths: { type: "array", items: { type: "string" } },
+    missing_points: { type: "array", items: { type: "string" } },
+    next_improvement: { type: "string" },
+    improved_example: { type: "string" },
+  },
+  required: ["status", "summary", "strengths", "missing_points", "next_improvement"],
+  additionalProperties: false,
+};
+
+export interface TaskReviewContext {
+  taskTitle: string;
+  objective: string;
+  action: string;
+  expectedOutput: string;
+  completionCriteria: string;
+  projectType: string;
+  niche: string;
+  targetAudience: string | null;
+}
+
+function reviewPrompt(locale: Locale | string) {
+  const language = locale === "ru" ? "Russian" : "English";
+  return `You are a supportive but honest project mentor inside Ventrio, an entrepreneurship platform for teenagers. Review the student's answer to ONE build task and decide whether it is good enough to move on.
+
+Judge the answer on:
+- relevance: does it actually answer THIS task's question, not a different one?
+- specificity: does it contain concrete details about their own project, not vague filler?
+- substance: is there enough real thinking to build on?
+- honesty: flag claims stated as fact that clearly haven't been checked (e.g. inventing interview results), but do NOT ask them to prove everything — this is early-stage work.
+- gibberish: random characters, keyboard mashing, or unrelated text is never "ready".
+
+Decide status:
+- "ready": a genuine, on-topic answer with real substance. It does NOT need to be perfect or long — a clear, honest 2-4 sentence answer that addresses the task passes.
+- "needs_work": empty, random, unrelated, or too vague/thin to show real thinking. Give specific, actionable guidance.
+
+Rules:
+- Never shame the student. Be encouraging and concrete. Write for a teenager.
+- Never invent evidence, competitors, or results, and never rewrite their project for them.
+- "strengths": 0-3 short points (empty array if genuinely none). "missing_points": 0-3 short points. "next_improvement": one concrete next step. "improved_example" is OPTIONAL — include a short illustrative example ONLY when it would clearly help, and label it as an example, not as their real answer.
+- Keep every field short and plain. Write ALL text in ${language}.
+
+Respond only with the requested JSON.`;
+}
+
+function buildReviewUserPrompt(context: TaskReviewContext, answer: string): string {
+  return JSON.stringify({
+    task: {
+      title: context.taskTitle,
+      objective: context.objective,
+      action: context.action,
+      expectedOutput: context.expectedOutput,
+      completionCriteria: context.completionCriteria,
+    },
+    project: {
+      type: context.projectType,
+      niche: context.niche,
+      audience: context.targetAudience ?? "not specified",
+    },
+    studentAnswer: answer,
+  });
+}
+
+function isValidReview(parsed: unknown): parsed is {
+  status: "ready" | "needs_work";
+  summary: string;
+  strengths: string[];
+  missing_points: string[];
+  next_improvement: string;
+  improved_example?: string;
+} {
+  if (!parsed || typeof parsed !== "object") return false;
+  const c = parsed as Record<string, unknown>;
+  if (c.status !== "ready" && c.status !== "needs_work") return false;
+  if (!isNonEmptyString(c.summary) || !isNonEmptyString(c.next_improvement)) return false;
+  if (!Array.isArray(c.strengths) || !c.strengths.every((s) => typeof s === "string")) return false;
+  if (!Array.isArray(c.missing_points) || !c.missing_points.every((s) => typeof s === "string")) return false;
+  if (c.improved_example !== undefined && typeof c.improved_example !== "string") return false;
+  return true;
+}
+
+/**
+ * Best-effort AI review of a task answer. Returns null when AI is unavailable
+ * or the output fails validation — the caller must then use the deterministic
+ * review so a task can never be blocked (or wrongly completed) purely because
+ * AI is down.
+ */
+export async function reviewTaskAnswerWithAI(
+  context: TaskReviewContext,
+  answer: string,
+  locale: Locale | string
+): Promise<TaskReview | null> {
+  if (!process.env.ANTHROPIC_API_KEY) return null;
+
+  try {
+    const client = new Anthropic();
+    const response = await client.messages.create({
+      model: "claude-sonnet-5",
+      max_tokens: 1024,
+      output_config: {
+        effort: "low",
+        format: { type: "json_schema", schema: REVIEW_SCHEMA },
+      },
+      system: reviewPrompt(locale),
+      messages: [{ role: "user", content: buildReviewUserPrompt(context, answer) }],
+    });
+
+    const textBlock = response.content.find((block) => block.type === "text");
+    if (!textBlock || textBlock.type !== "text") return null;
+
+    const parsed = JSON.parse(textBlock.text) as unknown;
+    if (!isValidReview(parsed)) return null;
+
+    return {
+      status: parsed.status,
+      summary: parsed.summary,
+      strengths: parsed.strengths,
+      missingPoints: parsed.missing_points,
+      nextImprovement: parsed.next_improvement,
+      improvedExample: parsed.improved_example,
+    };
   } catch {
     return null;
   }

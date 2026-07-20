@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { getTranslations, getLocale } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
+import type { Database } from "@/types/supabase";
 import {
   INTENDED_OUTCOME_OPTIONS,
   NICHE_OPTIONS,
@@ -12,7 +13,12 @@ import {
 } from "@/lib/build/options";
 import { generatePathway } from "@/lib/build/pathwayTemplates";
 import { getActiveProject, getProjectOutputs, getProjectTasks, computeProgress } from "@/lib/build/queries";
-import { refineProjectPathwayAction, generateProjectSummaryAction } from "@/lib/actions/buildAi";
+import {
+  refineProjectPathwayAction,
+  generateProjectSummaryAction,
+  reviewTaskAnswerWithAI,
+} from "@/lib/actions/buildAi";
+import { buildDeterministicReview, isObviousNonsense } from "@/lib/build/reviewFallback";
 import type {
   GeneratedTask,
   IntendedOutcome,
@@ -22,6 +28,7 @@ import type {
   ProjectSummary,
   ProjectType,
   StartingStage,
+  TaskReview,
   TimeAvailability,
 } from "@/lib/build/types";
 
@@ -241,22 +248,72 @@ export async function refineExistingTasksAction(projectId: string): Promise<Refi
   return { error: null, refined: count };
 }
 
-export interface SaveTaskOutputResult {
+export interface ReviewTaskResult {
   error: string | null;
+  /** The review of this submission (null only on a hard error before review). */
+  review: TaskReview | null;
+  /** Whether this submission is what marked the task complete. */
+  completed: boolean;
   xpAwarded: boolean;
   xpAmount: number;
   projectCompleted: boolean;
 }
 
-export async function saveTaskOutputAction(
+function reviewError(message: string): ReviewTaskResult {
+  return {
+    error: message,
+    review: null,
+    completed: false,
+    xpAwarded: false,
+    xpAmount: 0,
+    projectCompleted: false,
+  };
+}
+
+type TaskUpdatePayload = Database["public"]["Tables"]["project_tasks"]["Update"];
+
+// Persist the task update. Attempts to include the review columns; if they
+// don't exist yet (migration not applied), retries with just the base fields
+// so completion is never blocked by the review not being persistable.
+async function updateTaskResilient(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  taskId: string,
+  base: TaskUpdatePayload,
+  review: TaskReview
+): Promise<void> {
+  const { error } = await supabase
+    .from("project_tasks")
+    .update({ ...base, review_status: review.status, review })
+    .eq("id", taskId);
+  if (!error) return;
+  // Fall back to base-only (review columns likely missing). If `base` is empty
+  // this is a harmless no-op — the review simply isn't persisted this time.
+  if (Object.keys(base).length > 0) {
+    await supabase.from("project_tasks").update(base).eq("id", taskId);
+  }
+}
+
+/**
+ * Reviews a task answer and completes the task ONLY if the review says it's
+ * ready. Saves the answer either way (so weak work is never lost), persists
+ * the review, and can never let empty/gibberish/unrelated input complete a
+ * task — even when AI is unavailable, the deterministic review still gates it.
+ */
+export async function reviewTaskAnswerAction(
   taskId: string,
   content: string
-): Promise<SaveTaskOutputResult> {
+): Promise<ReviewTaskResult> {
   const t = await getTranslations("build");
+  const locale = await getLocale();
   const trimmed = content.trim();
 
+  // Deterministic minimum before any network/AI cost: too short to review.
   if (trimmed.length < MIN_ANSWER_LENGTH) {
-    return { error: t("errorAnswerTooShort"), xpAwarded: false, xpAmount: 0, projectCompleted: false };
+    return {
+      ...reviewError(t("errorAnswerTooShort")),
+      error: null,
+      review: buildDeterministicReview(trimmed, locale),
+    };
   }
 
   const supabase = await createClient();
@@ -264,9 +321,7 @@ export async function saveTaskOutputAction(
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (!user) {
-    return { error: t("errorSession"), xpAwarded: false, xpAmount: 0, projectCompleted: false };
-  }
+  if (!user) return reviewError(t("errorSession"));
 
   const { data: task } = await supabase
     .from("project_tasks")
@@ -275,42 +330,70 @@ export async function saveTaskOutputAction(
     .eq("user_id", user.id)
     .maybeSingle();
 
-  if (!task) {
-    return { error: t("errorTaskNotFound"), xpAwarded: false, xpAmount: 0, projectCompleted: false };
-  }
+  if (!task) return reviewError(t("errorTaskNotFound"));
 
-  const { error: outputError } = await supabase
-    .from("project_outputs")
-    .upsert(
+  const { data: project } = await supabase
+    .from("projects")
+    .select("project_type, niche, target_audience")
+    .eq("id", task.project_id)
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  // Save the draft answer up front so the user's work is never lost, even if
+  // the review comes back "needs work".
+  const { error: outputError } = await supabase.from("project_outputs").upsert(
+    {
+      project_id: task.project_id,
+      task_id: task.id,
+      user_id: user.id,
+      content: trimmed,
+    },
+    { onConflict: "task_id" }
+  );
+
+  if (outputError) return reviewError(t("errorSaveFailed"));
+
+  // Review: cheap nonsense pre-filter → AI review → deterministic fallback.
+  let review: TaskReview;
+  if (isObviousNonsense(trimmed)) {
+    review = buildDeterministicReview(trimmed, locale);
+  } else {
+    const aiReview = await reviewTaskAnswerWithAI(
       {
-        project_id: task.project_id,
-        task_id: task.id,
-        user_id: user.id,
-        content: trimmed,
+        taskTitle: task.title,
+        objective: task.objective,
+        action: task.action,
+        expectedOutput: task.expected_output,
+        completionCriteria: task.completion_criteria,
+        projectType: project?.project_type ?? task.stage,
+        niche: project?.niche ?? "",
+        targetAudience: project?.target_audience ?? null,
       },
-      { onConflict: "task_id" }
+      trimmed,
+      locale
     );
-
-  if (outputError) {
-    return { error: t("errorSaveFailed"), xpAwarded: false, xpAmount: 0, projectCompleted: false };
+    review = aiReview ?? buildDeterministicReview(trimmed, locale);
   }
 
   const wasAlreadyCompleted = task.status === "completed";
+  const nowComplete = review.status === "ready";
 
-  if (!wasAlreadyCompleted) {
-    await supabase
-      .from("project_tasks")
-      .update({ status: "completed", completed_at: new Date().toISOString(), xp_awarded: true })
-      .eq("id", task.id);
-  }
+  const base: TaskUpdatePayload =
+    nowComplete && !wasAlreadyCompleted
+      ? { status: "completed", completed_at: new Date().toISOString(), xp_awarded: true }
+      : {};
+  await updateTaskResilient(supabase, task.id, base, review);
 
+  // Recompute progress treating this task as completed only if it now is.
   const allTasks = await getProjectTasks(supabase, task.project_id);
+  const effectiveStatus = nowComplete || wasAlreadyCompleted ? "completed" : task.status;
   const { progress, currentStage } = computeProgress(
-    allTasks.map((t2) => (t2.id === task.id ? { ...t2, status: "completed" as const } : t2))
+    allTasks.map((t2) =>
+      t2.id === task.id ? { ...t2, status: effectiveStatus as "pending" | "completed" } : t2
+    )
   );
-  // wasAlreadyCompleted excludes the "re-saving an already-done task" case, so
-  // this is only true the one time a save is what actually pushes progress to 100.
-  const projectCompleted = progress === 100 && !wasAlreadyCompleted;
+  const justAwarded = nowComplete && !wasAlreadyCompleted;
+  const projectCompleted = progress === 100 && justAwarded;
 
   await supabase
     .from("projects")
@@ -327,8 +410,10 @@ export async function saveTaskOutputAction(
 
   return {
     error: null,
-    xpAwarded: !wasAlreadyCompleted,
-    xpAmount: !wasAlreadyCompleted ? task.xp : 0,
+    review,
+    completed: justAwarded,
+    xpAwarded: justAwarded,
+    xpAmount: justAwarded ? task.xp : 0,
     projectCompleted,
   };
 }

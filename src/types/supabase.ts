@@ -228,6 +228,10 @@ export interface Database {
           completed_at: string | null;
           xp: number;
           xp_awarded: boolean;
+          // Added by *_add_task_review.sql (manual apply). May be absent until
+          // that migration runs — the review gate degrades gracefully.
+          review_status: "ready" | "needs_work" | null;
+          review: unknown | null;
           created_at: string;
           updated_at: string;
         };
@@ -250,6 +254,8 @@ export interface Database {
           completed_at?: string | null;
           xp?: number;
           xp_awarded?: boolean;
+          review_status?: "ready" | "needs_work" | null;
+          review?: unknown | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -272,6 +278,8 @@ export interface Database {
           completed_at?: string | null;
           xp?: number;
           xp_awarded?: boolean;
+          review_status?: "ready" | "needs_work" | null;
+          review?: unknown | null;
           created_at?: string;
           updated_at?: string;
         };

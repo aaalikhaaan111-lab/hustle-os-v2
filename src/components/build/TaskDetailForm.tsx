@@ -6,9 +6,11 @@ import { useTranslations } from "next-intl";
 import confetti from "canvas-confetti";
 import { Button } from "@/components/ui/Button";
 import { Card, CardContent } from "@/components/ui/Card";
-import { saveTaskOutputAction } from "@/lib/actions/build";
+import { cn } from "@/lib/utils";
+import { reviewTaskAnswerAction } from "@/lib/actions/build";
 import { useGameProgress } from "@/lib/game-progress/GameProgressContext";
 import type { Database } from "@/types/supabase";
+import type { TaskReview } from "@/lib/build/types";
 
 type ProjectTask = Database["public"]["Tables"]["project_tasks"]["Row"];
 
@@ -16,29 +18,38 @@ interface TaskDetailFormProps {
   task: ProjectTask;
   existingAnswer: string;
   recommendedLessonTitle: string | null;
+  initialReview: TaskReview | null;
 }
 
-export function TaskDetailForm({ task, existingAnswer, recommendedLessonTitle }: TaskDetailFormProps) {
+export function TaskDetailForm({
+  task,
+  existingAnswer,
+  recommendedLessonTitle,
+  initialReview,
+}: TaskDetailFormProps) {
   const t = useTranslations("build");
   const router = useRouter();
   const { completeChallenge } = useGameProgress();
   const [answer, setAnswer] = useState(existingAnswer);
+  const [review, setReview] = useState<TaskReview | null>(initialReview);
   const [error, setError] = useState<string | null>(null);
-  const [savedState, setSavedState] = useState<"idle" | "saved" | "project_completed">(
-    task.status === "completed" ? "saved" : "idle"
-  );
+  const [completed, setCompleted] = useState(task.status === "completed");
+  const [projectCompleted, setProjectCompleted] = useState(false);
   const [isPending, startTransition] = useTransition();
 
   function handleSubmit() {
+    if (isPending) return; // request lock — prevents duplicate reviews / cost
     setError(null);
     startTransition(async () => {
-      const result = await saveTaskOutputAction(task.id, answer);
+      const result = await reviewTaskAnswerAction(task.id, answer);
       if (result.error) {
         setError(result.error);
         return;
       }
+      setReview(result.review);
 
-      if (result.xpAwarded) {
+      if (result.completed) {
+        setCompleted(true);
         completeChallenge({
           challengeId: `build:${task.id}`,
           title: task.title,
@@ -47,10 +58,14 @@ export function TaskDetailForm({ task, existingAnswer, recommendedLessonTitle }:
           xp: result.xpAmount,
           answer: answer.trim(),
         });
-        confetti({ particleCount: 80, spread: 80, origin: { y: 0.6 }, colors: ["#4f46e5", "#9333ea", "#ec4899"] });
+        confetti({
+          particleCount: 80,
+          spread: 80,
+          origin: { y: 0.6 },
+          colors: ["#4f46e5", "#9333ea", "#ec4899"],
+        });
       }
-
-      setSavedState(result.projectCompleted ? "project_completed" : "saved");
+      if (result.projectCompleted) setProjectCompleted(true);
     });
   }
 
@@ -58,18 +73,20 @@ export function TaskDetailForm({ task, existingAnswer, recommendedLessonTitle }:
     <div className="mx-auto flex w-full max-w-2xl flex-col gap-6 pb-16">
       <Card>
         <CardContent className="flex flex-col gap-4 py-8">
-          <div className="flex flex-wrap items-center gap-2 text-xs font-bold text-ink-muted">
-            <span className="rounded-full bg-surface-hover px-2.5 py-1">{task.estimated_time}</span>
-            <span className="rounded-full bg-amber-50 px-2.5 py-1 text-amber-600 ring-1 ring-inset ring-amber-100">
-              +{task.xp} XP
+          <div className="flex flex-wrap items-center gap-2 text-xs text-ink-muted">
+            <span className="rounded-full bg-surface-hover px-2.5 py-1 font-medium">
+              {task.estimated_time}
             </span>
+            <span className="font-medium">{t("xpShort", { xp: task.xp })}</span>
           </div>
 
           <div className="flex flex-col gap-1.5">
             <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-indigo-600">
               {t("whyItMattersLabel")}
             </span>
-            <p className="text-sm leading-relaxed tracking-tight text-ink-secondary">{task.why_it_matters}</p>
+            <p className="text-sm leading-relaxed tracking-tight text-ink-secondary">
+              {task.why_it_matters}
+            </p>
           </div>
 
           <div className="flex flex-col gap-1.5">
@@ -83,7 +100,9 @@ export function TaskDetailForm({ task, existingAnswer, recommendedLessonTitle }:
             <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-indigo-600">
               {t("expectedOutputLabel")}
             </span>
-            <p className="text-sm leading-relaxed tracking-tight text-ink-secondary">{task.expected_output}</p>
+            <p className="text-sm leading-relaxed tracking-tight text-ink-secondary">
+              {task.expected_output}
+            </p>
           </div>
 
           {recommendedLessonTitle && (
@@ -126,27 +145,107 @@ export function TaskDetailForm({ task, existingAnswer, recommendedLessonTitle }:
 
           {error && <p className="text-sm text-danger">{error}</p>}
 
-          {savedState !== "idle" && (
-            <p className="text-sm font-semibold text-success">
-              {savedState === "project_completed" ? t("projectCompletedNotice") : t("answerSavedNotice")}
-            </p>
-          )}
+          {review && <ReviewFeedback review={review} completed={completed} />}
 
           <div className="flex flex-col gap-3 sm:flex-row">
             <Button onClick={handleSubmit} disabled={isPending} size="lg" className="w-full sm:w-fit">
-              {isPending ? t("saving") : t("saveAnswer")}
+              {isPending
+                ? t("reviewing")
+                : completed
+                  ? t("resubmitForReview")
+                  : t("submitForReview")}
             </Button>
             <Button
               variant="secondary"
               size="lg"
               className="w-full sm:w-fit"
-              onClick={() => router.push(savedState === "project_completed" ? "/build/workspace/pitch" : "/build/workspace")}
+              onClick={() =>
+                router.push(projectCompleted ? "/build/workspace/pitch" : "/build/workspace")
+              }
             >
-              {savedState === "project_completed" ? t("viewPitch") : t("backToWorkspace")}
+              {projectCompleted ? t("viewPitch") : t("backToWorkspace")}
             </Button>
           </div>
         </CardContent>
       </Card>
+    </div>
+  );
+}
+
+function ReviewFeedback({ review, completed }: { review: TaskReview; completed: boolean }) {
+  const t = useTranslations("build");
+  const ready = review.status === "ready";
+
+  return (
+    <div
+      className={cn(
+        "flex flex-col gap-3 rounded-2xl border p-4",
+        ready ? "border-emerald-100 bg-emerald-50/60" : "border-amber-100 bg-amber-50/60"
+      )}
+    >
+      <div className="flex items-center gap-2">
+        <span
+          className={cn(
+            "inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-[0.1em]",
+            ready ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"
+          )}
+        >
+          {ready ? `✓ ${t("reviewReady")}` : t("reviewNeedsWork")}
+        </span>
+        {completed && ready && (
+          <span className="text-xs font-semibold text-emerald-700">{t("reviewCompleteHint")}</span>
+        )}
+      </div>
+
+      <p className="text-sm leading-relaxed tracking-tight text-ink-secondary">{review.summary}</p>
+
+      {review.strengths.length > 0 && (
+        <div className="flex flex-col gap-1">
+          <span className="text-[11px] font-bold uppercase tracking-[0.12em] text-emerald-700">
+            {t("reviewStrengths")}
+          </span>
+          <ul className="flex flex-col gap-0.5">
+            {review.strengths.map((s, i) => (
+              <li key={i} className="text-sm tracking-tight text-ink-secondary">
+                ✓ {s}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {review.missingPoints.length > 0 && (
+        <div className="flex flex-col gap-1">
+          <span className="text-[11px] font-bold uppercase tracking-[0.12em] text-amber-700">
+            {t("reviewMissing")}
+          </span>
+          <ul className="flex flex-col gap-0.5">
+            {review.missingPoints.map((s, i) => (
+              <li key={i} className="text-sm tracking-tight text-ink-secondary">
+                • {s}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {review.nextImprovement && (
+        <div className="flex flex-col gap-1">
+          <span className="text-[11px] font-bold uppercase tracking-[0.12em] text-indigo-600">
+            {t("reviewNext")}
+          </span>
+          <p className="text-sm tracking-tight text-ink">{review.nextImprovement}</p>
+        </div>
+      )}
+
+      {review.improvedExample && (
+        <div className="flex flex-col gap-1 rounded-xl bg-white/70 px-3 py-2">
+          <span className="text-[11px] font-bold uppercase tracking-[0.12em] text-ink-muted">
+            {t("reviewExample")}
+          </span>
+          <p className="text-sm italic tracking-tight text-ink-secondary">{review.improvedExample}</p>
+        </div>
+      )}
     </div>
   );
 }

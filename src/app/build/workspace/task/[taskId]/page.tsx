@@ -6,6 +6,7 @@ import { getCurrentUser } from "@/lib/supabase/currentUser";
 import { TaskDetailForm } from "@/components/build/TaskDetailForm";
 import { ALL_LESSONS } from "@/constants/courses";
 import { pick } from "@/i18n/content";
+import type { TaskReview } from "@/lib/build/types";
 
 interface TaskDetailPageProps {
   params: Promise<{ taskId: string }>;
@@ -51,6 +52,7 @@ export default async function TaskDetailPage({ params }: TaskDetailPageProps) {
         task={task}
         existingAnswer={output?.content ?? ""}
         recommendedLessonTitle={recommendedLesson ? pick(recommendedLesson.title, locale) : null}
+        initialReview={(task.review as TaskReview | null) ?? null}
       />
     </div>
   );
