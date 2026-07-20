@@ -8,9 +8,10 @@ import { cn } from "@/lib/utils";
 import { pick } from "@/i18n/content";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/supabase/currentUser";
-import { getCurrentProject, getProjectTasks } from "@/lib/build/queries";
+import { getCurrentProject, getProjectTasks, getProjectOutputs } from "@/lib/build/queries";
 import { STAGE_LABELS } from "@/lib/build/pathwayTemplates";
 import { PROJECT_TYPE_OPTIONS } from "@/lib/build/options";
+import { buildSnapshot, destinationGoalKey } from "@/lib/build/snapshot";
 
 export default async function ProjectWorkspacePage() {
   const supabase = await createClient();
@@ -25,15 +26,36 @@ export default async function ProjectWorkspacePage() {
     redirect("/build");
   }
 
-  const tasks = await getProjectTasks(supabase, project.id);
+  // Tasks and outputs are independent reads for this project — fetch them in
+  // parallel so the workspace isn't a request waterfall.
+  const [tasks, outputs] = await Promise.all([
+    getProjectTasks(supabase, project.id),
+    getProjectOutputs(supabase, project.id),
+  ]);
+
   const t = await getTranslations("build");
   const locale = await getLocale();
 
+  // Snapshot field labels and the destination goal key are computed
+  // dynamically, but always resolve to real build.* message keys — cast so
+  // next-intl's typed t() accepts them.
+  type BuildKey = Parameters<typeof t>[0];
+
   const typeOption = PROJECT_TYPE_OPTIONS.find((option) => option.id === project.project_type);
   const projectName = project.name || t("untitledProject");
+  const goalName = project.name || t("destProjectFallback");
   const nextTask = tasks.find((task) => task.status !== "completed");
   const completedCount = tasks.filter((task) => task.status === "completed").length;
 
+  const outputByTaskId = new Map(outputs.map((o) => [o.task_id, o.content]));
+  const snapshot = buildSnapshot(project, tasks, outputs);
+
+  const currentStageLabel =
+    project.current_stage && STAGE_LABELS[project.current_stage]
+      ? pick(STAGE_LABELS[project.current_stage], locale)
+      : "—";
+
+  // Group tasks by stage, preserving pathway order.
   const stageOrder: string[] = [];
   const tasksByStage = new Map<string, typeof tasks>();
   for (const task of tasks) {
@@ -57,21 +79,86 @@ export default async function ProjectWorkspacePage() {
         }
       />
 
-      <Card>
-        <CardContent className="flex flex-col gap-3 py-6">
-          <div className="flex items-center justify-between text-xs font-bold tracking-wide text-ink-secondary">
-            <span>{t("progressLabel")}</span>
-            <span>{project.progress}%</span>
+      {/* ─── Destination: where the pathway is leading ─── */}
+      <Card className="overflow-hidden">
+        <CardContent className="flex flex-col gap-4 py-7">
+          <div className="flex flex-col gap-1.5">
+            <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-indigo-600">
+              {t("yourGoal")}
+            </span>
+            <p className="text-base font-semibold leading-snug tracking-tight text-ink sm:text-lg">
+              {t(destinationGoalKey(project.intended_outcome) as BuildKey, { name: goalName })}
+            </p>
           </div>
-          <div className="h-4 w-full overflow-hidden rounded-full bg-zinc-900/[0.04] ring-1 ring-inset ring-white/60 backdrop-blur-sm">
-            <div
-              className="h-full rounded-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 shadow-[0_0_12px_rgba(147,51,234,0.5)] transition-all duration-700 ease-out"
-              style={{ width: `${project.progress}%` }}
-            />
+
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center justify-between text-xs font-bold tracking-wide text-ink-secondary">
+              <span>{t("progressLabel")}</span>
+              <span>{project.progress}%</span>
+            </div>
+            <div className="h-3 w-full overflow-hidden rounded-full bg-zinc-900/[0.04] ring-1 ring-inset ring-white/60 backdrop-blur-sm">
+              <div
+                className="h-full rounded-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 transition-all duration-700 ease-out"
+                style={{ width: `${project.progress}%` }}
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <MetaCell label={t("destCurrentStage")} value={currentStageLabel} />
+            <MetaCell label={t("destNextMilestone")} value={nextTask ? nextTask.title : t("destAllDone")} />
+            <MetaCell label={t("destDeliverable")} value={t("destDeliverableValue")} />
           </div>
         </CardContent>
       </Card>
 
+      {/* ─── Project Snapshot: what the project is, from saved work only ─── */}
+      <Card>
+        <CardContent className="flex flex-col gap-3 py-7">
+          <div className="flex flex-col gap-0.5">
+            <h3 className="text-base font-extrabold tracking-[-0.01em] text-ink">{t("snapshotTitle")}</h3>
+            <p className="text-xs tracking-tight text-ink-muted">{t("snapshotSubtitle")}</p>
+          </div>
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+            {snapshot.map((row) => {
+              const defined = row.value !== null;
+              const inner = (
+                <>
+                  <span className="text-[11px] font-bold uppercase tracking-[0.12em] text-ink-muted">
+                    {t(row.labelKey as BuildKey)}
+                  </span>
+                  <span
+                    className={cn(
+                      "line-clamp-2 text-sm",
+                      defined ? "font-medium text-ink" : "italic text-ink-muted"
+                    )}
+                  >
+                    {defined ? row.value : t("snapNotDefined")}
+                  </span>
+                </>
+              );
+              return row.taskId ? (
+                <Link
+                  key={row.labelKey}
+                  href={`/build/workspace/task/${row.taskId}`}
+                  className="flex flex-col gap-1 rounded-xl border border-t-white/60 border-x-zinc-200/30 border-b-zinc-200/30 bg-white/60 px-3.5 py-2.5 transition-colors hover:bg-white/90"
+                >
+                  {inner}
+                </Link>
+              ) : (
+                <div
+                  key={row.labelKey}
+                  className="flex flex-col gap-1 rounded-xl border border-t-white/60 border-x-zinc-200/30 border-b-zinc-200/30 bg-white/40 px-3.5 py-2.5"
+                >
+                  {inner}
+                </div>
+              );
+            })}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* ─── Next task / completion ─── */}
       {nextTask ? (
         <Card className="overflow-hidden">
           <CardContent className="flex flex-col gap-4 py-8">
@@ -104,25 +191,35 @@ export default async function ProjectWorkspacePage() {
         </Card>
       )}
 
+      {/* ─── Pathway stages with visible completed outputs ─── */}
       <div className="flex flex-col gap-6">
         {stageOrder.map((stage) => {
           const stageTasks = tasksByStage.get(stage) ?? [];
           const stageLabel = STAGE_LABELS[stage] ? pick(STAGE_LABELS[stage], locale) : stage;
+          const stageComplete = stageTasks.every((task) => task.status === "completed");
           return (
             <div key={stage} className="flex flex-col gap-3">
-              <h3 className="text-sm font-bold uppercase tracking-[0.14em] text-ink-muted">{stageLabel}</h3>
+              <div className="flex items-center gap-2">
+                <h3 className="text-sm font-bold uppercase tracking-[0.14em] text-ink-muted">{stageLabel}</h3>
+                {stageComplete && (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.1em] text-emerald-600 ring-1 ring-inset ring-emerald-100">
+                    ✓ {t("stageReady")}
+                  </span>
+                )}
+              </div>
               <div className="flex flex-col gap-2">
                 {stageTasks.map((task) => {
                   const completed = task.status === "completed";
+                  const output = completed ? outputByTaskId.get(task.id) : undefined;
                   return (
                     <Link
                       key={task.id}
                       href={`/build/workspace/task/${task.id}`}
-                      className="flex items-center gap-3 rounded-2xl border border-t-white/70 border-x-zinc-200/40 border-b-zinc-200/40 bg-white/70 px-4 py-3 shadow-sm backdrop-blur-md transition-all duration-200 hover:bg-white/90"
+                      className="flex items-start gap-3 rounded-2xl border border-t-white/70 border-x-zinc-200/40 border-b-zinc-200/40 bg-white/70 px-4 py-3 shadow-sm backdrop-blur-md transition-all duration-200 hover:bg-white/90"
                     >
                       <span
                         className={cn(
-                          "flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-bold",
+                          "mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold",
                           completed
                             ? "bg-gradient-to-br from-emerald-500 to-emerald-600 text-white"
                             : "bg-zinc-100 text-ink-muted"
@@ -130,11 +227,21 @@ export default async function ProjectWorkspacePage() {
                       >
                         {completed ? "✓" : ""}
                       </span>
-                      <div className="flex flex-1 flex-col gap-0.5">
+                      <div className="flex min-w-0 flex-1 flex-col gap-0.5">
                         <span className="text-sm font-semibold text-ink">{task.title}</span>
-                        <span className="text-xs text-ink-muted">{task.estimated_time}</span>
+                        {/* Primary supporting info: expected output + time. */}
+                        <span className="line-clamp-1 text-xs text-ink-secondary">
+                          {task.expected_output}
+                        </span>
+                        {output && (
+                          <span className="mt-1 line-clamp-2 rounded-lg bg-emerald-50/60 px-2.5 py-1.5 text-xs italic text-ink-secondary">
+                            {output}
+                          </span>
+                        )}
+                        <span className="mt-0.5 text-[11px] text-ink-muted">
+                          {task.estimated_time} · {t("xpShort", { xp: task.xp })}
+                        </span>
                       </div>
-                      <span className="shrink-0 text-xs font-bold text-amber-600">+{task.xp} XP</span>
                     </Link>
                   );
                 })}
@@ -143,6 +250,15 @@ export default async function ProjectWorkspacePage() {
           );
         })}
       </div>
+    </div>
+  );
+}
+
+function MetaCell({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex flex-col gap-0.5 rounded-xl bg-white/50 px-3 py-2 ring-1 ring-inset ring-zinc-200/40">
+      <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-ink-muted">{label}</span>
+      <span className="line-clamp-2 text-xs font-semibold text-ink">{value}</span>
     </div>
   );
 }
