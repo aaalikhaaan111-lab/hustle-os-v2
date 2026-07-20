@@ -8,10 +8,10 @@ import { NAV_ITEMS } from "@/lib/constants";
 import { useGameProgress } from "@/lib/game-progress/GameProgressContext";
 import { readTourState, writeTourState, type TourState } from "@/lib/tour/tourStorage";
 
-const TOUR_MESSAGE_KEYS: Record<string, "dashboardMessage" | "challengesMessage" | "learnMessage" | "workshopsMessage" | "profileMessage"> = {
+const TOUR_MESSAGE_KEYS: Record<string, "dashboardMessage" | "learnMessage" | "buildMessage" | "workshopsMessage" | "profileMessage"> = {
   "/dashboard": "dashboardMessage",
-  "/challenges": "challengesMessage",
   "/courses": "learnMessage",
+  "/build": "buildMessage",
   "/workshops": "workshopsMessage",
   "/profile": "profileMessage",
 };
@@ -175,8 +175,12 @@ export function ProductTour() {
     );
   }
 
-  // Phase 3 — closing offer to start the first challenge. Choosing either
-  // option marks the tour complete, so it never nags on a later visit.
+  // Phase 3 — closing offer to create the first Build project (the primary
+  // product loop). Choosing either option marks the tour complete, so it
+  // never nags on a later visit. Routing to /build/new lets the existing
+  // Build guards do the right thing: a user with an active project is sent to
+  // their workspace, a brand-new user (or one with only a completed project)
+  // lands on the creation flow.
   if (stage === "offer") {
     return (
       <CenteredCard ariaLabel={t("offerTitle")}>
@@ -192,7 +196,7 @@ export function ProductTour() {
               size="sm"
               onClick={() => {
                 closeTour();
-                router.push("/first-session");
+                router.push("/build/new");
               }}
             >
               {t("offerStart")}
@@ -300,8 +304,8 @@ export function ProductTour() {
               size="sm"
               onClick={() => {
                 if (isLast) {
-                  // Finish the walkthrough by surfacing the challenge offer,
-                  // keeping the tour active until the user answers it.
+                  // Finish the walkthrough by surfacing the "create a project"
+                  // offer, keeping the tour active until the user answers it.
                   persist({ ...state, stage: "offer" });
                 } else {
                   persist({ ...state, step: state.step + 1 });
