@@ -481,7 +481,8 @@
     "starterImprovePitch": "Улучши мой 60-секундный питч",
     "starterJudgeQs": "Задай мне вопросы жюри",
     "starterWeakClaims": "Найди слабые места в моём питче",
-    "starterExplainClearly": "Помоги понятно объяснить проект"
+    "starterExplainClearly": "Помоги понятно объяснить проект",
+    "projectLanguage": "Язык проекта"
   },
   "workshops": {
     "title": "Play и Симуляторы",

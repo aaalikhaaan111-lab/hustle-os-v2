@@ -481,7 +481,8 @@
     "starterImprovePitch": "Improve my 60-second pitch",
     "starterJudgeQs": "Ask me judge questions",
     "starterWeakClaims": "Find weak claims in my pitch",
-    "starterExplainClearly": "Help me explain the project clearly"
+    "starterExplainClearly": "Help me explain the project clearly",
+    "projectLanguage": "Project language"
   },
   "workshops": {
     "title": "Play & Simulators",

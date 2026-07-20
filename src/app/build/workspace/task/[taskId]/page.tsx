@@ -21,22 +21,19 @@ export default async function TaskDetailPage({ params }: TaskDetailPageProps) {
     redirect("/login");
   }
 
-  const { data: task } = await supabase
-    .from("project_tasks")
-    .select("*")
-    .eq("id", taskId)
-    .eq("user_id", user.id)
-    .maybeSingle();
+  // Task and its saved output are both keyed by taskId — fetch in parallel
+  // rather than as a waterfall. RLS scopes both to the owner.
+  const [taskResult, outputResult] = await Promise.all([
+    supabase.from("project_tasks").select("*").eq("id", taskId).eq("user_id", user.id).maybeSingle(),
+    supabase.from("project_outputs").select("content").eq("task_id", taskId).maybeSingle(),
+  ]);
 
+  const task = taskResult.data;
   if (!task) {
     notFound();
   }
 
-  const { data: output } = await supabase
-    .from("project_outputs")
-    .select("content")
-    .eq("task_id", taskId)
-    .maybeSingle();
+  const output = outputResult.data;
 
   const t = await getTranslations("build");
   const locale = await getLocale();

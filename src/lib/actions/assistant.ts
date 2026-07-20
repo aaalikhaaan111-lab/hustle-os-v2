@@ -1,6 +1,6 @@
 "use server";
 
-import { getLocale, getTranslations } from "next-intl/server";
+import { getTranslations } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
 import { getProjectTasks, getProjectOutputs } from "@/lib/build/queries";
 import { buildSnapshot } from "@/lib/build/snapshot";
@@ -106,7 +106,6 @@ export async function sendAssistantMessage(
   content: string
 ): Promise<SendMessageResult> {
   const t = await getTranslations("build");
-  const locale = await getLocale();
   const trimmed = content.trim();
 
   const fail = (error: string): SendMessageResult => ({
@@ -132,6 +131,9 @@ export async function sendAssistantMessage(
     .eq("user_id", user.id)
     .maybeSingle();
   if (!project) return fail(t("errorProjectNotFound"));
+
+  // The assistant replies in the project's own language.
+  const locale = project.locale;
 
   // Ensure a conversation exists (create lazily on the first message).
   let convId = conversationId;

@@ -159,7 +159,6 @@ export interface RefineTasksResult {
 // unchanged when AI is unavailable or its output fails validation.
 export async function refineExistingTasksAction(projectId: string): Promise<RefineTasksResult> {
   const t = await getTranslations("build");
-  const locale = await getLocale();
   const supabase = await createClient();
   const {
     data: { user },
@@ -209,7 +208,8 @@ export async function refineExistingTasksAction(projectId: string): Promise<Refi
     recommendedLessonId: task.recommended_lesson_id ?? undefined,
   }));
 
-  const refined = await refineProjectPathwayAction(input, generated, locale);
+  // Refinement output uses the project's own language.
+  const refined = await refineProjectPathwayAction(input, generated, project.locale);
   const originalById = new Map(generated.map((g) => [g.templateId, g]));
 
   let count = 0;
@@ -334,10 +334,15 @@ export async function reviewTaskAnswerAction(
 
   const { data: project } = await supabase
     .from("projects")
-    .select("project_type, niche, target_audience")
+    .select("project_type, niche, target_audience, locale")
     .eq("id", task.project_id)
     .eq("user_id", user.id)
     .maybeSingle();
+
+  // AI-generated feedback follows the PROJECT's stored language, not whatever
+  // interface locale is currently active — so a Russian project stays Russian
+  // even if the user switched the UI to English.
+  const projectLocale = project?.locale ?? locale;
 
   // Save the draft answer up front so the user's work is never lost, even if
   // the review comes back "needs work".
@@ -356,7 +361,7 @@ export async function reviewTaskAnswerAction(
   // Review: cheap nonsense pre-filter → AI review → deterministic fallback.
   let review: TaskReview;
   if (isObviousNonsense(trimmed)) {
-    review = buildDeterministicReview(trimmed, locale);
+    review = buildDeterministicReview(trimmed, projectLocale);
   } else {
     const aiReview = await reviewTaskAnswerWithAI(
       {
@@ -370,9 +375,9 @@ export async function reviewTaskAnswerAction(
         targetAudience: project?.target_audience ?? null,
       },
       trimmed,
-      locale
+      projectLocale
     );
-    review = aiReview ?? buildDeterministicReview(trimmed, locale);
+    review = aiReview ?? buildDeterministicReview(trimmed, projectLocale);
   }
 
   const wasAlreadyCompleted = task.status === "completed";
@@ -505,7 +510,6 @@ function buildDeterministicSummary(
 
 export async function generateSummaryAction(projectId: string): Promise<GenerateSummaryResult> {
   const t = await getTranslations("build");
-  const locale = await getLocale();
   const supabase = await createClient();
   const {
     data: { user },
@@ -526,8 +530,13 @@ export async function generateSummaryAction(projectId: string): Promise<Generate
     return { error: t("errorProjectNotFound") };
   }
 
-  const tasks = await getProjectTasks(supabase, projectId);
-  const outputs = await getProjectOutputs(supabase, projectId);
+  // Summary + pitch are written in the project's own language.
+  const locale = project.locale;
+
+  const [tasks, outputs] = await Promise.all([
+    getProjectTasks(supabase, projectId),
+    getProjectOutputs(supabase, projectId),
+  ]);
   const outputByTask = new Map(outputs.map((output) => [output.task_id, output.content]));
 
   const completedTasks = tasks

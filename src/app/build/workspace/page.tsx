@@ -85,9 +85,14 @@ export default async function ProjectWorkspacePage() {
       <Card className="overflow-hidden">
         <CardContent className="flex flex-col gap-4 py-7">
           <div className="flex flex-col gap-1.5">
-            <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-indigo-600">
-              {t("yourGoal")}
-            </span>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-indigo-600">
+                {t("yourGoal")}
+              </span>
+              <span className="rounded-full bg-surface-hover px-2 py-0.5 text-[10px] font-semibold text-ink-muted">
+                {t("projectLanguage")}: {project.locale === "ru" ? "Русский" : "English"}
+              </span>
+            </div>
             <p className="text-base font-semibold leading-snug tracking-tight text-ink sm:text-lg">
               {t(destinationGoalKey(project.intended_outcome) as BuildKey, { name: goalName })}
             </p>
