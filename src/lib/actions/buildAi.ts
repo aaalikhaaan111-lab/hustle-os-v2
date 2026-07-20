@@ -457,3 +457,137 @@ export async function reviewTaskAnswerWithAI(
     return null;
   }
 }
+
+// ============================================================================
+// Project assistant (chat)
+// ============================================================================
+// A project-scoped mentor. It answers using ONLY the current project's context
+// and stays focused on building/validating/launching/pitching that project.
+// Chat-only: it never writes to project data — so "must not change project
+// data without confirmation" holds by construction.
+
+export interface AssistantContext {
+  projectName: string;
+  projectType: string;
+  niche: string;
+  intendedOutcome: string;
+  targetAudience: string | null;
+  timeAvailability: string;
+  currentStage: string | null;
+  currentTaskTitle: string | null;
+  snapshot: { label: string; value: string }[];
+  pitchSummary: string | null;
+  memorySummary: string | null;
+}
+
+export interface AssistantTurn {
+  role: "user" | "assistant";
+  content: string;
+}
+
+function assistantSystemPrompt(context: AssistantContext, locale: Locale | string): string {
+  const language = locale === "ru" ? "Russian" : "English";
+  const redirect =
+    locale === "ru"
+      ? "Я помогаю именно с этим проектом. Спроси меня об идее, аудитории, проверке, следующих шагах, запуске или питче."
+      : "I'm here to help with this project. Ask me about its idea, audience, validation, next steps, launch or pitch.";
+
+  const snapshotLines =
+    context.snapshot.length > 0
+      ? context.snapshot.map((s) => `- ${s.label}: ${s.value}`).join("\n")
+      : "- (nothing saved yet)";
+
+  return `You are the project mentor inside Ventrio, an entrepreneurship app for teenagers. You help ONE specific project and nothing else. You are a mentor, not a general chatbot and not an autonomous agent.
+
+STAY ON THIS PROJECT. Allowed topics: the project idea, problem, audience, niche, competitors, value proposition, validation, interview questions, research, planning, first version/prototype, relevant tools, testing, launch, feedback, risks, business model, pitch, presentation, next actions, clarifying the current Build task, and entrepreneurship concepts directly connected to THIS project. A design / coding / marketing / research question IS allowed when it clearly helps this project. If a message is unrelated to the project (homework, trivia, other businesses, general chatting), do NOT answer it — reply briefly with exactly: "${redirect}"
+
+BEHAVE LIKE A PRACTICAL MENTOR: remember earlier decisions, don't re-ask what's already answered, refer back to the saved context, ask ONE useful clarifying question only when needed, challenge weak assumptions respectfully, separate evidence from guesses, give specific next actions and say why they matter, keep advice realistic for a teenager, be concise by default and go deeper only when asked.
+
+NEVER: fabricate market data, interviews, competitors, users, traction, or research; claim work was done that wasn't; complete or edit the user's tasks; change their saved project; make financial/legal guarantees; or promise users, income, investment or success. When you give an example, label it clearly as an example, not as their real evidence.
+
+Write ALL replies in ${language}. Keep replies short and plain.
+
+── THIS PROJECT ──
+Name: ${context.projectName}
+Type: ${context.projectType} | Niche: ${context.niche} | Goal: ${context.intendedOutcome}
+Audience: ${context.targetAudience ?? "not specified yet"}
+Weekly time: ${context.timeAvailability}
+Current stage: ${context.currentStage ?? "just starting"}${context.currentTaskTitle ? ` | Current task: ${context.currentTaskTitle}` : ""}
+
+Saved work so far (the user's real, confirmed inputs — treat as facts):
+${snapshotLines}
+${context.pitchSummary ? `\nPitch so far: ${context.pitchSummary}` : ""}
+${context.memorySummary ? `\nEarlier in this project's conversations: ${context.memorySummary}` : ""}`;
+}
+
+/**
+ * Best-effort assistant reply. Returns null when AI is unavailable or fails —
+ * the caller then shows a temporary "assistant unavailable" note WITHOUT
+ * persisting a fake assistant message or memory.
+ */
+export async function generateAssistantReply(
+  context: AssistantContext,
+  history: AssistantTurn[],
+  locale: Locale | string
+): Promise<string | null> {
+  if (!process.env.ANTHROPIC_API_KEY) return null;
+  if (history.length === 0) return null;
+
+  try {
+    const client = new Anthropic();
+    const response = await client.messages.create({
+      model: "claude-sonnet-5",
+      max_tokens: 1024,
+      output_config: { effort: "low" },
+      system: assistantSystemPrompt(context, locale),
+      messages: history.map((turn) => ({ role: turn.role, content: turn.content })),
+    });
+
+    const textBlock = response.content.find((block) => block.type === "text");
+    if (!textBlock || textBlock.type !== "text") return null;
+    const text = textBlock.text.trim();
+    return text.length > 0 ? text : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Compresses older conversation turns into a short structured memory summary.
+ * Best-effort — returns null on any failure and the caller keeps the previous
+ * summary rather than inventing memory.
+ */
+export async function summarizeProjectMemory(
+  previousSummary: string | null,
+  olderTurns: AssistantTurn[],
+  locale: Locale | string
+): Promise<string | null> {
+  if (!process.env.ANTHROPIC_API_KEY) return null;
+  if (olderTurns.length === 0) return null;
+
+  const language = locale === "ru" ? "Russian" : "English";
+  try {
+    const client = new Anthropic();
+    const response = await client.messages.create({
+      model: "claude-sonnet-5",
+      max_tokens: 512,
+      output_config: { effort: "low" },
+      system: `You maintain a compact memory of a teenager's project mentoring conversation. Update the running summary with anything important from the new messages: decisions the user confirmed, facts they gave, assumptions still to validate, risks identified, and current priorities/next actions. Keep it under ~120 words, factual, and clearly separate confirmed facts from open questions. Do NOT invent anything. Write in ${language}. Return only the updated summary text.`,
+      messages: [
+        {
+          role: "user",
+          content: JSON.stringify({
+            previousSummary: previousSummary ?? "(none yet)",
+            newMessages: olderTurns.map((t) => `${t.role}: ${t.content}`),
+          }),
+        },
+      ],
+    });
+    const textBlock = response.content.find((block) => block.type === "text");
+    if (!textBlock || textBlock.type !== "text") return null;
+    const text = textBlock.text.trim();
+    return text.length > 0 ? text : null;
+  } catch {
+    return null;
+  }
+}

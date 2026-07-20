@@ -13,6 +13,7 @@ import { STAGE_LABELS } from "@/lib/build/pathwayTemplates";
 import { PROJECT_TYPE_OPTIONS } from "@/lib/build/options";
 import { buildSnapshot, destinationGoalKey } from "@/lib/build/snapshot";
 import { RefineTasksButton } from "@/components/build/RefineTasksButton";
+import { ProjectAssistant } from "@/components/build/ProjectAssistant";
 
 export default async function ProjectWorkspacePage() {
   const supabase = await createClient();
@@ -252,6 +253,8 @@ export default async function ProjectWorkspacePage() {
           );
         })}
       </div>
+
+      <ProjectAssistant projectId={project.id} />
     </div>
   );
 }
