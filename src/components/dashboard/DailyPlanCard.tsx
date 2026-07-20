@@ -73,7 +73,9 @@ export function DailyPlanCard() {
     {
       labelKey: "completeTodayTask",
       done: completedToday,
-      href: recommendation ? `/challenges?open=${recommendation.quest.id}` : "/challenges",
+      href: recommendation
+        ? `/courses?tab=challenges&open=${recommendation.quest.id}`
+        : "/courses?tab=challenges",
       ctaKey: "start",
     },
     {

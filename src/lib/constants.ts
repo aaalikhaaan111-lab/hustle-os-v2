@@ -1,7 +1,6 @@
 import type { ComponentType, SVGProps } from "react";
 import {
   BuildIcon,
-  ChallengesIcon,
   CoursesIcon,
   DashboardIcon,
   ProfileIcon,
@@ -75,9 +74,11 @@ export const TOPIC_OPTIONS: TopicOption[] = [
   { id: "other", labelKey: "topicOther", emoji: "✨" },
 ];
 
+// Challenges is intentionally not a top-level destination anymore — it lives
+// as a tab inside Learn (/courses?tab=challenges). Build is the primary loop
+// and sits centrally right after Learn.
 export const NAV_ITEMS: NavItem[] = [
   { labelKey: "dashboard", href: "/dashboard", icon: DashboardIcon },
-  { labelKey: "challenges", href: "/challenges", icon: ChallengesIcon },
   { labelKey: "learn", href: "/courses", icon: CoursesIcon },
   { labelKey: "build", href: "/build", icon: BuildIcon },
   { labelKey: "workshops", href: "/workshops", icon: WorkshopsIcon },

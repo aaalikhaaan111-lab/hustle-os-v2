@@ -82,7 +82,7 @@ export function NextGoalCard() {
 
         <p className="text-sm tracking-tight text-ink-secondary">{pick(quest.description, locale)}</p>
 
-        <Button href={`/challenges?open=${quest.id}`} size="lg" className="w-full sm:w-fit">
+        <Button href={`/courses?tab=challenges&open=${quest.id}`} size="lg" className="w-full sm:w-fit">
           {t("goToQuest")}
         </Button>
       </CardContent>

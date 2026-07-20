@@ -11,19 +11,29 @@ import { VIDEOS, GLOSSARY } from "@/constants/data";
 import { pick } from "@/i18n/content";
 import { cn } from "@/lib/utils";
 
-// Deferred to its own chunk: only needed once the user opens this specific
-// tab, so it shouldn't be part of the initial /courses bundle (videos tab).
+// Deferred to their own chunks: each is only needed once the user opens that
+// specific tab, so they shouldn't be part of the initial /courses bundle.
 const SkillTreePath = dynamic(
   () => import("@/components/courses/SkillTreePath").then((mod) => mod.SkillTreePath),
   { loading: () => <SkeletonCard /> }
 );
 
-type AcademyTab = "videos" | "quizzes" | "glossary";
+const ChallengesSection = dynamic(
+  () => import("@/components/courses/ChallengesSection").then((mod) => mod.ChallengesSection),
+  { loading: () => <SkeletonCard /> }
+);
+
+type AcademyTab = "videos" | "quizzes" | "challenges" | "glossary";
 type SourceFilter = "all" | "en" | "ru";
 
-const TABS: { id: AcademyTab; labelKey: "tabVideos" | "tabQuizzes" | "tabGlossary"; emoji: string }[] = [
+const TABS: {
+  id: AcademyTab;
+  labelKey: "tabVideos" | "tabQuizzes" | "tabChallenges" | "tabGlossary";
+  emoji: string;
+}[] = [
   { id: "videos", labelKey: "tabVideos", emoji: "🎥" },
   { id: "quizzes", labelKey: "tabQuizzes", emoji: "✍️" },
+  { id: "challenges", labelKey: "tabChallenges", emoji: "🎯" },
   { id: "glossary", labelKey: "tabGlossary", emoji: "📖" },
 ];
 
@@ -33,7 +43,7 @@ const SOURCE_FILTERS: { id: SourceFilter; labelKey: "filterAll" | "filterEn" | "
   { id: "ru", labelKey: "filterRu" },
 ];
 
-const VALID_TABS: AcademyTab[] = ["videos", "quizzes", "glossary"];
+const VALID_TABS: AcademyTab[] = ["videos", "quizzes", "challenges", "glossary"];
 
 export default function CoursesPage() {
   return (
@@ -77,7 +87,7 @@ function CoursesPageContent() {
     <div className="flex flex-col gap-8">
       <PageHeader title={t("title")} description={t("description")} />
 
-      <div className="grid grid-cols-3 gap-1.5 rounded-2xl bg-white/60 p-1.5 ring-1 ring-inset ring-zinc-200/60 backdrop-blur-md sm:inline-flex sm:w-fit sm:gap-2 sm:rounded-full">
+      <div className="grid grid-cols-2 gap-1.5 rounded-2xl bg-white/60 p-1.5 ring-1 ring-inset ring-zinc-200/60 backdrop-blur-md sm:inline-flex sm:w-fit sm:gap-2 sm:rounded-full">
         {TABS.map((item) => {
           const active = tab === item.id;
           return (
@@ -137,6 +147,8 @@ function CoursesPageContent() {
       )}
 
       {tab === "quizzes" && <SkillTreePath />}
+
+      {tab === "challenges" && <ChallengesSection />}
 
       {tab === "glossary" && (
         <div className="flex flex-col gap-5">

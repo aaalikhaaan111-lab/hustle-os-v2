@@ -1,64 +1,17 @@
 import { redirect } from "next/navigation";
-import { getTranslations } from "next-intl/server";
-import { PageHeader } from "@/components/ui/PageHeader";
-import { ChallengeCard } from "@/components/challenges/ChallengeCard";
-import { CHALLENGE_CATALOG } from "@/lib/challenges";
-import { INTEREST_OPTIONS } from "@/lib/constants";
-import { createClient } from "@/lib/supabase/server";
-import { getCurrentUser } from "@/lib/supabase/currentUser";
 
+// Challenges moved into Learn as a tab. This route is kept only as a
+// compatibility redirect so old bookmarks and existing deep links
+// (`/challenges?open=<id>`) keep working — it forwards to the Challenges tab
+// inside Learn, preserving the open param.
 interface ChallengesPageProps {
   searchParams: Promise<{ open?: string }>;
 }
 
 export default async function ChallengesPage({ searchParams }: ChallengesPageProps) {
-  const { open: openChallengeId } = await searchParams;
-  const supabase = await createClient();
-  const user = await getCurrentUser(supabase);
-
-  if (!user) {
-    redirect("/login");
-  }
-
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("interests")
-    .eq("id", user.id)
-    .maybeSingle();
-
-  const interests = profile?.interests ?? [];
-  const personalized =
-    interests.length > 0
-      ? CHALLENGE_CATALOG.filter((challenge) => interests.includes(challenge.categoryId))
-      : [];
-  const challenges = personalized.length > 0 ? personalized : CHALLENGE_CATALOG;
-
-  const t = await getTranslations("challenges");
-  const tInterests = await getTranslations("onboarding");
-
-  return (
-    <div className="flex flex-col gap-8">
-      <PageHeader
-        title={t("title")}
-        description={
-          personalized.length > 0 ? t("descriptionPersonalized") : t("descriptionGeneric")
-        }
-      />
-      <div className="grid gap-6 sm:grid-cols-2">
-        {challenges.map((challenge) => {
-          const category = INTEREST_OPTIONS.find(
-            (option) => option.id === challenge.categoryId
-          );
-          return (
-            <ChallengeCard
-              key={challenge.id}
-              challenge={challenge}
-              categoryLabel={category ? tInterests(category.labelKey) : ""}
-              initialOpen={challenge.id === openChallengeId}
-            />
-          );
-        })}
-      </div>
-    </div>
-  );
+  const { open } = await searchParams;
+  const target = open
+    ? `/courses?tab=challenges&open=${encodeURIComponent(open)}`
+    : "/courses?tab=challenges";
+  redirect(target);
 }
