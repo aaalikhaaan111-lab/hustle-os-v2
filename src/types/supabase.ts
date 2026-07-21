@@ -163,6 +163,7 @@ export interface Database {
           locale: string;
           project_summary: unknown | null;
           pitch: unknown | null;
+          snapshot_fields: unknown | null;
           created_at: string;
           updated_at: string;
         };
@@ -183,6 +184,7 @@ export interface Database {
           locale?: string;
           project_summary?: unknown | null;
           pitch?: unknown | null;
+          snapshot_fields?: unknown | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -203,6 +205,7 @@ export interface Database {
           locale?: string;
           project_summary?: unknown | null;
           pitch?: unknown | null;
+          snapshot_fields?: unknown | null;
           created_at?: string;
           updated_at?: string;
         };

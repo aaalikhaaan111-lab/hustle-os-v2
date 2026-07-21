@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/supabase/currentUser";
 import { getCurrentProject, getProjectTasks, getProjectOutputs } from "@/lib/build/queries";
 import { STAGE_LABELS } from "@/lib/build/pathwayTemplates";
-import { buildSnapshot, destinationGoalKey } from "@/lib/build/snapshot";
+import { buildSnapshot, destinationGoalKey, parseSnapshotFields } from "@/lib/build/snapshot";
 import { loadProjectAssistant } from "@/lib/actions/assistant";
 import { WorkspaceView } from "@/components/build/WorkspaceView";
 import type { RoadmapStage } from "@/components/build/RoadmapPanel";
@@ -42,7 +42,8 @@ export default async function ProjectWorkspacePage() {
   const completedCount = tasks.filter((task) => task.status === "completed").length;
 
   const outputByTaskId = new Map(outputs.map((o) => [o.task_id, o.content]));
-  const snapshot = buildSnapshot(project, tasks, outputs);
+  const savedFields = parseSnapshotFields(project.snapshot_fields);
+  const snapshot = buildSnapshot(project, tasks, outputs, savedFields);
 
   const stageLabel =
     project.current_stage && STAGE_LABELS[project.current_stage]

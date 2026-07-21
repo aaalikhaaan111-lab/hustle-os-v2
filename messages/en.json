@@ -491,7 +491,18 @@
     "roadmapShow": "Show",
     "roadmapHide": "Hide",
     "assistantOpeningTask": "Hi! I'm your assistant for {name}. Right now you're on “{task}” — I can help you think it through, or review a draft. What would you like to do?",
-    "assistantOpeningDone": "Hi! I'm your assistant for {name}. You've finished every task — I can help you sharpen your pitch or plan what's next."
+    "assistantOpeningDone": "Hi! I'm your assistant for {name}. You've finished every task — I can help you sharpen your pitch or plan what's next.",
+    "proposalEyebrow": "Save as {field}?",
+    "proposalSave": "Save to project",
+    "proposalReplace": "Replace",
+    "proposalKeep": "Keep current",
+    "proposalDismiss": "Not now",
+    "proposalEdit": "Edit first",
+    "proposalImprove": "Improve it",
+    "proposalReplaceWarning": "This replaces your current {field}.",
+    "proposalSaved": "Saved to your project state.",
+    "proposalImproveMsg": "Can you improve that {label}?",
+    "errorSaveUnavailable": "Saving isn't available yet. Please try again soon."
   },
   "workshops": {
     "title": "Play & Simulators",

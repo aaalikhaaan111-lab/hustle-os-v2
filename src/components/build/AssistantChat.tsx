@@ -8,6 +8,9 @@ import {
   startNewConversation,
   type AssistantMessage,
 } from "@/lib/actions/assistant";
+import { saveStructuredFieldAction } from "@/lib/actions/build";
+import type { AssistantProposal } from "@/lib/actions/buildAi";
+import { FIELD_TO_LABELKEY, type StructuredField } from "@/lib/build/snapshot";
 import { STARTER_PROMPT_KEYS, type AssistantPhase } from "@/lib/build/assistantPrompts";
 
 interface ChatMessage {
@@ -30,6 +33,10 @@ export interface AssistantChatProps {
    * the model or persisted.
    */
   openingMessage: string;
+  /** Current saved/displayed value per structured field (for replace warnings). */
+  existingValues: Partial<Record<StructuredField, string>>;
+  /** Called after a structured field is confirmed and persisted. */
+  onFieldSaved: (field: StructuredField, value: string) => void;
   className?: string;
 }
 
@@ -43,6 +50,8 @@ export function AssistantChat({
   initialMessages,
   phase,
   openingMessage,
+  existingValues,
+  onFieldSaved,
   className,
 }: AssistantChatProps) {
   const t = useTranslations("build");
@@ -52,7 +61,10 @@ export function AssistantChat({
   );
   const [input, setInput] = useState("");
   const [note, setNote] = useState<string | null>(null);
+  const [flash, setFlash] = useState<string | null>(null);
+  const [proposal, setProposal] = useState<AssistantProposal | null>(null);
   const [isSending, startSending] = useTransition();
+  const [isSaving, startSaving] = useTransition();
   const scrollRef = useRef<HTMLDivElement>(null);
   const idCounter = useRef(0);
   const nextId = (prefix: string) => `${prefix}-${(idCounter.current += 1)}`;
@@ -65,6 +77,8 @@ export function AssistantChat({
     const trimmed = text.trim();
     if (!trimmed || isSending || !available) return; // request lock
     setNote(null);
+    setFlash(null);
+    setProposal(null);
     const optimistic: ChatMessage = { id: nextId("local"), role: "user", content: trimmed };
     setMessages((prev) => [...prev, optimistic]);
     setInput("");
@@ -86,6 +100,25 @@ export function AssistantChat({
           ...prev,
           { id: nextId("a"), role: "assistant", content: result.reply as string },
         ]);
+      }
+      if (result.proposal) setProposal(result.proposal);
+    });
+  }
+
+  function saveField(field: StructuredField, value: string) {
+    if (isSaving) return;
+    setNote(null);
+    setFlash(null);
+    startSaving(async () => {
+      const res = await saveStructuredFieldAction(projectId, field, value);
+      if (res.error) {
+        setNote(res.error);
+        return;
+      }
+      if (res.saved) {
+        onFieldSaved(res.saved.field, res.saved.value);
+        setProposal(null);
+        setFlash(t("proposalSaved"));
       }
     });
   }
@@ -175,9 +208,26 @@ export function AssistantChat({
         )}
       </div>
 
+      {/* Structured-output confirmation card */}
+      {proposal && (
+        <ProposalCard
+          proposal={proposal}
+          existing={existingValues[proposal.field] ?? null}
+          disabled={isSaving}
+          onSave={(value) => saveField(proposal.field, value)}
+          onImprove={() => {
+            const label = proposal.label;
+            setProposal(null);
+            submit(t("proposalImproveMsg", { label }));
+          }}
+          onDismiss={() => setProposal(null)}
+        />
+      )}
+
       {/* Input */}
       <div className="border-t border-border/60 px-3 py-3">
         {note && <p className="mb-2 px-1 text-xs text-danger">{note}</p>}
+        {flash && <p className="mb-2 px-1 text-xs font-semibold text-emerald-600">{flash}</p>}
         <form
           onSubmit={(e) => {
             e.preventDefault();
@@ -207,6 +257,92 @@ export function AssistantChat({
             {t("assistantSend")}
           </button>
         </form>
+      </div>
+    </div>
+  );
+}
+
+interface ProposalCardProps {
+  proposal: AssistantProposal;
+  /** The field's current saved value, or null when it isn't set yet. */
+  existing: string | null;
+  disabled: boolean;
+  onSave: (value: string) => void;
+  onImprove: () => void;
+  onDismiss: () => void;
+}
+
+// The confirmation card the assistant shows when it has extracted a saveable
+// structured field. Nothing is written until the user explicitly confirms;
+// when a value already exists the card asks whether to replace it.
+function ProposalCard({ proposal, existing, disabled, onSave, onImprove, onDismiss }: ProposalCardProps) {
+  const t = useTranslations("build");
+  const [editing, setEditing] = useState(false);
+  const [value, setValue] = useState(proposal.value);
+  const fieldName = t(FIELD_TO_LABELKEY[proposal.field] as Parameters<typeof t>[0]);
+  const canSave = value.trim().length > 0 && !disabled;
+
+  return (
+    <div className="mx-3 mb-1 mt-2 flex flex-col gap-2.5 rounded-2xl border border-indigo-100 bg-gradient-to-br from-indigo-50/80 to-pink-50/60 px-3.5 py-3 shadow-sm">
+      <div className="flex items-center gap-2">
+        <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-indigo-600">
+          {t("proposalEyebrow", { field: proposal.label || fieldName })}
+        </span>
+      </div>
+
+      {editing ? (
+        <textarea
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          rows={3}
+          maxLength={800}
+          className="w-full resize-none rounded-xl border border-border bg-white px-3 py-2 text-sm text-ink focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/40"
+        />
+      ) : (
+        <p className="whitespace-pre-wrap text-sm leading-relaxed text-ink">{value}</p>
+      )}
+
+      {existing && !editing && (
+        <p className="text-[11px] font-medium text-amber-700">
+          {t("proposalReplaceWarning", { field: fieldName })}
+        </p>
+      )}
+
+      <div className="flex flex-wrap gap-2">
+        <button
+          type="button"
+          disabled={!canSave}
+          onClick={() => onSave(value)}
+          className="rounded-full bg-gradient-to-br from-indigo-600 to-purple-600 px-3.5 py-1.5 text-xs font-bold text-white shadow-sm transition-transform hover:scale-[1.02] active:scale-95 disabled:opacity-40"
+        >
+          {existing ? t("proposalReplace") : t("proposalSave")}
+        </button>
+        {!editing && (
+          <button
+            type="button"
+            disabled={disabled}
+            onClick={() => setEditing(true)}
+            className="rounded-full border border-border bg-white/70 px-3 py-1.5 text-xs font-semibold text-ink-secondary transition-colors hover:bg-white disabled:opacity-60"
+          >
+            {t("proposalEdit")}
+          </button>
+        )}
+        <button
+          type="button"
+          disabled={disabled}
+          onClick={onImprove}
+          className="rounded-full border border-border bg-white/70 px-3 py-1.5 text-xs font-semibold text-ink-secondary transition-colors hover:bg-white disabled:opacity-60"
+        >
+          {t("proposalImprove")}
+        </button>
+        <button
+          type="button"
+          disabled={disabled}
+          onClick={onDismiss}
+          className="rounded-full px-3 py-1.5 text-xs font-semibold text-ink-muted transition-colors hover:bg-white/60 disabled:opacity-60"
+        >
+          {existing ? t("proposalKeep") : t("proposalDismiss")}
+        </button>
       </div>
     </div>
   );

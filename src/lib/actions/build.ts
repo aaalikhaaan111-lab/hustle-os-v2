@@ -13,6 +13,7 @@ import {
 } from "@/lib/build/options";
 import { generatePathway } from "@/lib/build/pathwayTemplates";
 import { getActiveProject, getProjectOutputs, getProjectTasks, computeProgress } from "@/lib/build/queries";
+import { isStructuredField, parseSnapshotFields, type StructuredField } from "@/lib/build/snapshot";
 import {
   refineProjectPathwayAction,
   generateProjectSummaryAction,
@@ -35,6 +36,7 @@ import type {
 const NAME_MAX_LENGTH = 80;
 const AUDIENCE_MAX_LENGTH = 200;
 const MIN_ANSWER_LENGTH = 10;
+const STRUCTURED_VALUE_MAX_LENGTH = 800;
 
 export interface CreateProjectResult {
   error: string | null;
@@ -571,4 +573,74 @@ export async function generateSummaryAction(projectId: string): Promise<Generate
   revalidatePath("/build/workspace/pitch");
 
   return { error: null, summary, pitch };
+}
+
+// ============================================================================
+// Assistant-confirmed structured outputs
+// ============================================================================
+
+export interface SaveStructuredFieldResult {
+  error: string | null;
+  /** The saved value (echoed back so the client can update the state panel). */
+  saved: { field: StructuredField; value: string } | null;
+}
+
+/**
+ * Persists ONE user-confirmed structured field (problem, audience, …) into
+ * projects.snapshot_fields. Enforced constraints:
+ *  - the field must be on the allowlist (never an arbitrary column);
+ *  - the project must belong to the caller;
+ *  - the value is trimmed and length-capped.
+ * It never touches tasks, review state, XP, or progress — this is a snapshot
+ * overlay, not task completion. Degrades gracefully when the snapshot_fields
+ * column hasn't been migrated yet (reports it's unavailable rather than
+ * throwing), mirroring how the review/assistant tables were rolled out.
+ */
+export async function saveStructuredFieldAction(
+  projectId: string,
+  field: string,
+  value: string
+): Promise<SaveStructuredFieldResult> {
+  const t = await getTranslations("build");
+
+  if (!isStructuredField(field)) {
+    return { error: t("errorInvalidInput"), saved: null };
+  }
+  const trimmed = value.trim().slice(0, STRUCTURED_VALUE_MAX_LENGTH);
+  if (trimmed.length === 0) {
+    return { error: t("errorAnswerTooShort"), saved: null };
+  }
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: t("errorSession"), saved: null };
+
+  const { data: project } = await supabase
+    .from("projects")
+    .select("id, snapshot_fields")
+    .eq("id", projectId)
+    .eq("user_id", user.id)
+    .maybeSingle();
+  if (!project) return { error: t("errorProjectNotFound"), saved: null };
+
+  // Merge into the existing allowlisted map; parse discards anything unknown.
+  const current = parseSnapshotFields(project.snapshot_fields);
+  const next = { ...current, [field]: trimmed };
+
+  const { error } = await supabase
+    .from("projects")
+    .update({ snapshot_fields: next })
+    .eq("id", projectId)
+    .eq("user_id", user.id);
+
+  // Column not migrated yet → the assistant still works, saving just isn't
+  // persistable. Report it plainly instead of failing hard.
+  if (error) {
+    return { error: t("errorSaveUnavailable"), saved: null };
+  }
+
+  revalidatePath("/build/workspace");
+  return { error: null, saved: { field, value: trimmed } };
 }

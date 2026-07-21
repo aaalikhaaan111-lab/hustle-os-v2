@@ -9,6 +9,7 @@ import {
   generateAssistantReply,
   summarizeProjectMemory,
   type AssistantContext,
+  type AssistantProposal,
   type AssistantTurn,
 } from "@/lib/actions/buildAi";
 
@@ -97,6 +98,8 @@ export interface SendMessageResult {
   unavailableNote: string | null;
   conversationId: string | null;
   reply: string | null;
+  /** A structured field the user may confirm-and-save; never applied here. */
+  proposal: AssistantProposal | null;
 }
 
 // Sends one user message and returns the assistant's reply, persisting both.
@@ -113,6 +116,7 @@ export async function sendAssistantMessage(
     unavailableNote: null,
     conversationId,
     reply: null,
+    proposal: null,
   });
 
   if (trimmed.length === 0) return fail(t("errorSession"));
@@ -215,13 +219,21 @@ export async function sendAssistantMessage(
     memorySummary: memoryRow?.summary ?? null,
   };
 
-  const reply = await generateAssistantReply(context, recent, locale);
+  const result = await generateAssistantReply(context, recent, locale);
 
   // AI unavailable: keep the user's message, show a temporary note, and do NOT
   // persist a fake assistant reply or memory.
-  if (reply === null) {
-    return { error: null, unavailableNote: t("assistantUnavailable"), conversationId: convId, reply: null };
+  if (result === null) {
+    return {
+      error: null,
+      unavailableNote: t("assistantUnavailable"),
+      conversationId: convId,
+      reply: null,
+      proposal: null,
+    };
   }
+
+  const reply = result.text;
 
   await supabase.from("project_ai_messages").insert({
     conversation_id: convId,
@@ -249,7 +261,13 @@ export async function sendAssistantMessage(
     }
   }
 
-  return { error: null, unavailableNote: null, conversationId: convId, reply };
+  return {
+    error: null,
+    unavailableNote: null,
+    conversationId: convId,
+    reply,
+    proposal: result.proposal,
+  };
 }
 
 // Starts a fresh conversation (does not delete previous ones / memory).

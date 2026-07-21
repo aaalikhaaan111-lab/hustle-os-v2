@@ -1,11 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import type { AssistantMessage } from "@/lib/actions/assistant";
 import type { AssistantPhase } from "@/lib/build/assistantPrompts";
-import type { SnapshotRow } from "@/lib/build/snapshot";
+import type { SnapshotRow, StructuredField } from "@/lib/build/snapshot";
 import { AssistantChat } from "@/components/build/AssistantChat";
 import { ProjectStatePanel } from "@/components/build/ProjectStatePanel";
 import { RoadmapPanel, type RoadmapStage } from "@/components/build/RoadmapPanel";
@@ -40,6 +40,27 @@ export function WorkspaceView(props: WorkspaceViewProps) {
   const t = useTranslations("build");
   const [drawer, setDrawer] = useState<Drawer>(null);
   const [roadmapOpen, setRoadmapOpen] = useState(false);
+
+  // The project-state panel updates live when the assistant saves a structured
+  // field, without waiting for a full navigation. The server revalidate still
+  // reconciles this on the next load.
+  const [snapshot, setSnapshot] = useState<SnapshotRow[]>(props.snapshot);
+
+  const existingValues = useMemo(() => {
+    const map: Partial<Record<StructuredField, string>> = {};
+    for (const row of snapshot) {
+      if (row.field && row.value) map[row.field] = row.value;
+    }
+    return map;
+  }, [snapshot]);
+
+  function handleFieldSaved(field: StructuredField, value: string) {
+    setSnapshot((prev) =>
+      prev.map((row) =>
+        row.field === field ? { ...row, value, source: "assistant" } : row
+      )
+    );
+  }
 
   const meta = [
     props.stageLabel,
@@ -115,6 +136,8 @@ export function WorkspaceView(props: WorkspaceViewProps) {
             initialMessages={props.assistant.messages}
             phase={props.assistant.phase}
             openingMessage={props.openingMessage}
+            existingValues={existingValues}
+            onFieldSaved={handleFieldSaved}
             className="h-full"
           />
         </div>
@@ -122,7 +145,7 @@ export function WorkspaceView(props: WorkspaceViewProps) {
         {/* Aside (desktop only) */}
         <aside className="hidden flex-col gap-4 lg:flex">
           <div className="rounded-3xl border border-border/60 bg-white/70 p-4 backdrop-blur-xl">
-            <ProjectStatePanel goalLine={props.goalLine} snapshot={props.snapshot} />
+            <ProjectStatePanel goalLine={props.goalLine} snapshot={snapshot} />
           </div>
           <div className="rounded-3xl border border-border/60 bg-white/70 p-4 backdrop-blur-xl">
             <button
@@ -189,7 +212,7 @@ export function WorkspaceView(props: WorkspaceViewProps) {
             </div>
             <div className="flex-1 overflow-y-auto px-4 py-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
               {drawer === "state" ? (
-                <ProjectStatePanel goalLine={props.goalLine} snapshot={props.snapshot} />
+                <ProjectStatePanel goalLine={props.goalLine} snapshot={snapshot} />
               ) : (
                 <RoadmapPanel stages={props.roadmap} projectId={props.projectId} showRefine={props.showRefine} />
               )}

@@ -67,18 +67,82 @@ const QUICK_SPRINT_SNAPSHOT: SnapshotFieldSpec[] = [
   { labelKey: "snapMainRisk", stage: "risk" },
 ];
 
+// ============================================================================
+// Assistant-confirmed structured fields (allowlist)
+// ============================================================================
+// The fixed set of fields the assistant may propose and the user may save into
+// projects.snapshot_fields. This is the single source of truth for the
+// allowlist — the AI schema, the server-side save validation, and the snapshot
+// overlay all derive from it, so an AI-suggested update can only ever touch one
+// of these fields (never an arbitrary DB column).
+
+export const STRUCTURED_FIELDS = [
+  "problem",
+  "audience",
+  "solution",
+  "evidence",
+  "first_version",
+  "test_results",
+] as const;
+
+export type StructuredField = (typeof STRUCTURED_FIELDS)[number];
+
+export function isStructuredField(value: unknown): value is StructuredField {
+  return typeof value === "string" && (STRUCTURED_FIELDS as readonly string[]).includes(value);
+}
+
+// The snapshot label a saved structured field maps onto, so an assistant save
+// surfaces in the same row of the project-state panel. Snapshot labels with no
+// canonical field (e.g. content angle, findings) are filled from task outputs
+// only.
+const LABELKEY_TO_FIELD: Record<string, StructuredField> = {
+  snapProblem: "problem",
+  snapAudience: "audience",
+  snapSolution: "solution",
+  snapEvidence: "evidence",
+  snapFirstVersion: "first_version",
+  snapTesting: "test_results",
+};
+
+/** The snapshot label a structured field maps to (for showing its name). */
+export const FIELD_TO_LABELKEY: Record<StructuredField, string> = {
+  problem: "snapProblem",
+  audience: "snapAudience",
+  solution: "snapSolution",
+  evidence: "snapEvidence",
+  first_version: "snapFirstVersion",
+  test_results: "snapTesting",
+};
+
+/** Reads the stored snapshot_fields JSONB into a validated, typed record. */
+export function parseSnapshotFields(raw: unknown): Partial<Record<StructuredField, string>> {
+  if (!raw || typeof raw !== "object") return {};
+  const out: Partial<Record<StructuredField, string>> = {};
+  for (const [key, value] of Object.entries(raw as Record<string, unknown>)) {
+    if (isStructuredField(key) && typeof value === "string" && value.trim().length > 0) {
+      out[key] = value;
+    }
+  }
+  return out;
+}
+
 export interface SnapshotRow {
   labelKey: string;
-  /** The saved output content, or null when the source stage isn't done yet. */
+  /** The saved value, or null when neither a saved field nor a done stage fills it. */
   value: string | null;
   /** The task that fills this field, so the UI can link to it for editing. */
   taskId: string | null;
+  /** Where the value came from: an assistant-confirmed save vs. a task answer. */
+  source: "assistant" | "task" | null;
+  /** The canonical structured field this row maps to, if any. */
+  field: StructuredField | null;
 }
 
 export function buildSnapshot(
   project: Pick<ProjectRow, "project_type" | "pathway_mode">,
   tasks: TaskRow[],
-  outputs: OutputRow[]
+  outputs: OutputRow[],
+  savedFields: Partial<Record<StructuredField, string>> = {}
 ): SnapshotRow[] {
   const family = familyForProjectType(project.project_type);
   const specs =
@@ -89,12 +153,24 @@ export function buildSnapshot(
   return specs.map((spec) => {
     // The first task in the stage is the one that fills the field.
     const task = tasks.find((t) => t.stage === spec.stage);
+    const field = LABELKEY_TO_FIELD[spec.labelKey] ?? null;
+
+    // An assistant-confirmed save takes precedence: it's the user's explicit
+    // "this is my <field>" statement. The task's own reviewed answer still
+    // lives on its task page and fills the row when no saved field exists.
+    const saved = field ? savedFields[field] : undefined;
+    if (saved) {
+      return { labelKey: spec.labelKey, value: saved, taskId: task?.id ?? null, source: "assistant", field };
+    }
+
     const done = task?.status === "completed";
     const content = task ? outputByTaskId.get(task.id) : undefined;
     return {
       labelKey: spec.labelKey,
       value: done && content ? content : null,
       taskId: task?.id ?? null,
+      source: done && content ? "task" : null,
+      field,
     };
   });
 }

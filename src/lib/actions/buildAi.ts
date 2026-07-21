@@ -2,6 +2,7 @@
 
 import Anthropic from "@anthropic-ai/sdk";
 import type { Locale } from "@/i18n/locale";
+import { STRUCTURED_FIELDS, isStructuredField, type StructuredField } from "@/lib/build/snapshot";
 import type {
   GeneratedTask,
   ProjectCreationInput,
@@ -9,6 +10,8 @@ import type {
   ProjectSummary,
   TaskReview,
 } from "@/lib/build/types";
+
+const PROPOSAL_VALUE_MAX_LENGTH = 800;
 
 // ============================================================================
 // Pathway refinement
@@ -485,6 +488,37 @@ export interface AssistantTurn {
   content: string;
 }
 
+// A structured result the assistant has extracted from the conversation and
+// offers the user to save. Never applied without explicit confirmation.
+export interface AssistantProposal {
+  field: StructuredField;
+  value: string;
+  /** Short human label for the field, in the project's language. */
+  label: string;
+}
+
+export interface AssistantReply {
+  text: string;
+  proposal: AssistantProposal | null;
+}
+
+// The assistant answers in natural language (`reply`) and MAY, at most once per
+// turn, surface a structured proposal for one allowlisted field. The flat,
+// fully-required shape matches the strict json_schema mode used elsewhere; when
+// there's nothing to propose the model sets hasProposal=false / field="none".
+const ASSISTANT_SCHEMA = {
+  type: "object",
+  properties: {
+    reply: { type: "string" },
+    hasProposal: { type: "boolean" },
+    proposalField: { type: "string", enum: [...STRUCTURED_FIELDS, "none"] },
+    proposalValue: { type: "string" },
+    proposalLabel: { type: "string" },
+  },
+  required: ["reply", "hasProposal", "proposalField", "proposalValue", "proposalLabel"],
+  additionalProperties: false,
+};
+
 function assistantSystemPrompt(context: AssistantContext, locale: Locale | string): string {
   const language = locale === "ru" ? "Russian" : "English";
   const redirect =
@@ -505,7 +539,9 @@ BEHAVE LIKE A PRACTICAL MENTOR: remember earlier decisions, don't re-ask what's 
 
 NEVER: fabricate market data, interviews, competitors, users, traction, or research; claim work was done that wasn't; complete or edit the user's tasks; change their saved project; make financial/legal guarantees; or promise users, income, investment or success. When you give an example, label it clearly as an example, not as their real evidence.
 
-Write ALL replies in ${language}. Keep replies short and plain.
+SAVING STRUCTURED RESULTS: You can offer to save ONE structured result to the project's live state, and only these fields: problem, audience, solution, evidence, first_version, test_results. Offer a proposal (set hasProposal=true, proposalField to the field, proposalValue to a concise 1-3 sentence value, proposalLabel to a short name for it in ${language}) ONLY when the user has, in their own words, given you enough to state that field clearly — you are tightening THEIR words, not inventing content. Never propose evidence, first_version, or test_results unless the user actually reported that work; never propose more than one field per turn; never propose a field the user hasn't effectively provided. In every other case set hasProposal=false, proposalField="none", and leave proposalValue/proposalLabel as empty strings. Saving always requires the user's explicit confirmation — describe the proposal briefly in your reply, but never assume it's saved.
+
+Write the natural-language answer in the "reply" field. Write ALL text (reply and any proposalValue/proposalLabel) in ${language}. Keep replies short and plain.
 
 ── THIS PROJECT ──
 Name: ${context.projectName}
@@ -523,13 +559,14 @@ ${context.memorySummary ? `\nEarlier in this project's conversations: ${context.
 /**
  * Best-effort assistant reply. Returns null when AI is unavailable or fails —
  * the caller then shows a temporary "assistant unavailable" note WITHOUT
- * persisting a fake assistant message or memory.
+ * persisting a fake assistant message or memory. May include a structured
+ * proposal the user can choose to save (never applied without confirmation).
  */
 export async function generateAssistantReply(
   context: AssistantContext,
   history: AssistantTurn[],
   locale: Locale | string
-): Promise<string | null> {
+): Promise<AssistantReply | null> {
   if (!process.env.ANTHROPIC_API_KEY) return null;
   if (history.length === 0) return null;
 
@@ -538,15 +575,46 @@ export async function generateAssistantReply(
     const response = await client.messages.create({
       model: "claude-sonnet-5",
       max_tokens: 1024,
-      output_config: { effort: "low" },
+      output_config: {
+        effort: "low",
+        format: { type: "json_schema", schema: ASSISTANT_SCHEMA },
+      },
       system: assistantSystemPrompt(context, locale),
       messages: history.map((turn) => ({ role: turn.role, content: turn.content })),
     });
 
     const textBlock = response.content.find((block) => block.type === "text");
     if (!textBlock || textBlock.type !== "text") return null;
-    const text = textBlock.text.trim();
-    return text.length > 0 ? text : null;
+
+    const parsed = JSON.parse(textBlock.text) as {
+      reply?: unknown;
+      hasProposal?: unknown;
+      proposalField?: unknown;
+      proposalValue?: unknown;
+      proposalLabel?: unknown;
+    };
+
+    const text = typeof parsed.reply === "string" ? parsed.reply.trim() : "";
+    if (text.length === 0) return null;
+
+    let proposal: AssistantProposal | null = null;
+    if (
+      parsed.hasProposal === true &&
+      isStructuredField(parsed.proposalField) &&
+      typeof parsed.proposalValue === "string" &&
+      parsed.proposalValue.trim().length > 0
+    ) {
+      proposal = {
+        field: parsed.proposalField,
+        value: parsed.proposalValue.trim().slice(0, PROPOSAL_VALUE_MAX_LENGTH),
+        label:
+          typeof parsed.proposalLabel === "string" && parsed.proposalLabel.trim().length > 0
+            ? parsed.proposalLabel.trim().slice(0, 80)
+            : parsed.proposalField,
+      };
+    }
+
+    return { text, proposal };
   } catch {
     return null;
   }

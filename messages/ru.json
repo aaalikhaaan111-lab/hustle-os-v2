@@ -491,7 +491,18 @@
     "roadmapShow": "Показать",
     "roadmapHide": "Скрыть",
     "assistantOpeningTask": "Привет! Я твой ассистент по проекту {name}. Сейчас ты на задаче «{task}» — могу помочь её обдумать или разобрать черновик. Что хочешь сделать?",
-    "assistantOpeningDone": "Привет! Я твой ассистент по проекту {name}. Ты выполнил все задачи — могу помочь отточить питч или спланировать следующие шаги."
+    "assistantOpeningDone": "Привет! Я твой ассистент по проекту {name}. Ты выполнил все задачи — могу помочь отточить питч или спланировать следующие шаги.",
+    "proposalEyebrow": "Сохранить как «{field}»?",
+    "proposalSave": "Сохранить в проект",
+    "proposalReplace": "Заменить",
+    "proposalKeep": "Оставить текущее",
+    "proposalDismiss": "Не сейчас",
+    "proposalEdit": "Сначала изменить",
+    "proposalImprove": "Улучшить",
+    "proposalReplaceWarning": "Это заменит текущее значение «{field}».",
+    "proposalSaved": "Сохранено в состояние проекта.",
+    "proposalImproveMsg": "Можешь улучшить это ({label})?",
+    "errorSaveUnavailable": "Сохранение пока недоступно. Попробуйте чуть позже."
   },
   "workshops": {
     "title": "Play и Симуляторы",
