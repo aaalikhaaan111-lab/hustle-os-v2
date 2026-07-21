@@ -4,14 +4,8 @@ import { getTranslations } from "next-intl/server";
 import { Button } from "@/components/ui/Button";
 import { Card, CardContent } from "@/components/ui/Card";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { ChallengeZeroCard } from "@/components/dashboard/ChallengeZeroCard";
-import { DailyPlanCard } from "@/components/dashboard/DailyPlanCard";
-import { LevelProgressCard } from "@/components/dashboard/LevelProgressCard";
-import { NextGoalCard } from "@/components/dashboard/NextGoalCard";
-import { ActivityFeedCard } from "@/components/dashboard/ActivityFeedCard";
 import { CourseProgressCard } from "@/components/dashboard/CourseProgressCard";
 import { BuildProjectCard } from "@/components/dashboard/BuildProjectCard";
-import { INTEREST_OPTIONS, isTopicInterest } from "@/lib/constants";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/supabase/currentUser";
 import { getCurrentProject, getProjectTasks } from "@/lib/build/queries";
@@ -32,32 +26,8 @@ export default async function DashboardPage() {
     redirect("/login");
   }
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("interests")
-    .eq("id", user.id)
-    .maybeSingle();
-
-  // Drop the "what are you interested in?" topic tags (namespaced with a
-  // prefix) — they're collected during onboarding but intentionally don't
-  // drive the personalized copy, which reflects the improve-interests only.
-  const interests = (profile?.interests ?? []).filter((id) => !isTopicInterest(id));
-
   const t = await getTranslations("dashboard");
-  const tInterests = await getTranslations("onboarding");
   const tNav = await getTranslations("nav");
-
-  const interestLabels = interests
-    .map((id) => {
-      const option = INTEREST_OPTIONS.find((o) => o.id === id);
-      return option ? tInterests(option.labelKey) : id;
-    })
-    .join(", ");
-
-  const challengeSubtitle =
-    interests.length > 0
-      ? t("personalizedSubtitle", { interests: interestLabels })
-      : t("genericSubtitle");
 
   const activeProject = await getCurrentProject(supabase, user.id);
   const projectTasks = activeProject ? await getProjectTasks(supabase, activeProject.id) : [];
@@ -67,26 +37,13 @@ export default async function DashboardPage() {
     <div className="flex flex-col gap-8">
       <PageHeader title={t("title")} description={t("description")} />
 
-      {/* Build is the main destination — surfaced first as the hero. */}
+      {/* Build is the main destination — the project is surfaced first as the hero. */}
       <BuildProjectCard
         hasProject={!!activeProject}
         projectName={activeProject?.name ?? undefined}
         progress={activeProject?.progress ?? 0}
         nextTaskTitle={nextProjectTask?.title ?? null}
       />
-
-      <DailyPlanCard />
-
-      <div className="grid gap-6 sm:grid-cols-2">
-        <LevelProgressCard />
-        <NextGoalCard />
-      </div>
-
-      <Card className="overflow-hidden">
-        <CardContent>
-          <ChallengeZeroCard subtitle={challengeSubtitle} />
-        </CardContent>
-      </Card>
 
       <div className="grid gap-6 sm:grid-cols-2">
         <CourseProgressCard />
@@ -98,31 +55,21 @@ export default async function DashboardPage() {
                 🗓️
               </span>
               <div className="flex flex-col gap-2">
-                <Eyebrow>{tNav("workshops")}</Eyebrow>
+                <Eyebrow>{tNav("learn")}</Eyebrow>
                 <h3 className="text-xl font-extrabold leading-tight tracking-[-0.02em] text-ink">
                   {t("workshopsTeaserTitle")}
                 </h3>
               </div>
             </div>
-            <div className="flex items-center gap-3 rounded-2xl border border-white/[0.07] bg-surface/60 px-4 py-3 shadow-sm backdrop-blur-md">
-              <div className="flex h-12 w-12 shrink-0 flex-col items-center justify-center rounded-xl bg-accent-soft">
-                <span className="text-[9px] font-bold uppercase tracking-wide text-ink-muted">
-                  {t("workshopsTeaserSoon")}
-                </span>
-                <span className="text-lg font-extrabold text-ink">?</span>
-              </div>
-              <p className="text-sm tracking-tight text-ink-secondary">
-                {t("workshopsTeaserBody")}
-              </p>
-            </div>
-            <Button href="/workshops" variant="secondary" className="mt-auto w-fit">
+            <p className="text-sm tracking-tight text-ink-secondary">
+              {t("workshopsTeaserBody")}
+            </p>
+            <Button href="/courses" variant="secondary" className="mt-auto w-fit">
               {t("allWorkshops")}
             </Button>
           </CardContent>
         </Card>
       </div>
-
-      <ActivityFeedCard />
     </div>
   );
 }

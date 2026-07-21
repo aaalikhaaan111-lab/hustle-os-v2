@@ -6,7 +6,6 @@ import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 import { NAV_ITEMS } from "@/lib/constants";
 import { Wordmark } from "@/components/layout/Wordmark";
-import { GameProgressHUD } from "@/components/layout/GameProgressHUD";
 
 function isActive(pathname: string, href: string) {
   if (href === "/") return pathname === "/";
@@ -21,9 +20,6 @@ export function Sidebar() {
     <aside className="fixed inset-y-0 left-0 z-20 hidden w-64 flex-col border-r border-white/[0.06] bg-surface/50 backdrop-blur-2xl md:flex">
       <div className="flex h-16 items-center px-6">
         <Wordmark className="text-base" />
-      </div>
-      <div className="px-6 pb-2">
-        <GameProgressHUD />
       </div>
       <nav className="flex flex-1 flex-col gap-2 px-3 py-4">
         {NAV_ITEMS.map((item) => {

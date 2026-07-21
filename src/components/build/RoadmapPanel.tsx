@@ -103,7 +103,7 @@ export function RoadmapPanel({ stages, projectId, showRefine, className }: Roadm
                     )}
                     {isCurrent && (
                       <span className="mt-0.5 text-[10px] text-ink-muted">
-                        {task.estimatedTime} · {t("xpShort", { xp: task.xp })}
+                        {task.estimatedTime}
                       </span>
                     )}
                   </div>

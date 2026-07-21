@@ -3,12 +3,10 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import confetti from "canvas-confetti";
 import { Button } from "@/components/ui/Button";
 import { Card, CardContent } from "@/components/ui/Card";
 import { cn } from "@/lib/utils";
 import { reviewTaskAnswerAction } from "@/lib/actions/build";
-import { useGameProgress } from "@/lib/game-progress/GameProgressContext";
 import type { Database } from "@/types/supabase";
 import type { TaskReview } from "@/lib/build/types";
 
@@ -29,7 +27,6 @@ export function TaskDetailForm({
 }: TaskDetailFormProps) {
   const t = useTranslations("build");
   const router = useRouter();
-  const { completeChallenge } = useGameProgress();
   const [answer, setAnswer] = useState(existingAnswer);
   const [review, setReview] = useState<TaskReview | null>(initialReview);
   const [error, setError] = useState<string | null>(null);
@@ -50,20 +47,6 @@ export function TaskDetailForm({
 
       if (result.completed) {
         setCompleted(true);
-        completeChallenge({
-          challengeId: `build:${task.id}`,
-          title: task.title,
-          emoji: "🛠️",
-          categoryLabel: t("categoryLabel"),
-          xp: result.xpAmount,
-          answer: answer.trim(),
-        });
-        confetti({
-          particleCount: 80,
-          spread: 80,
-          origin: { y: 0.6 },
-          colors: ["#4f46e5", "#9333ea", "#ec4899"],
-        });
       }
       if (result.projectCompleted) setProjectCompleted(true);
     });
@@ -77,7 +60,6 @@ export function TaskDetailForm({
             <span className="rounded-full bg-surface-hover px-2.5 py-1 font-medium">
               {task.estimated_time}
             </span>
-            <span className="font-medium">{t("xpShort", { xp: task.xp })}</span>
           </div>
 
           <div className="flex flex-col gap-1.5">

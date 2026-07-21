@@ -18,6 +18,15 @@ interface ChatMessage {
   content: string;
 }
 
+// Project-specific "thinking" copy, cycled while the assistant replies —
+// warmer and more on-task than a generic typing indicator.
+const THINKING_KEYS = [
+  "thinkingUnderstanding",
+  "thinkingConnecting",
+  "thinkingTurning",
+  "thinkingNext",
+] as const;
+
 export interface AssistantChatProps {
   projectId: string;
   /** Whether the assistant tables are reachable (false → degraded notice). */
@@ -59,6 +68,9 @@ export function AssistantChat({
   const [note, setNote] = useState<string | null>(null);
   const [flash, setFlash] = useState<string | null>(null);
   const [proposal, setProposal] = useState<AssistantProposal | null>(null);
+  const [savedConfirm, setSavedConfirm] = useState(false);
+  const [atBottom, setAtBottom] = useState(true);
+  const [thinkIdx, setThinkIdx] = useState(0);
   const [isSending, startSending] = useTransition();
   const [isSaving, startSaving] = useTransition();
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -66,9 +78,31 @@ export function AssistantChat({
   const idCounter = useRef(0);
   const nextId = (prefix: string) => `${prefix}-${(idCounter.current += 1)}`;
 
+  function scrollToBottom(behavior: ScrollBehavior = "smooth") {
+    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior });
+  }
+
+  // Follow new content only when the user is already reading near the bottom,
+  // so we never yank someone away from scrolling back through history.
   useEffect(() => {
-    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
-  }, [messages, isSending, proposal]);
+    if (atBottom) scrollToBottom("smooth");
+  }, [messages, isSending, proposal, savedConfirm, atBottom]);
+
+  function handleScroll() {
+    const el = scrollRef.current;
+    if (!el) return;
+    const distance = el.scrollHeight - el.scrollTop - el.clientHeight;
+    setAtBottom(distance < 120);
+  }
+
+  // Cycle the project-specific thinking copy while a reply is in flight. The
+  // index is reset to 0 in submit() when a send starts (not here), so the
+  // effect never calls setState synchronously in its body.
+  useEffect(() => {
+    if (!isSending) return;
+    const id = setInterval(() => setThinkIdx((i) => (i + 1) % THINKING_KEYS.length), 1800);
+    return () => clearInterval(id);
+  }, [isSending]);
 
   // Grow the composer with its content (up to a cap) without any layout jump.
   function autosize() {
@@ -85,9 +119,12 @@ export function AssistantChat({
     setNote(null);
     setFlash(null);
     setProposal(null);
+    setSavedConfirm(false);
+    setAtBottom(true);
     const optimistic: ChatMessage = { id: nextId("local"), role: "user", content: trimmed };
     setMessages((prev) => [...prev, optimistic]);
     setInput("");
+    setThinkIdx(0);
     startSending(async () => {
       const result = await sendAssistantMessage(projectId, conversationId, trimmed);
       if (result.error) {
@@ -121,9 +158,13 @@ export function AssistantChat({
         return;
       }
       if (res.saved) {
+        // The proposal resolves into a brief, connected confirmation in the
+        // conversation; the workspace glows the matching Project State field.
         onFieldSaved(res.saved.field, res.saved.value);
         setProposal(null);
-        setFlash(t("proposalSaved"));
+        setSavedConfirm(true);
+        setAtBottom(true);
+        window.setTimeout(() => setSavedConfirm(false), 2200);
       }
     });
   }
@@ -152,7 +193,7 @@ export function AssistantChat({
   return (
     <div className="flex h-full min-h-0 flex-col">
       {/* Conversation */}
-      <div ref={scrollRef} className="relative min-h-0 flex-1 overflow-y-auto">
+      <div ref={scrollRef} onScroll={handleScroll} className="relative min-h-0 flex-1 overflow-y-auto">
         {!isEmpty && available && (
           <button
             type="button"
@@ -190,10 +231,22 @@ export function AssistantChat({
                 )
               )}
               {isSending && (
-                <div className="flex items-center gap-1 text-ink-muted" aria-label="…">
-                  <span className="h-1.5 w-1.5 animate-pulse-soft rounded-full bg-ink-muted" />
-                  <span className="h-1.5 w-1.5 animate-pulse-soft rounded-full bg-ink-muted [animation-delay:0.2s]" />
-                  <span className="h-1.5 w-1.5 animate-pulse-soft rounded-full bg-ink-muted [animation-delay:0.4s]" />
+                <div className="flex items-center gap-2.5 text-ink-secondary" aria-live="polite">
+                  <span className="relative flex h-4 w-4 items-center justify-center">
+                    <span className="absolute h-4 w-4 animate-pulse-soft rounded-full bg-accent/30 blur-[3px]" />
+                    <span className="h-2 w-2 rounded-full bg-accent" />
+                  </span>
+                  <span className="text-[14px] tracking-tight">
+                    {t(THINKING_KEYS[thinkIdx] as Parameters<typeof t>[0])}
+                  </span>
+                </div>
+              )}
+              {savedConfirm && (
+                <div className="animate-message-in flex items-center gap-2 text-[14px] font-semibold text-success">
+                  <span className="animate-check-pop flex h-5 w-5 items-center justify-center rounded-full bg-success-soft text-xs">
+                    ✓
+                  </span>
+                  {t("proposalSavedInline")}
                 </div>
               )}
             </div>

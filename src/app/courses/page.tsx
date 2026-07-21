@@ -5,6 +5,8 @@ import dynamic from "next/dynamic";
 import { useSearchParams } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { Button } from "@/components/ui/Button";
+import { Card, CardContent } from "@/components/ui/Card";
 import { SkeletonCard } from "@/components/ui/Skeleton";
 import { VideoCard } from "@/components/VideoCard";
 import { VIDEOS, GLOSSARY } from "@/constants/data";
@@ -23,17 +25,18 @@ const ChallengesSection = dynamic(
   { loading: () => <SkeletonCard /> }
 );
 
-type AcademyTab = "videos" | "quizzes" | "challenges" | "glossary";
+type AcademyTab = "videos" | "quizzes" | "challenges" | "play" | "glossary";
 type SourceFilter = "all" | "en" | "ru";
 
 const TABS: {
   id: AcademyTab;
-  labelKey: "tabVideos" | "tabQuizzes" | "tabChallenges" | "tabGlossary";
+  labelKey: "tabVideos" | "tabQuizzes" | "tabChallenges" | "tabPlay" | "tabGlossary";
   emoji: string;
 }[] = [
   { id: "videos", labelKey: "tabVideos", emoji: "🎥" },
   { id: "quizzes", labelKey: "tabQuizzes", emoji: "✍️" },
   { id: "challenges", labelKey: "tabChallenges", emoji: "🎯" },
+  { id: "play", labelKey: "tabPlay", emoji: "🎮" },
   { id: "glossary", labelKey: "tabGlossary", emoji: "📖" },
 ];
 
@@ -43,7 +46,7 @@ const SOURCE_FILTERS: { id: SourceFilter; labelKey: "filterAll" | "filterEn" | "
   { id: "ru", labelKey: "filterRu" },
 ];
 
-const VALID_TABS: AcademyTab[] = ["videos", "quizzes", "challenges", "glossary"];
+const VALID_TABS: AcademyTab[] = ["videos", "quizzes", "challenges", "play", "glossary"];
 
 export default function CoursesPage() {
   return (
@@ -155,6 +158,29 @@ function CoursesPageContent() {
       {tab === "challenges" && (
         <div key="challenges" className="animate-page-in">
           <ChallengesSection />
+        </div>
+      )}
+
+      {tab === "play" && (
+        <div key="play" className="animate-page-in">
+          <Card>
+            <CardContent className="flex flex-col gap-5 py-8">
+              <div className="flex items-center gap-4">
+                <span className="text-4xl" role="img" aria-hidden>
+                  🎮
+                </span>
+                <div className="flex flex-col gap-1">
+                  <h3 className="text-xl font-extrabold leading-tight tracking-[-0.02em] text-ink">
+                    {t("playTabTitle")}
+                  </h3>
+                  <p className="text-sm tracking-tight text-ink-secondary">{t("playTabBody")}</p>
+                </div>
+              </div>
+              <Button href="/workshops" variant="secondary" className="w-fit">
+                {t("playTabCta")}
+              </Button>
+            </CardContent>
+          </Card>
         </div>
       )}
 

@@ -4,7 +4,6 @@ import {
   CoursesIcon,
   DashboardIcon,
   ProfileIcon,
-  WorkshopsIcon,
 } from "@/components/ui/icons";
 
 export type NavLabelKey = "dashboard" | "challenges" | "learn" | "build" | "workshops" | "profile";
@@ -74,13 +73,14 @@ export const TOPIC_OPTIONS: TopicOption[] = [
   { id: "other", labelKey: "topicOther", emoji: "✨" },
 ];
 
-// Challenges is intentionally not a top-level destination anymore — it lives
-// as a tab inside Learn (/courses?tab=challenges). Build is the primary loop
-// and is the first destination after Dashboard.
+// Primary navigation is deliberately just four destinations: Home, Build,
+// Learn, Profile. Build is the core loop; everything else is support.
+// Challenges and the live "Play"/Workshops sessions are no longer top-level —
+// they live inside Learn (/courses). The /workshops route stays reachable from
+// Learn for backward compatibility.
 export const NAV_ITEMS: NavItem[] = [
   { labelKey: "dashboard", href: "/dashboard", icon: DashboardIcon },
   { labelKey: "build", href: "/build", icon: BuildIcon },
   { labelKey: "learn", href: "/courses", icon: CoursesIcon },
-  { labelKey: "workshops", href: "/workshops", icon: WorkshopsIcon },
   { labelKey: "profile", href: "/profile", icon: ProfileIcon },
 ];
