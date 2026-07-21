@@ -66,7 +66,7 @@ export function ProofPanel({ projectId, tasks }: ProofPanelProps) {
         <button
           type="button"
           onClick={() => setModalOpen(true)}
-          className="rounded-full border border-border bg-white/70 px-2.5 py-1 text-[11px] font-semibold text-ink-secondary transition-colors hover:bg-white"
+          className="rounded-full border border-border bg-surface-elevated px-2.5 py-1 text-[11px] font-semibold text-ink-secondary transition-colors hover:bg-surface-hover hover:text-ink"
         >
           + {t("proofAdd")}
         </button>
@@ -133,7 +133,7 @@ function ProofTimeline({
         return (
           <li
             key={proof.id}
-            className="flex gap-2.5 rounded-xl border border-border/50 bg-white/60 px-3 py-2"
+            className="flex gap-2.5 rounded-xl border border-border/60 bg-surface/60 px-3 py-2 transition-colors hover:bg-surface"
           >
             {proof.type === "image" && proof.fileUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
@@ -247,9 +247,9 @@ function ProofModal({
         type="button"
         aria-label={t("assistantClose")}
         onClick={onClose}
-        className="absolute inset-0 bg-[rgba(15,15,23,0.45)]"
+        className="animate-overlay-in absolute inset-0 bg-[rgba(4,5,10,0.6)] backdrop-blur-[2px]"
       />
-      <div className="relative flex max-h-[88dvh] w-full max-w-md flex-col overflow-y-auto rounded-t-3xl bg-white p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-2xl sm:rounded-3xl">
+      <div className="animate-rise-in relative flex max-h-[88dvh] w-full max-w-md flex-col overflow-y-auto rounded-t-3xl border border-white/[0.08] bg-surface-elevated p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-2xl sm:rounded-3xl">
         <div className="mb-3 flex items-center justify-between">
           <h3 className="text-base font-extrabold tracking-tight text-ink">{t("proofAddTitle")}</h3>
           <button
@@ -276,7 +276,7 @@ function ProofModal({
                 "flex flex-col items-center gap-1 rounded-xl border px-2 py-2 text-[11px] font-semibold transition-colors",
                 type === tp
                   ? "border-accent bg-accent/10 text-accent"
-                  : "border-border bg-white text-ink-secondary hover:bg-surface-hover"
+                  : "border-border bg-surface text-ink-secondary hover:bg-surface-hover"
               )}
             >
               <span aria-hidden>{TYPE_META[tp].icon}</span>
@@ -360,7 +360,7 @@ function ProofModal({
             type="button"
             disabled={isSaving}
             onClick={handleSubmit}
-            className="mt-1 rounded-full bg-gradient-to-br from-indigo-600 to-purple-600 px-4 py-2.5 text-sm font-bold text-white shadow-sm transition-transform hover:scale-[1.01] active:scale-95 disabled:opacity-50"
+            className="mt-1 rounded-full bg-accent px-4 py-2.5 text-sm font-bold text-accent-foreground shadow-[0_8px_24px_-8px_rgba(93,107,255,0.6)] transition-all hover:bg-accent-hover active:scale-[0.98] disabled:opacity-50"
           >
             {isSaving ? t("proofSaving") : t("proofSave")}
           </button>

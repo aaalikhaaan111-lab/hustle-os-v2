@@ -63,7 +63,7 @@ function CenteredCard({
         role="dialog"
         aria-modal="true"
         aria-label={ariaLabel}
-        className="relative w-[340px] max-w-[calc(100vw-32px)] rounded-2xl border border-white/70 bg-white p-6 shadow-[0_24px_48px_-12px_rgba(0,0,0,0.35)]"
+        className="relative w-[340px] max-w-[calc(100vw-32px)] rounded-2xl border border-white/[0.08] bg-surface-elevated p-6 shadow-[0_24px_48px_-12px_rgba(0,0,0,0.35)]"
       >
         {children}
       </div>
@@ -263,7 +263,7 @@ export function ProductTour() {
         role="dialog"
         aria-modal="true"
         aria-label={tNav(step.labelKey)}
-        className="fixed w-[280px] max-w-[calc(100vw-24px)] rounded-2xl border border-white/70 bg-white p-5 shadow-[0_24px_48px_-12px_rgba(0,0,0,0.35)] transition-all duration-300 ease-out"
+        className="fixed w-[280px] max-w-[calc(100vw-24px)] rounded-2xl border border-white/[0.08] bg-surface-elevated p-5 shadow-[0_24px_48px_-12px_rgba(0,0,0,0.35)] transition-all duration-300 ease-out"
         style={tooltipStyle}
       >
         <div className="mb-3 flex justify-center gap-1.5">
@@ -271,7 +271,7 @@ export function ProductTour() {
             <span
               key={tourStep.href}
               className={`h-1.5 w-6 rounded-full transition-colors duration-200 ${
-                index === state.step ? "bg-accent" : "bg-zinc-200"
+                index === state.step ? "bg-accent" : "bg-surface-hover"
               }`}
             />
           ))}

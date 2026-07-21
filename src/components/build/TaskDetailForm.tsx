@@ -81,7 +81,7 @@ export function TaskDetailForm({
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-indigo-600">
+            <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-accent">
               {t("whyItMattersLabel")}
             </span>
             <p className="text-sm leading-relaxed tracking-tight text-ink-secondary">
@@ -90,14 +90,14 @@ export function TaskDetailForm({
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-indigo-600">
+            <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-accent">
               {t("actionLabel")}
             </span>
             <p className="text-sm leading-relaxed tracking-tight text-ink">{task.action}</p>
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-indigo-600">
+            <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-accent">
               {t("expectedOutputLabel")}
             </span>
             <p className="text-sm leading-relaxed tracking-tight text-ink-secondary">
@@ -108,7 +108,7 @@ export function TaskDetailForm({
           {recommendedLessonTitle && (
             <a
               href="/courses?tab=quizzes"
-              className="flex items-center gap-3 rounded-2xl bg-accent-soft px-4 py-3 text-sm font-semibold text-accent transition-colors hover:bg-indigo-100"
+              className="flex items-center gap-3 rounded-2xl bg-accent-soft px-4 py-3 text-sm font-semibold text-accent transition-colors hover:bg-accent/20"
             >
               <span aria-hidden>📚</span>
               <span>
@@ -180,20 +180,20 @@ function ReviewFeedback({ review, completed }: { review: TaskReview; completed: 
     <div
       className={cn(
         "flex flex-col gap-3 rounded-2xl border p-4",
-        ready ? "border-emerald-100 bg-emerald-50/60" : "border-amber-100 bg-amber-50/60"
+        ready ? "border-success/20 bg-success-soft" : "border-warning/20 bg-warning-soft"
       )}
     >
       <div className="flex items-center gap-2">
         <span
           className={cn(
             "inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-[0.1em]",
-            ready ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"
+            ready ? "bg-success-soft text-success" : "bg-warning-soft text-warning"
           )}
         >
           {ready ? `✓ ${t("reviewReady")}` : t("reviewNeedsWork")}
         </span>
         {completed && ready && (
-          <span className="text-xs font-semibold text-emerald-700">{t("reviewCompleteHint")}</span>
+          <span className="text-xs font-semibold text-success">{t("reviewCompleteHint")}</span>
         )}
       </div>
 
@@ -201,7 +201,7 @@ function ReviewFeedback({ review, completed }: { review: TaskReview; completed: 
 
       {review.strengths.length > 0 && (
         <div className="flex flex-col gap-1">
-          <span className="text-[11px] font-bold uppercase tracking-[0.12em] text-emerald-700">
+          <span className="text-[11px] font-bold uppercase tracking-[0.12em] text-success">
             {t("reviewStrengths")}
           </span>
           <ul className="flex flex-col gap-0.5">
@@ -216,7 +216,7 @@ function ReviewFeedback({ review, completed }: { review: TaskReview; completed: 
 
       {review.missingPoints.length > 0 && (
         <div className="flex flex-col gap-1">
-          <span className="text-[11px] font-bold uppercase tracking-[0.12em] text-amber-700">
+          <span className="text-[11px] font-bold uppercase tracking-[0.12em] text-warning">
             {t("reviewMissing")}
           </span>
           <ul className="flex flex-col gap-0.5">
@@ -231,7 +231,7 @@ function ReviewFeedback({ review, completed }: { review: TaskReview; completed: 
 
       {review.nextImprovement && (
         <div className="flex flex-col gap-1">
-          <span className="text-[11px] font-bold uppercase tracking-[0.12em] text-indigo-600">
+          <span className="text-[11px] font-bold uppercase tracking-[0.12em] text-accent">
             {t("reviewNext")}
           </span>
           <p className="text-sm tracking-tight text-ink">{review.nextImprovement}</p>
@@ -239,7 +239,7 @@ function ReviewFeedback({ review, completed }: { review: TaskReview; completed: 
       )}
 
       {review.improvedExample && (
-        <div className="flex flex-col gap-1 rounded-xl bg-white/70 px-3 py-2">
+        <div className="flex flex-col gap-1 rounded-xl bg-surface/70 px-3 py-2">
           <span className="text-[11px] font-bold uppercase tracking-[0.12em] text-ink-muted">
             {t("reviewExample")}
           </span>

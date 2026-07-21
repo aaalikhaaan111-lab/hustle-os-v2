@@ -107,7 +107,7 @@ export function LessonConsole({ lesson, onClose }: LessonConsoleProps) {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-white/70 p-4 backdrop-blur-2xl"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-surface/60 p-4 backdrop-blur-2xl"
       onClick={(event) => {
         if (event.target === event.currentTarget) onClose();
       }}
@@ -117,7 +117,7 @@ export function LessonConsole({ lesson, onClose }: LessonConsoleProps) {
           "relative w-full max-w-lg rounded-[32px] border p-8 shadow-[0_32px_64px_-16px_rgba(0,0,0,0.15)]",
           step === "victory"
             ? "border-emerald-100 bg-gradient-to-br from-emerald-50 via-white to-indigo-50"
-            : "border-t-white/70 border-x-zinc-200/40 border-b-zinc-200/40 bg-white/90"
+            : "border-white/[0.07] bg-surface"
         )}
       >
         {step !== "victory" && (
@@ -125,7 +125,7 @@ export function LessonConsole({ lesson, onClose }: LessonConsoleProps) {
             type="button"
             onClick={onClose}
             aria-label={t("closeAria")}
-            className="absolute right-5 top-5 flex h-8 w-8 items-center justify-center rounded-full text-ink-muted transition-colors hover:bg-zinc-100 hover:text-ink"
+            className="absolute right-5 top-5 flex h-8 w-8 items-center justify-center rounded-full text-ink-muted transition-colors hover:bg-surface-hover hover:text-ink"
           >
             ✕
           </button>
@@ -137,7 +137,7 @@ export function LessonConsole({ lesson, onClose }: LessonConsoleProps) {
               key={i}
               className={cn(
                 "h-1.5 w-8 rounded-full transition-all duration-500 ease-in-out",
-                i <= currentStepDot ? "bg-gradient-to-r from-indigo-600 to-pink-500" : "bg-zinc-200"
+                i <= currentStepDot ? "bg-gradient-to-r from-accent to-accent-2" : "bg-surface-hover"
               )}
             />
           ))}
@@ -150,7 +150,7 @@ export function LessonConsole({ lesson, onClose }: LessonConsoleProps) {
                 {slide.emoji}
               </span>
               <div className="flex flex-col gap-1.5">
-                <span className="inline-flex w-fit items-center rounded-full bg-gradient-to-tr from-indigo-50 to-pink-50 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-[0.12em] text-indigo-600 ring-1 ring-inset ring-indigo-100">
+                <span className="inline-flex w-fit items-center rounded-full bg-accent-soft px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-[0.12em] text-accent ring-1 ring-inset ring-accent/20">
                   {t("microTheory", { current: slideIndex + 1, total: lesson.slides.length })}
                 </span>
                 <h2 className="text-xl font-black leading-tight tracking-[-0.02em] text-ink">
@@ -173,7 +173,7 @@ export function LessonConsole({ lesson, onClose }: LessonConsoleProps) {
 
         {step === "quiz" && lesson.type === "quiz" && question && (
           <div key={questionIndex} className="animate-pop-in flex flex-col gap-5">
-            <span className="inline-flex w-fit items-center rounded-full bg-gradient-to-tr from-indigo-50 to-pink-50 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-[0.12em] text-indigo-600 ring-1 ring-inset ring-indigo-100">
+            <span className="inline-flex w-fit items-center rounded-full bg-accent-soft px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-[0.12em] text-accent ring-1 ring-inset ring-accent/20">
               {t("knowledgeCheck", { current: questionIndex + 1, total: lesson.quiz.length })}
             </span>
             <h2 className="text-xl font-extrabold tracking-[-0.02em] text-ink">
@@ -194,7 +194,7 @@ export function LessonConsole({ lesson, onClose }: LessonConsoleProps) {
                       showRight && "border-success bg-success-soft text-success",
                       showWrong && "border-danger bg-danger-soft text-danger",
                       !isSelected &&
-                        "border-zinc-100/60 bg-white/70 text-ink-secondary hover:border-zinc-200 hover:text-ink"
+                        "border-border bg-surface/60 text-ink-secondary hover:border-border hover:text-ink"
                     )}
                   >
                     {optionLabels[index]}) {pick(option.text, locale)}
@@ -218,7 +218,7 @@ export function LessonConsole({ lesson, onClose }: LessonConsoleProps) {
 
         {step === "simulation" && lesson.type === "simulation" && (
           <div className="animate-pop-in flex flex-col gap-5">
-            <span className="inline-flex w-fit items-center rounded-full bg-gradient-to-tr from-indigo-50 to-pink-50 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-[0.12em] text-indigo-600 ring-1 ring-inset ring-indigo-100">
+            <span className="inline-flex w-fit items-center rounded-full bg-accent-soft px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-[0.12em] text-accent ring-1 ring-inset ring-accent/20">
               {t("simulationBadge")}
             </span>
             <h2 className="text-xl font-extrabold tracking-[-0.02em] text-ink">{lessonTitle}</h2>
@@ -241,7 +241,7 @@ export function LessonConsole({ lesson, onClose }: LessonConsoleProps) {
               🎉
             </span>
             <h2 className="text-3xl font-black tracking-[-0.02em] text-ink">{t("lessonComplete")}</h2>
-            <span className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500 px-5 py-2.5 text-base font-bold text-white shadow-[0_8px_24px_rgba(99,102,241,0.35)]">
+            <span className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-accent to-accent-2 px-5 py-2.5 text-base font-bold text-white shadow-[0_8px_24px_rgba(99,102,241,0.35)]">
               {t("xpEarned", { xp: lesson.xpReward })}
             </span>
             <p className="text-sm leading-relaxed tracking-tight text-ink-secondary">

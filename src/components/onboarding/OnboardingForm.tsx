@@ -118,7 +118,7 @@ export function OnboardingForm() {
                   "relative flex flex-col items-start gap-1.5 rounded-2xl border px-4 py-4 text-left text-sm font-semibold transition-all duration-300 ease-out hover:scale-[1.02] active:scale-[0.97] disabled:opacity-60 disabled:hover:scale-100",
                   selected
                     ? "border-accent bg-accent-soft text-accent shadow-[0_8px_20px_rgba(99,102,241,0.15)]"
-                    : "border-zinc-100/60 bg-white/70 text-ink-secondary shadow-sm backdrop-blur-md hover:border-zinc-200 hover:text-ink"
+                    : "border-border bg-surface/60 text-ink-secondary shadow-sm backdrop-blur-md hover:border-border hover:text-ink"
                 )}
               >
                 {selected && (
@@ -149,7 +149,7 @@ export function OnboardingForm() {
                   "relative flex items-center gap-2 rounded-2xl border px-3.5 py-3 text-left text-sm font-semibold transition-all duration-300 ease-out hover:scale-[1.02] active:scale-[0.97] disabled:opacity-60 disabled:hover:scale-100",
                   selected
                     ? "border-accent bg-accent-soft text-accent shadow-[0_8px_20px_rgba(99,102,241,0.15)]"
-                    : "border-zinc-100/60 bg-white/70 text-ink-secondary shadow-sm backdrop-blur-md hover:border-zinc-200 hover:text-ink"
+                    : "border-border bg-surface/60 text-ink-secondary shadow-sm backdrop-blur-md hover:border-border hover:text-ink"
                 )}
               >
                 <span className="text-lg" role="img" aria-hidden>
@@ -180,7 +180,7 @@ export function OnboardingForm() {
                   "rounded-2xl border px-4 py-4 text-center text-sm font-semibold transition-all duration-300 ease-out hover:scale-[1.02] active:scale-[0.97] disabled:opacity-60 disabled:hover:scale-100",
                   selected
                     ? "border-accent bg-accent-soft text-accent shadow-[0_8px_20px_rgba(99,102,241,0.15)]"
-                    : "border-zinc-100/60 bg-white/70 text-ink-secondary shadow-sm backdrop-blur-md hover:border-zinc-200 hover:text-ink"
+                    : "border-border bg-surface/60 text-ink-secondary shadow-sm backdrop-blur-md hover:border-border hover:text-ink"
                 )}
               >
                 {t(option.labelKey)}

@@ -25,7 +25,7 @@ export async function BuildProjectCard({
             🛠️
           </span>
           <div className="flex flex-col gap-2">
-            <span className="inline-flex w-fit items-center rounded-full bg-accent-soft px-3 py-1 text-[11px] font-bold uppercase tracking-[0.14em] text-accent ring-1 ring-inset ring-indigo-100/70">
+            <span className="inline-flex w-fit items-center rounded-full bg-accent-soft px-3 py-1 text-[11px] font-bold uppercase tracking-[0.14em] text-accent ring-1 ring-inset ring-accent/20">
               {t("buildTeaserBadge")}
             </span>
             <h3 className="text-xl font-extrabold leading-tight tracking-[-0.02em] text-ink">
@@ -41,9 +41,9 @@ export async function BuildProjectCard({
                 <span>{nextTaskTitle ? t("buildNextTask", { title: nextTaskTitle }) : t("buildAllTasksDone")}</span>
                 <span>{progress}%</span>
               </div>
-              <div className="h-3 w-full overflow-hidden rounded-full bg-zinc-900/[0.04] ring-1 ring-inset ring-white/60 backdrop-blur-sm">
+              <div className="h-3 w-full overflow-hidden rounded-full bg-white/[0.06] ring-1 ring-inset ring-white/10 backdrop-blur-sm">
                 <div
-                  className="h-full rounded-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 transition-all duration-700 ease-out"
+                  className="h-full rounded-full bg-gradient-to-r from-accent to-accent-2 transition-all duration-700 ease-out"
                   style={{ width: `${progress}%` }}
                 />
               </div>

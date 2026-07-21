@@ -34,7 +34,7 @@ export function RefineTasksButton({ projectId }: { projectId: string }) {
         type="button"
         onClick={handleClick}
         disabled={isPending}
-        className="inline-flex items-center gap-1.5 rounded-full border border-indigo-100 bg-accent-soft px-3.5 py-1.5 text-xs font-semibold text-accent transition-colors hover:bg-indigo-100 disabled:opacity-60"
+        className="inline-flex items-center gap-1.5 rounded-full border border-accent/20 bg-accent-soft px-3.5 py-1.5 text-xs font-semibold text-accent transition-colors hover:bg-accent-soft disabled:opacity-60"
       >
         {isPending ? t("tailoring") : `✨ ${t("tailorTasks")}`}
       </button>

@@ -18,7 +18,7 @@ export function Sidebar() {
   const t = useTranslations("nav");
 
   return (
-    <aside className="fixed inset-y-0 left-0 z-20 hidden w-64 flex-col border-r border-t-white/60 border-zinc-200/30 bg-white/65 backdrop-blur-2xl md:flex">
+    <aside className="fixed inset-y-0 left-0 z-20 hidden w-64 flex-col border-r border-white/[0.06] bg-surface/50 backdrop-blur-2xl md:flex">
       <div className="flex h-16 items-center px-6">
         <Wordmark className="text-base" />
       </div>
@@ -34,10 +34,10 @@ export function Sidebar() {
               href={item.href}
               data-tour-nav={item.href}
               className={cn(
-                "flex items-center gap-3 rounded-full px-4 py-2.5 text-[15px] font-semibold tracking-tight transition-colors duration-150 ease-out active:scale-[0.98]",
+                "flex items-center gap-3 rounded-2xl px-4 py-2.5 text-[15px] font-semibold tracking-tight transition-all duration-200 ease-out active:scale-[0.98]",
                 active
-                  ? "bg-accent-soft text-accent ring-1 ring-inset ring-indigo-100"
-                  : "text-ink-secondary hover:bg-white/60 hover:text-ink"
+                  ? "bg-accent-soft text-accent shadow-[inset_0_0_0_1px_rgba(93,107,255,0.22)]"
+                  : "text-ink-secondary hover:bg-surface-hover hover:text-ink"
               )}
             >
               <item.icon

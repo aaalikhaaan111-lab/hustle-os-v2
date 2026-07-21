@@ -53,7 +53,7 @@ export function PricingSimulator({ config, onSweetSpotFound }: PricingSimulatorP
 
   return (
     <div className="flex flex-col gap-5">
-      <div className="flex flex-col gap-3 rounded-2xl bg-accent-soft px-5 py-4 ring-1 ring-inset ring-indigo-100/60">
+      <div className="flex flex-col gap-3 rounded-2xl bg-accent-soft px-5 py-4 ring-1 ring-inset ring-accent/20">
         <div className="flex items-center justify-between">
           <span className="text-sm font-bold text-ink">{t("pricingSetPrice")}</span>
           <span className="text-lg font-black text-ink">${price}</span>
@@ -77,11 +77,11 @@ export function PricingSimulator({ config, onSweetSpotFound }: PricingSimulatorP
       </div>
 
       <div className="grid grid-cols-3 gap-3">
-        <div className="flex flex-col gap-1 rounded-2xl bg-white/70 px-3 py-3 text-center ring-1 ring-inset ring-indigo-100">
+        <div className="flex flex-col gap-1 rounded-2xl bg-surface/60 px-3 py-3 text-center ring-1 ring-inset ring-accent/20">
           <span className="text-[10px] font-bold uppercase tracking-wide text-ink-muted">{t("pricingDemand")}</span>
           <span className="text-lg font-black text-ink">{Math.round(demand)}</span>
         </div>
-        <div className="flex flex-col gap-1 rounded-2xl bg-white/70 px-3 py-3 text-center ring-1 ring-inset ring-indigo-100">
+        <div className="flex flex-col gap-1 rounded-2xl bg-surface/60 px-3 py-3 text-center ring-1 ring-inset ring-accent/20">
           <span className="text-[10px] font-bold uppercase tracking-wide text-ink-muted">{t("pricingCosts")}</span>
           <span className="text-lg font-black text-ink">${Math.round(totalCost)}</span>
         </div>

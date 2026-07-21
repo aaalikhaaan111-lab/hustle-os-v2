@@ -35,7 +35,7 @@ export default async function BuildLandingPage() {
   return (
     <div className="flex flex-col gap-10">
       <div className="mx-auto flex max-w-2xl flex-col items-center gap-5 py-6 text-center">
-        <span className="inline-flex w-fit items-center rounded-full bg-gradient-to-tr from-indigo-50 to-pink-50 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.14em] text-indigo-600 shadow-[0_2px_12px_rgba(99,102,241,0.12)] ring-1 ring-inset ring-indigo-100">
+        <span className="inline-flex w-fit items-center rounded-full bg-accent-soft px-3 py-1 text-[11px] font-bold uppercase tracking-[0.14em] text-accent shadow-[0_2px_12px_rgba(99,102,241,0.12)] ring-1 ring-inset ring-accent/20">
           {t("landingEyebrow")}
         </span>
         <h1 className="text-[2rem] font-black leading-[1.08] tracking-[-0.02em] text-ink sm:text-4xl md:text-5xl">
@@ -62,7 +62,7 @@ export default async function BuildLandingPage() {
           <div className="flex flex-wrap items-center justify-center gap-2">
             {JOURNEY_STEPS.map((key, index) => (
               <div key={key} className="flex items-center gap-2">
-                <span className="inline-flex items-center rounded-full border border-zinc-100/60 bg-white/70 px-3 py-1.5 text-xs font-semibold text-ink-secondary shadow-sm backdrop-blur-md">
+                <span className="inline-flex items-center rounded-full border border-border bg-surface/60 px-3 py-1.5 text-xs font-semibold text-ink-secondary shadow-sm backdrop-blur-md">
                   {t(key)}
                 </span>
                 {index < JOURNEY_STEPS.length - 1 && (

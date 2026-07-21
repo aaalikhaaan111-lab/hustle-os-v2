@@ -182,7 +182,7 @@ export function VideoCard({ video }: VideoCardProps) {
                   loading="lazy"
                 />
               ) : (
-                <div className="flex h-full w-full flex-col items-center justify-center gap-2 bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-500 px-4 text-center">
+                <div className="flex h-full w-full flex-col items-center justify-center gap-2 bg-gradient-to-br from-accent to-accent-hover px-4 text-center">
                   <span className="text-3xl" role="img" aria-hidden>
                     🎬
                   </span>
@@ -213,9 +213,9 @@ export function VideoCard({ video }: VideoCardProps) {
           </p>
         </div>
 
-        <div className="flex flex-col gap-3 rounded-2xl bg-accent-soft px-4 py-4 ring-1 ring-inset ring-indigo-100/60">
+        <div className="flex flex-col gap-3 rounded-2xl bg-accent-soft px-4 py-4 ring-1 ring-inset ring-accent/20">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-indigo-600">
+            <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-accent">
               {t("yourTakeaway")}
             </span>
             <span className="text-xs font-bold text-ink-muted">
@@ -238,7 +238,7 @@ export function VideoCard({ video }: VideoCardProps) {
                         "mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border text-[11px] font-bold transition-colors duration-150",
                         checked
                           ? "border-success bg-success text-white"
-                          : "border-zinc-300 bg-white/70 text-transparent"
+                          : "border-border-strong bg-surface/60 text-transparent"
                       )}
                     >
                       ✓

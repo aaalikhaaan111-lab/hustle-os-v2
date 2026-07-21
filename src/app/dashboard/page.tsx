@@ -18,7 +18,7 @@ import { getCurrentProject, getProjectTasks } from "@/lib/build/queries";
 
 function Eyebrow({ children }: { children: ReactNode }) {
   return (
-    <span className="inline-flex w-fit items-center rounded-full bg-accent-soft px-3 py-1 text-[11px] font-bold uppercase tracking-[0.14em] text-accent ring-1 ring-inset ring-indigo-100/70">
+    <span className="inline-flex w-fit items-center rounded-full bg-accent-soft px-3 py-1 text-[11px] font-bold uppercase tracking-[0.14em] text-accent ring-1 ring-inset ring-accent/20">
       {children}
     </span>
   );
@@ -104,8 +104,8 @@ export default async function DashboardPage() {
                 </h3>
               </div>
             </div>
-            <div className="flex items-center gap-3 rounded-2xl border border-t-white/70 border-x-zinc-200/40 border-b-zinc-200/40 bg-white/70 px-4 py-3 shadow-sm backdrop-blur-md">
-              <div className="flex h-12 w-12 shrink-0 flex-col items-center justify-center rounded-xl bg-gradient-to-br from-indigo-100 to-pink-100">
+            <div className="flex items-center gap-3 rounded-2xl border border-white/[0.07] bg-surface/60 px-4 py-3 shadow-sm backdrop-blur-md">
+              <div className="flex h-12 w-12 shrink-0 flex-col items-center justify-center rounded-xl bg-accent-soft">
                 <span className="text-[9px] font-bold uppercase tracking-wide text-ink-muted">
                   {t("workshopsTeaserSoon")}
                 </span>

@@ -23,7 +23,7 @@ export function CourseProgressCard() {
             📚
           </span>
           <div className="flex flex-col gap-2">
-            <span className="inline-flex w-fit items-center rounded-full bg-gradient-to-tr from-indigo-50 to-pink-50 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.14em] text-indigo-600 shadow-[0_2px_12px_rgba(99,102,241,0.12)] ring-1 ring-inset ring-indigo-100">
+            <span className="inline-flex w-fit items-center rounded-full bg-accent-soft px-3 py-1 text-[11px] font-bold uppercase tracking-[0.14em] text-accent shadow-[0_2px_12px_rgba(99,102,241,0.12)] ring-1 ring-inset ring-accent/20">
               {progress.activeModuleTitle || t("courseFallback")}
             </span>
             <h3 className="text-xl font-extrabold leading-tight tracking-[-0.02em] text-ink">
@@ -43,9 +43,9 @@ export function CourseProgressCard() {
             </span>
             <span>{progress.percent}%</span>
           </div>
-          <div className="h-4 w-full overflow-hidden rounded-full bg-zinc-900/[0.04] ring-1 ring-inset ring-white/60 backdrop-blur-sm">
+          <div className="h-4 w-full overflow-hidden rounded-full bg-white/[0.06] ring-1 ring-inset ring-white/10 backdrop-blur-sm">
             <div
-              className="h-full rounded-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 shadow-[0_0_12px_rgba(147,51,234,0.5)] transition-all duration-700 ease-out"
+              className="h-full rounded-full bg-gradient-to-r from-accent to-accent-2 shadow-[0_0_12px_rgba(147,51,234,0.5)] transition-all duration-700 ease-out"
               style={{ width: `${progress.percent}%` }}
             />
           </div>

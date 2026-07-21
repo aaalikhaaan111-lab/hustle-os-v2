@@ -56,7 +56,7 @@ function ChoiceCard({
         "flex items-center gap-2.5 rounded-2xl border px-4 py-3.5 text-left text-sm font-semibold transition-all duration-200 ease-out hover:scale-[1.02] active:scale-[0.98] disabled:opacity-60 disabled:hover:scale-100",
         selected
           ? "border-accent bg-accent-soft text-accent shadow-[0_8px_20px_rgba(99,102,241,0.15)]"
-          : "border-zinc-100/60 bg-white/70 text-ink-secondary shadow-sm backdrop-blur-md hover:border-zinc-200 hover:text-ink"
+          : "border-border bg-surface/60 text-ink-secondary hover:border-border-strong hover:text-ink"
       )}
     >
       {emoji && (
@@ -194,8 +194,8 @@ export function ProjectCreateForm({ initialMode }: ProjectCreateFormProps) {
             className={cn(
               "inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold",
               mode === "quick_sprint"
-                ? "bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-100"
-                : "bg-accent-soft text-accent ring-1 ring-inset ring-indigo-100"
+                ? "bg-warning-soft text-warning ring-1 ring-inset ring-warning/20"
+                : "bg-accent-soft text-accent ring-1 ring-inset ring-accent/20"
             )}
           >
             {mode === "quick_sprint" ? `⚡ ${t("modeQuickSprint")}` : `🧭 ${t("modeStandard")}`}
@@ -218,9 +218,9 @@ export function ProjectCreateForm({ initialMode }: ProjectCreateFormProps) {
             <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-ink-muted">
               {t("stepLabel", { current: stepIndex + 1, total: QUESTION_STEPS })}
             </span>
-            <div className="h-1.5 w-full overflow-hidden rounded-full bg-zinc-900/[0.05]">
+            <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/[0.06]">
               <div
-                className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-pink-500 transition-all duration-300 ease-out"
+                className="h-full rounded-full bg-gradient-to-r from-accent to-accent-2 transition-all duration-300 ease-out"
                 style={{ width: `${((stepIndex + 1) / QUESTION_STEPS) * 100}%` }}
               />
             </div>
@@ -357,7 +357,7 @@ export function ProjectCreateForm({ initialMode }: ProjectCreateFormProps) {
             <p className="text-sm tracking-tight text-ink-secondary">{t("reviewSubtitle")}</p>
           </div>
 
-          <div className="flex flex-col gap-2 rounded-2xl border border-t-white/70 border-x-zinc-200/40 border-b-zinc-200/40 bg-white/70 p-2 shadow-sm backdrop-blur-md">
+          <div className="flex flex-col gap-2 rounded-2xl border border-white/[0.07] bg-surface/60 p-2">
             <ReviewRow label={t("reviewTypeLabel")} value={typeLabel()} onEdit={() => jumpTo("type")} editLabel={t("reviewEdit")} />
             <ReviewRow label={t("reviewNicheLabel")} value={nicheLabel()} onEdit={() => jumpTo("niche")} editLabel={t("reviewEdit")} />
             <ReviewRow label={t("reviewStartLabel")} value={startLabel()} onEdit={() => jumpTo("start")} editLabel={t("reviewEdit")} />
@@ -437,7 +437,7 @@ function ReviewRow({
   editLabel: string;
 }) {
   return (
-    <div className="flex items-center gap-3 rounded-xl px-3 py-2.5 transition-colors hover:bg-white/70">
+    <div className="flex items-center gap-3 rounded-xl px-3 py-2.5 transition-colors hover:bg-surface-hover">
       <div className="flex flex-1 flex-col gap-0.5 overflow-hidden">
         <span className="text-[11px] font-bold uppercase tracking-[0.12em] text-ink-muted">{label}</span>
         <span className="truncate text-sm font-semibold text-ink">{value}</span>

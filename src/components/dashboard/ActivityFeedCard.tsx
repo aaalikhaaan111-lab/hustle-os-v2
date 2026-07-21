@@ -40,11 +40,11 @@ export function ActivityFeedCard() {
             {sorted.map((item, index) => (
               <li key={`${item.challengeId}-${item.completedAt}`} className="flex gap-4">
                 <div className="flex flex-col items-center">
-                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-indigo-100 to-pink-100 text-lg">
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-accent-soft text-lg">
                     {item.emoji}
                   </span>
                   {index < sorted.length - 1 && (
-                    <span className="mt-1 w-px flex-1 bg-zinc-200" aria-hidden />
+                    <span className="mt-1 w-px flex-1 bg-surface-hover" aria-hidden />
                   )}
                 </div>
                 <div className="flex flex-1 flex-col gap-1.5 pb-1">
@@ -53,15 +53,15 @@ export function ActivityFeedCard() {
                       {t("questCompleted", { title: item.title })}
                     </span>
                     {item.categoryLabel && (
-                      <span className="inline-flex items-center rounded-full bg-gradient-to-tr from-indigo-50 to-pink-50 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide text-indigo-600 ring-1 ring-inset ring-indigo-100">
+                      <span className="inline-flex items-center rounded-full bg-accent-soft px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide text-accent ring-1 ring-inset ring-accent/20">
                         {item.categoryLabel}
                       </span>
                     )}
-                    <span className="inline-flex items-center rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-bold text-amber-600 ring-1 ring-inset ring-amber-100">
+                    <span className="inline-flex items-center rounded-full bg-warning-soft px-2 py-0.5 text-[11px] font-bold text-amber-600 ring-1 ring-inset ring-amber-100">
                       +{item.xp} XP
                     </span>
                     {item.score && (
-                      <span className="inline-flex items-center rounded-full bg-indigo-50 px-2 py-0.5 text-[11px] font-bold text-indigo-600 ring-1 ring-inset ring-indigo-100">
+                      <span className="inline-flex items-center rounded-full bg-accent-soft px-2 py-0.5 text-[11px] font-bold text-accent ring-1 ring-inset ring-accent/20">
                         {t("aiScore", { score: item.score.average })}
                       </span>
                     )}

@@ -168,22 +168,22 @@ export function AssistantChat({
           {!available ? (
             <p className="text-sm tracking-tight text-ink-secondary">{t("assistantUnavailable")}</p>
           ) : isEmpty ? (
-            <p className="whitespace-pre-wrap text-[17px] font-medium leading-8 tracking-tight text-ink">
+            <p className="animate-rise-in whitespace-pre-wrap text-[17px] font-medium leading-8 tracking-tight text-ink">
               {openingMessage}
             </p>
           ) : (
             <div className="flex flex-col gap-6">
               {messages.map((m) =>
                 m.role === "user" ? (
-                  <div key={m.id} className="flex justify-end">
-                    <div className="max-w-[85%] whitespace-pre-wrap rounded-2xl rounded-br-md bg-accent px-3.5 py-2 text-[15px] leading-relaxed text-white">
+                  <div key={m.id} className="animate-message-in flex justify-end">
+                    <div className="max-w-[85%] whitespace-pre-wrap rounded-2xl rounded-br-md bg-accent px-3.5 py-2 text-[15px] leading-relaxed text-accent-foreground shadow-[0_8px_24px_-10px_rgba(93,107,255,0.6)]">
                       {m.content}
                     </div>
                   </div>
                 ) : (
                   <div
                     key={m.id}
-                    className="whitespace-pre-wrap text-[15px] leading-7 tracking-tight text-ink"
+                    className="animate-message-in whitespace-pre-wrap text-[15px] leading-7 tracking-tight text-ink"
                   >
                     {m.content}
                   </div>
@@ -237,7 +237,7 @@ export function AssistantChat({
             </div>
           )}
           {note && <p className="mb-1.5 px-1 text-xs text-danger">{note}</p>}
-          {flash && <p className="mb-1.5 px-1 text-xs font-semibold text-emerald-600">{flash}</p>}
+          {flash && <p className="mb-1.5 px-1 text-xs font-semibold text-success">{flash}</p>}
 
           <form
             onSubmit={(e) => {

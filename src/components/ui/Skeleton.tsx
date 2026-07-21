@@ -4,7 +4,7 @@ export function Skeleton({ className }: { className?: string }) {
   return (
     <div
       className={cn(
-        "animate-pulse-soft rounded-xl bg-zinc-900/[0.06]",
+        "animate-pulse-soft rounded-xl bg-white/[0.07]",
         className
       )}
     />
@@ -15,7 +15,7 @@ export function SkeletonCard({ className }: { className?: string }) {
   return (
     <div
       className={cn(
-        "rounded-[32px] border border-t-white/60 border-x-zinc-200/30 border-b-zinc-200/30 bg-white/75 p-5 sm:p-8",
+        "rounded-3xl border border-white/[0.07] bg-surface/70 p-5 sm:p-8",
         className
       )}
     >

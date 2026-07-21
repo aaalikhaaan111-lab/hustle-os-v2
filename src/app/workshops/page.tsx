@@ -33,11 +33,11 @@ function LockedWorkshopCard({ emoji, title, description, comingSoonLabel }: Lock
     <Card className="pointer-events-none opacity-60 grayscale">
       <CardContent className="flex flex-col gap-4 py-8">
         <div className="flex items-center gap-3">
-          <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-zinc-100 text-2xl">
+          <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-surface-hover text-2xl">
             {emoji}
           </span>
           <div className="flex flex-col gap-1">
-            <span className="inline-flex w-fit items-center gap-1 rounded-full bg-zinc-100 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-[0.12em] text-zinc-500">
+            <span className="inline-flex w-fit items-center gap-1 rounded-full bg-surface-hover px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-[0.12em] text-ink-muted">
               {comingSoonLabel}
             </span>
             <h3 className="text-lg font-extrabold leading-tight tracking-[-0.02em] text-ink">
@@ -75,7 +75,7 @@ export default async function WorkshopsPage() {
       <PageHeader title={t("title")} description={t("description")} />
 
       <div className="flex flex-col gap-4">
-        <h2 className="text-xs font-bold uppercase tracking-[0.14em] text-indigo-600">
+        <h2 className="text-xs font-bold uppercase tracking-[0.14em] text-accent">
           {t("liveQuizzesTitle")}
         </h2>
         <div className="flex flex-col gap-4 lg:grid lg:grid-cols-[2fr_1fr] lg:items-start lg:gap-6">

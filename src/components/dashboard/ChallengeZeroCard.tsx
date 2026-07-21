@@ -62,7 +62,7 @@ export function ChallengeZeroCard({ subtitle }: ChallengeZeroCardProps) {
           🎯
         </span>
         <div className="flex flex-col gap-2">
-          <span className="inline-flex w-fit items-center rounded-full bg-gradient-to-tr from-indigo-50 to-pink-50 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.14em] text-indigo-600 shadow-[0_2px_12px_rgba(99,102,241,0.12)] ring-1 ring-inset ring-indigo-100">
+          <span className="inline-flex w-fit items-center rounded-full bg-accent-soft px-3 py-1 text-[11px] font-bold uppercase tracking-[0.14em] text-accent shadow-[0_2px_12px_rgba(99,102,241,0.12)] ring-1 ring-inset ring-accent/20">
             {t("challengeZeroBadge")}
           </span>
           <h3 className="text-3xl font-black leading-[1.05] tracking-[-0.02em] text-ink">
@@ -82,7 +82,7 @@ export function ChallengeZeroCard({ subtitle }: ChallengeZeroCardProps) {
               : "translate-y-0 opacity-100"
           )}
         >
-          <div className="rounded-2xl bg-accent-soft px-5 py-4 ring-1 ring-inset ring-indigo-100/60">
+          <div className="rounded-2xl bg-accent-soft px-5 py-4 ring-1 ring-inset ring-accent/20">
             <p className="text-sm font-medium tracking-tight text-ink-secondary">
               {t("challengeZeroPrompt")}
             </p>
@@ -117,7 +117,7 @@ export function ChallengeZeroCard({ subtitle }: ChallengeZeroCardProps) {
         >
           <div
             className={cn(
-              "flex w-full flex-col gap-1 rounded-2xl bg-accent-soft px-5 py-4 ring-1 ring-inset ring-indigo-100/60",
+              "flex w-full flex-col gap-1 rounded-2xl bg-accent-soft px-5 py-4 ring-1 ring-inset ring-accent/20",
               justCompleted && "animate-pop-in"
             )}
           >
@@ -127,7 +127,7 @@ export function ChallengeZeroCard({ subtitle }: ChallengeZeroCardProps) {
           </div>
           <span
             className={cn(
-              "inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500 px-4 py-2 text-sm font-bold text-white shadow-[0_8px_24px_rgba(99,102,241,0.35)]",
+              "inline-flex items-center gap-2 rounded-full bg-accent px-4 py-2 text-sm font-bold text-accent-foreground shadow-[0_8px_24px_rgba(99,102,241,0.35)]",
               justCompleted && "animate-pop-in"
             )}
           >

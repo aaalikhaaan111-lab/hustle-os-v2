@@ -34,8 +34,8 @@ export function LessonNode({ lesson, unlocked, completed, isActive, offset, onOp
           completed &&
             "bg-gradient-to-br from-emerald-400 to-emerald-600 text-white shadow-[0_12px_28px_rgba(16,185,129,0.35)] hover:scale-105",
           isActive &&
-            "animate-glow-pulse bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-500 text-white hover:scale-105",
-          !unlocked && "cursor-not-allowed bg-zinc-100 text-zinc-400 shadow-inner"
+            "animate-glow-pulse bg-gradient-to-br from-accent to-accent-2 text-white hover:scale-105",
+          !unlocked && "cursor-not-allowed bg-surface-hover text-ink-muted shadow-inner"
         )}
       >
         {completed ? "✅" : unlocked ? lesson.emoji : "🔒"}

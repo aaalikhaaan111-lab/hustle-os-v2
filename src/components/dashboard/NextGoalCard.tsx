@@ -29,7 +29,7 @@ export function NextGoalCard() {
     return (
       <Card>
         <CardContent className="flex flex-col gap-2 py-8">
-          <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-indigo-600">
+          <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-accent">
             {t("nextGoal")}
           </span>
           <h3 className="text-xl font-extrabold tracking-[-0.02em] text-ink">
@@ -49,7 +49,7 @@ export function NextGoalCard() {
   return (
     <Card>
       <CardContent className="flex flex-col gap-4 py-8">
-        <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-indigo-600">
+        <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-accent">
           {t("nextGoal")}
         </span>
 

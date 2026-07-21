@@ -87,7 +87,7 @@ function CoursesPageContent() {
     <div className="flex flex-col gap-8">
       <PageHeader title={t("title")} description={t("description")} />
 
-      <div className="grid grid-cols-2 gap-1.5 rounded-2xl bg-white/60 p-1.5 ring-1 ring-inset ring-zinc-200/60 backdrop-blur-md sm:inline-flex sm:w-fit sm:gap-2 sm:rounded-full">
+      <div className="grid grid-cols-2 gap-1.5 rounded-2xl bg-surface/50 p-1.5 ring-1 ring-inset ring-zinc-200/60 backdrop-blur-md sm:inline-flex sm:w-fit sm:gap-2 sm:rounded-full">
         {TABS.map((item) => {
           const active = tab === item.id;
           return (
@@ -98,8 +98,8 @@ function CoursesPageContent() {
               className={cn(
                 "flex flex-col items-center justify-center gap-1 rounded-xl px-2 py-2.5 text-center text-[11px] font-bold leading-tight tracking-tight transition-all duration-200 ease-out sm:flex-row sm:gap-2 sm:rounded-full sm:px-4 sm:text-sm",
                 active
-                  ? "bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-500 text-white shadow-[0_8px_24px_rgba(99,102,241,0.35)]"
-                  : "text-ink-secondary hover:bg-white/70 hover:text-ink"
+                  ? "bg-accent text-accent-foreground shadow-[0_8px_24px_rgba(99,102,241,0.35)]"
+                  : "text-ink-secondary hover:bg-surface/60 hover:text-ink"
               )}
             >
               <span className="text-base sm:text-base" role="img" aria-hidden>
@@ -174,7 +174,7 @@ function CoursesPageContent() {
               {filteredGlossary.map((term) => (
                 <div
                   key={term.id}
-                  className="flex flex-col gap-2 rounded-2xl border border-t-white/70 border-x-zinc-200/40 border-b-zinc-200/40 bg-white/80 px-5 py-4 shadow-sm backdrop-blur-md"
+                  className="flex flex-col gap-2 rounded-2xl border border-white/[0.07] bg-surface/70 px-5 py-4 shadow-sm backdrop-blur-md"
                 >
                   <h3 className="text-base font-extrabold tracking-[-0.01em] text-ink">{pick(term.name, locale)}</h3>
                   <p className="text-sm tracking-tight text-ink-secondary">{pick(term.definition, locale)}</p>

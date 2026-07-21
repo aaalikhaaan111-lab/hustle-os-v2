@@ -217,7 +217,7 @@ export function WorkshopSession({ initialState }: WorkshopSessionProps) {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-t-white/70 border-x-zinc-200/40 border-b-zinc-200/40 bg-white/70 px-5 py-3 shadow-sm backdrop-blur-md">
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/[0.07] bg-surface/60 px-5 py-3 shadow-sm backdrop-blur-md">
         <div className="flex items-center gap-3">
           <span className="text-2xl">{pack.emoji}</span>
           <div>
@@ -235,7 +235,7 @@ export function WorkshopSession({ initialState }: WorkshopSessionProps) {
           <CardContent className="animate-pop-in flex flex-col items-center gap-6 py-10 text-center">
             <span className="text-5xl">{pack.emoji}</span>
             <div>
-              <p className="text-xs font-bold uppercase tracking-[0.14em] text-indigo-600">{t("lobbyBadge")}</p>
+              <p className="text-xs font-bold uppercase tracking-[0.14em] text-accent">{t("lobbyBadge")}</p>
               <h2 className="mt-2 text-2xl font-black tracking-[-0.02em] text-ink">
                 {t("lobbyWaitingLabel")} <span className="font-mono">{state.code}</span>
               </h2>
@@ -249,7 +249,7 @@ export function WorkshopSession({ initialState }: WorkshopSessionProps) {
                 state.participants.map((p) => (
                   <div
                     key={p.id}
-                    className="flex items-center justify-between rounded-xl bg-white/70 px-4 py-2 text-sm shadow-sm"
+                    className="flex items-center justify-between rounded-xl bg-surface/60 px-4 py-2 text-sm shadow-sm"
                   >
                     <span className="font-semibold text-ink">
                       {p.displayName} {p.isHost && "👑"}
@@ -278,7 +278,7 @@ export function WorkshopSession({ initialState }: WorkshopSessionProps) {
         <Card>
           <CardContent className="animate-pop-in flex flex-col gap-6 py-8">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold uppercase tracking-[0.14em] text-indigo-600">
+              <span className="text-xs font-bold uppercase tracking-[0.14em] text-accent">
                 {t("questionCounter", {
                   current: state.currentQuestionIndex + 1,
                   total: pack.questions.length,
@@ -359,7 +359,7 @@ export function WorkshopSession({ initialState }: WorkshopSessionProps) {
                       "flex items-center gap-3 rounded-2xl border px-4 py-4 text-left text-sm font-bold shadow-sm",
                       isCorrectOption
                         ? "border-success bg-success-soft text-success"
-                        : "border-zinc-100 bg-white/70 text-ink-muted opacity-70"
+                        : "border-border bg-surface/60 text-ink-muted opacity-70"
                     )}
                   >
                     <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-black/5 text-xs">
@@ -388,13 +388,13 @@ export function WorkshopSession({ initialState }: WorkshopSessionProps) {
             </div>
 
             <div className="flex flex-col gap-2">
-              <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-indigo-600">
+              <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-accent">
                 {t("leaderboard")}
               </span>
               {state.participants.slice(0, 5).map((p, index) => (
                 <div
                   key={p.id}
-                  className="flex items-center justify-between rounded-xl bg-white/70 px-4 py-2 text-sm shadow-sm"
+                  className="flex items-center justify-between rounded-xl bg-surface/60 px-4 py-2 text-sm shadow-sm"
                 >
                   <span className="font-semibold text-ink">
                     {index + 1}. {p.displayName} {p.isHost && "👑"}
@@ -464,7 +464,7 @@ export function WorkshopSession({ initialState }: WorkshopSessionProps) {
               {state.participants.map((p, index) => (
                 <div
                   key={p.id}
-                  className="flex items-center justify-between rounded-xl bg-white/70 px-4 py-2 text-sm shadow-sm"
+                  className="flex items-center justify-between rounded-xl bg-surface/60 px-4 py-2 text-sm shadow-sm"
                 >
                   <span className="font-semibold text-ink">
                     {index + 1}. {p.displayName} {p.isHost && "👑"}

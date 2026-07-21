@@ -24,7 +24,7 @@ export function GameProgressHUD({ className }: { className?: string }) {
 
   return (
     <div className={cn("flex items-center gap-1.5", className)}>
-      <div className="flex items-center gap-1.5 rounded-full bg-orange-50 px-2.5 py-1 text-[13px] font-bold text-orange-600 ring-1 ring-inset ring-orange-100/70">
+      <div className="flex items-center gap-1.5 rounded-full bg-warning-soft px-2.5 py-1 text-[13px] font-bold text-warning ring-1 ring-inset ring-warning/20">
         <span role="img" aria-hidden>
           🔥
         </span>
@@ -32,7 +32,7 @@ export function GameProgressHUD({ className }: { className?: string }) {
       </div>
       <div
         className={cn(
-          "flex items-center gap-1.5 rounded-full bg-accent-soft px-2.5 py-1 text-[13px] font-bold text-accent ring-1 ring-inset ring-indigo-100/70 transition-transform duration-200 ease-out",
+          "flex items-center gap-1.5 rounded-full bg-accent-soft px-2.5 py-1 text-[13px] font-bold text-accent ring-1 ring-inset ring-accent/20 transition-transform duration-200 ease-out",
           pulse && "animate-pop-in"
         )}
       >
@@ -40,7 +40,7 @@ export function GameProgressHUD({ className }: { className?: string }) {
           ✨
         </span>
         <AnimatedNumber value={xp} />
-        <span className="text-[10px] font-semibold uppercase tracking-wide text-indigo-400">
+        <span className="text-[10px] font-semibold uppercase tracking-wide text-accent/70">
           XP
         </span>
       </div>

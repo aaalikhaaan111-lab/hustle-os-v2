@@ -41,9 +41,9 @@ function ScoreRow({ label, value }: { label: string; value: number }) {
     <div className="flex items-center justify-between gap-3 text-xs">
       <span className="text-ink-muted">{label}</span>
       <div className="flex flex-1 items-center gap-2">
-        <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-zinc-900/[0.06]">
+        <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-white/[0.06]">
           <div
-            className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-pink-500"
+            className="h-full rounded-full bg-gradient-to-r from-accent to-accent-2"
             style={{ width: `${(value / 10) * 100}%` }}
           />
         </div>
@@ -148,7 +148,7 @@ export function ChallengeConsole({ challenge, onClose, skipValidation }: Challen
   const selectedOption = quizSelection !== null ? challenge.quizOptions[quizSelection] : null;
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-white/70 backdrop-blur-2xl">
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-surface/60 backdrop-blur-2xl">
       <div
         className="flex min-h-full items-center justify-center p-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-[max(1rem,env(safe-area-inset-top))]"
         onClick={(event) => {
@@ -160,7 +160,7 @@ export function ChallengeConsole({ challenge, onClose, skipValidation }: Challen
             "relative w-full max-w-lg rounded-[32px] border p-6 shadow-[0_32px_64px_-16px_rgba(0,0,0,0.15)] sm:p-8",
           step === "success"
             ? "border-emerald-100 bg-gradient-to-br from-emerald-50 via-white to-indigo-50"
-            : "border-t-white/70 border-x-zinc-200/40 border-b-zinc-200/40 bg-white/90"
+            : "border-white/[0.07] bg-surface"
         )}
       >
         {step !== "checking" && step !== "success" && (
@@ -168,7 +168,7 @@ export function ChallengeConsole({ challenge, onClose, skipValidation }: Challen
             type="button"
             onClick={onClose}
             aria-label={t("close")}
-            className="absolute right-5 top-5 flex h-8 w-8 items-center justify-center rounded-full text-ink-muted transition-colors hover:bg-zinc-100 hover:text-ink"
+            className="absolute right-5 top-5 flex h-8 w-8 items-center justify-center rounded-full text-ink-muted transition-colors hover:bg-surface-hover hover:text-ink"
           >
             ✕
           </button>
@@ -181,8 +181,8 @@ export function ChallengeConsole({ challenge, onClose, skipValidation }: Challen
               className={cn(
                 "h-1.5 w-8 rounded-full transition-all duration-500 ease-in-out",
                 i <= dotStepIndex
-                  ? "bg-gradient-to-r from-indigo-600 to-pink-500"
-                  : "bg-zinc-200"
+                  ? "bg-gradient-to-r from-accent to-accent-2"
+                  : "bg-surface-hover"
               )}
             />
           ))}
@@ -240,7 +240,7 @@ export function ChallengeConsole({ challenge, onClose, skipValidation }: Challen
                       showRight && "border-success bg-success-soft text-success",
                       showWrong && "border-danger bg-danger-soft text-danger",
                       !isSelected &&
-                        "border-zinc-100/60 bg-white/70 text-ink-secondary hover:border-zinc-200 hover:text-ink"
+                        "border-border bg-surface/60 text-ink-secondary hover:border-border hover:text-ink"
                     )}
                   >
                     {optionLabels[index]}) {pick(option.text, locale)}
@@ -291,9 +291,9 @@ export function ChallengeConsole({ challenge, onClose, skipValidation }: Challen
         {step === "checking" && (
           <div className="animate-pop-in flex flex-col items-center gap-6 py-8 text-center">
             <div className="relative flex h-16 w-16 items-center justify-center">
-              <div className="absolute inset-0 animate-spin rounded-full bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 opacity-25 blur-lg" />
+              <div className="absolute inset-0 animate-spin rounded-full bg-gradient-to-br from-accent to-accent-2 opacity-25 blur-lg" />
               <div
-                className="h-12 w-12 animate-spin rounded-full border-4 border-indigo-100 border-t-indigo-600"
+                className="h-12 w-12 animate-spin rounded-full border-4 border-accent/20 border-t-indigo-600"
                 style={{ animationDuration: "0.9s" }}
               />
             </div>
@@ -328,20 +328,20 @@ export function ChallengeConsole({ challenge, onClose, skipValidation }: Challen
             <h2 className="text-3xl font-black tracking-[-0.02em] text-ink">
               {t("questCompleteTitle")}
             </h2>
-            <span className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500 px-5 py-2.5 text-base font-bold text-white shadow-[0_8px_24px_rgba(99,102,241,0.35)]">
+            <span className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-accent to-accent-2 px-5 py-2.5 text-base font-bold text-white shadow-[0_8px_24px_rgba(99,102,241,0.35)]">
               {skipValidation ? `+${challenge.xp} XP` : `+${challenge.xp} XP · ${t("scoreLabel", { score: result.score.average })}`}
             </span>
 
             {!skipValidation && (
               <>
-                <div className="mt-1 flex w-full flex-col gap-2 rounded-2xl bg-white/70 px-4 py-3 ring-1 ring-inset ring-indigo-100">
+                <div className="mt-1 flex w-full flex-col gap-2 rounded-2xl bg-surface/60 px-4 py-3 ring-1 ring-inset ring-accent/20">
                   <ScoreRow label={t("depthLabel")} value={result.score.depth} />
                   <ScoreRow label={t("feasibilityLabel")} value={result.score.feasibility} />
                   <ScoreRow label={t("riskLabel")} value={result.score.risk} />
                 </div>
 
-                <div className="flex w-full flex-col gap-1.5 rounded-2xl bg-white/70 px-4 py-3 text-left ring-1 ring-inset ring-indigo-100">
-                  <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-indigo-600">
+                <div className="flex w-full flex-col gap-1.5 rounded-2xl bg-surface/60 px-4 py-3 text-left ring-1 ring-inset ring-accent/20">
+                  <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-accent">
                     {t("aiVerdictTitle")}
                   </span>
                   <p className="text-sm tracking-tight text-ink-secondary">{result.reason}</p>

@@ -31,7 +31,7 @@ export function ChallengeCard({ challenge, categoryLabel, initialOpen = false }:
         <CardContent className="flex h-full flex-col gap-5 py-8">
           <div className="flex items-start justify-between gap-3">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="inline-flex w-fit items-center rounded-full bg-gradient-to-tr from-indigo-50 to-pink-50 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.14em] text-indigo-600 shadow-[0_2px_12px_rgba(99,102,241,0.12)] ring-1 ring-inset ring-indigo-100">
+              <span className="inline-flex w-fit items-center rounded-full bg-accent-soft px-3 py-1 text-[11px] font-bold uppercase tracking-[0.14em] text-accent shadow-[0_2px_12px_rgba(99,102,241,0.12)] ring-1 ring-inset ring-accent/20">
                 {categoryLabel}
               </span>
               <span
@@ -43,7 +43,7 @@ export function ChallengeCard({ challenge, categoryLabel, initialOpen = false }:
                 {t(difficulty.labelKey)}
               </span>
             </div>
-            <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-amber-50 px-2.5 py-1 text-xs font-bold text-amber-600 ring-1 ring-inset ring-amber-100">
+            <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-warning-soft px-2.5 py-1 text-xs font-bold text-amber-600 ring-1 ring-inset ring-amber-100">
               +{challenge.xp} XP
             </span>
           </div>

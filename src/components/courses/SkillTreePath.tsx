@@ -23,7 +23,7 @@ export function SkillTreePath() {
       {COURSE_MODULES.map((courseModule) => (
         <div key={courseModule.id} className="flex flex-col gap-10">
           <div className="mx-auto flex max-w-md flex-col items-center gap-2 text-center">
-            <span className="inline-flex w-fit items-center rounded-full bg-gradient-to-tr from-indigo-50 to-pink-50 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.14em] text-indigo-600 ring-1 ring-inset ring-indigo-100">
+            <span className="inline-flex w-fit items-center rounded-full bg-accent-soft px-3 py-1 text-[11px] font-bold uppercase tracking-[0.14em] text-accent ring-1 ring-inset ring-accent/20">
               {t("moduleBadge")}
             </span>
             <h2 className="text-2xl font-black tracking-[-0.02em] text-ink">{pick(courseModule.title, locale)}</h2>
@@ -50,7 +50,7 @@ export function SkillTreePath() {
                     onOpen={() => setActiveLesson(lesson)}
                   />
                   {!isLastInModule && (
-                    <span className="h-10 w-1 rounded-full bg-zinc-200/80" aria-hidden />
+                    <span className="h-10 w-1 rounded-full bg-surface-hover/80" aria-hidden />
                   )}
                 </div>
               );

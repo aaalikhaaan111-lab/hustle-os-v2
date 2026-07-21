@@ -13,11 +13,11 @@ export function OnboardingLoader({ phraseIndex }: OnboardingLoaderProps) {
   const t = useTranslations("onboarding");
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-8 bg-white/60 backdrop-blur-2xl">
+    <div className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-8 bg-surface/50 backdrop-blur-2xl">
       <div className="relative flex h-20 w-20 items-center justify-center">
-        <div className="absolute inset-0 animate-spin rounded-full bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 opacity-25 blur-xl" />
+        <div className="absolute inset-0 animate-spin rounded-full bg-gradient-to-br from-accent to-accent-2 opacity-25 blur-xl" />
         <div
-          className="h-14 w-14 animate-spin rounded-full border-4 border-indigo-100 border-t-indigo-600"
+          className="h-14 w-14 animate-spin rounded-full border-4 border-accent/20 border-t-indigo-600"
           style={{ animationDuration: "0.9s" }}
         />
       </div>
@@ -38,8 +38,8 @@ export function OnboardingLoader({ phraseIndex }: OnboardingLoaderProps) {
             className={cn(
               "h-1.5 w-6 rounded-full transition-all duration-500 ease-in-out",
               i <= phraseIndex
-                ? "bg-gradient-to-r from-indigo-600 to-pink-500"
-                : "bg-zinc-200"
+                ? "bg-gradient-to-r from-accent to-accent-2"
+                : "bg-surface-hover"
             )}
           />
         ))}

@@ -47,9 +47,9 @@ export function ContextOverlay({
         type="button"
         aria-label={t("assistantClose")}
         onClick={onClose}
-        className="absolute inset-0 bg-[rgba(15,15,23,0.35)] backdrop-blur-[1px]"
+        className="animate-overlay-in absolute inset-0 bg-[rgba(4,5,10,0.6)] backdrop-blur-[2px]"
       />
-      <div className="relative flex h-full w-full flex-col bg-surface shadow-2xl sm:w-[400px]">
+      <div className="animate-drawer-in relative flex h-full w-full flex-col border-l border-white/[0.08] bg-surface-elevated shadow-2xl sm:w-[400px]">
         <div className="flex shrink-0 items-center justify-between border-b border-border/60 px-4 py-3 pt-[max(0.75rem,env(safe-area-inset-top))]">
           <span className="text-sm font-bold tracking-tight text-ink">{title}</span>
           <button

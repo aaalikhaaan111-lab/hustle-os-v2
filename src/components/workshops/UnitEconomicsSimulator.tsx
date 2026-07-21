@@ -58,7 +58,7 @@ function ResultTile({
         "flex flex-col gap-1 rounded-2xl px-4 py-3 text-center ring-1 ring-inset",
         tone === "success" && "bg-success-soft ring-success/30",
         tone === "danger" && "bg-danger-soft ring-danger/30",
-        !tone && "bg-white/70 ring-indigo-100"
+        !tone && "bg-surface/60 ring-accent/20"
       )}
     >
       <span className="text-[10px] font-bold uppercase tracking-wide text-ink-muted">{label}</span>
@@ -108,7 +108,7 @@ export function UnitEconomicsSimulator() {
             🧮
           </span>
           <div className="flex flex-col gap-1">
-            <span className="inline-flex w-fit items-center rounded-full bg-gradient-to-tr from-indigo-50 to-pink-50 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.14em] text-indigo-600 ring-1 ring-inset ring-indigo-100">
+            <span className="inline-flex w-fit items-center rounded-full bg-accent-soft px-3 py-1 text-[11px] font-bold uppercase tracking-[0.14em] text-accent ring-1 ring-inset ring-accent/20">
               {t("simulatorBadge")}
             </span>
             <h3 className="text-xl font-extrabold tracking-[-0.02em] text-ink">

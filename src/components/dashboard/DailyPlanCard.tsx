@@ -28,7 +28,7 @@ function PlanRow({ item }: { item: PlanItem }) {
       <span
         className={cn(
           "flex h-5 w-5 shrink-0 items-center justify-center rounded-full border",
-          item.done ? "border-success bg-success text-white" : "border-zinc-300 bg-white/70"
+          item.done ? "border-success bg-success text-white" : "border-border-strong bg-surface/60"
         )}
       >
         {item.done && <CheckIcon className="h-3 w-3" />}
@@ -89,7 +89,7 @@ export function DailyPlanCard() {
   return (
     <Card>
       <CardContent className="flex flex-col gap-1 py-8">
-        <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-indigo-600">
+        <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-accent">
           {t("dailyPlanTitle")}
         </span>
         <ul className="mt-2 flex flex-col divide-y divide-zinc-100">
