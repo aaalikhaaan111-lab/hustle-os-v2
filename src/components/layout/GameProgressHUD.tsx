@@ -23,8 +23,8 @@ export function GameProgressHUD({ className }: { className?: string }) {
   if (!isReady) return null;
 
   return (
-    <div className={cn("flex items-center gap-2", className)}>
-      <div className="flex items-center gap-1.5 rounded-full bg-gradient-to-tr from-orange-50 to-amber-50 px-3 py-1.5 text-sm font-bold text-orange-600 ring-1 ring-inset ring-orange-100">
+    <div className={cn("flex items-center gap-1.5", className)}>
+      <div className="flex items-center gap-1.5 rounded-full bg-orange-50 px-2.5 py-1 text-[13px] font-bold text-orange-600 ring-1 ring-inset ring-orange-100/70">
         <span role="img" aria-hidden>
           🔥
         </span>
@@ -32,7 +32,7 @@ export function GameProgressHUD({ className }: { className?: string }) {
       </div>
       <div
         className={cn(
-          "flex items-center gap-1.5 rounded-full bg-gradient-to-tr from-indigo-50 to-pink-50 px-3 py-1.5 text-sm font-bold text-indigo-600 ring-1 ring-inset ring-indigo-100 transition-transform duration-200 ease-out",
+          "flex items-center gap-1.5 rounded-full bg-accent-soft px-2.5 py-1 text-[13px] font-bold text-accent ring-1 ring-inset ring-indigo-100/70 transition-transform duration-200 ease-out",
           pulse && "animate-pop-in"
         )}
       >

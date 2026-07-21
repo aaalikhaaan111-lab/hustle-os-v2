@@ -34,16 +34,16 @@ export function Sidebar() {
               href={item.href}
               data-tour-nav={item.href}
               className={cn(
-                "flex items-center gap-3 rounded-full px-4 py-3 text-[15px] font-bold tracking-tight transition-all duration-200 ease-out active:scale-[0.97]",
+                "flex items-center gap-3 rounded-full px-4 py-2.5 text-[15px] font-semibold tracking-tight transition-colors duration-150 ease-out active:scale-[0.98]",
                 active
-                  ? "bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-500 text-white shadow-[inset_0_1px_2px_rgba(255,255,255,0.4),0_8px_24px_rgba(99,102,241,0.35)]"
+                  ? "bg-accent-soft text-accent ring-1 ring-inset ring-indigo-100"
                   : "text-ink-secondary hover:bg-white/60 hover:text-ink"
               )}
             >
               <item.icon
                 className={cn(
                   "h-5 w-5 transition-colors duration-150",
-                  active ? "text-white" : "text-ink-muted"
+                  active ? "text-accent" : "text-ink-muted"
                 )}
               />
               {t(item.labelKey)}
