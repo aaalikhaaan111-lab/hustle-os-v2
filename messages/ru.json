@@ -482,7 +482,16 @@
     "starterJudgeQs": "Задай мне вопросы жюри",
     "starterWeakClaims": "Найди слабые места в моём питче",
     "starterExplainClearly": "Помоги понятно объяснить проект",
-    "projectLanguage": "Язык проекта"
+    "projectLanguage": "Язык проекта",
+    "hdrTasksCount": "{completed}/{total} задач",
+    "hdrProofsCount": "{count} доказательств",
+    "hdrNextAction": "Далее: {task}",
+    "statePanelTitle": "Состояние проекта",
+    "roadmapTitle": "Дорожная карта",
+    "roadmapShow": "Показать",
+    "roadmapHide": "Скрыть",
+    "assistantOpeningTask": "Привет! Я твой ассистент по проекту {name}. Сейчас ты на задаче «{task}» — могу помочь её обдумать или разобрать черновик. Что хочешь сделать?",
+    "assistantOpeningDone": "Привет! Я твой ассистент по проекту {name}. Ты выполнил все задачи — могу помочь отточить питч или спланировать следующие шаги."
   },
   "workshops": {
     "title": "Play и Симуляторы",

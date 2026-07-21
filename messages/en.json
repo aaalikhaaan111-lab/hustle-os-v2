@@ -482,7 +482,16 @@
     "starterJudgeQs": "Ask me judge questions",
     "starterWeakClaims": "Find weak claims in my pitch",
     "starterExplainClearly": "Help me explain the project clearly",
-    "projectLanguage": "Project language"
+    "projectLanguage": "Project language",
+    "hdrTasksCount": "{completed}/{total} tasks",
+    "hdrProofsCount": "{count} proofs",
+    "hdrNextAction": "Next: {task}",
+    "statePanelTitle": "Project state",
+    "roadmapTitle": "Roadmap",
+    "roadmapShow": "Show",
+    "roadmapHide": "Hide",
+    "assistantOpeningTask": "Hi! I'm your assistant for {name}. Right now you're on “{task}” — I can help you think it through, or review a draft. What would you like to do?",
+    "assistantOpeningDone": "Hi! I'm your assistant for {name}. You've finished every task — I can help you sharpen your pitch or plan what's next."
   },
   "workshops": {
     "title": "Play & Simulators",
