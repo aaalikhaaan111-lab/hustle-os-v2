@@ -25,7 +25,7 @@ export async function BuildProjectCard({
             🛠️
           </span>
           <div className="flex flex-col gap-2">
-            <span className="inline-flex w-fit items-center rounded-full bg-gradient-to-tr from-indigo-50 to-pink-50 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.14em] text-indigo-600 shadow-[0_2px_12px_rgba(99,102,241,0.12)] ring-1 ring-inset ring-indigo-100">
+            <span className="inline-flex w-fit items-center rounded-full bg-accent-soft px-3 py-1 text-[11px] font-bold uppercase tracking-[0.14em] text-accent ring-1 ring-inset ring-indigo-100/70">
               {t("buildTeaserBadge")}
             </span>
             <h3 className="text-xl font-extrabold leading-tight tracking-[-0.02em] text-ink">
@@ -48,7 +48,7 @@ export async function BuildProjectCard({
                 />
               </div>
             </div>
-            <Button href="/build/workspace" variant="secondary" className="mt-auto w-fit">
+            <Button href="/build/workspace" className="mt-auto w-fit">
               {t("continueProject")}
             </Button>
           </>

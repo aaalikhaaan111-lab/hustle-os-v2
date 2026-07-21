@@ -268,8 +268,8 @@
   },
   "build": {
     "landingEyebrow": "Build",
-    "landingTitle": "Build a real project step by step.",
-    "landingSubtitle": "Choose a direction, test your idea, create the first version and prepare to pitch it.",
+    "landingTitle": "Let's build something real.",
+    "landingSubtitle": "Ventrio will turn a few answers into a structured project and guide your next actions.",
     "startProject": "Start a project",
     "startQuickSprint": "Quick project sprint",
     "journeyTitle": "Your path",

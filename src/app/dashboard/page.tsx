@@ -18,7 +18,7 @@ import { getCurrentProject, getProjectTasks } from "@/lib/build/queries";
 
 function Eyebrow({ children }: { children: ReactNode }) {
   return (
-    <span className="inline-flex w-fit items-center rounded-full bg-gradient-to-tr from-indigo-50 to-pink-50 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.14em] text-indigo-600 shadow-[0_2px_12px_rgba(99,102,241,0.12)] ring-1 ring-inset ring-indigo-100">
+    <span className="inline-flex w-fit items-center rounded-full bg-accent-soft px-3 py-1 text-[11px] font-bold uppercase tracking-[0.14em] text-accent ring-1 ring-inset ring-indigo-100/70">
       {children}
     </span>
   );
@@ -67,6 +67,14 @@ export default async function DashboardPage() {
     <div className="flex flex-col gap-8">
       <PageHeader title={t("title")} description={t("description")} />
 
+      {/* Build is the main destination — surfaced first as the hero. */}
+      <BuildProjectCard
+        hasProject={!!activeProject}
+        projectName={activeProject?.name ?? undefined}
+        progress={activeProject?.progress ?? 0}
+        nextTaskTitle={nextProjectTask?.title ?? null}
+      />
+
       <DailyPlanCard />
 
       <div className="grid gap-6 sm:grid-cols-2">
@@ -82,13 +90,6 @@ export default async function DashboardPage() {
 
       <div className="grid gap-6 sm:grid-cols-2">
         <CourseProgressCard />
-
-        <BuildProjectCard
-          hasProject={!!activeProject}
-          projectName={activeProject?.name ?? undefined}
-          progress={activeProject?.progress ?? 0}
-          nextTaskTitle={nextProjectTask?.title ?? null}
-        />
 
         <Card>
           <CardContent className="flex h-full flex-col gap-6 py-9">
