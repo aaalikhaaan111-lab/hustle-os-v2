@@ -318,6 +318,52 @@ export interface Database {
         };
         Relationships: [];
       };
+      // Added by *_add_project_proofs.sql (manual apply).
+      project_proofs: {
+        Row: {
+          id: string;
+          project_id: string;
+          task_id: string | null;
+          user_id: string;
+          type: "url" | "image" | "file" | "note";
+          title: string;
+          description: string | null;
+          url: string | null;
+          file_path: string | null;
+          stage: string | null;
+          verification_status: "unverified" | "verified";
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          project_id: string;
+          task_id?: string | null;
+          user_id: string;
+          type: "url" | "image" | "file" | "note";
+          title: string;
+          description?: string | null;
+          url?: string | null;
+          file_path?: string | null;
+          stage?: string | null;
+          verification_status?: "unverified" | "verified";
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          project_id?: string;
+          task_id?: string | null;
+          user_id?: string;
+          type?: "url" | "image" | "file" | "note";
+          title?: string;
+          description?: string | null;
+          url?: string | null;
+          file_path?: string | null;
+          stage?: string | null;
+          verification_status?: "unverified" | "verified";
+          created_at?: string;
+        };
+        Relationships: [];
+      };
       // Added by *_add_project_assistant.sql (manual apply).
       project_ai_conversations: {
         Row: {

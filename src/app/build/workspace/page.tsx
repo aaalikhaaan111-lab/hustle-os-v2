@@ -7,6 +7,7 @@ import { getCurrentProject, getProjectTasks, getProjectOutputs } from "@/lib/bui
 import { STAGE_LABELS } from "@/lib/build/pathwayTemplates";
 import { buildSnapshot, destinationGoalKey, parseSnapshotFields } from "@/lib/build/snapshot";
 import { loadProjectAssistant } from "@/lib/actions/assistant";
+import { getProofCount } from "@/lib/actions/proof";
 import { WorkspaceView } from "@/components/build/WorkspaceView";
 import type { RoadmapStage } from "@/components/build/RoadmapPanel";
 
@@ -26,10 +27,11 @@ export default async function ProjectWorkspacePage() {
   // Tasks, outputs and the preheated assistant conversation are all independent
   // reads for this project — fetch them in parallel so the workspace isn't a
   // request waterfall (and the chat renders without a second client round-trip).
-  const [tasks, outputs, assistant] = await Promise.all([
+  const [tasks, outputs, assistant, proofCount] = await Promise.all([
     getProjectTasks(supabase, project.id),
     getProjectOutputs(supabase, project.id),
     loadProjectAssistant(project.id),
+    getProofCount(supabase, project.id),
   ]);
 
   const t = await getTranslations("build");
@@ -99,7 +101,7 @@ export default async function ProjectWorkspacePage() {
       progress={project.progress}
       completedCount={completedCount}
       totalCount={tasks.length}
-      proofCount={0}
+      proofCount={proofCount}
       nextTask={nextTask ? { id: nextTask.id, title: nextTask.title } : null}
       pitchHref="/build/workspace/pitch"
       goalLine={goalLine}

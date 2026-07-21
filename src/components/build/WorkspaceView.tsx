@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { useTranslations } from "next-intl";
 import type { AssistantMessage } from "@/lib/actions/assistant";
 import type { AssistantPhase } from "@/lib/build/assistantPrompts";
@@ -9,6 +10,13 @@ import type { SnapshotRow, StructuredField } from "@/lib/build/snapshot";
 import { AssistantChat } from "@/components/build/AssistantChat";
 import { ProjectStatePanel } from "@/components/build/ProjectStatePanel";
 import { RoadmapPanel, type RoadmapStage } from "@/components/build/RoadmapPanel";
+
+// Proof panel (and its upload code) is only pulled in when a proof section is
+// actually opened — it never loads on a plain workspace visit.
+const ProofPanel = dynamic(
+  () => import("@/components/build/ProofPanel").then((mod) => mod.ProofPanel),
+  { ssr: false }
+);
 
 export interface WorkspaceViewProps {
   projectId: string;
@@ -34,12 +42,22 @@ export interface WorkspaceViewProps {
   openingMessage: string;
 }
 
-type Drawer = "state" | "roadmap" | null;
+type Drawer = "state" | "roadmap" | "proofs" | null;
 
 export function WorkspaceView(props: WorkspaceViewProps) {
   const t = useTranslations("build");
   const [drawer, setDrawer] = useState<Drawer>(null);
   const [roadmapOpen, setRoadmapOpen] = useState(false);
+  const [proofsOpen, setProofsOpen] = useState(false);
+
+  // Flat task list for the "attach proof to a task" selector.
+  const proofTasks = useMemo(
+    () =>
+      props.roadmap.flatMap((stage) =>
+        stage.tasks.map((task) => ({ id: task.id, title: task.title, stage: stage.key }))
+      ),
+    [props.roadmap]
+  );
 
   // The project-state panel updates live when the assistant saves a structured
   // field, without waiting for a full navigation. The server revalidate still
@@ -166,11 +184,30 @@ export function WorkspaceView(props: WorkspaceViewProps) {
               </div>
             )}
           </div>
+          <div className="rounded-3xl border border-border/60 bg-white/70 p-4 backdrop-blur-xl">
+            <button
+              type="button"
+              onClick={() => setProofsOpen((v) => !v)}
+              className="flex w-full items-center justify-between gap-2"
+            >
+              <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-ink-muted">
+                {t("proofTitle")}
+              </span>
+              <span className="text-xs font-semibold text-ink-secondary">
+                {proofsOpen ? t("roadmapHide") : t("roadmapShow")}
+              </span>
+            </button>
+            {proofsOpen && (
+              <div className="mt-3 border-t border-border/50 pt-3">
+                <ProofPanel projectId={props.projectId} tasks={proofTasks} />
+              </div>
+            )}
+          </div>
         </aside>
       </div>
 
-      {/* ─── Mobile access to state + roadmap ─── */}
-      <div className="grid grid-cols-2 gap-2 lg:hidden">
+      {/* ─── Mobile access to state / roadmap / proofs ─── */}
+      <div className="grid grid-cols-3 gap-2 lg:hidden">
         <button
           type="button"
           onClick={() => setDrawer("state")}
@@ -184,6 +221,13 @@ export function WorkspaceView(props: WorkspaceViewProps) {
           className="rounded-full border border-border bg-white/70 px-3 py-2 text-xs font-semibold text-ink-secondary transition-colors hover:bg-white/90"
         >
           {t("roadmapTitle")}
+        </button>
+        <button
+          type="button"
+          onClick={() => setDrawer("proofs")}
+          className="rounded-full border border-border bg-white/70 px-3 py-2 text-xs font-semibold text-ink-secondary transition-colors hover:bg-white/90"
+        >
+          {t("proofTitle")}
         </button>
       </div>
 
@@ -199,7 +243,11 @@ export function WorkspaceView(props: WorkspaceViewProps) {
           <div className="relative flex h-full w-[88%] max-w-sm flex-col bg-white shadow-2xl">
             <div className="flex items-center justify-between border-b border-border/60 px-4 py-3 pt-[max(0.75rem,env(safe-area-inset-top))]">
               <span className="text-sm font-extrabold tracking-tight text-ink">
-                {drawer === "state" ? t("statePanelTitle") : t("roadmapTitle")}
+                {drawer === "state"
+                  ? t("statePanelTitle")
+                  : drawer === "roadmap"
+                    ? t("roadmapTitle")
+                    : t("proofTitle")}
               </span>
               <button
                 type="button"
@@ -213,8 +261,10 @@ export function WorkspaceView(props: WorkspaceViewProps) {
             <div className="flex-1 overflow-y-auto px-4 py-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
               {drawer === "state" ? (
                 <ProjectStatePanel goalLine={props.goalLine} snapshot={snapshot} />
-              ) : (
+              ) : drawer === "roadmap" ? (
                 <RoadmapPanel stages={props.roadmap} projectId={props.projectId} showRefine={props.showRefine} />
+              ) : (
+                <ProofPanel projectId={props.projectId} tasks={proofTasks} />
               )}
             </div>
           </div>
