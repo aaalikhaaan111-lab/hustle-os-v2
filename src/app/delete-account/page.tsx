@@ -1,3 +1,4 @@
+import { BackNav } from "@/components/layout/BackNav";
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -12,12 +13,14 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default async function DeleteAccountPage() {
   const t = await getTranslations("legal.deleteAccount");
+  const tc = await getTranslations("common");
 
   const intro = t("intro", { productName: legalConfig.productName });
   const howToBody = t("howTo.body", { contactEmail: legalConfig.contactEmail });
 
   return (
-    <div className="mx-auto flex max-w-2xl flex-col gap-8 py-4 sm:py-6">
+    <div className="mx-auto flex max-w-2xl flex-col gap-6 py-4 sm:py-6">
+      <BackNav fallback="/profile" label={tc("back")} />
       <PageHeader title={t("pageTitle")} description={intro} />
 
       <div className="flex flex-col gap-4">

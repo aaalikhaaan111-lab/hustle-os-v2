@@ -14,7 +14,8 @@
     "tryAgain": "Try again",
     "skip": "Skip",
     "continue": "Continue",
-    "or": "or"
+    "or": "or",
+    "backToVentrio": "Back to Ventrio"
   },
   "nav": {
     "dashboard": "Dashboard",

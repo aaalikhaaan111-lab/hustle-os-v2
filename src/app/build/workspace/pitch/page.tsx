@@ -1,3 +1,4 @@
+import { BackNav } from "@/components/layout/BackNav";
 import { redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -26,7 +27,8 @@ export default async function ProjectPitchPage() {
   const t = await getTranslations("build");
 
   return (
-    <div className="flex flex-col gap-8">
+    <div className="flex flex-col gap-6">
+      <BackNav fallback="/build/workspace" label={t("backToWorkspace")} />
       <PageHeader title={t("pitchTitle")} description={t("pitchDescription")} />
       <PitchClient
         projectId={project.id}

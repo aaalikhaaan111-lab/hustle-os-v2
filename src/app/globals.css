@@ -41,6 +41,15 @@
 
   --radius-lg: 1.25rem;
   --radius-xl: 1.75rem;
+
+  /* One coherent motion system — reused everywhere instead of per-component
+     ad-hoc timings. Natural, decelerating easing; premium not flashy. */
+  --ease-out-soft: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-spring: cubic-bezier(0.22, 1.2, 0.36, 1);
+  --dur-press: 130ms;
+  --dur-hover: 160ms;
+  --dur-content: 220ms;
+  --dur-drawer: 300ms;
 }
 
 html {
@@ -210,6 +219,74 @@ body {
 }
 .animate-aurora {
   animation: aurora-drift 22s ease-in-out infinite;
+}
+
+/* A Project State field receiving a confirmed value — soft accent glow. */
+@keyframes field-glow {
+  0% {
+    box-shadow: 0 0 0 0 rgba(93, 107, 255, 0);
+    background-color: rgba(93, 107, 255, 0);
+  }
+  25% {
+    box-shadow:
+      inset 0 0 0 1px rgba(93, 107, 255, 0.45),
+      0 0 26px -6px rgba(93, 107, 255, 0.55);
+    background-color: rgba(93, 107, 255, 0.12);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(93, 107, 255, 0);
+    background-color: rgba(93, 107, 255, 0);
+  }
+}
+.animate-field-glow {
+  animation: field-glow 900ms var(--ease-out-soft);
+}
+
+/* A restrained success check settling in. */
+@keyframes check-pop {
+  0% {
+    transform: scale(0);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(1.15);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+.animate-check-pop {
+  animation: check-pop 320ms var(--ease-spring) both;
+}
+
+/* The context trigger acknowledging that the project just changed. */
+@keyframes trigger-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(93, 107, 255, 0.5);
+  }
+  100% {
+    box-shadow: 0 0 0 12px rgba(93, 107, 255, 0);
+  }
+}
+.animate-trigger-pulse {
+  animation: trigger-pulse 750ms var(--ease-out-soft);
+}
+
+/* Reusable interaction helpers. */
+.press-scale {
+  transition: transform var(--dur-press) var(--ease-out-soft);
+}
+.press-scale:active {
+  transform: scale(0.97);
+}
+.hover-lift {
+  transition:
+    transform var(--dur-hover) var(--ease-out-soft),
+    box-shadow var(--dur-hover) var(--ease-out-soft);
+}
+.hover-lift:hover {
+  transform: translateY(-2px);
 }
 
 @media (prefers-reduced-motion: reduce) {

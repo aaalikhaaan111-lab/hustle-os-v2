@@ -1,6 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import { getLocale, getTranslations } from "next-intl/server";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { BackNav } from "@/components/layout/BackNav";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/supabase/currentUser";
 import { TaskDetailForm } from "@/components/build/TaskDetailForm";
@@ -43,7 +44,8 @@ export default async function TaskDetailPage({ params }: TaskDetailPageProps) {
     : undefined;
 
   return (
-    <div className="flex flex-col gap-8">
+    <div className="flex flex-col gap-6">
+      <BackNav fallback="/build/workspace" label={t("backToWorkspace")} />
       <PageHeader eyebrow={t("taskEyebrow")} title={task.title} description={task.objective} />
       <TaskDetailForm
         task={task}

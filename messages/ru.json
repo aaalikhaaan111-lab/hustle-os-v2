@@ -14,7 +14,8 @@
     "tryAgain": "Попробовать снова",
     "skip": "Пропустить",
     "continue": "Продолжить",
-    "or": "или"
+    "or": "или",
+    "backToVentrio": "Назад в Ventrio"
   },
   "nav": {
     "dashboard": "Дашборд",

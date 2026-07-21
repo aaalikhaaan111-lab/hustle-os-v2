@@ -1,3 +1,4 @@
+import { BackNav } from "@/components/layout/BackNav";
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -12,9 +13,11 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default async function ContactPage() {
   const t = await getTranslations("legal.contact");
+  const tc = await getTranslations("common");
 
   return (
-    <div className="mx-auto flex max-w-2xl flex-col gap-8 py-4 sm:py-6">
+    <div className="mx-auto flex max-w-2xl flex-col gap-6 py-4 sm:py-6">
+      <BackNav fallback="/" label={tc("backToVentrio")} />
       <PageHeader title={t("pageTitle")} description={t("intro")} />
       <Card className="max-w-md">
         <CardContent className="flex flex-col gap-2 py-6">

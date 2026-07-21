@@ -87,7 +87,7 @@ function CoursesPageContent() {
     <div className="flex flex-col gap-8">
       <PageHeader title={t("title")} description={t("description")} />
 
-      <div className="grid grid-cols-2 gap-1.5 rounded-2xl bg-surface/50 p-1.5 ring-1 ring-inset ring-zinc-200/60 backdrop-blur-md sm:inline-flex sm:w-fit sm:gap-2 sm:rounded-full">
+      <div className="grid grid-cols-2 gap-1.5 rounded-2xl bg-surface/50 p-1.5 ring-1 ring-inset ring-white/[0.06] backdrop-blur-md sm:inline-flex sm:w-fit sm:gap-2 sm:rounded-full">
         {TABS.map((item) => {
           const active = tab === item.id;
           return (
@@ -96,9 +96,9 @@ function CoursesPageContent() {
               type="button"
               onClick={() => setTab(item.id)}
               className={cn(
-                "flex flex-col items-center justify-center gap-1 rounded-xl px-2 py-2.5 text-center text-[11px] font-bold leading-tight tracking-tight transition-all duration-200 ease-out sm:flex-row sm:gap-2 sm:rounded-full sm:px-4 sm:text-sm",
+                "press-scale flex flex-col items-center justify-center gap-1 rounded-xl px-2 py-2.5 text-center text-[11px] font-bold leading-tight tracking-tight transition-all duration-200 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 focus-visible:ring-offset-2 focus-visible:ring-offset-canvas sm:flex-row sm:gap-2 sm:rounded-full sm:px-4 sm:text-sm",
                 active
-                  ? "bg-accent text-accent-foreground shadow-[0_8px_24px_rgba(99,102,241,0.35)]"
+                  ? "bg-accent text-accent-foreground shadow-[0_8px_24px_-8px_rgba(93,107,255,0.5)]"
                   : "text-ink-secondary hover:bg-surface/60 hover:text-ink"
               )}
             >
@@ -112,7 +112,7 @@ function CoursesPageContent() {
       </div>
 
       {tab === "videos" && (
-        <div className="flex flex-col gap-6">
+        <div key="videos" className="animate-page-in flex flex-col gap-6">
           <div className="flex flex-wrap gap-2">
             {SOURCE_FILTERS.map((filter) => {
               const active = sourceFilter === filter.id;
@@ -122,10 +122,10 @@ function CoursesPageContent() {
                   type="button"
                   onClick={() => setSourceFilter(filter.id)}
                   className={cn(
-                    "rounded-full border px-4 py-2 text-sm font-semibold tracking-tight transition-colors duration-150",
+                    "press-scale rounded-full border px-4 py-2 text-sm font-semibold tracking-tight transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 focus-visible:ring-offset-2 focus-visible:ring-offset-canvas",
                     active
-                      ? "border-transparent bg-ink text-white"
-                      : "border-border text-ink-secondary hover:border-border-strong hover:text-ink"
+                      ? "border-transparent bg-accent text-accent-foreground shadow-[0_6px_20px_-8px_rgba(93,107,255,0.6)]"
+                      : "border-border bg-surface/40 text-ink-secondary hover:border-border-strong hover:text-ink"
                   )}
                 >
                   {t(filter.labelKey)}
@@ -146,12 +146,20 @@ function CoursesPageContent() {
         </div>
       )}
 
-      {tab === "quizzes" && <SkillTreePath />}
+      {tab === "quizzes" && (
+        <div key="quizzes" className="animate-page-in">
+          <SkillTreePath />
+        </div>
+      )}
 
-      {tab === "challenges" && <ChallengesSection />}
+      {tab === "challenges" && (
+        <div key="challenges" className="animate-page-in">
+          <ChallengesSection />
+        </div>
+      )}
 
       {tab === "glossary" && (
-        <div className="flex flex-col gap-5">
+        <div key="glossary" className="animate-page-in flex flex-col gap-5">
           <input
             type="text"
             value={glossaryQuery}
