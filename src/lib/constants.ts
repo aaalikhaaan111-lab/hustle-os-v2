@@ -76,11 +76,11 @@ export const TOPIC_OPTIONS: TopicOption[] = [
 
 // Challenges is intentionally not a top-level destination anymore — it lives
 // as a tab inside Learn (/courses?tab=challenges). Build is the primary loop
-// and sits centrally right after Learn.
+// and is the first destination after Dashboard.
 export const NAV_ITEMS: NavItem[] = [
   { labelKey: "dashboard", href: "/dashboard", icon: DashboardIcon },
-  { labelKey: "learn", href: "/courses", icon: CoursesIcon },
   { labelKey: "build", href: "/build", icon: BuildIcon },
+  { labelKey: "learn", href: "/courses", icon: CoursesIcon },
   { labelKey: "workshops", href: "/workshops", icon: WorkshopsIcon },
   { labelKey: "profile", href: "/profile", icon: ProfileIcon },
 ];

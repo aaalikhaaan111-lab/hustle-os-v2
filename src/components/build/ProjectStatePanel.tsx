@@ -11,52 +11,50 @@ interface ProjectStatePanelProps {
   className?: string;
 }
 
-// Compact live view of the project's real saved outputs (Problem, Audience,
-// Solution, …). Content comes ONLY from the snapshot — undefined fields show
-// "Not defined yet" rather than any invented value.
+// The project as a living document: each field is a quiet label followed by its
+// current value (or "Not defined yet"). Content comes ONLY from saved outputs —
+// never invented. Values confirmed from the conversation carry a subtle accent
+// marker so it's clear the chat is what's building the project.
 export function ProjectStatePanel({ goalLine, snapshot, className }: ProjectStatePanelProps) {
   const t = useTranslations("build");
   type BuildKey = Parameters<typeof t>[0];
 
   return (
-    <div className={cn("flex flex-col gap-3", className)}>
-      <div className="flex flex-col gap-0.5">
-        <h2 className="text-[11px] font-bold uppercase tracking-[0.14em] text-ink-muted">
-          {t("statePanelTitle")}
-        </h2>
-        <p className="text-xs leading-snug tracking-tight text-ink-secondary">{goalLine}</p>
-      </div>
+    <div className={cn("flex flex-col", className)}>
+      <p className="mb-1 text-[13px] leading-snug tracking-tight text-ink-secondary">{goalLine}</p>
 
-      <div className="flex flex-col gap-1.5">
+      <div className="flex flex-col divide-y divide-border/40">
         {snapshot.map((row) => {
           const defined = row.value !== null;
+          const fromChat = row.source === "assistant";
           const inner = (
             <>
-              <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-ink-muted">
-                {t(row.labelKey as BuildKey)}
-              </span>
-              <span
+              <div className="flex items-center gap-1.5">
+                <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-ink-muted">
+                  {t(row.labelKey as BuildKey)}
+                </span>
+                {fromChat && <span className="h-1.5 w-1.5 rounded-full bg-accent" aria-hidden />}
+              </div>
+              <p
                 className={cn(
-                  "line-clamp-2 text-[13px] leading-snug",
-                  defined ? "font-medium text-ink" : "italic text-ink-muted"
+                  "mt-1 text-[14px] leading-relaxed",
+                  defined ? "text-ink" : "italic text-ink-muted"
                 )}
               >
                 {defined ? row.value : t("snapNotDefined")}
-              </span>
+              </p>
             </>
           );
-          const base =
-            "flex flex-col gap-0.5 rounded-xl border border-border/50 px-3 py-2 transition-colors";
           return row.taskId ? (
             <Link
               key={row.labelKey}
               href={`/build/workspace/task/${row.taskId}`}
-              className={cn(base, "bg-white/50 hover:bg-white/80")}
+              className="group -mx-2 rounded-lg px-2 py-3 transition-colors hover:bg-surface-hover"
             >
               {inner}
             </Link>
           ) : (
-            <div key={row.labelKey} className={cn(base, "bg-white/30")}>
+            <div key={row.labelKey} className="px-0 py-3">
               {inner}
             </div>
           );

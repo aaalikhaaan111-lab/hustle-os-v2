@@ -2,9 +2,7 @@ import type { ReactNode } from "react";
 import { BackgroundBlobs } from "@/components/layout/BackgroundBlobs";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { MobileNav } from "@/components/layout/MobileNav";
-import { GameProgressHUD } from "@/components/layout/GameProgressHUD";
-import { PageTransition } from "@/components/layout/PageTransition";
-import { Wordmark } from "@/components/layout/Wordmark";
+import { AppMain } from "@/components/layout/AppMain";
 import { DevResetBar } from "@/components/dev/DevResetBar";
 import { ProductTour } from "@/components/tour/ProductTour";
 import { RoutePrefetcher } from "@/components/layout/RoutePrefetcher";
@@ -17,16 +15,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         <BackgroundBlobs />
         <Sidebar />
 
-        <header className="sticky top-0 z-40 flex min-h-14 items-center gap-3 border-b border-border/60 bg-canvas/80 px-4 pt-[env(safe-area-inset-top)] backdrop-blur-md md:hidden">
-          <Wordmark />
-          <GameProgressHUD className="ml-auto" />
-        </header>
-
-        <div className="relative z-10 md:pl-64">
-          <main className="mx-auto w-full max-w-6xl px-4 pb-[calc(5rem+env(safe-area-inset-bottom))] pt-8 sm:px-6 sm:pt-12 md:pb-16 lg:px-8">
-            <PageTransition>{children}</PageTransition>
-          </main>
-        </div>
+        <AppMain>{children}</AppMain>
 
         <MobileNav />
         <ProductTour />

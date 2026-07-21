@@ -1,22 +1,13 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import Link from "next/link";
-import dynamic from "next/dynamic";
-import { useTranslations } from "next-intl";
 import type { AssistantMessage } from "@/lib/actions/assistant";
 import type { AssistantPhase } from "@/lib/build/assistantPrompts";
 import type { SnapshotRow, StructuredField } from "@/lib/build/snapshot";
 import { AssistantChat } from "@/components/build/AssistantChat";
-import { ProjectStatePanel } from "@/components/build/ProjectStatePanel";
-import { RoadmapPanel, type RoadmapStage } from "@/components/build/RoadmapPanel";
-
-// Proof panel (and its upload code) is only pulled in when a proof section is
-// actually opened — it never loads on a plain workspace visit.
-const ProofPanel = dynamic(
-  () => import("@/components/build/ProofPanel").then((mod) => mod.ProofPanel),
-  { ssr: false }
-);
+import { ProjectHeaderBar, type ContextMode } from "@/components/build/ProjectHeaderBar";
+import { ContextOverlay } from "@/components/build/ContextOverlay";
+import type { RoadmapStage } from "@/components/build/RoadmapPanel";
 
 export interface WorkspaceViewProps {
   projectId: string;
@@ -42,26 +33,15 @@ export interface WorkspaceViewProps {
   openingMessage: string;
 }
 
-type Drawer = "state" | "roadmap" | "proofs" | null;
-
+// The immersive Build canvas: a compact floating header, the AI conversation as
+// the dominant central surface, and project context (state / roadmap / proof)
+// opened as focused right-side modes rather than permanent panels.
 export function WorkspaceView(props: WorkspaceViewProps) {
-  const t = useTranslations("build");
-  const [drawer, setDrawer] = useState<Drawer>(null);
-  const [roadmapOpen, setRoadmapOpen] = useState(false);
-  const [proofsOpen, setProofsOpen] = useState(false);
-
-  // Flat task list for the "attach proof to a task" selector.
-  const proofTasks = useMemo(
-    () =>
-      props.roadmap.flatMap((stage) =>
-        stage.tasks.map((task) => ({ id: task.id, title: task.title, stage: stage.key }))
-      ),
-    [props.roadmap]
-  );
+  const [mode, setMode] = useState<ContextMode | null>(null);
 
   // The project-state panel updates live when the assistant saves a structured
-  // field, without waiting for a full navigation. The server revalidate still
-  // reconciles this on the next load.
+  // field, without waiting for a navigation; the server revalidate reconciles
+  // it on the next load.
   const [snapshot, setSnapshot] = useState<SnapshotRow[]>(props.snapshot);
 
   const existingValues = useMemo(() => {
@@ -72,203 +52,58 @@ export function WorkspaceView(props: WorkspaceViewProps) {
     return map;
   }, [snapshot]);
 
+  const proofTasks = useMemo(
+    () =>
+      props.roadmap.flatMap((stage) =>
+        stage.tasks.map((task) => ({ id: task.id, title: task.title, stage: stage.key }))
+      ),
+    [props.roadmap]
+  );
+
   function handleFieldSaved(field: StructuredField, value: string) {
     setSnapshot((prev) =>
-      prev.map((row) =>
-        row.field === field ? { ...row, value, source: "assistant" } : row
-      )
+      prev.map((row) => (row.field === field ? { ...row, value, source: "assistant" } : row))
     );
   }
 
-  const meta = [
-    props.stageLabel,
-    t("hdrTasksCount", { completed: props.completedCount, total: props.totalCount }),
-    t("hdrProofsCount", { count: props.proofCount }),
-    props.languageLabel,
-  ];
-
   return (
-    <div className="flex flex-col gap-4">
-      {/* ─── Compact project header ─── */}
-      <header className="flex flex-col gap-3 border-b border-border/60 pb-4">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div className="flex min-w-0 flex-col gap-1">
-            <h1 className="truncate text-xl font-black tracking-[-0.02em] text-ink sm:text-2xl">
-              {props.projectName}
-            </h1>
-            <p className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs font-medium tracking-tight text-ink-secondary">
-              {meta.map((part, i) => (
-                <span key={i} className="flex items-center gap-1.5">
-                  {i > 0 && <span className="text-ink-muted" aria-hidden>·</span>}
-                  {part}
-                </span>
-              ))}
-            </p>
-          </div>
-          <div className="flex shrink-0 items-center gap-2">
-            {props.nextTask ? (
-              <Link
-                href={`/build/workspace/task/${props.nextTask.id}`}
-                className="inline-flex max-w-[14rem] items-center gap-1.5 rounded-full bg-gradient-to-br from-indigo-600 to-purple-600 px-3.5 py-1.5 text-xs font-bold text-white shadow-sm transition-transform hover:scale-[1.02] active:scale-95"
-              >
-                <span className="truncate">{t("hdrNextAction", { task: props.nextTask.title })}</span>
-                <span aria-hidden>→</span>
-              </Link>
-            ) : (
-              <Link
-                href={props.pitchHref}
-                className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-br from-indigo-600 to-purple-600 px-3.5 py-1.5 text-xs font-bold text-white shadow-sm transition-transform hover:scale-[1.02] active:scale-95"
-              >
-                {t("viewPitch")}
-              </Link>
-            )}
-            <Link
-              href={props.pitchHref}
-              className="hidden rounded-full border border-border px-3 py-1.5 text-xs font-semibold text-ink-secondary transition-colors hover:bg-surface-hover sm:inline-flex"
-            >
-              {t("viewPitch")}
-            </Link>
-          </div>
-        </div>
+    <div className="flex h-full min-h-0 flex-col">
+      <ProjectHeaderBar
+        projectName={props.projectName}
+        stageLabel={props.stageLabel}
+        languageLabel={props.languageLabel}
+        completedCount={props.completedCount}
+        totalCount={props.totalCount}
+        proofCount={props.proofCount}
+        nextTask={props.nextTask}
+        pitchHref={props.pitchHref}
+        onOpenContext={setMode}
+      />
 
-        {/* Progress bar */}
-        <div className="flex items-center gap-3">
-          <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-zinc-900/[0.06]">
-            <div
-              className="h-full rounded-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 transition-all duration-700 ease-out"
-              style={{ width: `${props.progress}%` }}
-            />
-          </div>
-          <span className="text-[11px] font-bold tabular-nums text-ink-secondary">{props.progress}%</span>
-        </div>
-      </header>
-
-      {/* ─── Workspace: chat (main) + project state (aside) ─── */}
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_340px]">
-        {/* Chat */}
-        <div className="flex h-[calc(100dvh-16rem)] min-h-[440px] flex-col overflow-hidden rounded-3xl border border-border/60 bg-white/70 backdrop-blur-xl lg:h-[calc(100dvh-13rem)]">
-          <AssistantChat
-            projectId={props.projectId}
-            available={props.assistant.available}
-            initialConversationId={props.assistant.conversationId}
-            initialMessages={props.assistant.messages}
-            phase={props.assistant.phase}
-            openingMessage={props.openingMessage}
-            existingValues={existingValues}
-            onFieldSaved={handleFieldSaved}
-            className="h-full"
-          />
-        </div>
-
-        {/* Aside (desktop only) */}
-        <aside className="hidden flex-col gap-4 lg:flex">
-          <div className="rounded-3xl border border-border/60 bg-white/70 p-4 backdrop-blur-xl">
-            <ProjectStatePanel goalLine={props.goalLine} snapshot={snapshot} />
-          </div>
-          <div className="rounded-3xl border border-border/60 bg-white/70 p-4 backdrop-blur-xl">
-            <button
-              type="button"
-              onClick={() => setRoadmapOpen((v) => !v)}
-              className="flex w-full items-center justify-between gap-2"
-            >
-              <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-ink-muted">
-                {t("roadmapTitle")}
-              </span>
-              <span className="text-xs font-semibold text-ink-secondary">
-                {roadmapOpen ? t("roadmapHide") : t("roadmapShow")}
-              </span>
-            </button>
-            {roadmapOpen && (
-              <div className="mt-3 border-t border-border/50 pt-3">
-                <RoadmapPanel stages={props.roadmap} projectId={props.projectId} showRefine={props.showRefine} />
-              </div>
-            )}
-          </div>
-          <div className="rounded-3xl border border-border/60 bg-white/70 p-4 backdrop-blur-xl">
-            <button
-              type="button"
-              onClick={() => setProofsOpen((v) => !v)}
-              className="flex w-full items-center justify-between gap-2"
-            >
-              <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-ink-muted">
-                {t("proofTitle")}
-              </span>
-              <span className="text-xs font-semibold text-ink-secondary">
-                {proofsOpen ? t("roadmapHide") : t("roadmapShow")}
-              </span>
-            </button>
-            {proofsOpen && (
-              <div className="mt-3 border-t border-border/50 pt-3">
-                <ProofPanel projectId={props.projectId} tasks={proofTasks} />
-              </div>
-            )}
-          </div>
-        </aside>
+      <div className="min-h-0 flex-1">
+        <AssistantChat
+          projectId={props.projectId}
+          available={props.assistant.available}
+          initialConversationId={props.assistant.conversationId}
+          initialMessages={props.assistant.messages}
+          phase={props.assistant.phase}
+          openingMessage={props.openingMessage}
+          existingValues={existingValues}
+          onFieldSaved={handleFieldSaved}
+        />
       </div>
 
-      {/* ─── Mobile access to state / roadmap / proofs ─── */}
-      <div className="grid grid-cols-3 gap-2 lg:hidden">
-        <button
-          type="button"
-          onClick={() => setDrawer("state")}
-          className="rounded-full border border-border bg-white/70 px-3 py-2 text-xs font-semibold text-ink-secondary transition-colors hover:bg-white/90"
-        >
-          {t("statePanelTitle")}
-        </button>
-        <button
-          type="button"
-          onClick={() => setDrawer("roadmap")}
-          className="rounded-full border border-border bg-white/70 px-3 py-2 text-xs font-semibold text-ink-secondary transition-colors hover:bg-white/90"
-        >
-          {t("roadmapTitle")}
-        </button>
-        <button
-          type="button"
-          onClick={() => setDrawer("proofs")}
-          className="rounded-full border border-border bg-white/70 px-3 py-2 text-xs font-semibold text-ink-secondary transition-colors hover:bg-white/90"
-        >
-          {t("proofTitle")}
-        </button>
-      </div>
-
-      {/* ─── Mobile drawer ─── */}
-      {drawer && (
-        <div className="fixed inset-0 z-[80] flex justify-end lg:hidden" role="dialog" aria-modal="true">
-          <button
-            type="button"
-            aria-label={t("assistantClose")}
-            onClick={() => setDrawer(null)}
-            className="absolute inset-0 bg-[rgba(15,15,23,0.4)]"
-          />
-          <div className="relative flex h-full w-[88%] max-w-sm flex-col bg-white shadow-2xl">
-            <div className="flex items-center justify-between border-b border-border/60 px-4 py-3 pt-[max(0.75rem,env(safe-area-inset-top))]">
-              <span className="text-sm font-extrabold tracking-tight text-ink">
-                {drawer === "state"
-                  ? t("statePanelTitle")
-                  : drawer === "roadmap"
-                    ? t("roadmapTitle")
-                    : t("proofTitle")}
-              </span>
-              <button
-                type="button"
-                onClick={() => setDrawer(null)}
-                aria-label={t("assistantClose")}
-                className="rounded-full px-2 py-1 text-ink-muted transition-colors hover:bg-surface-hover"
-              >
-                ✕
-              </button>
-            </div>
-            <div className="flex-1 overflow-y-auto px-4 py-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
-              {drawer === "state" ? (
-                <ProjectStatePanel goalLine={props.goalLine} snapshot={snapshot} />
-              ) : drawer === "roadmap" ? (
-                <RoadmapPanel stages={props.roadmap} projectId={props.projectId} showRefine={props.showRefine} />
-              ) : (
-                <ProofPanel projectId={props.projectId} tasks={proofTasks} />
-              )}
-            </div>
-          </div>
-        </div>
+      {mode && (
+        <ContextOverlay
+          mode={mode}
+          projectId={props.projectId}
+          goalLine={props.goalLine}
+          snapshot={snapshot}
+          roadmap={props.roadmap}
+          showRefine={props.showRefine}
+          proofTasks={proofTasks}
+          onClose={() => setMode(null)}
+        />
       )}
     </div>
   );

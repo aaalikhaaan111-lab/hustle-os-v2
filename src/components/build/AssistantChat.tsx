@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useTranslations } from "next-intl";
-import { cn } from "@/lib/utils";
 import {
   sendAssistantMessage,
   startNewConversation,
@@ -28,21 +27,19 @@ export interface AssistantChatProps {
   initialMessages: AssistantMessage[];
   phase: AssistantPhase;
   /**
-   * Deterministic, project-specific greeting shown as the first assistant
-   * bubble while the conversation is still empty. Display-only — never sent to
-   * the model or persisted.
+   * Deterministic, project-specific greeting shown while the conversation is
+   * still empty. Display-only — never sent to the model or persisted.
    */
   openingMessage: string;
   /** Current saved/displayed value per structured field (for replace warnings). */
   existingValues: Partial<Record<StructuredField, string>>;
   /** Called after a structured field is confirmed and persisted. */
   onFieldSaved: (field: StructuredField, value: string) => void;
-  className?: string;
 }
 
-// The project assistant conversation, rendered inline as the main workspace
-// surface (previously a floating drawer). All send/new-chat logic is unchanged
-// — only the chrome differs.
+// The project assistant as an immersive conversation canvas: a wide, readable
+// column of editorial messages that scrolls internally, with a persistent
+// composer pinned to the bottom. No bordered card, no support-widget chrome.
 export function AssistantChat({
   projectId,
   available,
@@ -52,7 +49,6 @@ export function AssistantChat({
   openingMessage,
   existingValues,
   onFieldSaved,
-  className,
 }: AssistantChatProps) {
   const t = useTranslations("build");
   const [conversationId, setConversationId] = useState<string | null>(initialConversationId);
@@ -66,12 +62,22 @@ export function AssistantChat({
   const [isSending, startSending] = useTransition();
   const [isSaving, startSaving] = useTransition();
   const scrollRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const idCounter = useRef(0);
   const nextId = (prefix: string) => `${prefix}-${(idCounter.current += 1)}`;
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
-  }, [messages, isSending]);
+  }, [messages, isSending, proposal]);
+
+  // Grow the composer with its content (up to a cap) without any layout jump.
+  function autosize() {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${Math.min(el.scrollHeight, 160)}px`;
+  }
+  useEffect(autosize, [input]);
 
   function submit(text: string) {
     const trimmed = text.trim();
@@ -85,7 +91,6 @@ export function AssistantChat({
     startSending(async () => {
       const result = await sendAssistantMessage(projectId, conversationId, trimmed);
       if (result.error) {
-        // Keep the user's message visible and restore their text so nothing is lost.
         setNote(result.error);
         setInput(trimmed);
         return;
@@ -133,130 +138,147 @@ export function AssistantChat({
       }
       setConversationId(result.conversationId);
       setMessages([]);
+      setProposal(null);
       setNote(null);
+      setFlash(null);
     });
   }
 
-  const starters = STARTER_PROMPT_KEYS[phase];
+  // 3 stage-relevant prompts, offered only while the conversation is empty so
+  // they never become permanent generic chrome.
+  const starters = STARTER_PROMPT_KEYS[phase].slice(0, 3);
   const isEmpty = messages.length === 0;
 
   return (
-    <div className={cn("flex min-h-0 flex-col", className)}>
-      {/* Header row */}
-      <div className="flex items-center gap-2 border-b border-border/60 px-4 py-2.5">
-        <span className="flex h-6 w-6 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 text-xs" aria-hidden>
-          🤖
-        </span>
-        <div className="flex min-w-0 flex-1 flex-col">
-          <span className="text-[13px] font-bold tracking-tight text-ink">{t("assistantTitle")}</span>
-          <span className="truncate text-[11px] leading-tight text-ink-muted">{t("assistantScope")}</span>
-        </div>
+    <div className="flex h-full min-h-0 flex-col">
+      {/* Conversation */}
+      <div ref={scrollRef} className="relative min-h-0 flex-1 overflow-y-auto">
         {!isEmpty && available && (
           <button
             type="button"
             onClick={handleNewConversation}
             disabled={isSending}
-            className="shrink-0 rounded-full border border-border px-2.5 py-1 text-[11px] font-semibold text-ink-secondary transition-colors hover:bg-surface-hover disabled:opacity-60"
+            className="sticky top-2 z-10 ml-auto mr-3 flex w-fit items-center gap-1 rounded-full border border-border bg-surface/80 px-2.5 py-1 text-[11px] font-semibold text-ink-secondary backdrop-blur transition-colors hover:bg-surface disabled:opacity-60"
           >
             {t("assistantNewChat")}
           </button>
         )}
+
+        <div className="mx-auto w-full max-w-2xl px-4 py-6 sm:py-8">
+          {!available ? (
+            <p className="text-sm tracking-tight text-ink-secondary">{t("assistantUnavailable")}</p>
+          ) : isEmpty ? (
+            <p className="whitespace-pre-wrap text-[17px] font-medium leading-8 tracking-tight text-ink">
+              {openingMessage}
+            </p>
+          ) : (
+            <div className="flex flex-col gap-6">
+              {messages.map((m) =>
+                m.role === "user" ? (
+                  <div key={m.id} className="flex justify-end">
+                    <div className="max-w-[85%] whitespace-pre-wrap rounded-2xl rounded-br-md bg-accent px-3.5 py-2 text-[15px] leading-relaxed text-white">
+                      {m.content}
+                    </div>
+                  </div>
+                ) : (
+                  <div
+                    key={m.id}
+                    className="whitespace-pre-wrap text-[15px] leading-7 tracking-tight text-ink"
+                  >
+                    {m.content}
+                  </div>
+                )
+              )}
+              {isSending && (
+                <div className="flex items-center gap-1 text-ink-muted" aria-label="…">
+                  <span className="h-1.5 w-1.5 animate-pulse-soft rounded-full bg-ink-muted" />
+                  <span className="h-1.5 w-1.5 animate-pulse-soft rounded-full bg-ink-muted [animation-delay:0.2s]" />
+                  <span className="h-1.5 w-1.5 animate-pulse-soft rounded-full bg-ink-muted [animation-delay:0.4s]" />
+                </div>
+              )}
+            </div>
+          )}
+
+          {proposal && (
+            <div className="mt-6">
+              <ProposalCard
+                proposal={proposal}
+                existing={existingValues[proposal.field] ?? null}
+                disabled={isSaving}
+                onSave={(value) => saveField(proposal.field, value)}
+                onImprove={() => {
+                  const label = proposal.label;
+                  setProposal(null);
+                  submit(t("proposalImproveMsg", { label }));
+                }}
+                onDismiss={() => setProposal(null)}
+              />
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* Messages */}
-      <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto px-4 py-4">
-        {!available ? (
-          <p className="text-sm tracking-tight text-ink-secondary">{t("assistantUnavailable")}</p>
-        ) : isEmpty ? (
-          <div className="flex flex-col gap-4">
-            <div className="max-w-[90%] self-start rounded-2xl bg-surface-hover px-3.5 py-2.5 text-sm leading-relaxed tracking-tight text-ink">
-              {openingMessage}
-            </div>
-            <div className="flex flex-col gap-2">
+      {/* Composer */}
+      <div className="shrink-0 bg-gradient-to-t from-canvas via-canvas/95 to-transparent">
+        <div className="mx-auto w-full max-w-2xl px-4 pt-2 pb-[calc(4.5rem+env(safe-area-inset-bottom))] md:pb-4">
+          {isEmpty && available && (
+            <div className="mb-2 flex flex-wrap gap-1.5">
               {starters.map((key) => (
                 <button
                   key={key}
                   type="button"
                   disabled={isSending}
                   onClick={() => submit(t(key as Parameters<typeof t>[0]))}
-                  className="rounded-2xl border border-zinc-100/70 bg-white/70 px-3.5 py-2.5 text-left text-sm font-medium text-ink-secondary shadow-sm transition-colors hover:border-accent hover:text-accent disabled:opacity-60"
+                  className="rounded-full border border-border bg-surface/70 px-3 py-1.5 text-[13px] font-medium text-ink-secondary transition-colors hover:border-accent hover:text-accent disabled:opacity-60"
                 >
                   {t(key as Parameters<typeof t>[0])}
                 </button>
               ))}
             </div>
-          </div>
-        ) : (
-          <div className="flex flex-col gap-3">
-            {messages.map((m) => (
-              <div
-                key={m.id}
-                className={cn(
-                  "max-w-[85%] whitespace-pre-wrap rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed tracking-tight",
-                  m.role === "user"
-                    ? "self-end bg-gradient-to-br from-indigo-600 to-purple-600 text-white"
-                    : "self-start bg-surface-hover text-ink"
-                )}
-              >
-                {m.content}
-              </div>
-            ))}
-            {isSending && (
-              <div className="self-start rounded-2xl bg-surface-hover px-3.5 py-2.5 text-sm text-ink-muted">…</div>
-            )}
-          </div>
-        )}
-      </div>
+          )}
+          {note && <p className="mb-1.5 px-1 text-xs text-danger">{note}</p>}
+          {flash && <p className="mb-1.5 px-1 text-xs font-semibold text-emerald-600">{flash}</p>}
 
-      {/* Structured-output confirmation card */}
-      {proposal && (
-        <ProposalCard
-          proposal={proposal}
-          existing={existingValues[proposal.field] ?? null}
-          disabled={isSaving}
-          onSave={(value) => saveField(proposal.field, value)}
-          onImprove={() => {
-            const label = proposal.label;
-            setProposal(null);
-            submit(t("proposalImproveMsg", { label }));
-          }}
-          onDismiss={() => setProposal(null)}
-        />
-      )}
-
-      {/* Input */}
-      <div className="border-t border-border/60 px-3 py-3">
-        {note && <p className="mb-2 px-1 text-xs text-danger">{note}</p>}
-        {flash && <p className="mb-2 px-1 text-xs font-semibold text-emerald-600">{flash}</p>}
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            submit(input);
-          }}
-          className="flex items-end gap-2"
-        >
-          <textarea
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            disabled={isSending || !available}
-            rows={1}
-            placeholder={t("assistantPlaceholder")}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault();
-                submit(input);
-              }
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              submit(input);
             }}
-            className="max-h-32 min-h-[42px] flex-1 resize-none rounded-2xl border border-border bg-surface px-3.5 py-2.5 text-sm text-ink placeholder:text-ink-muted transition-colors focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/40 disabled:opacity-60"
-          />
-          <button
-            type="submit"
-            disabled={isSending || !available || input.trim().length === 0}
-            className="shrink-0 rounded-2xl bg-gradient-to-br from-indigo-600 to-purple-600 px-4 py-2.5 text-sm font-bold text-white shadow-sm transition-opacity disabled:opacity-40"
+            className="flex items-end gap-2 rounded-2xl border border-border bg-surface/95 px-2.5 py-2 shadow-sm transition-colors focus-within:border-accent focus-within:ring-2 focus-within:ring-accent/25"
           >
-            {t("assistantSend")}
-          </button>
-        </form>
+            <textarea
+              ref={textareaRef}
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              disabled={isSending || !available}
+              rows={1}
+              placeholder={t("assistantPlaceholder")}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  submit(input);
+                }
+              }}
+              className="max-h-40 min-h-[28px] flex-1 resize-none bg-transparent px-1.5 py-1 text-[15px] text-ink placeholder:text-ink-muted focus:outline-none disabled:opacity-60"
+            />
+            <button
+              type="submit"
+              aria-label={t("assistantSend")}
+              disabled={isSending || !available || input.trim().length === 0}
+              className="mb-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-accent text-white transition-opacity hover:bg-accent-hover disabled:opacity-30"
+            >
+              <svg viewBox="0 0 20 20" fill="none" className="h-4 w-4" aria-hidden>
+                <path
+                  d="M10 16V4M10 4l-5 5M10 4l5 5"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </button>
+          </form>
+        </div>
       </div>
     </div>
   );
@@ -272,9 +294,9 @@ interface ProposalCardProps {
   onDismiss: () => void;
 }
 
-// The confirmation card the assistant shows when it has extracted a saveable
-// structured field. Nothing is written until the user explicitly confirms;
-// when a value already exists the card asks whether to replace it.
+// A refined proposal, rendered natively inside the conversation (not a modal).
+// Nothing is written until the user confirms; when a value already exists the
+// card asks whether to replace it.
 function ProposalCard({ proposal, existing, disabled, onSave, onImprove, onDismiss }: ProposalCardProps) {
   const t = useTranslations("build");
   const [editing, setEditing] = useState(false);
@@ -283,12 +305,10 @@ function ProposalCard({ proposal, existing, disabled, onSave, onImprove, onDismi
   const canSave = value.trim().length > 0 && !disabled;
 
   return (
-    <div className="mx-3 mb-1 mt-2 flex flex-col gap-2.5 rounded-2xl border border-indigo-100 bg-gradient-to-br from-indigo-50/80 to-pink-50/60 px-3.5 py-3 shadow-sm">
-      <div className="flex items-center gap-2">
-        <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-indigo-600">
-          {t("proposalEyebrow", { field: proposal.label || fieldName })}
-        </span>
-      </div>
+    <div className="flex flex-col gap-3 rounded-2xl border border-accent/20 bg-accent-soft/50 p-4">
+      <span className="text-[11px] font-bold uppercase tracking-[0.12em] text-accent">
+        {t("proposalEyebrow", { field: proposal.label || fieldName })}
+      </span>
 
       {editing ? (
         <textarea
@@ -296,16 +316,14 @@ function ProposalCard({ proposal, existing, disabled, onSave, onImprove, onDismi
           onChange={(e) => setValue(e.target.value)}
           rows={3}
           maxLength={800}
-          className="w-full resize-none rounded-xl border border-border bg-white px-3 py-2 text-sm text-ink focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/40"
+          className="w-full resize-none rounded-xl border border-border bg-surface px-3 py-2 text-[15px] text-ink focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30"
         />
       ) : (
-        <p className="whitespace-pre-wrap text-sm leading-relaxed text-ink">{value}</p>
+        <p className="whitespace-pre-wrap text-[15px] leading-relaxed text-ink">{value}</p>
       )}
 
       {existing && !editing && (
-        <p className="text-[11px] font-medium text-amber-700">
-          {t("proposalReplaceWarning", { field: fieldName })}
-        </p>
+        <p className="text-xs font-medium text-warning">{t("proposalReplaceWarning", { field: fieldName })}</p>
       )}
 
       <div className="flex flex-wrap gap-2">
@@ -313,7 +331,7 @@ function ProposalCard({ proposal, existing, disabled, onSave, onImprove, onDismi
           type="button"
           disabled={!canSave}
           onClick={() => onSave(value)}
-          className="rounded-full bg-gradient-to-br from-indigo-600 to-purple-600 px-3.5 py-1.5 text-xs font-bold text-white shadow-sm transition-transform hover:scale-[1.02] active:scale-95 disabled:opacity-40"
+          className="rounded-full bg-accent px-4 py-1.5 text-[13px] font-semibold text-white transition-colors hover:bg-accent-hover disabled:opacity-40"
         >
           {existing ? t("proposalReplace") : t("proposalSave")}
         </button>
@@ -322,7 +340,7 @@ function ProposalCard({ proposal, existing, disabled, onSave, onImprove, onDismi
             type="button"
             disabled={disabled}
             onClick={() => setEditing(true)}
-            className="rounded-full border border-border bg-white/70 px-3 py-1.5 text-xs font-semibold text-ink-secondary transition-colors hover:bg-white disabled:opacity-60"
+            className="rounded-full border border-border bg-surface px-3.5 py-1.5 text-[13px] font-semibold text-ink-secondary transition-colors hover:bg-surface-hover disabled:opacity-60"
           >
             {t("proposalEdit")}
           </button>
@@ -331,7 +349,7 @@ function ProposalCard({ proposal, existing, disabled, onSave, onImprove, onDismi
           type="button"
           disabled={disabled}
           onClick={onImprove}
-          className="rounded-full border border-border bg-white/70 px-3 py-1.5 text-xs font-semibold text-ink-secondary transition-colors hover:bg-white disabled:opacity-60"
+          className="rounded-full border border-border bg-surface px-3.5 py-1.5 text-[13px] font-semibold text-ink-secondary transition-colors hover:bg-surface-hover disabled:opacity-60"
         >
           {t("proposalImprove")}
         </button>
@@ -339,7 +357,7 @@ function ProposalCard({ proposal, existing, disabled, onSave, onImprove, onDismi
           type="button"
           disabled={disabled}
           onClick={onDismiss}
-          className="rounded-full px-3 py-1.5 text-xs font-semibold text-ink-muted transition-colors hover:bg-white/60 disabled:opacity-60"
+          className="rounded-full px-3.5 py-1.5 text-[13px] font-semibold text-ink-muted transition-colors hover:bg-surface-hover disabled:opacity-60"
         >
           {existing ? t("proposalKeep") : t("proposalDismiss")}
         </button>
