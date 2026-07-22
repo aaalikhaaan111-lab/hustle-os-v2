@@ -20,6 +20,9 @@ import {
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const TOKEN_PATTERN = /^[a-zA-Z0-9_-]{8,80}$/;
 
+// Anthropic structured outputs accept only a restricted JSON Schema subset.
+// Array cardinality stays in the server sanitizer below instead of using
+// minItems/maxItems here, which the API rejects for values beyond its subset.
 const OUTPUT_SCHEMA = {
   type: "object",
   properties: {
@@ -36,7 +39,7 @@ const OUTPUT_SCHEMA = {
       type: "object",
       properties: {
         mood: { type: "string" },
-        palette: { type: "array", minItems: 3, maxItems: 3, items: { type: "string" } },
+        palette: { type: "array", items: { type: "string" } },
         styleNotes: { type: "string" },
       },
       required: ["mood", "palette", "styleNotes"], additionalProperties: false,
@@ -47,14 +50,14 @@ const OUTPUT_SCHEMA = {
       required: ["eyebrow", "headline", "subheadline"], additionalProperties: false,
     },
     sections: {
-      type: "array", minItems: 3, maxItems: 6,
+      type: "array",
       items: {
         type: "object",
         properties: {
           type: { type: "string", enum: [...OUTPUT_SECTION_TYPES] },
           title: { type: "string" }, body: { type: "string" },
           items: {
-            type: "array", maxItems: 4,
+            type: "array",
             items: {
               type: "object",
               properties: { title: { type: "string" }, body: { type: "string" } },
@@ -77,13 +80,13 @@ const OUTPUT_SCHEMA = {
       properties: {
         title: { type: "string" }, description: { type: "string" }, submitLabel: { type: "string" },
         fields: {
-          type: "array", minItems: 2, maxItems: 5,
+          type: "array",
           items: {
             type: "object",
             properties: {
               id: { type: "string" }, label: { type: "string" },
               type: { type: "string", enum: [...OUTPUT_FIELD_TYPES] }, required: { type: "boolean" },
-              options: { type: "array", maxItems: 5, items: { type: "string" } },
+              options: { type: "array", items: { type: "string" } },
             },
             required: ["id", "label", "type", "required", "options"], additionalProperties: false,
           },
