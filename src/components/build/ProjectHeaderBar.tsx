@@ -15,7 +15,8 @@ interface ProjectHeaderBarProps {
   totalCount: number;
   proofCount: number;
   nextTask: { id: string; title: string } | null;
-  pitchHref: string;
+  /** When omitted, the project menu (whose only entry is View pitch) is hidden. */
+  pitchHref?: string;
   onOpenContext: (mode: ContextMode) => void;
 }
 
@@ -43,33 +44,37 @@ export function ProjectHeaderBar({
           <div className="min-w-0">
             <div className="relative flex items-center gap-1">
               <h1 className="truncate text-lg font-bold tracking-tight text-ink">{projectName}</h1>
-              <button
-                type="button"
-                aria-label={t("projectMenu")}
-                onClick={() => setMenuOpen((v) => !v)}
-                className="shrink-0 rounded-full p-1 text-ink-muted transition-colors hover:bg-surface-hover hover:text-ink"
-              >
-                <svg viewBox="0 0 20 20" className="h-4 w-4" fill="currentColor" aria-hidden>
-                  <path d="M6 8l4 4 4-4" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-              </button>
-              {menuOpen && (
+              {pitchHref && (
                 <>
                   <button
                     type="button"
-                    aria-hidden
-                    tabIndex={-1}
-                    onClick={() => setMenuOpen(false)}
-                    className="fixed inset-0 z-30 cursor-default"
-                  />
-                  <div className="absolute left-0 top-8 z-40 w-44 overflow-hidden rounded-xl border border-border bg-surface py-1 shadow-lg">
-                    <Link
-                      href={pitchHref}
-                      className="block px-3.5 py-2 text-sm text-ink-secondary transition-colors hover:bg-surface-hover hover:text-ink"
-                    >
-                      {t("viewPitch")}
-                    </Link>
-                  </div>
+                    aria-label={t("projectMenu")}
+                    onClick={() => setMenuOpen((v) => !v)}
+                    className="shrink-0 rounded-full p-1 text-ink-muted transition-colors hover:bg-surface-hover hover:text-ink"
+                  >
+                    <svg viewBox="0 0 20 20" className="h-4 w-4" fill="currentColor" aria-hidden>
+                      <path d="M6 8l4 4 4-4" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  </button>
+                  {menuOpen && (
+                    <>
+                      <button
+                        type="button"
+                        aria-hidden
+                        tabIndex={-1}
+                        onClick={() => setMenuOpen(false)}
+                        className="fixed inset-0 z-30 cursor-default"
+                      />
+                      <div className="absolute left-0 top-8 z-40 w-44 overflow-hidden rounded-xl border border-border bg-surface py-1 shadow-lg">
+                        <Link
+                          href={pitchHref}
+                          className="block px-3.5 py-2 text-sm text-ink-secondary transition-colors hover:bg-surface-hover hover:text-ink"
+                        >
+                          {t("viewPitch")}
+                        </Link>
+                      </div>
+                    </>
+                  )}
                 </>
               )}
             </div>

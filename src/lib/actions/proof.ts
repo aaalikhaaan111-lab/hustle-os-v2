@@ -201,6 +201,7 @@ export async function addProof(formData: FormData): Promise<AddProofResult> {
   }
 
   revalidatePath("/build/workspace");
+  revalidatePath(`/projects/${projectId}`);
   return { error: null, proof: await toProofItem(supabase, inserted) };
 }
 
@@ -219,7 +220,7 @@ export async function deleteProof(proofId: string): Promise<DeleteProofResult> {
 
   const { data: proof } = await supabase
     .from("project_proofs")
-    .select("id, file_path")
+    .select("id, file_path, project_id")
     .eq("id", proofId)
     .eq("user_id", user.id)
     .maybeSingle();
@@ -237,5 +238,6 @@ export async function deleteProof(proofId: string): Promise<DeleteProofResult> {
   if (error) return { error: t("proofErrorSaveFailed") };
 
   revalidatePath("/build/workspace");
+  revalidatePath(`/projects/${proof.project_id}`);
   return { error: null };
 }

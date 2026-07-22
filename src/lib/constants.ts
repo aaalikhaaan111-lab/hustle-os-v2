@@ -1,12 +1,19 @@
 import type { ComponentType, SVGProps } from "react";
 import {
-  BuildIcon,
-  CoursesIcon,
   DashboardIcon,
+  PlusIcon,
   ProfileIcon,
 } from "@/components/ui/icons";
 
-export type NavLabelKey = "dashboard" | "challenges" | "learn" | "build" | "workshops" | "profile";
+export type NavLabelKey =
+  | "create"
+  | "projects"
+  | "dashboard"
+  | "challenges"
+  | "learn"
+  | "build"
+  | "workshops"
+  | "profile";
 
 export interface NavItem {
   labelKey: NavLabelKey;
@@ -73,14 +80,13 @@ export const TOPIC_OPTIONS: TopicOption[] = [
   { id: "other", labelKey: "topicOther", emoji: "✨" },
 ];
 
-// Primary navigation is deliberately just four destinations: Home, Build,
-// Learn, Profile. Build is the core loop; everything else is support.
-// Challenges and the live "Play"/Workshops sessions are no longer top-level —
-// they live inside Learn (/courses). The /workshops route stays reachable from
-// Learn for backward compatibility.
+// Primary navigation is deliberately just three destinations: Create, Projects,
+// Profile. Create starts a new project inside the AI experience; Projects is
+// everything the user is building; Profile is their portfolio. Everything else
+// (Home/Dashboard, Learn/courses, Challenges, Play/Workshops, Build) is removed
+// from primary nav but kept reachable/redirected for backward compatibility.
 export const NAV_ITEMS: NavItem[] = [
-  { labelKey: "dashboard", href: "/dashboard", icon: DashboardIcon },
-  { labelKey: "build", href: "/build", icon: BuildIcon },
-  { labelKey: "learn", href: "/courses", icon: CoursesIcon },
+  { labelKey: "create", href: "/create", icon: PlusIcon },
+  { labelKey: "projects", href: "/projects", icon: DashboardIcon },
   { labelKey: "profile", href: "/profile", icon: ProfileIcon },
 ];

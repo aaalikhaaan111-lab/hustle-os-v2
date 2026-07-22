@@ -4,16 +4,22 @@ import type { ReactNode } from "react";
 import { usePathname } from "next/navigation";
 import { PageTransition } from "@/components/layout/PageTransition";
 import { Wordmark } from "@/components/layout/Wordmark";
-import { GameProgressHUD } from "@/components/layout/GameProgressHUD";
 
 // Routes that opt into the immersive, full-height canvas: no page padding, no
 // max-width, no generic mobile top bar (they render their own header), and the
-// page owns its internal scroll instead of the document scrolling.
-const IMMERSIVE_ROUTES = new Set(["/build/workspace"]);
+// page owns its internal scroll instead of the document scrolling. This covers
+// the legacy single-project workspace and every id-scoped project workspace
+// (/projects/<id>) — but NOT the /projects list, which uses the normal shell.
+const IMMERSIVE_EXACT = new Set(["/build/workspace"]);
+
+function isImmersive(pathname: string): boolean {
+  if (IMMERSIVE_EXACT.has(pathname)) return true;
+  return /^\/projects\/[^/]+$/.test(pathname);
+}
 
 export function AppMain({ children }: { children: ReactNode }) {
   const pathname = usePathname();
-  const immersive = IMMERSIVE_ROUTES.has(pathname);
+  const immersive = isImmersive(pathname);
 
   if (immersive) {
     return (
@@ -27,7 +33,6 @@ export function AppMain({ children }: { children: ReactNode }) {
     <>
       <header className="sticky top-0 z-40 flex min-h-14 items-center gap-3 border-b border-border/60 bg-canvas/80 px-4 pt-[env(safe-area-inset-top)] backdrop-blur-md md:hidden">
         <Wordmark />
-        <GameProgressHUD className="ml-auto" />
       </header>
 
       <div className="relative z-10 md:pl-64">

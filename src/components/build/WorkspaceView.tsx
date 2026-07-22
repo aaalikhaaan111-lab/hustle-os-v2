@@ -19,7 +19,8 @@ export interface WorkspaceViewProps {
   totalCount: number;
   proofCount: number;
   nextTask: { id: string; title: string } | null;
-  pitchHref: string;
+  /** Pitch destination. Omitted on the multi-project surface, where Pitch is retired. */
+  pitchHref?: string;
   goalLine: string;
   snapshot: SnapshotRow[];
   roadmap: RoadmapStage[];

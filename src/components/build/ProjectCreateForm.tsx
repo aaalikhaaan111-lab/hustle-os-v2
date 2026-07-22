@@ -23,6 +23,10 @@ import type {
 
 interface ProjectCreateFormProps {
   initialMode: PathwayMode;
+  // Where to go after a project is created. "project" routes to the new
+  // id-scoped workspace (/projects/[id]); the default keeps the legacy
+  // current-project workspace so /build/new is unchanged.
+  redirectMode?: "workspace" | "project";
 }
 
 // One focused question per step, then a review screen. Order matches the
@@ -69,7 +73,7 @@ function ChoiceCard({
   );
 }
 
-export function ProjectCreateForm({ initialMode }: ProjectCreateFormProps) {
+export function ProjectCreateForm({ initialMode, redirectMode = "workspace" }: ProjectCreateFormProps) {
   const t = useTranslations("build");
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -160,7 +164,11 @@ export function ProjectCreateForm({ initialMode }: ProjectCreateFormProps) {
         setSubmitError(result.error);
         return;
       }
-      router.push("/build/workspace");
+      router.push(
+        redirectMode === "project" && result.projectId
+          ? `/projects/${result.projectId}`
+          : "/build/workspace"
+      );
     });
   }
 

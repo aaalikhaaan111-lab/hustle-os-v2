@@ -18,12 +18,28 @@
     "backToVentrio": "Назад в Ventrio"
   },
   "nav": {
+    "create": "Создать",
+    "projects": "Проекты",
     "dashboard": "Главная",
     "challenges": "Задания",
     "learn": "Обучение",
     "build": "Build",
     "workshops": "Play",
     "profile": "Профиль"
+  },
+  "projects": {
+    "title": "Проекты",
+    "description": "Всё, что вы создаёте — продолжите с того места, где остановились, или начните новое.",
+    "newProject": "Новый проект",
+    "emptyTitle": "Пока нет проектов",
+    "emptyDescription": "Начните первый проект и превратите интерес в нечто реальное.",
+    "emptyCta": "Создать проект",
+    "open": "Открыть",
+    "untitled": "Проект без названия",
+    "progressLabel": "{progress}% готово",
+    "statusDraft": "Черновик",
+    "statusActive": "В работе",
+    "statusCompleted": "Завершён"
   },
   "landing": {
     "badge": "Практика, а не теория",

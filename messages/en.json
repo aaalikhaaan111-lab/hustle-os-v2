@@ -18,12 +18,28 @@
     "backToVentrio": "Back to Ventrio"
   },
   "nav": {
+    "create": "Create",
+    "projects": "Projects",
     "dashboard": "Home",
     "challenges": "Challenges",
     "learn": "Learn",
     "build": "Build",
     "workshops": "Play",
     "profile": "Profile"
+  },
+  "projects": {
+    "title": "Projects",
+    "description": "Everything you're building — pick up where you left off or start something new.",
+    "newProject": "New project",
+    "emptyTitle": "No projects yet",
+    "emptyDescription": "Start your first project and turn an interest into something real.",
+    "emptyCta": "Create a project",
+    "open": "Open",
+    "untitled": "Untitled project",
+    "progressLabel": "{progress}% complete",
+    "statusDraft": "Draft",
+    "statusActive": "In progress",
+    "statusCompleted": "Completed"
   },
   "landing": {
     "badge": "Practice, not theory",

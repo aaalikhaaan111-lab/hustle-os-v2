@@ -12,7 +12,7 @@ import {
   TIME_AVAILABILITY_OPTIONS,
 } from "@/lib/build/options";
 import { generatePathway } from "@/lib/build/pathwayTemplates";
-import { getActiveProject, getProjectOutputs, getProjectTasks, computeProgress } from "@/lib/build/queries";
+import { getProjectOutputs, getProjectTasks, computeProgress } from "@/lib/build/queries";
 import { isStructuredField, parseSnapshotFields, type StructuredField } from "@/lib/build/snapshot";
 import {
   refineProjectPathwayAction,
@@ -73,11 +73,9 @@ export async function createProjectAction(input: ProjectCreationInput): Promise<
     return { error: t("errorSession") };
   }
 
-  const existing = await getActiveProject(supabase, user.id);
-  if (existing) {
-    return { error: t("errorProjectExists") };
-  }
-
+  // Multiple projects are allowed: /create always starts a new draft, so there
+  // is no single-active-project guard here. Concurrency between a user's own
+  // projects is fine — each is addressed explicitly by id everywhere else.
   const nicheOption = NICHE_OPTIONS.find((option) => option.id === input.niche);
   const timeOption = TIME_AVAILABILITY_OPTIONS.find((option) => option.id === input.timeAvailability);
   const nicheLabel = nicheOption ? t(nicheOption.labelKey) : input.niche;
@@ -144,6 +142,7 @@ export async function createProjectAction(input: ProjectCreationInput): Promise<
 
   revalidatePath("/build");
   revalidatePath("/build/workspace");
+  revalidatePath("/projects");
   revalidatePath("/dashboard");
 
   return { error: null, projectId: project.id };
@@ -246,6 +245,7 @@ export async function refineExistingTasksAction(projectId: string): Promise<Refi
 
   if (count > 0) {
     revalidatePath("/build/workspace");
+    revalidatePath(`/projects/${projectId}`);
   }
   return { error: null, refined: count };
 }
@@ -413,6 +413,7 @@ export async function reviewTaskAnswerAction(
 
   revalidatePath("/build/workspace");
   revalidatePath(`/build/workspace/task/${taskId}`);
+  revalidatePath(`/projects/${task.project_id}`);
   revalidatePath("/dashboard");
 
   return {
@@ -642,5 +643,6 @@ export async function saveStructuredFieldAction(
   }
 
   revalidatePath("/build/workspace");
+  revalidatePath(`/projects/${projectId}`);
   return { error: null, saved: { field, value: trimmed } };
 }
