@@ -8,9 +8,10 @@ import { Wordmark } from "@/components/layout/Wordmark";
 // Routes that opt into the immersive, full-height canvas: no page padding, no
 // max-width, no generic mobile top bar (they render their own header), and the
 // page owns its internal scroll instead of the document scrolling. This covers
-// the legacy single-project workspace and every id-scoped project workspace
-// (/projects/<id>) — but NOT the /projects list, which uses the normal shell.
-const IMMERSIVE_EXACT = new Set(["/build/workspace"]);
+// the AI creation experience, the legacy single-project workspace, and every
+// id-scoped project workspace (/projects/<id>) — but NOT the /projects list,
+// which uses the normal shell.
+const IMMERSIVE_EXACT = new Set(["/create", "/build/workspace"]);
 
 function isImmersive(pathname: string): boolean {
   if (IMMERSIVE_EXACT.has(pathname)) return true;

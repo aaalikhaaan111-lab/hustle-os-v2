@@ -14,6 +14,8 @@ interface ProjectHeaderBarProps {
   completedCount: number;
   totalCount: number;
   proofCount: number;
+  /** New-flow project with no roadmap yet — show the "Create first version" handoff. */
+  awaitingFirstVersion: boolean;
   nextTask: { id: string; title: string } | null;
   /** When omitted, the project menu (whose only entry is View pitch) is hidden. */
   pitchHref?: string;
@@ -30,12 +32,14 @@ export function ProjectHeaderBar({
   completedCount,
   totalCount,
   proofCount,
+  awaitingFirstVersion,
   nextTask,
   pitchHref,
   onOpenContext,
 }: ProjectHeaderBarProps) {
   const t = useTranslations("build");
   const [menuOpen, setMenuOpen] = useState(false);
+  const [firstVersionNote, setFirstVersionNote] = useState(false);
 
   return (
     <header className="shrink-0 border-b border-border/50 bg-canvas/70 pt-[env(safe-area-inset-top)] backdrop-blur-md">
@@ -79,8 +83,10 @@ export function ProjectHeaderBar({
               )}
             </div>
             <p className="mt-0.5 truncate text-[12px] tracking-tight text-ink-secondary">
-              {stageLabel} · {t("hdrTasksOf", { completed: completedCount, total: totalCount })} ·{" "}
-              {t("hdrProofsCount", { count: proofCount })} · {languageLabel}
+              {awaitingFirstVersion
+                ? t("hdrStatusReady")
+                : `${stageLabel} · ${t("hdrTasksOf", { completed: completedCount, total: totalCount })}`}{" "}
+              · {t("hdrProofsCount", { count: proofCount })} · {languageLabel}
             </p>
           </div>
 
@@ -96,14 +102,32 @@ export function ProjectHeaderBar({
         </div>
 
         {/* Next action */}
-        {nextTask && (
-          <Link
-            href={`/build/workspace/task/${nextTask.id}`}
-            className="inline-flex w-fit max-w-full items-center gap-1.5 rounded-full bg-accent-soft px-3 py-1.5 text-[13px] font-semibold text-accent transition-colors hover:bg-accent/15"
-          >
-            <span className="truncate">{t("hdrContinue", { task: nextTask.title })}</span>
-            <span aria-hidden>→</span>
-          </Link>
+        {awaitingFirstVersion ? (
+          <div className="flex flex-col gap-1.5">
+            <button
+              type="button"
+              onClick={() => setFirstVersionNote(true)}
+              className="press-scale inline-flex w-fit max-w-full items-center gap-1.5 rounded-full bg-accent px-3.5 py-1.5 text-[13px] font-bold text-white transition-colors hover:bg-accent-hover"
+            >
+              <span className="truncate">{t("hdrCreateFirstVersion")}</span>
+              <span aria-hidden>→</span>
+            </button>
+            {firstVersionNote && (
+              <p className="animate-message-in px-1 text-[12px] tracking-tight text-ink-secondary">
+                {t("hdrFirstVersionSoon")}
+              </p>
+            )}
+          </div>
+        ) : (
+          nextTask && (
+            <Link
+              href={`/build/workspace/task/${nextTask.id}`}
+              className="inline-flex w-fit max-w-full items-center gap-1.5 rounded-full bg-accent-soft px-3 py-1.5 text-[13px] font-semibold text-accent transition-colors hover:bg-accent/15"
+            >
+              <span className="truncate">{t("hdrContinue", { task: nextTask.title })}</span>
+              <span aria-hidden>→</span>
+            </Link>
+          )
         )}
       </div>
     </header>

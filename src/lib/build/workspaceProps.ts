@@ -89,10 +89,24 @@ export async function buildWorkspaceViewProps(
     };
   });
 
+  // A project with no roadmap tasks was created through the new AI creation
+  // flow (the legacy flow always generates tasks). It hasn't produced its first
+  // version yet, so the workspace acknowledges the created direction and offers
+  // the Stage 3 handoff instead of a roadmap.
+  const awaitingFirstVersion = tasks.length === 0;
+
   // Deterministic, project-specific greeting for the empty conversation.
-  const openingMessage = nextTask
-    ? t("assistantOpeningTask", { name: projectName, task: nextTask.title })
-    : t("assistantOpeningDone", { name: projectName });
+  let openingMessage: string;
+  if (awaitingFirstVersion) {
+    const direction = savedFields.solution ?? null;
+    openingMessage = direction
+      ? t("assistantCreatedGreeting", { name: projectName, direction })
+      : t("assistantCreatedGreetingSimple", { name: projectName });
+  } else {
+    openingMessage = nextTask
+      ? t("assistantOpeningTask", { name: projectName, task: nextTask.title })
+      : t("assistantOpeningDone", { name: projectName });
+  }
 
   return {
     projectId: project.id,
@@ -103,6 +117,7 @@ export async function buildWorkspaceViewProps(
     completedCount,
     totalCount: tasks.length,
     proofCount,
+    awaitingFirstVersion,
     nextTask: nextTask ? { id: nextTask.id, title: nextTask.title } : null,
     pitchHref: opts.pitchHref,
     goalLine,

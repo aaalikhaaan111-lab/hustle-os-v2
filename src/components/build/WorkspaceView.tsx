@@ -18,6 +18,8 @@ export interface WorkspaceViewProps {
   completedCount: number;
   totalCount: number;
   proofCount: number;
+  /** True for new-flow projects with no roadmap yet — offers "Create first version". */
+  awaitingFirstVersion: boolean;
   nextTask: { id: string; title: string } | null;
   /** Pitch destination. Omitted on the multi-project surface, where Pitch is retired. */
   pitchHref?: string;
@@ -76,6 +78,7 @@ export function WorkspaceView(props: WorkspaceViewProps) {
         completedCount={props.completedCount}
         totalCount={props.totalCount}
         proofCount={props.proofCount}
+        awaitingFirstVersion={props.awaitingFirstVersion}
         nextTask={props.nextTask}
         pitchHref={props.pitchHref}
         onOpenContext={setMode}
