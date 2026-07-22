@@ -7,6 +7,7 @@ import type { AssistantMessage } from "@/lib/actions/assistant";
 import { sendAssistantMessage } from "@/lib/actions/assistant";
 import { editProjectOutputAction, generateFirstVersionAction } from "@/lib/actions/stage3";
 import type { CreationDirection } from "@/lib/build/creationTypes";
+import { isProjectOutputEditRequest } from "@/lib/build/editIntent";
 import type { Stage3ProjectOutput, Stage3Status } from "@/lib/build/stage3Types";
 import { ProjectOutputRenderer } from "@/components/build/ProjectOutputRenderer";
 import { PublicationControls } from "@/components/publishing/PublicationControls";
@@ -65,6 +66,7 @@ export function PreOutputWorkspace({
   const [revealKey, setRevealKey] = useState(initialOutput ? 1 : 0);
   const [isGenerating, startGenerating] = useTransition();
   const [isSending, startSending] = useTransition();
+  const [isEditingOutput, setIsEditingOutput] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -110,35 +112,41 @@ export function PreOutputWorkspace({
     setInput("");
     setNote(null);
     append("user", content);
+    const shouldEditOutput = !!output && isProjectOutputEditRequest(content);
     startSending(async () => {
-      if (output) {
-        if (!conversationId) {
-          setNote(t("unavailable"));
-          setInput(content);
+      setIsEditingOutput(shouldEditOutput);
+      try {
+        if (shouldEditOutput) {
+          if (!conversationId) {
+            setNote(t("unavailable"));
+            setInput(content);
+            return;
+          }
+          const result = await editProjectOutputAction(projectId, conversationId, crypto.randomUUID(), content);
+          if (result.error || !result.output) {
+            setNote(result.error ?? t("unavailable"));
+            setInput(content);
+            return;
+          }
+          setOutput(result.output);
+          setRevealKey((value) => value + 1);
+          if (result.reply) append("assistant", result.reply);
+          setMobileMode("project");
           return;
         }
-        const result = await editProjectOutputAction(projectId, conversationId, crypto.randomUUID(), content);
-        if (result.error || !result.output) {
-          setNote(result.error ?? t("unavailable"));
-          setInput(content);
-          return;
-        }
-        setOutput(result.output);
-        setRevealKey((value) => value + 1);
-        if (result.reply) append("assistant", result.reply);
-        setMobileMode("project");
-        return;
-      }
 
-      const result = await sendAssistantMessage(projectId, conversationId, content);
-      if (result.error) {
-        setNote(result.error);
-        setInput(content);
-        return;
+        const result = await sendAssistantMessage(projectId, conversationId, content);
+        if (result.error) {
+          setNote(result.error);
+          setInput(content);
+          return;
+        }
+        if (result.conversationId) setConversationId(result.conversationId);
+        if (result.reply) append("assistant", result.reply);
+        if (result.unavailableNote) setNote(result.unavailableNote);
+      } finally {
+        setIsEditingOutput(false);
       }
-      if (result.conversationId) setConversationId(result.conversationId);
-      if (result.reply) append("assistant", result.reply);
-      if (result.unavailableNote) setNote(result.unavailableNote);
     });
   }
 
@@ -179,7 +187,7 @@ export function PreOutputWorkspace({
                 ) : (
                   <p key={message.id} className="whitespace-pre-wrap text-[16px] leading-7 text-ink">{message.content}</p>
                 ))}
-                {isSending && <div className="flex items-center gap-3 text-sm text-ink-secondary" role="status"><span className="thinking-signal" aria-hidden><span /></span>{output ? t("editing") : t("thinking")}</div>}
+                {isSending && <div className="flex items-center gap-3 text-sm text-ink-secondary" role="status"><span className="thinking-signal" aria-hidden><span /></span>{isEditingOutput ? t("editing") : t("thinking")}</div>}
               </div>
             </div>
             <div className="shrink-0 bg-gradient-to-t from-canvas via-canvas/95 to-transparent px-4 pb-[calc(4.5rem+env(safe-area-inset-bottom))] pt-3 sm:px-7 md:pb-5">
