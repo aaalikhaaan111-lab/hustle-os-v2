@@ -11,6 +11,7 @@ import { saveStructuredFieldAction } from "@/lib/actions/build";
 import type { AssistantProposal } from "@/lib/actions/buildAi";
 import { FIELD_TO_LABELKEY, type StructuredField } from "@/lib/build/snapshot";
 import { STARTER_PROMPT_KEYS, type AssistantPhase } from "@/lib/build/assistantPrompts";
+import { cn } from "@/lib/utils";
 
 interface ChatMessage {
   id: string;
@@ -44,6 +45,7 @@ export interface AssistantChatProps {
   existingValues: Partial<Record<StructuredField, string>>;
   /** Called after a structured field is confirmed and persisted. */
   onFieldSaved: (field: StructuredField, value: string) => void;
+  variant?: "legacy" | "creator";
 }
 
 // The project assistant as an immersive conversation canvas: a wide, readable
@@ -58,6 +60,7 @@ export function AssistantChat({
   openingMessage,
   existingValues,
   onFieldSaved,
+  variant = "legacy",
 }: AssistantChatProps) {
   const t = useTranslations("build");
   const [conversationId, setConversationId] = useState<string | null>(initialConversationId);
@@ -187,11 +190,12 @@ export function AssistantChat({
 
   // 3 stage-relevant prompts, offered only while the conversation is empty so
   // they never become permanent generic chrome.
-  const starters = STARTER_PROMPT_KEYS[phase].slice(0, 3);
+  const creatorStarters = ["creatorStarterShape", "creatorStarterAudience", "creatorStarterFirstVersion"] as const;
+  const starters = variant === "creator" ? creatorStarters : STARTER_PROMPT_KEYS[phase].slice(0, 3);
   const isEmpty = messages.length === 0;
 
   return (
-    <div className="flex h-full min-h-0 flex-col">
+    <div className={cn("flex h-full min-h-0 flex-col", variant === "creator" && "creator-chat")}>
       {/* Conversation */}
       <div ref={scrollRef} onScroll={handleScroll} className="relative min-h-0 flex-1 overflow-y-auto">
         {!isEmpty && available && (
@@ -205,11 +209,11 @@ export function AssistantChat({
           </button>
         )}
 
-        <div className="mx-auto w-full max-w-2xl px-4 py-6 sm:py-8">
+        <div className="mx-auto w-full max-w-[720px] px-5 py-7 sm:px-7 sm:py-9">
           {!available ? (
             <p className="text-sm tracking-tight text-ink-secondary">{t("assistantUnavailable")}</p>
           ) : isEmpty ? (
-            <p className="animate-rise-in whitespace-pre-wrap text-[17px] font-medium leading-8 tracking-tight text-ink">
+            <p className={cn("animate-rise-in whitespace-pre-wrap text-[17px] font-medium leading-8 tracking-tight text-ink", variant === "creator" && "ventrio-display max-w-xl text-[clamp(1.35rem,3vw,2.15rem)] leading-[1.16]")}>
               {openingMessage}
             </p>
           ) : (
@@ -217,7 +221,7 @@ export function AssistantChat({
               {messages.map((m) =>
                 m.role === "user" ? (
                   <div key={m.id} className="animate-message-in flex justify-end">
-                    <div className="max-w-[85%] whitespace-pre-wrap rounded-2xl rounded-br-md bg-accent px-3.5 py-2 text-[15px] leading-relaxed text-accent-foreground shadow-[0_8px_24px_-10px_rgba(93,107,255,0.6)]">
+                    <div className="max-w-[85%] whitespace-pre-wrap rounded-[1.35rem] rounded-br-md bg-white/[0.075] px-4 py-2.5 text-[15px] leading-relaxed text-ink ring-1 ring-inset ring-white/[0.055]">
                       {m.content}
                     </div>
                   </div>
@@ -273,7 +277,7 @@ export function AssistantChat({
 
       {/* Composer */}
       <div className="shrink-0 bg-gradient-to-t from-canvas via-canvas/95 to-transparent">
-        <div className="mx-auto w-full max-w-2xl px-4 pt-2 pb-[calc(4.5rem+env(safe-area-inset-bottom))] md:pb-4">
+        <div className="mx-auto w-full max-w-[720px] px-4 pt-3 pb-[calc(4.5rem+env(safe-area-inset-bottom))] sm:px-7 md:pb-5">
           {isEmpty && available && (
             <div className="mb-2 flex flex-wrap gap-1.5">
               {starters.map((key) => (
@@ -282,7 +286,7 @@ export function AssistantChat({
                   type="button"
                   disabled={isSending}
                   onClick={() => submit(t(key as Parameters<typeof t>[0]))}
-                  className="rounded-full border border-border bg-surface/70 px-3 py-1.5 text-[13px] font-medium text-ink-secondary transition-colors hover:border-accent hover:text-accent disabled:opacity-60"
+                  className="quiet-action text-left disabled:opacity-50"
                 >
                   {t(key as Parameters<typeof t>[0])}
                 </button>
@@ -297,7 +301,7 @@ export function AssistantChat({
               e.preventDefault();
               submit(input);
             }}
-            className="flex items-end gap-2 rounded-2xl border border-border bg-surface/95 px-2.5 py-2 shadow-sm transition-colors focus-within:border-accent focus-within:ring-2 focus-within:ring-accent/25"
+            className="ventrio-composer"
           >
             <textarea
               ref={textareaRef}
@@ -312,13 +316,13 @@ export function AssistantChat({
                   submit(input);
                 }
               }}
-              className="max-h-40 min-h-[28px] flex-1 resize-none bg-transparent px-1.5 py-1 text-[15px] text-ink placeholder:text-ink-muted focus:outline-none disabled:opacity-60"
+              className="max-h-40 min-h-[34px] min-w-0 flex-1 resize-none bg-transparent px-2 py-1.5 text-[15px] leading-6 text-ink placeholder:text-ink-muted focus:outline-none disabled:opacity-60"
             />
             <button
               type="submit"
               aria-label={t("assistantSend")}
               disabled={isSending || !available || input.trim().length === 0}
-              className="mb-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-accent text-white transition-opacity hover:bg-accent-hover disabled:opacity-30"
+              className="composer-send press-scale focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-25"
             >
               <svg viewBox="0 0 20 20" fill="none" className="h-4 w-4" aria-hidden>
                 <path

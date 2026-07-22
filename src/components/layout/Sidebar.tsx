@@ -17,11 +17,11 @@ export function Sidebar() {
   const t = useTranslations("nav");
 
   return (
-    <aside className="fixed inset-y-0 left-0 z-20 hidden w-64 flex-col border-r border-white/[0.06] bg-surface/50 backdrop-blur-2xl md:flex">
-      <div className="flex h-16 items-center px-6">
-        <Wordmark className="text-base" />
+    <aside className="fixed inset-y-0 left-0 z-20 hidden w-52 flex-col border-r border-white/[0.045] bg-[#090a10]/55 backdrop-blur-2xl md:flex">
+      <div className="flex h-20 items-center px-7">
+        <Wordmark className="text-[15px] tracking-[-0.03em]" />
       </div>
-      <nav className="flex flex-1 flex-col gap-2 px-3 py-4">
+      <nav className="flex flex-1 flex-col gap-1 px-4 py-6">
         {NAV_ITEMS.map((item) => {
           const active = isActive(pathname, item.href);
           return (
@@ -30,16 +30,17 @@ export function Sidebar() {
               href={item.href}
               data-tour-nav={item.href}
               className={cn(
-                "flex items-center gap-3 rounded-2xl px-4 py-2.5 text-[15px] font-semibold tracking-tight transition-all duration-200 ease-out active:scale-[0.98]",
+                "group relative flex items-center gap-3 px-3 py-3 text-[13px] font-medium tracking-tight transition-all duration-200 ease-out active:scale-[0.985] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent",
                 active
-                  ? "bg-accent-soft text-accent shadow-[inset_0_0_0_1px_rgba(93,107,255,0.22)]"
-                  : "text-ink-secondary hover:bg-surface-hover hover:text-ink"
+                  ? "text-ink"
+                  : "text-ink-muted hover:text-ink"
               )}
             >
+              <span className={cn("absolute -left-4 h-5 w-px bg-accent transition-all duration-300", active ? "opacity-100" : "scale-y-0 opacity-0")} aria-hidden />
               <item.icon
                 className={cn(
-                  "h-5 w-5 transition-colors duration-150",
-                  active ? "text-accent" : "text-ink-muted"
+                  "h-[18px] w-[18px] transition-all duration-200",
+                  active ? "text-accent" : "text-ink-muted group-hover:text-ink-secondary"
                 )}
               />
               {t(item.labelKey)}
@@ -47,9 +48,7 @@ export function Sidebar() {
           );
         })}
       </nav>
-      <div className="border-t border-border/60 px-6 py-4 text-xs tracking-wide text-ink-muted">
-        v2 foundation
-      </div>
+      <div className="mx-7 mb-7 h-px bg-gradient-to-r from-white/[0.07] to-transparent" aria-hidden />
     </aside>
   );
 }

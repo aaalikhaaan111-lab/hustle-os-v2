@@ -24,7 +24,7 @@ export function AppMain({ children }: { children: ReactNode }) {
 
   if (immersive) {
     return (
-      <div className="relative z-10 md:pl-64">
+      <div className="relative z-10 md:pl-52">
         <main className="h-[100dvh] w-full overflow-hidden">{children}</main>
       </div>
     );
@@ -36,7 +36,7 @@ export function AppMain({ children }: { children: ReactNode }) {
         <Wordmark />
       </header>
 
-      <div className="relative z-10 md:pl-64">
+      <div className="relative z-10 md:pl-52">
         <main className="mx-auto w-full max-w-6xl px-4 pb-[calc(5rem+env(safe-area-inset-bottom))] pt-8 sm:px-6 sm:pt-12 md:pb-16 lg:px-8">
           <PageTransition>{children}</PageTransition>
         </main>

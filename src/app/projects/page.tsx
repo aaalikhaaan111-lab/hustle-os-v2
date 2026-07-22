@@ -1,90 +1,95 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
-import { PageHeader } from "@/components/ui/PageHeader";
-import { Button } from "@/components/ui/Button";
-import { Badge } from "@/components/ui/Badge";
-import { Card, CardContent } from "@/components/ui/Card";
-import { EmptyState } from "@/components/ui/EmptyState";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/supabase/currentUser";
 import { listProjects } from "@/lib/build/queries";
+import { parseSnapshotFields } from "@/lib/build/snapshot";
 import type { Database } from "@/types/supabase";
 
 type ProjectRow = Database["public"]["Tables"]["projects"]["Row"];
-type StatusLabelKey = "statusCompleted" | "statusDraft" | "statusActive";
+type ProjectStatusKey = "statusCompleted" | "statusReady" | "statusActive";
 
-// Stage 1 has only the base 'active'/'completed' statuses; the richer set
-// (published, paused, archived, …) arrives with later stages. Draft = an active
-// project with no progress yet.
-function statusFor(project: ProjectRow): { key: StatusLabelKey; variant: "accent" | "default" | "muted" } {
-  if (project.status === "completed") return { key: "statusCompleted", variant: "accent" };
-  if (project.progress === 0) return { key: "statusDraft", variant: "muted" };
-  return { key: "statusActive", variant: "default" };
+const TYPE_KEYS: Record<string, "typeDigitalProduct" | "typeService" | "typeContentMedia" | "typeCommunitySocial" | "typeOther"> = {
+  digital_product: "typeDigitalProduct",
+  service: "typeService",
+  content_media: "typeContentMedia",
+  community_social: "typeCommunitySocial",
+};
+
+function statusFor(project: ProjectRow): ProjectStatusKey {
+  if (project.status === "completed") return "statusCompleted";
+  if (project.current_stage === null && project.progress === 0 && project.intended_outcome === "first_version") {
+    return "statusReady";
+  }
+  return "statusActive";
 }
 
 export default async function ProjectsPage() {
   const supabase = await createClient();
   const user = await getCurrentUser(supabase);
+  if (!user) redirect("/login");
 
-  if (!user) {
-    redirect("/login");
-  }
-
-  const projects = await listProjects(supabase, user.id);
-  const t = await getTranslations("projects");
+  const [projects, t] = await Promise.all([
+    listProjects(supabase, user.id),
+    getTranslations("projects"),
+  ]);
 
   return (
-    <div className="flex flex-col gap-8">
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <PageHeader title={t("title")} description={t("description")} />
+    <div className="projects-collection mx-auto flex w-full max-w-5xl flex-col">
+      <header className="emergence flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-accent/75">{t("eyebrow")}</p>
+          <h1 className="ventrio-display mt-3 text-[clamp(2.7rem,8vw,5.7rem)] leading-[0.92] text-ink">{t("title")}</h1>
+          <p className="mt-4 max-w-xl text-sm leading-6 text-ink-secondary sm:text-base">{t("description")}</p>
+        </div>
         {projects.length > 0 && (
-          <Button href="/create" size="md">
-            {t("newProject")}
-          </Button>
+          <Link href="/create" className="primary-action w-fit shrink-0 focus-visible:outline-2 focus-visible:outline-offset-3 focus-visible:outline-accent">
+            <span aria-hidden>＋</span> {t("newProject")}
+          </Link>
         )}
-      </div>
+      </header>
 
       {projects.length === 0 ? (
-        <EmptyState
-          title={t("emptyTitle")}
-          description={t("emptyDescription")}
-          action={<Button href="/create" size="lg">{t("emptyCta")}</Button>}
-        />
+        <section className="emergence mt-16 flex min-h-[340px] flex-col items-center justify-center rounded-[2rem] border border-white/[0.055] bg-white/[0.018] px-6 text-center">
+          <span className="creation-orbit scale-75" aria-hidden><span /></span>
+          <h2 className="ventrio-display mt-7 text-3xl text-ink">{t("emptyTitle")}</h2>
+          <p className="mt-3 max-w-md text-sm leading-6 text-ink-secondary">{t("emptyDescription")}</p>
+          <Link href="/create" className="primary-action mt-7">{t("emptyCta")} <span aria-hidden>→</span></Link>
+        </section>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {projects.map((project) => {
+        <section className="mt-12 grid gap-3 sm:grid-cols-2 lg:grid-cols-3" aria-label={t("collectionLabel")}>
+          {projects.map((project, index) => {
+            const snapshot = parseSnapshotFields(project.snapshot_fields);
+            const concept = snapshot.solution ?? t("conceptFallback");
             const status = statusFor(project);
+            const typeKey = TYPE_KEYS[project.project_type] ?? "typeOther";
             return (
-              <Link key={project.id} href={`/projects/${project.id}`} className="group block">
-                <Card className="h-full">
-                  <CardContent className="flex h-full flex-col gap-3 py-6">
-                    <div className="flex items-start justify-between gap-3">
-                      <h2 className="min-w-0 flex-1 truncate text-base font-bold tracking-tight text-ink">
-                        {project.name || t("untitled")}
-                      </h2>
-                      <Badge variant={status.variant} className="shrink-0">
-                        {t(status.key)}
-                      </Badge>
-                    </div>
-                    <p className="text-sm text-ink-secondary">
-                      {t("progressLabel", { progress: project.progress })}
-                    </p>
-                    <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-white/[0.06]">
-                      <div
-                        className="h-full rounded-full bg-gradient-to-r from-accent to-accent-2 transition-all duration-300 ease-out"
-                        style={{ width: `${project.progress}%` }}
-                      />
-                    </div>
-                    <span className="mt-auto pt-2 text-sm font-semibold text-accent">
-                      {t("open")} →
-                    </span>
-                  </CardContent>
-                </Card>
+              <Link
+                key={project.id}
+                href={`/projects/${project.id}`}
+                className="project-collection-card group emergence focus-visible:outline-2 focus-visible:outline-offset-3 focus-visible:outline-accent"
+                style={{ animationDelay: `${Math.min(index, 8) * 65}ms` }}
+              >
+                <div className={`project-identity identity-${project.project_type}`} aria-hidden>
+                  <span />
+                </div>
+                <div className="flex items-center justify-between gap-3 text-[10px] font-semibold uppercase tracking-[0.15em] text-ink-muted">
+                  <span>{t(typeKey)}</span>
+                  <span className="inline-flex items-center gap-1.5"><i className="h-1 w-1 rounded-full bg-accent not-italic" />{t(status)}</span>
+                </div>
+                <div className="mt-8">
+                  <h2 className="ventrio-display truncate text-[1.7rem] leading-none text-ink">{project.name || t("untitled")}</h2>
+                  <p className="mt-3 line-clamp-3 text-sm leading-6 text-ink-secondary">{concept}</p>
+                </div>
+                <div className="mt-auto flex items-center justify-between pt-10 text-xs font-semibold text-ink-muted">
+                  <span>{t("open")}</span>
+                  <span className="transition-transform duration-300 group-hover:translate-x-1" aria-hidden>→</span>
+                </div>
               </Link>
             );
           })}
-        </div>
+        </section>
       )}
     </div>
   );

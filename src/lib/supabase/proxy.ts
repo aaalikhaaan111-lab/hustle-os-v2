@@ -60,15 +60,14 @@ export async function updateSession(request: NextRequest) {
   }
 
   if (user && isAuthRoute) {
-    // Onboarded users land on /projects (the new home); a genuinely new user
-    // who navigates back to /login or /signup while authenticated but not yet
-    // onboarded must land on /onboarding, never be routed past it.
+    // Returning users land on their collection; first-time users enter the
+    // canonical AI creation flow instead of the retired learning onboarding.
     const { data: profile } = await supabase
       .from("profiles")
       .select("onboarding_completed_at")
       .eq("id", user.id)
       .maybeSingle();
-    const destination = profile?.onboarding_completed_at ? "/projects" : "/onboarding";
+    const destination = profile?.onboarding_completed_at ? "/projects" : "/create";
     return NextResponse.redirect(new URL(destination, request.url));
   }
 

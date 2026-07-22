@@ -9,6 +9,7 @@ import {
   isV1Preset,
   isStartingPoint,
   startingStageFor,
+  type CreationChoice,
   type CreationDirection,
   type CreationMessage,
   type CreationStartingPoint,
@@ -25,7 +26,21 @@ const CREATION_SCHEMA = {
   properties: {
     phase: { type: "string", enum: ["ask", "propose"] },
     message: { type: "string" },
-    chips: { type: "array", items: { type: "string" } },
+    choices: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          id: { type: "string" },
+          title: { type: "string" },
+          description: { type: "string" },
+        },
+        required: ["id", "title", "description"],
+        additionalProperties: false,
+      },
+    },
+    choiceMode: { type: "string", enum: ["single", "multiple"] },
+    transition: { type: "string", enum: ["none", "focus", "reveal"] },
     directions: {
       type: "array",
       items: {
@@ -49,7 +64,7 @@ const CREATION_SCHEMA = {
       },
     },
   },
-  required: ["phase", "message", "chips", "directions"],
+  required: ["phase", "message", "choices", "choiceMode", "transition", "directions"],
   additionalProperties: false,
 };
 
@@ -61,12 +76,13 @@ HOW YOU TALK
 - Warm, concrete, and SHORT. Ask ONE question at a time. Never a wall of text.
 - Adapt to what they already said; never re-ask something you can infer.
 - Prefer concrete human questions ("Who could you show this to this week?") over jargon ("Who is your target market?").
-- Usually you need only 2–4 short exchanges before proposing directions.
+- Usually you need only 2–4 meaningful user interactions before proposing directions. If the opening message already contains an interest/skill and a medium or audience clue, ask at most one focused question before proposing.
 
 CHOOSE A PHASE EACH TURN
-- "ask": you still need ONE key thing (what they enjoy or can do, who they can realistically reach, or the specific problem). Put your one short question in "message". You MAY offer up to 5 short tap-friendly quick-reply "chips". Leave "directions" empty.
-- "propose": you have enough. Put a one-line lead-in in "message" and 2–3 (never more, never fewer than 2) realistic directions in "directions". Leave "chips" empty.
-- If the user is unsure, use "ask" with broad interest chips (creating things, helping people, technology, sports, money/business, media/content, communities/events, researching how things work), then narrow.
+- "ask": you still need ONE key thing (what they enjoy or can do, who they can realistically reach, or the specific problem). Put your one short question in "message". When common answers exist, ALWAYS offer 3–5 contextual choices. Each choice needs a stable lowercase id, a short title, and an optional one-line description (use an empty string when no description helps). Choose "single" normally and "multiple" only when combining answers genuinely helps. Leave "directions" empty.
+- "propose": you have enough. Put a one-line lead-in such as "I see three directions worth building." in "message" and 2–3 (never more, never fewer than 2) realistic directions in "directions". Leave "choices" empty and use "single".
+- If the user is unsure, do not answer with only "tell me your interests". Make discovery easier with broad but evocative choices such as making things people watch, helping someone improve, building a useful tool, bringing people together, or exploring how something works. Narrow once, then propose.
+- transition describes how the native UI should settle: "none" for an ordinary question, "focus" when the question narrows a promising theme, and "reveal" only with proposed directions.
 
 EVERY DIRECTION MUST BE REALISTIC FOR THIS PERSON: match their skill, the people they can actually reach, their time, and their ability to make a first version. Make ambitious ideas smaller and executable — never "the next Uber for X". Never invent facts about them or their results.
 
@@ -81,7 +97,9 @@ For each direction:
 - audience: the target audience, a few words.
 - niche: a 1–3 word topic tag.
 
-Write ALL text (message, chips, and every direction field) in ${language}. Respond only with the requested JSON.`;
+Never use placeholder names such as "Untitled project", "My project", or their translated equivalents. Every direction needs a concise, memorable name grounded in its concept.
+
+Write ALL user-visible text (message, choice titles/descriptions, and every direction field) in ${language}. Respond only with the requested JSON.`;
 }
 
 export type CreationTurnResult =
@@ -95,9 +113,22 @@ function sanitizeTurn(parsed: unknown): CreationTurn | null {
   const message = typeof c.message === "string" ? c.message.trim() : "";
   if (message.length === 0) return null;
 
-  const chips = Array.isArray(c.chips)
-    ? c.chips.filter((x): x is string => typeof x === "string" && x.trim().length > 0).slice(0, 6).map((x) => x.trim().slice(0, 60))
-    : [];
+  const rawChoices = Array.isArray(c.choices) ? c.choices : [];
+  const choices: CreationChoice[] = [];
+  const usedChoiceIds = new Set<string>();
+  for (const entry of rawChoices.slice(0, 6)) {
+    if (!entry || typeof entry !== "object") continue;
+    const choice = entry as Record<string, unknown>;
+    const rawId = typeof choice.id === "string" ? choice.id.trim().toLowerCase() : "";
+    const id = rawId.replace(/[^a-z0-9_-]/g, "-").replace(/-+/g, "-").slice(0, CREATION_LIMITS.choiceId);
+    const title = typeof choice.title === "string" ? choice.title.trim().slice(0, CREATION_LIMITS.choiceTitle) : "";
+    const description = typeof choice.description === "string"
+      ? choice.description.trim().slice(0, CREATION_LIMITS.choiceDescription)
+      : "";
+    if (!id || !title || usedChoiceIds.has(id)) continue;
+    usedChoiceIds.add(id);
+    choices.push(description ? { id, title, description } : { id, title });
+  }
 
   const rawDirections = Array.isArray(c.directions) ? c.directions : [];
   const directions: CreationDirection[] = [];
@@ -121,9 +152,23 @@ function sanitizeTurn(parsed: unknown): CreationTurn | null {
   if (c.phase === "propose") {
     // A propose turn is only valid with 2–3 real directions.
     if (directions.length < 2) return null;
-    return { phase: "propose", message, chips: [], directions: directions.slice(0, 3) };
+    return {
+      phase: "propose",
+      message,
+      choices: [],
+      choiceMode: "single",
+      directions: directions.slice(0, 3),
+      transition: "reveal",
+    };
   }
-  return { phase: "ask", message, chips, directions: [] };
+  return {
+    phase: "ask",
+    message,
+    choices,
+    choiceMode: c.choiceMode === "multiple" ? "multiple" : "single",
+    directions: [],
+    transition: c.transition === "focus" ? "focus" : "none",
+  };
 }
 
 /**
@@ -196,6 +241,39 @@ function compactCreationSummary(
     : `Created via the AI creation flow. Starting point: ${startedFrom}. Direction: ${direction.name} — ${direction.concept} For: ${direction.forWho}. Problem/desire: ${direction.problem} Why it fits: ${direction.whyFits} Preset: ${direction.projectType}. Next step is to create the first version.`;
 }
 
+const PLACEHOLDER_PROJECT_NAMES = new Set([
+  "untitled",
+  "untitled project",
+  "my project",
+  "new project",
+  "project",
+  "без названия",
+  "проект без названия",
+  "мой проект",
+  "новый проект",
+  "проект",
+]);
+
+function meaningfulProjectName(rawName: unknown, concept: string): string {
+  const supplied = typeof rawName === "string" ? rawName.trim().slice(0, CREATION_LIMITS.name) : "";
+  if (supplied.length >= 2 && !PLACEHOLDER_PROJECT_NAMES.has(supplied.toLocaleLowerCase())) {
+    return supplied;
+  }
+
+  const conceptLead = concept
+    .split(/[.!?\n:—–-]/, 1)[0]
+    .trim()
+    .split(/\s+/)
+    .slice(0, 6)
+    .join(" ")
+    .slice(0, CREATION_LIMITS.name);
+
+  if (conceptLead.length >= 2) {
+    return conceptLead.charAt(0).toLocaleUpperCase() + conceptLead.slice(1);
+  }
+  return "Ventrio Project";
+}
+
 /**
  * Creates a real project from a user-chosen direction. Unlike the legacy
  * createProjectAction this does NOT generate a roadmap/tasks — the new-flow
@@ -215,14 +293,29 @@ export async function createProjectFromDirectionAction(
   if (!direction || typeof direction !== "object" || !isV1Preset(direction.projectType)) {
     return { error: t("errorInvalid") };
   }
-  const name = (direction.name ?? "").trim().slice(0, CREATION_LIMITS.name);
   const concept = (direction.concept ?? "").trim().slice(0, CREATION_LIMITS.text);
+  const name = meaningfulProjectName(direction.name, concept);
+  const forWho = (direction.forWho ?? "").trim().slice(0, CREATION_LIMITS.text);
+  const creates = (direction.creates ?? "").trim().slice(0, CREATION_LIMITS.text);
+  const whyFits = (direction.whyFits ?? "").trim().slice(0, CREATION_LIMITS.text);
   const problem = (direction.problem ?? "").trim().slice(0, CREATION_LIMITS.text);
   const audience = (direction.audience ?? "").trim().slice(0, CREATION_LIMITS.audience);
   const niche = (direction.niche ?? "").trim().slice(0, CREATION_LIMITS.niche) || "other";
-  if (!name || !concept) {
+  if (!concept || !forWho || !creates || !whyFits || !problem || !audience) {
     return { error: t("errorInvalid") };
   }
+
+  const cleanDirection: CreationDirection = {
+    ...direction,
+    name,
+    concept,
+    forWho,
+    creates,
+    whyFits,
+    problem,
+    audience,
+    niche,
+  };
 
   const point: CreationStartingPoint | null = isStartingPoint(opts.startingPoint) ? opts.startingPoint : null;
 
@@ -240,7 +333,7 @@ export async function createProjectFromDirectionAction(
     .from("projects")
     .insert({
       user_id: user.id,
-      name,
+      name: cleanDirection.name,
       project_type: direction.projectType,
       niche,
       starting_stage: startingStageFor(point),
@@ -260,7 +353,7 @@ export async function createProjectFromDirectionAction(
   // Best-effort: persist the direction context so the workspace + mentor open
   // with it. A missing snapshot_fields column (unmigrated) must not fail
   // creation — the project is already saved.
-  const snapshotFields: Record<string, string> = { solution: concept };
+  const snapshotFields: Record<string, string> = { solution: cleanDirection.concept };
   if (problem) snapshotFields.problem = problem;
   if (audience) snapshotFields.audience = audience;
   await supabase.from("projects").update({ snapshot_fields: snapshotFields }).eq("id", project.id);
@@ -270,7 +363,7 @@ export async function createProjectFromDirectionAction(
   await supabase
     .from("project_ai_memory")
     .upsert(
-      { project_id: project.id, user_id: user.id, summary: compactCreationSummary(direction, point, locale) },
+      { project_id: project.id, user_id: user.id, summary: compactCreationSummary(cleanDirection, point, locale) },
       { onConflict: "project_id" }
     );
 

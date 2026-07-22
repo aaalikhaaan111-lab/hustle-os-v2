@@ -5,6 +5,7 @@ import type { AssistantMessage } from "@/lib/actions/assistant";
 import type { AssistantPhase } from "@/lib/build/assistantPrompts";
 import type { SnapshotRow, StructuredField } from "@/lib/build/snapshot";
 import { AssistantChat } from "@/components/build/AssistantChat";
+import { PreOutputWorkspace } from "@/components/build/PreOutputWorkspace";
 import { ProjectHeaderBar, type ContextMode } from "@/components/build/ProjectHeaderBar";
 import { ContextOverlay } from "@/components/build/ContextOverlay";
 import type { RoadmapStage } from "@/components/build/RoadmapPanel";
@@ -12,6 +13,8 @@ import type { RoadmapStage } from "@/components/build/RoadmapPanel";
 export interface WorkspaceViewProps {
   projectId: string;
   projectName: string;
+  projectConcept: string | null;
+  projectAudience: string | null;
   stageLabel: string;
   languageLabel: string;
   progress: number;
@@ -66,6 +69,20 @@ export function WorkspaceView(props: WorkspaceViewProps) {
   function handleFieldSaved(field: StructuredField, value: string) {
     setSnapshot((prev) =>
       prev.map((row) => (row.field === field ? { ...row, value, source: "assistant" } : row))
+    );
+  }
+
+  if (props.awaitingFirstVersion) {
+    return (
+      <PreOutputWorkspace
+        projectId={props.projectId}
+        projectName={props.projectName}
+        projectConcept={props.projectConcept}
+        projectAudience={props.projectAudience}
+        snapshot={snapshot}
+        assistant={props.assistant}
+        openingMessage={props.openingMessage}
+      />
     );
   }
 

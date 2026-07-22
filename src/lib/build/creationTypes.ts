@@ -60,13 +60,26 @@ export interface CreationDirection {
   niche: string; // short free-text topic/skill (persisted)
 }
 
+// Contextual controls are model-selected but rendered through a fixed,
+// allowlisted client component. The model supplies content only, never markup.
+export interface CreationChoice {
+  id: string;
+  title: string;
+  description?: string;
+}
+
+export type CreationChoiceMode = "single" | "multiple";
+export type CreationTransition = "none" | "focus" | "reveal";
+
 // One turn of the creation AI: either a follow-up question (with optional quick
-// chips) or a set of 2–3 proposed directions.
+// choices) or a set of 2–3 proposed directions.
 export interface CreationTurn {
   phase: "ask" | "propose";
   message: string;
-  chips: string[];
+  choices: CreationChoice[];
+  choiceMode: CreationChoiceMode;
   directions: CreationDirection[];
+  transition: CreationTransition;
 }
 
 export interface CreationMessage {
@@ -82,4 +95,7 @@ export const CREATION_LIMITS = {
   audience: 200,
   text: 600,
   niche: 80,
+  choiceId: 48,
+  choiceTitle: 80,
+  choiceDescription: 180,
 } as const;

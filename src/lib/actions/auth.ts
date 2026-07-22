@@ -52,7 +52,7 @@ export async function loginAction(
 
   await syncLocaleCookieAfterLogin(supabase, data.user.id);
 
-  redirect(profile?.onboarding_completed_at ? "/dashboard" : "/onboarding");
+  redirect(profile?.onboarding_completed_at ? "/projects" : "/create");
 }
 
 export async function signupAction(
@@ -78,7 +78,7 @@ export async function signupAction(
     email,
     password,
     options: {
-      emailRedirectTo: buildRedirectUrl("/auth/callback?next=/onboarding"),
+      emailRedirectTo: buildRedirectUrl("/auth/callback?next=/create"),
     },
   });
 
@@ -88,7 +88,7 @@ export async function signupAction(
 
   if (data.session && data.user) {
     await syncLocaleCookieAfterLogin(supabase, data.user.id);
-    redirect("/onboarding");
+    redirect("/create");
   }
 
   return { error: null, success: true, email };
@@ -110,7 +110,7 @@ export async function resendConfirmationEmailAction(
     type: "signup",
     email,
     options: {
-      emailRedirectTo: buildRedirectUrl("/auth/callback?next=/onboarding"),
+      emailRedirectTo: buildRedirectUrl("/auth/callback?next=/create"),
     },
   });
 
@@ -161,5 +161,5 @@ export async function devAutoLoginAction(): Promise<AuthActionState> {
 
   await syncLocaleCookieAfterLogin(supabase, data.user.id);
 
-  redirect(profile?.onboarding_completed_at ? "/dashboard" : "/onboarding");
+  redirect(profile?.onboarding_completed_at ? "/projects" : "/create");
 }

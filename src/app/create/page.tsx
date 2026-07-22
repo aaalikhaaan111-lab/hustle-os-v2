@@ -3,8 +3,8 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/supabase/currentUser";
 import { CreateExperience } from "@/components/create/CreateExperience";
 
-// The AI-first creation experience. Replaces the temporary Stage 1 bridge (the
-// old ProjectCreateForm + /build/new stay as legacy for backward compatibility).
+// The AI-first creation experience. /build/new redirects here so the retired
+// questionnaire can no longer become a user's primary creation path.
 // Multiple projects are allowed, so /create always starts a fresh conversation.
 export default async function CreatePage() {
   const supabase = await createClient();

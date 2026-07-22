@@ -8,11 +8,9 @@ import { NAV_ITEMS } from "@/lib/constants";
 import { useGameProgress } from "@/lib/game-progress/GameProgressContext";
 import { readTourState, writeTourState, type TourState } from "@/lib/tour/tourStorage";
 
-const TOUR_MESSAGE_KEYS: Record<string, "dashboardMessage" | "learnMessage" | "buildMessage" | "workshopsMessage" | "profileMessage"> = {
-  "/dashboard": "dashboardMessage",
-  "/courses": "learnMessage",
-  "/build": "buildMessage",
-  "/workshops": "workshopsMessage",
+const TOUR_MESSAGE_KEYS: Record<string, "createMessage" | "projectsMessage" | "profileMessage"> = {
+  "/create": "createMessage",
+  "/projects": "projectsMessage",
   "/profile": "profileMessage",
 };
 
@@ -175,12 +173,7 @@ export function ProductTour() {
     );
   }
 
-  // Phase 3 — closing offer to create the first Build project (the primary
-  // product loop). Choosing either option marks the tour complete, so it
-  // never nags on a later visit. Routing to /build/new lets the existing
-  // Build guards do the right thing: a user with an active project is sent to
-  // their workspace, a brand-new user (or one with only a completed project)
-  // lands on the creation flow.
+  // Phase 3 — closing offer to enter the canonical AI creation flow.
   if (stage === "offer") {
     return (
       <CenteredCard ariaLabel={t("offerTitle")}>
@@ -196,7 +189,7 @@ export function ProductTour() {
               size="sm"
               onClick={() => {
                 closeTour();
-                router.push("/build/new");
+                router.push("/create");
               }}
             >
               {t("offerStart")}

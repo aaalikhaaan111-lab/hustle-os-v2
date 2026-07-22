@@ -93,7 +93,11 @@ export async function buildWorkspaceViewProps(
   // flow (the legacy flow always generates tasks). It hasn't produced its first
   // version yet, so the workspace acknowledges the created direction and offers
   // the Stage 3 handoff instead of a roadmap.
-  const awaitingFirstVersion = tasks.length === 0;
+  const awaitingFirstVersion =
+    tasks.length === 0 &&
+    project.current_stage === null &&
+    project.progress === 0 &&
+    project.intended_outcome === "first_version";
 
   // Deterministic, project-specific greeting for the empty conversation.
   let openingMessage: string;
@@ -111,6 +115,8 @@ export async function buildWorkspaceViewProps(
   return {
     projectId: project.id,
     projectName,
+    projectConcept: savedFields.solution ?? null,
+    projectAudience: savedFields.audience ?? project.target_audience ?? null,
     stageLabel,
     languageLabel,
     progress: project.progress,

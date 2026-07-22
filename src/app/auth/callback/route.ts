@@ -38,11 +38,9 @@ export async function GET(request: NextRequest) {
 
   await syncLocaleCookieAfterLogin(supabase, data.user.id);
 
-  // A completed user always lands on the dashboard, regardless of `next` —
-  // that param only exists to route brand-new signups into onboarding, and
-  // trusting it unconditionally would let a stale confirmation link send an
-  // already-onboarded user back into onboarding.
+  // Returning users resume their project collection; first-time users enter
+  // the AI creation environment rather than the retired learning onboarding.
   const safeNext = isSafeRedirectPath(requestedNext) ? requestedNext : null;
-  const destination = profile?.onboarding_completed_at ? "/dashboard" : (safeNext ?? "/onboarding");
+  const destination = profile?.onboarding_completed_at ? "/projects" : (safeNext ?? "/create");
   return NextResponse.redirect(`${origin}${destination}`);
 }
