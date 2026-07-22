@@ -4,13 +4,16 @@ import { forwardRef, useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import {
-  createProjectFromDirectionAction,
+  discardCreationDraftAction,
+  ensureCreationDraftAction,
   generateCreationTurnAction,
+  selectCreationDirectionAction,
 } from "@/lib/actions/creation";
 import {
   type CreationChoice,
   type CreationDirection,
   type CreationMessage,
+  type PersistedCreationDraft,
   type CreationStartingPoint,
   type CreationTurn,
 } from "@/lib/build/creationTypes";
@@ -31,34 +34,31 @@ const STARTING_POINTS: {
 
 interface CreateExperienceProps {
   userId: string;
+  initialDraft: PersistedCreationDraft | null;
 }
 
-interface CreationDraft {
-  v: 2;
-  messages: CreationMessage[];
-  turn: CreationTurn | null;
-  startingPoint: CreationStartingPoint | null;
-}
+type CreationPhase = "idle" | "resetting" | "persisting" | "handoff";
 
-type CreationPhase = "idle" | "persisting" | "handoff";
-
-export function CreateExperience({ userId }: CreateExperienceProps) {
+export function CreateExperience({ userId, initialDraft }: CreateExperienceProps) {
   const t = useTranslations("create");
   const locale = useLocale();
   const router = useRouter();
-  // Language is part of the draft identity so switching locale can never mix
-  // English and Russian conversation turns in one creation session.
-  const storageKey = `ventrio:create:${userId}:${locale}`;
+  // Local storage remembers only the opaque idempotency token. The real draft,
+  // conversation, and AI turn live in Supabase and are loaded by the page.
+  const storageKey = `ventrio:create-session:${userId}:${locale}`;
 
-  const [messages, setMessages] = useState<CreationMessage[]>([]);
-  const [turn, setTurn] = useState<CreationTurn | null>(null);
-  const [startingPoint, setStartingPoint] = useState<CreationStartingPoint | null>(null);
+  const [messages, setMessages] = useState<CreationMessage[]>(initialDraft?.messages ?? []);
+  const [turn, setTurn] = useState<CreationTurn | null>(initialDraft?.turn ?? null);
+  const [startingPoint, setStartingPoint] = useState<CreationStartingPoint | null>(initialDraft?.startingPoint ?? null);
+  const [sessionId, setSessionId] = useState<string | null>(initialDraft?.sessionId ?? null);
+  const [projectId, setProjectId] = useState<string | null>(initialDraft?.projectId ?? null);
+  const [conversationId, setConversationId] = useState<string | null>(initialDraft?.conversationId ?? null);
+  const [pendingRequestId, setPendingRequestId] = useState<string | null>(null);
   const [input, setInput] = useState("");
   const [note, setNote] = useState<string | null>(null);
   const [selectedDirection, setSelectedDirection] = useState<number | null>(null);
   const [selectedChoices, setSelectedChoices] = useState<string[]>([]);
   const [creationPhase, setCreationPhase] = useState<CreationPhase>("idle");
-  const [hydrated, setHydrated] = useState(false);
   const [isSending, startSending] = useTransition();
 
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -66,47 +66,26 @@ export function CreateExperience({ userId }: CreateExperienceProps) {
   const started = messages.length > 0;
   const creating = creationPhase !== "idle";
 
-  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     try {
-      const raw = window.localStorage.getItem(storageKey);
-      if (raw) {
-        const draft = JSON.parse(raw) as CreationDraft;
-        if (draft?.v === 2 && Array.isArray(draft.messages)) {
-          setMessages(draft.messages);
-          setTurn(draft.turn ?? null);
-          setStartingPoint(draft.startingPoint ?? null);
-        }
-      }
+      if (initialDraft?.sessionId) window.localStorage.setItem(storageKey, initialDraft.sessionId);
     } catch {
-      // A malformed or obsolete draft should never block a fresh start.
+      // Server persistence remains authoritative when storage is unavailable.
     }
-    setHydrated(true);
-  }, [storageKey]);
-  /* eslint-enable react-hooks/set-state-in-effect */
+  }, [initialDraft?.sessionId, storageKey]);
 
   useEffect(() => {
-    if (!hydrated) return;
-    try {
-      if (messages.length === 0) {
-        window.localStorage.removeItem(storageKey);
-      } else {
-        const draft: CreationDraft = { v: 2, messages, turn, startingPoint };
-        window.localStorage.setItem(storageKey, JSON.stringify(draft));
-      }
-    } catch {
-      // Private browsing and exhausted storage are safe degraded states.
+    if (!started) {
+      scrollRef.current?.scrollTo({ top: 0 });
+      return;
     }
-  }, [hydrated, messages, startingPoint, storageKey, turn]);
-
-  useEffect(() => {
     requestAnimationFrame(() => {
       scrollRef.current?.scrollTo({
         top: scrollRef.current.scrollHeight,
         behavior: "smooth",
       });
     });
-  }, [isSending, messages, turn]);
+  }, [isSending, messages, started, turn]);
 
   useEffect(() => {
     const el = textareaRef.current;
@@ -115,12 +94,44 @@ export function CreateExperience({ userId }: CreateExperienceProps) {
     el.style.height = `${Math.min(el.scrollHeight, 144)}px`;
   }, [input]);
 
-  function runTurn(history: CreationMessage[]) {
+  function getOrCreateSessionId(): string {
+    if (sessionId) return sessionId;
+    let next: string | null = null;
+    try {
+      next = window.localStorage.getItem(storageKey);
+    } catch {
+      // Fall through to a new id.
+    }
+    if (!next) next = crypto.randomUUID();
+    setSessionId(next);
+    try {
+      window.localStorage.setItem(storageKey, next);
+    } catch {
+      // The deterministic token still lives in component state.
+    }
+    return next;
+  }
+
+  function runTurn(content: string, point: CreationStartingPoint | null, requestId: string) {
     setNote(null);
     setSelectedChoices([]);
     startSending(async () => {
       try {
-        const result = await generateCreationTurnAction(history, locale);
+        const activeSessionId = getOrCreateSessionId();
+        let activeProjectId = projectId;
+        let activeConversationId = conversationId;
+        if (!activeProjectId || !activeConversationId) {
+          const ensured = await ensureCreationDraftAction(activeSessionId, point);
+          if (ensured.error || !ensured.projectId || !ensured.conversationId) {
+            setNote(ensured.error ?? t("errorSaveFailed"));
+            return;
+          }
+          activeProjectId = ensured.projectId;
+          activeConversationId = ensured.conversationId;
+          setProjectId(activeProjectId);
+          setConversationId(activeConversationId);
+        }
+        const result = await generateCreationTurnAction(activeProjectId, activeConversationId, requestId, content);
         if (!result.ok) {
           setNote(t("unavailable"));
           return;
@@ -130,6 +141,7 @@ export function CreateExperience({ userId }: CreateExperienceProps) {
           ...previous,
           { role: "assistant", content: result.turn.message },
         ]);
+        setPendingRequestId(null);
       } catch {
         setNote(t("unavailable"));
       }
@@ -140,21 +152,32 @@ export function CreateExperience({ userId }: CreateExperienceProps) {
     const trimmed = text.trim();
     if (!trimmed || isSending || creating) return;
     const next: CreationMessage[] = [...messages, { role: "user", content: trimmed }];
+    const requestId = crypto.randomUUID();
     setMessages(next);
     setInput("");
     setTurn(null);
-    runTurn(next);
+    setPendingRequestId(requestId);
+    runTurn(trimmed, startingPoint, requestId);
   }
 
   function retry() {
     if (isSending || creating || messages.length === 0) return;
-    runTurn(messages);
+    const latestUser = [...messages].reverse().find((message) => message.role === "user");
+    if (!latestUser) return;
+    const requestId = pendingRequestId ?? crypto.randomUUID();
+    setPendingRequestId(requestId);
+    runTurn(latestUser.content, startingPoint, requestId);
   }
 
   function pickStartingPoint(point: (typeof STARTING_POINTS)[number]) {
     if (isSending || creating) return;
     setStartingPoint(point.id);
-    send(t(point.msgKey));
+    const message = t(point.msgKey);
+    const requestId = crypto.randomUUID();
+    setMessages([{ role: "user", content: message }]);
+    setTurn(null);
+    setPendingRequestId(requestId);
+    runTurn(message, point.id, requestId);
   }
 
   function pickChoice(choice: CreationChoice) {
@@ -180,14 +203,14 @@ export function CreateExperience({ userId }: CreateExperienceProps) {
   }
 
   function chooseDirection(direction: CreationDirection, index: number) {
-    if (creating || isSending) return;
+    if (creating || isSending || !projectId) return;
     setSelectedDirection(index);
     setCreationPhase("persisting");
     setNote(null);
 
     void (async () => {
       try {
-        const result = await createProjectFromDirectionAction(direction, { startingPoint });
+        const result = await selectCreationDirectionAction(projectId, direction, startingPoint);
         if (result.error || !result.projectId) {
           setCreationPhase("idle");
           setSelectedDirection(null);
@@ -209,6 +232,39 @@ export function CreateExperience({ userId }: CreateExperienceProps) {
     })();
   }
 
+  function startOver() {
+    if (isSending || creating) return;
+    setCreationPhase("resetting");
+    setNote(null);
+    void (async () => {
+      try {
+        if (projectId) {
+          const result = await discardCreationDraftAction(projectId);
+          if (result.error) {
+            setNote(result.error);
+            setCreationPhase("idle");
+            return;
+          }
+        }
+        try { window.localStorage.removeItem(storageKey); } catch { /* no-op */ }
+        setMessages([]);
+        setTurn(null);
+        setStartingPoint(null);
+        setSelectedChoices([]);
+        setSelectedDirection(null);
+        setSessionId(null);
+        setProjectId(null);
+        setConversationId(null);
+        setPendingRequestId(null);
+        setCreationPhase("idle");
+        router.refresh();
+      } catch {
+        setNote(t("errorSaveFailed"));
+        setCreationPhase("idle");
+      }
+    })();
+  }
+
   const showDirections = turn?.phase === "propose" && turn.directions.length > 0;
   const showChoices = turn?.phase === "ask" && turn.choices.length > 0;
 
@@ -226,13 +282,7 @@ export function CreateExperience({ userId }: CreateExperienceProps) {
         {started && (
           <button
             type="button"
-            onClick={() => {
-              setMessages([]);
-              setTurn(null);
-              setStartingPoint(null);
-              setSelectedChoices([]);
-              setNote(null);
-            }}
+            onClick={startOver}
             disabled={isSending || creating}
             className="rounded-full px-3 py-1.5 text-xs font-medium text-ink-muted transition-colors hover:bg-white/[0.04] hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-40"
           >

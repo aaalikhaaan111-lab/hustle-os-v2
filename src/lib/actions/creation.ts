@@ -1,25 +1,33 @@
 "use server";
 
+import { createHash } from "node:crypto";
 import Anthropic from "@anthropic-ai/sdk";
+import { revalidatePath } from "next/cache";
 import { getLocale, getTranslations } from "next-intl/server";
 import type { Locale } from "@/i18n/locale";
 import { createClient } from "@/lib/supabase/server";
 import {
   CREATION_LIMITS,
-  isV1Preset,
   isStartingPoint,
+  sanitizeCreationDirection,
+  sanitizeCreationTurn,
   startingStageFor,
-  type CreationChoice,
   type CreationDirection,
   type CreationMessage,
   type CreationStartingPoint,
   type CreationTurn,
+  type PersistedCreationDraft,
   V1_PRESETS,
 } from "@/lib/build/creationTypes";
+import {
+  STAGE3_VERSION,
+  mergeStage3ProjectState,
+  parseStage3ProjectState,
+  type Stage3ProjectState,
+} from "@/lib/build/stage3Types";
 
-// ============================================================================
-// Creation AI — one structured turn
-// ============================================================================
+const TOKEN_PATTERN = /^[a-zA-Z0-9_-]{8,80}$/;
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 const CREATION_SCHEMA = {
   type: "object",
@@ -30,11 +38,7 @@ const CREATION_SCHEMA = {
       type: "array",
       items: {
         type: "object",
-        properties: {
-          id: { type: "string" },
-          title: { type: "string" },
-          description: { type: "string" },
-        },
+        properties: { id: { type: "string" }, title: { type: "string" }, description: { type: "string" } },
         required: ["id", "title", "description"],
         additionalProperties: false,
       },
@@ -46,20 +50,12 @@ const CREATION_SCHEMA = {
       items: {
         type: "object",
         properties: {
-          name: { type: "string" },
-          concept: { type: "string" },
-          forWho: { type: "string" },
-          creates: { type: "string" },
-          whyFits: { type: "string" },
-          projectType: { type: "string", enum: [...V1_PRESETS] },
-          problem: { type: "string" },
-          audience: { type: "string" },
-          niche: { type: "string" },
+          name: { type: "string" }, concept: { type: "string" }, forWho: { type: "string" },
+          creates: { type: "string" }, whyFits: { type: "string" },
+          projectType: { type: "string", enum: [...V1_PRESETS] }, problem: { type: "string" },
+          audience: { type: "string" }, niche: { type: "string" },
         },
-        required: [
-          "name", "concept", "forWho", "creates", "whyFits",
-          "projectType", "problem", "audience", "niche",
-        ],
+        required: ["name", "concept", "forWho", "creates", "whyFits", "projectType", "problem", "audience", "niche"],
         additionalProperties: false,
       },
     },
@@ -70,302 +66,363 @@ const CREATION_SCHEMA = {
 
 function creationSystemPrompt(locale: Locale | string): string {
   const language = locale === "ru" ? "Russian" : "English";
-  return `You are Ventrio's project creation guide. A young person just told you what they care about. Your ONLY job is: understand them, narrow the possibilities, and propose a realistic project you will then help them create. You are not a mentor, a teacher, or a general chatbot. You never lecture, never give "research the market" advice, and never write essays.
+  return `You are Ventrio's project creation guide. A young person just told you what they care about. Your only job is to understand them, narrow the possibilities, and propose a realistic project Ventrio can create. Never lecture, give homework, or provide a plan.
 
-HOW YOU TALK
-- Warm, concrete, and SHORT. Ask ONE question at a time. Never a wall of text.
-- Adapt to what they already said; never re-ask something you can infer.
-- Prefer concrete human questions ("Who could you show this to this week?") over jargon ("Who is your target market?").
-- Usually you need only 2–4 meaningful user interactions before proposing directions. If the opening message already contains an interest/skill and a medium or audience clue, ask at most one focused question before proposing.
+- Be warm, concrete, and short. Ask one question at a time.
+- Never re-ask something already known. Prefer human questions over business jargon.
+- Use only 2-4 meaningful user interactions before proposing. If the opening already includes an interest/skill plus a medium or audience clue, ask at most one focused question.
+- For "ask", include 3-5 contextual choices whenever common answers exist. Use "multiple" only when combining answers helps. Leave directions empty.
+- If the user is unsure, offer evocative discovery choices instead of asking them to list interests.
+- For "propose", return 2-3 realistic directions and no choices. Each direction needs a memorable non-placeholder name, a one-sentence concept, specific audience, concrete first thing Ventrio will create, a grounded reason it fits, problem/desire, short niche, and exactly one preset: community_social, service, content_media, or digital_product.
+- Use transition "focus" only when narrowing and "reveal" only for proposals.
+- Match the person's skill, reachable people, time, and ability. Never invent traction or results.
 
-CHOOSE A PHASE EACH TURN
-- "ask": you still need ONE key thing (what they enjoy or can do, who they can realistically reach, or the specific problem). Put your one short question in "message". When common answers exist, ALWAYS offer 3–5 contextual choices. Each choice needs a stable lowercase id, a short title, and an optional one-line description (use an empty string when no description helps). Choose "single" normally and "multiple" only when combining answers genuinely helps. Leave "directions" empty.
-- "propose": you have enough. Put a one-line lead-in such as "I see three directions worth building." in "message" and 2–3 (never more, never fewer than 2) realistic directions in "directions". Leave "choices" empty and use "single".
-- If the user is unsure, do not answer with only "tell me your interests". Make discovery easier with broad but evocative choices such as making things people watch, helping someone improve, building a useful tool, bringing people together, or exploring how something works. Narrow once, then propose.
-- transition describes how the native UI should settle: "none" for an ordinary question, "focus" when the question narrows a promising theme, and "reveal" only with proposed directions.
-
-EVERY DIRECTION MUST BE REALISTIC FOR THIS PERSON: match their skill, the people they can actually reach, their time, and their ability to make a first version. Make ambitious ideas smaller and executable — never "the next Uber for X". Never invent facts about them or their results.
-
-For each direction:
-- name: a short, real project name.
-- concept: ONE sentence on what it is.
-- forWho: the specific target user.
-- creates: the concrete first thing Ventrio will make (a page, an offer, a community, content, a form, launch materials) — no builder jargon.
-- whyFits: ONE short personalized reason grounded in what they told you.
-- projectType: the single best-fit preset — one of exactly: community_social, service, content_media, digital_product.
-- problem: the core problem or desire, one sentence.
-- audience: the target audience, a few words.
-- niche: a 1–3 word topic tag.
-
-Never use placeholder names such as "Untitled project", "My project", or their translated equivalents. Every direction needs a concise, memorable name grounded in its concept.
-
-Write ALL user-visible text (message, choice titles/descriptions, and every direction field) in ${language}. Respond only with the requested JSON.`;
+Write every user-visible field in ${language}. Respond only with the requested JSON.`;
 }
 
-export type CreationTurnResult =
-  | { ok: true; turn: CreationTurn }
-  | { ok: false; unavailable: boolean };
+function stableUuid(seed: string): string {
+  const hex = createHash("sha256").update(seed).digest("hex").slice(0, 32).split("");
+  hex[12] = "5";
+  hex[16] = ((Number.parseInt(hex[16], 16) & 0x3) | 0x8).toString(16);
+  const value = hex.join("");
+  return `${value.slice(0, 8)}-${value.slice(8, 12)}-${value.slice(12, 16)}-${value.slice(16, 20)}-${value.slice(20)}`;
+}
 
-function sanitizeTurn(parsed: unknown): CreationTurn | null {
-  if (!parsed || typeof parsed !== "object") return null;
-  const c = parsed as Record<string, unknown>;
-  if (c.phase !== "ask" && c.phase !== "propose") return null;
-  const message = typeof c.message === "string" ? c.message.trim() : "";
-  if (message.length === 0) return null;
+function draftName(locale: string): string {
+  return locale === "ru" ? "Исследуем идею" : "Exploring an idea";
+}
 
-  const rawChoices = Array.isArray(c.choices) ? c.choices : [];
-  const choices: CreationChoice[] = [];
-  const usedChoiceIds = new Set<string>();
-  for (const entry of rawChoices.slice(0, 6)) {
-    if (!entry || typeof entry !== "object") continue;
-    const choice = entry as Record<string, unknown>;
-    const rawId = typeof choice.id === "string" ? choice.id.trim().toLowerCase() : "";
-    const id = rawId.replace(/[^a-z0-9_-]/g, "-").replace(/-+/g, "-").slice(0, CREATION_LIMITS.choiceId);
-    const title = typeof choice.title === "string" ? choice.title.trim().slice(0, CREATION_LIMITS.choiceTitle) : "";
-    const description = typeof choice.description === "string"
-      ? choice.description.trim().slice(0, CREATION_LIMITS.choiceDescription)
-      : "";
-    if (!id || !title || usedChoiceIds.has(id)) continue;
-    usedChoiceIds.add(id);
-    choices.push(description ? { id, title, description } : { id, title });
-  }
-
-  const rawDirections = Array.isArray(c.directions) ? c.directions : [];
-  const directions: CreationDirection[] = [];
-  for (const entry of rawDirections) {
-    if (!entry || typeof entry !== "object") continue;
-    const d = entry as Record<string, unknown>;
-    const str = (v: unknown, cap: number) => (typeof v === "string" ? v.trim().slice(0, cap) : "");
-    const name = str(d.name, CREATION_LIMITS.name);
-    const concept = str(d.concept, CREATION_LIMITS.text);
-    const forWho = str(d.forWho, CREATION_LIMITS.text);
-    const creates = str(d.creates, CREATION_LIMITS.text);
-    const whyFits = str(d.whyFits, CREATION_LIMITS.text);
-    const problem = str(d.problem, CREATION_LIMITS.text);
-    const audience = str(d.audience, CREATION_LIMITS.audience);
-    const niche = str(d.niche, CREATION_LIMITS.niche);
-    if (!isV1Preset(d.projectType)) continue;
-    if (!name || !concept || !forWho || !creates || !whyFits || !problem || !audience) continue;
-    directions.push({ name, concept, forWho, creates, whyFits, projectType: d.projectType, problem, audience, niche: niche || "other" });
-  }
-
-  if (c.phase === "propose") {
-    // A propose turn is only valid with 2–3 real directions.
-    if (directions.length < 2) return null;
-    return {
-      phase: "propose",
-      message,
-      choices: [],
-      choiceMode: "single",
-      directions: directions.slice(0, 3),
-      transition: "reveal",
-    };
-  }
+function newStage3State(sessionId: string, conversationId: string, point: CreationStartingPoint | null): Stage3ProjectState {
   return {
-    phase: "ask",
-    message,
-    choices,
-    choiceMode: c.choiceMode === "multiple" ? "multiple" : "single",
-    directions: [],
-    transition: c.transition === "focus" ? "focus" : "none",
+    version: STAGE3_VERSION,
+    kind: "stage3",
+    sessionId,
+    status: "exploring",
+    startingPoint: point,
+    conversationId,
+    lastRequestId: null,
+    turn: null,
+    direction: null,
+    output: null,
   };
 }
 
-/**
- * One structured turn of the creation conversation. Stateless: the client sends
- * the running history and gets back either a follow-up question (with optional
- * chips) or 2–3 proposed directions. Returns `unavailable` (never a fake reply)
- * when the API key is missing or the model fails/validation fails.
- */
-export async function generateCreationTurnAction(
-  history: CreationMessage[],
-  locale: Locale | string
-): Promise<CreationTurnResult> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return { ok: false, unavailable: true };
-
-  // Basic shape/size guardrails on the client-supplied history.
-  const clean: CreationMessage[] = (Array.isArray(history) ? history : [])
-    .filter((m) => m && (m.role === "user" || m.role === "assistant") && typeof m.content === "string" && m.content.trim().length > 0)
-    .slice(-20)
-    .map((m) => ({ role: m.role, content: m.content.trim().slice(0, CREATION_LIMITS.message) }));
-
-  if (clean.length === 0) return { ok: false, unavailable: true };
-  if (!process.env.ANTHROPIC_API_KEY) return { ok: false, unavailable: true };
-
-  try {
-    const client = new Anthropic();
-    const response = await client.messages.create({
-      model: "claude-sonnet-5",
-      max_tokens: 1500,
-      output_config: {
-        effort: "low",
-        format: { type: "json_schema", schema: CREATION_SCHEMA },
-      },
-      system: creationSystemPrompt(locale),
-      messages: clean.map((m) => ({ role: m.role, content: m.content })),
-    });
-
-    const textBlock = response.content.find((block) => block.type === "text");
-    if (!textBlock || textBlock.type !== "text") return { ok: false, unavailable: true };
-
-    const turn = sanitizeTurn(JSON.parse(textBlock.text));
-    if (!turn) return { ok: false, unavailable: true };
-    return { ok: true, turn };
-  } catch {
-    return { ok: false, unavailable: true };
-  }
+function logAiUsage(operation: "creation_discovery", startedAt: number, response: Anthropic.Message) {
+  console.info("[ventrio-ai-usage]", JSON.stringify({
+    operation,
+    model: response.model,
+    durationMs: Date.now() - startedAt,
+    inputTokens: response.usage.input_tokens,
+    outputTokens: response.usage.output_tokens,
+  }));
 }
 
-// ============================================================================
-// Create a project from a chosen direction (no roadmap — Stage 3 builds output)
-// ============================================================================
-
-export interface CreateFromDirectionResult {
+export interface EnsureCreationDraftResult {
   error: string | null;
-  projectId?: string;
+  projectId: string | null;
+  conversationId: string | null;
+  sessionId: string | null;
 }
 
-function compactCreationSummary(
-  direction: CreationDirection,
-  point: CreationStartingPoint | null,
-  locale: string
-): string {
-  const isRu = locale === "ru";
-  const startedFrom = point ?? "idea";
-  return isRu
-    ? `Проект создан в AI-режиме создания. Отправная точка: ${startedFrom}. Направление: ${direction.name} — ${direction.concept} Для кого: ${direction.forWho}. Проблема/желание: ${direction.problem} Почему подходит: ${direction.whyFits} Формат: ${direction.projectType}. Следующий шаг — создать первую версию.`
-    : `Created via the AI creation flow. Starting point: ${startedFrom}. Direction: ${direction.name} — ${direction.concept} For: ${direction.forWho}. Problem/desire: ${direction.problem} Why it fits: ${direction.whyFits} Preset: ${direction.projectType}. Next step is to create the first version.`;
-}
-
-const PLACEHOLDER_PROJECT_NAMES = new Set([
-  "untitled",
-  "untitled project",
-  "my project",
-  "new project",
-  "project",
-  "без названия",
-  "проект без названия",
-  "мой проект",
-  "новый проект",
-  "проект",
-]);
-
-function meaningfulProjectName(rawName: unknown, concept: string): string {
-  const supplied = typeof rawName === "string" ? rawName.trim().slice(0, CREATION_LIMITS.name) : "";
-  if (supplied.length >= 2 && !PLACEHOLDER_PROJECT_NAMES.has(supplied.toLocaleLowerCase())) {
-    return supplied;
-  }
-
-  const conceptLead = concept
-    .split(/[.!?\n:—–-]/, 1)[0]
-    .trim()
-    .split(/\s+/)
-    .slice(0, 6)
-    .join(" ")
-    .slice(0, CREATION_LIMITS.name);
-
-  if (conceptLead.length >= 2) {
-    return conceptLead.charAt(0).toLocaleUpperCase() + conceptLead.slice(1);
-  }
-  return "Ventrio Project";
-}
-
-/**
- * Creates a real project from a user-chosen direction. Unlike the legacy
- * createProjectAction this does NOT generate a roadmap/tasks — the new-flow
- * workspace hands off to Stage 3's "Create first version". Ownership is taken
- * from the session (never the client); the preset is validated against the
- * allowlist; the direction's context is persisted into snapshot_fields + the
- * project memory (both best-effort so a missing column never blocks creation).
- */
-export async function createProjectFromDirectionAction(
-  direction: CreationDirection,
-  opts: { startingPoint?: string | null } = {}
-): Promise<CreateFromDirectionResult> {
+export async function ensureCreationDraftAction(
+  sessionId: string,
+  startingPoint: string | null,
+): Promise<EnsureCreationDraftResult> {
   const t = await getTranslations("create");
   const locale = await getLocale();
-
-  // Re-validate the client-supplied direction server-side.
-  if (!direction || typeof direction !== "object" || !isV1Preset(direction.projectType)) {
-    return { error: t("errorInvalid") };
-  }
-  const concept = (direction.concept ?? "").trim().slice(0, CREATION_LIMITS.text);
-  const name = meaningfulProjectName(direction.name, concept);
-  const forWho = (direction.forWho ?? "").trim().slice(0, CREATION_LIMITS.text);
-  const creates = (direction.creates ?? "").trim().slice(0, CREATION_LIMITS.text);
-  const whyFits = (direction.whyFits ?? "").trim().slice(0, CREATION_LIMITS.text);
-  const problem = (direction.problem ?? "").trim().slice(0, CREATION_LIMITS.text);
-  const audience = (direction.audience ?? "").trim().slice(0, CREATION_LIMITS.audience);
-  const niche = (direction.niche ?? "").trim().slice(0, CREATION_LIMITS.niche) || "other";
-  if (!concept || !forWho || !creates || !whyFits || !problem || !audience) {
-    return { error: t("errorInvalid") };
-  }
-
-  const cleanDirection: CreationDirection = {
-    ...direction,
-    name,
-    concept,
-    forWho,
-    creates,
-    whyFits,
-    problem,
-    audience,
-    niche,
-  };
-
-  const point: CreationStartingPoint | null = isStartingPoint(opts.startingPoint) ? opts.startingPoint : null;
-
+  const fail = (error: string): EnsureCreationDraftResult => ({ error, projectId: null, conversationId: null, sessionId: null });
+  if (!TOKEN_PATTERN.test(sessionId)) return fail(t("errorInvalid"));
+  const point = isStartingPoint(startingPoint) ? startingPoint : null;
   const supabase = await createClient();
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser();
-  if (userError || !user) return { error: t("errorSession") };
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return fail(t("errorSession"));
 
-  // Insert the project with the minimum fields Stage 3 needs. No tasks: a
-  // new-flow project is intentionally roadmap-free (0 tasks is how the
-  // workspace recognises it and offers "Create first version").
-  const { data: project, error: projectError } = await supabase
+  const projectId = stableUuid(`${user.id}:ventrio-creation:${sessionId}`);
+  const conversationId = stableUuid(`${projectId}:creation-conversation-v1`);
+  const { data: existing } = await supabase
     .from("projects")
-    .insert({
+    .select("id, snapshot_fields")
+    .eq("id", projectId)
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  let stage3 = parseStage3ProjectState(existing?.snapshot_fields);
+  if (!existing) {
+    stage3 = newStage3State(sessionId, conversationId, point);
+    const { error } = await supabase.from("projects").insert({
+      id: projectId,
       user_id: user.id,
-      name: cleanDirection.name,
-      project_type: direction.projectType,
-      niche,
+      name: draftName(locale),
+      project_type: "digital_product",
+      niche: locale === "ru" ? "новая идея" : "new idea",
       starting_stage: startingStageFor(point),
-      target_audience: audience || null,
       intended_outcome: "first_version",
       time_availability: "2_4h",
       pathway_mode: "standard",
       locale,
-    })
-    .select("id")
-    .single();
-
-  if (projectError || !project) {
-    return { error: t("errorSaveFailed") };
+      snapshot_fields: { stage3 },
+    });
+    if (error && error.code !== "23505") return fail(t("errorSaveFailed"));
+  } else if (!stage3 || stage3.sessionId !== sessionId || stage3.output) {
+    return fail(t("errorInvalid"));
+  } else if (!stage3.startingPoint && point) {
+    stage3 = { ...stage3, startingPoint: point };
+    await supabase.from("projects").update({
+      starting_stage: startingStageFor(point),
+      snapshot_fields: mergeStage3ProjectState(existing.snapshot_fields, stage3),
+    }).eq("id", projectId).eq("user_id", user.id);
   }
 
-  // Best-effort: persist the direction context so the workspace + mentor open
-  // with it. A missing snapshot_fields column (unmigrated) must not fail
-  // creation — the project is already saved.
-  const snapshotFields: Record<string, string> = { solution: cleanDirection.concept };
-  if (problem) snapshotFields.problem = problem;
-  if (audience) snapshotFields.audience = audience;
-  await supabase.from("projects").update({ snapshot_fields: snapshotFields }).eq("id", project.id);
+  const { error: conversationError } = await supabase.from("project_ai_conversations").insert({
+    id: conversationId,
+    project_id: projectId,
+    user_id: user.id,
+    title: "ventrio:create:v1",
+  });
+  if (conversationError && conversationError.code !== "23505") return fail(t("errorSaveFailed"));
 
-  // Best-effort: seed the compact creation summary as the project's memory so
-  // the Stage 3 mentor has authoritative context from turn one.
-  await supabase
-    .from("project_ai_memory")
-    .upsert(
-      { project_id: project.id, user_id: user.id, summary: compactCreationSummary(cleanDirection, point, locale) },
-      { onConflict: "project_id" }
-    );
+  revalidatePath("/projects");
+  return { error: null, projectId, conversationId, sessionId };
+}
 
-  return { error: null, projectId: project.id };
+export async function loadCreationDraftAction(): Promise<PersistedCreationDraft | null> {
+  const locale = await getLocale();
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return null;
+  const { data: projects } = await supabase
+    .from("projects")
+    .select("id, name, locale, snapshot_fields, updated_at")
+    .eq("user_id", user.id)
+    .eq("intended_outcome", "first_version")
+    .is("current_stage", null)
+    .eq("progress", 0)
+    .order("updated_at", { ascending: false })
+    .limit(30);
+  const project = (projects ?? []).find((candidate) => {
+    const state = parseStage3ProjectState(candidate.snapshot_fields);
+    return candidate.locale === locale && state !== null && state.status !== "first_version_ready" && state.output === null;
+  });
+  if (!project) return null;
+  const stage3 = parseStage3ProjectState(project.snapshot_fields);
+  if (!stage3) return null;
+  const { data: messages } = await supabase
+    .from("project_ai_messages")
+    .select("id, role, content")
+    .eq("conversation_id", stage3.conversationId)
+    .eq("project_id", project.id)
+    .eq("user_id", user.id)
+    .order("created_at", { ascending: true });
+  return {
+    projectId: project.id,
+    conversationId: stage3.conversationId,
+    sessionId: stage3.sessionId,
+    projectName: project.name || draftName(locale),
+    messages: (messages ?? []).map((message) => ({ id: message.id, role: message.role, content: message.content })),
+    turn: stage3.turn,
+    startingPoint: stage3.startingPoint,
+  };
+}
+
+export type CreationTurnResult =
+  | { ok: true; turn: CreationTurn; projectName: string }
+  | { ok: false; unavailable: boolean };
+
+export async function generateCreationTurnAction(
+  projectId: string,
+  conversationId: string,
+  requestId: string,
+  content: string,
+): Promise<CreationTurnResult> {
+  if (!UUID_PATTERN.test(projectId) || !UUID_PATTERN.test(conversationId) || !TOKEN_PATTERN.test(requestId)) {
+    return { ok: false, unavailable: true };
+  }
+  const message = content.trim().slice(0, CREATION_LIMITS.message);
+  if (!message) return { ok: false, unavailable: true };
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { ok: false, unavailable: true };
+  const { data: project } = await supabase
+    .from("projects")
+    .select("id, name, locale, snapshot_fields")
+    .eq("id", projectId)
+    .eq("user_id", user.id)
+    .maybeSingle();
+  const stage3 = parseStage3ProjectState(project?.snapshot_fields);
+  if (!project || !stage3 || stage3.conversationId !== conversationId || stage3.output) return { ok: false, unavailable: true };
+  const locale = project.locale;
+  const { data: conversation } = await supabase
+    .from("project_ai_conversations")
+    .select("id")
+    .eq("id", conversationId)
+    .eq("project_id", projectId)
+    .eq("user_id", user.id)
+    .maybeSingle();
+  if (!conversation) return { ok: false, unavailable: true };
+
+  const userMessageId = stableUuid(`${conversationId}:user:${requestId}`);
+  const assistantMessageId = stableUuid(`${conversationId}:assistant:${requestId}`);
+  if (stage3.lastRequestId === requestId && stage3.turn) {
+    return { ok: true, turn: stage3.turn, projectName: project.name || draftName(locale) };
+  }
+  const { data: latestRows } = await supabase
+    .from("project_ai_messages")
+    .select("role, content")
+    .eq("conversation_id", conversationId)
+    .eq("user_id", user.id)
+    .order("created_at", { ascending: false })
+    .limit(1);
+  const pendingMessageAlreadySaved = latestRows?.[0]?.role === "user" && latestRows[0].content === message;
+  if (!pendingMessageAlreadySaved) {
+    const { error: messageError } = await supabase.from("project_ai_messages").insert({
+      id: userMessageId,
+      conversation_id: conversationId,
+      project_id: projectId,
+      user_id: user.id,
+      role: "user",
+      content: message,
+    });
+    if (messageError && messageError.code !== "23505") return { ok: false, unavailable: true };
+  }
+
+  const { data: recentRows } = await supabase
+    .from("project_ai_messages")
+    .select("role, content, created_at")
+    .eq("conversation_id", conversationId)
+    .eq("user_id", user.id)
+    .order("created_at", { ascending: false })
+    .limit(20);
+  const history: CreationMessage[] = (recentRows ?? []).reverse().map((row) => ({ role: row.role, content: row.content }));
+  if (!process.env.ANTHROPIC_API_KEY) return { ok: false, unavailable: true };
+
+  try {
+    const startedAt = Date.now();
+    const client = new Anthropic();
+    const response = await client.messages.create({
+      model: "claude-sonnet-5",
+      max_tokens: 1500,
+      output_config: { effort: "low", format: { type: "json_schema", schema: CREATION_SCHEMA } },
+      system: creationSystemPrompt(locale),
+      messages: history.map((entry) => ({ role: entry.role, content: entry.content })),
+    });
+    logAiUsage("creation_discovery", startedAt, response);
+    const textBlock = response.content.find((block) => block.type === "text");
+    if (!textBlock || textBlock.type !== "text") return { ok: false, unavailable: true };
+    const turn = sanitizeCreationTurn(JSON.parse(textBlock.text));
+    if (!turn) return { ok: false, unavailable: true };
+    const firstDirection = turn.phase === "propose" ? turn.directions[0] : null;
+    const nextState: Stage3ProjectState = {
+      ...stage3,
+      status: firstDirection ? "proposed" : "shaping",
+      lastRequestId: requestId,
+      turn,
+    };
+    const nextName = firstDirection?.name ?? project.name ?? draftName(locale);
+    const snapshot = mergeStage3ProjectState(project.snapshot_fields, nextState);
+    if (firstDirection) {
+      snapshot.solution = firstDirection.concept;
+      snapshot.problem = firstDirection.problem;
+      snapshot.audience = firstDirection.audience;
+    }
+    const { error: updateError } = await supabase.from("projects").update({
+      name: nextName,
+      ...(firstDirection ? {
+        project_type: firstDirection.projectType,
+        niche: firstDirection.niche,
+        target_audience: firstDirection.audience,
+      } : {}),
+      snapshot_fields: snapshot,
+    }).eq("id", projectId).eq("user_id", user.id);
+    if (updateError) return { ok: false, unavailable: true };
+    const { error: assistantError } = await supabase.from("project_ai_messages").insert({
+      id: assistantMessageId,
+      conversation_id: conversationId,
+      project_id: projectId,
+      user_id: user.id,
+      role: "assistant",
+      content: turn.message,
+    });
+    if (assistantError && assistantError.code !== "23505") return { ok: false, unavailable: true };
+    await supabase.from("project_ai_conversations").update({ title: message.slice(0, 60) }).eq("id", conversationId).eq("user_id", user.id);
+    revalidatePath("/projects");
+    return { ok: true, turn, projectName: nextName };
+  } catch (error) {
+    console.error("[ventrio-ai-error]", JSON.stringify({ operation: "creation_discovery", projectId, message: error instanceof Error ? error.message : "unknown" }));
+    return { ok: false, unavailable: true };
+  }
+}
+
+const PLACEHOLDER_NAMES = new Set(["untitled", "untitled project", "my project", "new project", "project", "без названия", "проект без названия", "мой проект", "новый проект", "проект"]);
+
+function meaningfulProjectName(direction: CreationDirection): string {
+  const supplied = direction.name.trim().slice(0, CREATION_LIMITS.name);
+  if (supplied.length >= 2 && !PLACEHOLDER_NAMES.has(supplied.toLocaleLowerCase())) return supplied;
+  const lead = direction.concept.split(/[.!?\n:—–-]/, 1)[0].trim().split(/\s+/).slice(0, 6).join(" ").slice(0, CREATION_LIMITS.name);
+  return lead.length >= 2 ? lead.charAt(0).toLocaleUpperCase() + lead.slice(1) : "Ventrio Project";
+}
+
+export async function selectCreationDirectionAction(
+  projectId: string,
+  directionValue: CreationDirection,
+  startingPoint: string | null,
+): Promise<{ error: string | null; projectId?: string }> {
+  const t = await getTranslations("create");
+  if (!UUID_PATTERN.test(projectId)) return { error: t("errorInvalid") };
+  const direction = sanitizeCreationDirection(directionValue);
+  if (!direction) return { error: t("errorInvalid") };
+  const point = isStartingPoint(startingPoint) ? startingPoint : null;
+  const locale = await getLocale();
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: t("errorSession") };
+  const { data: project } = await supabase
+    .from("projects")
+    .select("id, snapshot_fields")
+    .eq("id", projectId)
+    .eq("user_id", user.id)
+    .maybeSingle();
+  const stage3 = parseStage3ProjectState(project?.snapshot_fields);
+  if (!project || !stage3 || stage3.output) return { error: t("errorInvalid") };
+  const cleanDirection = { ...direction, name: meaningfulProjectName(direction) };
+  const nextState: Stage3ProjectState = { ...stage3, status: "ready", startingPoint: point ?? stage3.startingPoint, direction: cleanDirection };
+  const snapshot = mergeStage3ProjectState(project.snapshot_fields, nextState);
+  snapshot.solution = cleanDirection.concept;
+  snapshot.problem = cleanDirection.problem;
+  snapshot.audience = cleanDirection.audience;
+  const { error } = await supabase.from("projects").update({
+    name: cleanDirection.name,
+    project_type: cleanDirection.projectType,
+    niche: cleanDirection.niche,
+    starting_stage: startingStageFor(point),
+    target_audience: cleanDirection.audience,
+    snapshot_fields: snapshot,
+  }).eq("id", projectId).eq("user_id", user.id);
+  if (error) return { error: t("errorSaveFailed") };
+  const summary = locale === "ru"
+    ? `Направление: ${cleanDirection.name}. ${cleanDirection.concept} Для кого: ${cleanDirection.forWho}. Первая версия: ${cleanDirection.creates}`
+    : `Direction: ${cleanDirection.name}. ${cleanDirection.concept} For: ${cleanDirection.forWho}. First version: ${cleanDirection.creates}`;
+  await supabase.from("project_ai_memory").upsert({ project_id: projectId, user_id: user.id, summary }, { onConflict: "project_id" });
+  revalidatePath("/projects");
+  revalidatePath(`/projects/${projectId}`);
+  return { error: null, projectId };
+}
+
+export async function discardCreationDraftAction(projectId: string): Promise<{ error: string | null }> {
+  const t = await getTranslations("create");
+  if (!UUID_PATTERN.test(projectId)) return { error: t("errorInvalid") };
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: t("errorSession") };
+  const { data: project } = await supabase
+    .from("projects")
+    .select("id, snapshot_fields")
+    .eq("id", projectId)
+    .eq("user_id", user.id)
+    .maybeSingle();
+  const stage3 = parseStage3ProjectState(project?.snapshot_fields);
+  if (!project || !stage3 || stage3.output) return { error: t("errorInvalid") };
+  const { error } = await supabase.from("projects").delete().eq("id", projectId).eq("user_id", user.id);
+  if (error) return { error: t("errorSaveFailed") };
+  revalidatePath("/projects");
+  return { error: null };
 }

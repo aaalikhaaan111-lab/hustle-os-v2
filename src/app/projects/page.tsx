@@ -5,10 +5,11 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/supabase/currentUser";
 import { listProjects } from "@/lib/build/queries";
 import { parseSnapshotFields } from "@/lib/build/snapshot";
+import { parseStage3ProjectState } from "@/lib/build/stage3Types";
 import type { Database } from "@/types/supabase";
 
 type ProjectRow = Database["public"]["Tables"]["projects"]["Row"];
-type ProjectStatusKey = "statusCompleted" | "statusReady" | "statusActive";
+type ProjectStatusKey = "statusCompleted" | "statusReady" | "statusActive" | "statusExploring" | "statusTakingShape" | "statusFirstVersion";
 
 const TYPE_KEYS: Record<string, "typeDigitalProduct" | "typeService" | "typeContentMedia" | "typeCommunitySocial" | "typeOther"> = {
   digital_product: "typeDigitalProduct",
@@ -19,6 +20,11 @@ const TYPE_KEYS: Record<string, "typeDigitalProduct" | "typeService" | "typeCont
 
 function statusFor(project: ProjectRow): ProjectStatusKey {
   if (project.status === "completed") return "statusCompleted";
+  const stage3 = parseStage3ProjectState(project.snapshot_fields);
+  if (stage3?.status === "exploring") return "statusExploring";
+  if (stage3?.status === "shaping") return "statusTakingShape";
+  if (stage3?.status === "proposed" || stage3?.status === "ready") return "statusReady";
+  if (stage3?.status === "first_version_ready") return "statusFirstVersion";
   if (project.current_stage === null && project.progress === 0 && project.intended_outcome === "first_version") {
     return "statusReady";
   }
@@ -61,7 +67,8 @@ export default async function ProjectsPage() {
         <section className="mt-12 grid gap-3 sm:grid-cols-2 lg:grid-cols-3" aria-label={t("collectionLabel")}>
           {projects.map((project, index) => {
             const snapshot = parseSnapshotFields(project.snapshot_fields);
-            const concept = snapshot.solution ?? t("conceptFallback");
+            const stage3 = parseStage3ProjectState(project.snapshot_fields);
+            const concept = stage3?.output?.identity.description ?? stage3?.direction?.concept ?? snapshot.solution ?? (stage3 ? t("exploringDescription") : t("conceptFallback"));
             const status = statusFor(project);
             const typeKey = TYPE_KEYS[project.project_type] ?? "typeOther";
             return (

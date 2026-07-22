@@ -9,6 +9,8 @@ import { PreOutputWorkspace } from "@/components/build/PreOutputWorkspace";
 import { ProjectHeaderBar, type ContextMode } from "@/components/build/ProjectHeaderBar";
 import { ContextOverlay } from "@/components/build/ContextOverlay";
 import type { RoadmapStage } from "@/components/build/RoadmapPanel";
+import type { CreationDirection } from "@/lib/build/creationTypes";
+import type { Stage3ProjectOutput, Stage3Status } from "@/lib/build/stage3Types";
 
 export interface WorkspaceViewProps {
   projectId: string;
@@ -37,6 +39,11 @@ export interface WorkspaceViewProps {
     phase: AssistantPhase;
   };
   openingMessage: string;
+  stage3: {
+    status: Stage3Status | null;
+    direction: CreationDirection | null;
+    output: Stage3ProjectOutput | null;
+  };
 }
 
 // The immersive Build canvas: a compact floating header, the AI conversation as
@@ -79,7 +86,9 @@ export function WorkspaceView(props: WorkspaceViewProps) {
         projectName={props.projectName}
         projectConcept={props.projectConcept}
         projectAudience={props.projectAudience}
-        snapshot={snapshot}
+        stage3Status={props.stage3.status}
+        direction={props.stage3.direction}
+        initialOutput={props.stage3.output}
         assistant={props.assistant}
         openingMessage={props.openingMessage}
       />

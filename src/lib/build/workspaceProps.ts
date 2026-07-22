@@ -9,6 +9,7 @@ import { loadProjectAssistant } from "@/lib/actions/assistant";
 import { getProofCount } from "@/lib/actions/proof";
 import type { WorkspaceViewProps } from "@/components/build/WorkspaceView";
 import type { RoadmapStage } from "@/components/build/RoadmapPanel";
+import { parseStage3ProjectState } from "@/lib/build/stage3Types";
 
 type Client = SupabaseClient<Database>;
 type ProjectRow = Database["public"]["Tables"]["projects"]["Row"];
@@ -47,6 +48,7 @@ export async function buildWorkspaceViewProps(
 
   const outputByTaskId = new Map(outputs.map((o) => [o.task_id, o.content]));
   const savedFields = parseSnapshotFields(project.snapshot_fields);
+  const stage3 = parseStage3ProjectState(project.snapshot_fields);
   const snapshot = buildSnapshot(project, tasks, outputs, savedFields);
 
   const stageLabel =
@@ -137,5 +139,10 @@ export async function buildWorkspaceViewProps(
       phase: assistant.phase,
     },
     openingMessage,
+    stage3: {
+      status: stage3?.status ?? null,
+      direction: stage3?.direction ?? null,
+      output: stage3?.output ?? null,
+    },
   };
 }

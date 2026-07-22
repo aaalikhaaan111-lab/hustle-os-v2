@@ -83,8 +83,19 @@ export interface CreationTurn {
 }
 
 export interface CreationMessage {
+  id?: string;
   role: "user" | "assistant";
   content: string;
+}
+
+export interface PersistedCreationDraft {
+  projectId: string;
+  conversationId: string;
+  sessionId: string;
+  projectName: string;
+  messages: CreationMessage[];
+  turn: CreationTurn | null;
+  startingPoint: CreationStartingPoint | null;
 }
 
 // Field caps (server-enforced) so tampered client input can never write oversized
@@ -99,3 +110,66 @@ export const CREATION_LIMITS = {
   choiceTitle: 80,
   choiceDescription: 180,
 } as const;
+
+export function sanitizeCreationDirection(value: unknown): CreationDirection | null {
+  if (!value || typeof value !== "object") return null;
+  const direction = value as Record<string, unknown>;
+  const clean = (input: unknown, max: number) =>
+    typeof input === "string" ? input.trim().slice(0, max) : "";
+  const name = clean(direction.name, CREATION_LIMITS.name);
+  const concept = clean(direction.concept, CREATION_LIMITS.text);
+  const forWho = clean(direction.forWho, CREATION_LIMITS.text);
+  const creates = clean(direction.creates, CREATION_LIMITS.text);
+  const whyFits = clean(direction.whyFits, CREATION_LIMITS.text);
+  const problem = clean(direction.problem, CREATION_LIMITS.text);
+  const audience = clean(direction.audience, CREATION_LIMITS.audience);
+  const niche = clean(direction.niche, CREATION_LIMITS.niche) || "other";
+  if (!isV1Preset(direction.projectType)) return null;
+  if (!name || !concept || !forWho || !creates || !whyFits || !problem || !audience) return null;
+  return { name, concept, forWho, creates, whyFits, projectType: direction.projectType, problem, audience, niche };
+}
+
+export function sanitizeCreationTurn(value: unknown): CreationTurn | null {
+  if (!value || typeof value !== "object") return null;
+  const candidate = value as Record<string, unknown>;
+  if (candidate.phase !== "ask" && candidate.phase !== "propose") return null;
+  const message = typeof candidate.message === "string"
+    ? candidate.message.trim().slice(0, CREATION_LIMITS.message)
+    : "";
+  if (!message) return null;
+
+  const choices: CreationChoice[] = [];
+  const seen = new Set<string>();
+  for (const raw of (Array.isArray(candidate.choices) ? candidate.choices : []).slice(0, 6)) {
+    if (!raw || typeof raw !== "object") continue;
+    const choice = raw as Record<string, unknown>;
+    const rawId = typeof choice.id === "string" ? choice.id.trim().toLowerCase() : "";
+    const id = rawId.replace(/[^a-z0-9_-]/g, "-").replace(/-+/g, "-").slice(0, CREATION_LIMITS.choiceId);
+    const title = typeof choice.title === "string" ? choice.title.trim().slice(0, CREATION_LIMITS.choiceTitle) : "";
+    const description = typeof choice.description === "string"
+      ? choice.description.trim().slice(0, CREATION_LIMITS.choiceDescription)
+      : "";
+    if (!id || !title || seen.has(id)) continue;
+    seen.add(id);
+    choices.push(description ? { id, title, description } : { id, title });
+  }
+
+  const directions = (Array.isArray(candidate.directions) ? candidate.directions : [])
+    .map(sanitizeCreationDirection)
+    .filter((direction): direction is CreationDirection => direction !== null)
+    .slice(0, 3);
+
+  if (candidate.phase === "propose") {
+    if (directions.length < 2) return null;
+    return { phase: "propose", message, choices: [], choiceMode: "single", directions, transition: "reveal" };
+  }
+
+  return {
+    phase: "ask",
+    message,
+    choices,
+    choiceMode: candidate.choiceMode === "multiple" ? "multiple" : "single",
+    directions: [],
+    transition: candidate.transition === "focus" ? "focus" : "none",
+  };
+}

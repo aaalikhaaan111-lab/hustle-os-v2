@@ -52,6 +52,289 @@
   --dur-drawer: 300ms;
 }
 
+/* --------------------------------------------------------------------------
+   Stage 3 — structured live project output
+   -------------------------------------------------------------------------- */
+
+.generation-canvas {
+  background:
+    radial-gradient(circle at 50% 42%, color-mix(in srgb, var(--accent) 13%, transparent), transparent 34%),
+    linear-gradient(160deg, rgba(255, 255, 255, 0.018), transparent 55%);
+}
+
+.generation-progress {
+  width: min(19rem, 72vw);
+  height: 2px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.generation-progress > span {
+  display: block;
+  width: 38%;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  animation: stage3-progress 1.8s ease-in-out infinite;
+}
+
+@keyframes stage3-progress {
+  from { transform: translateX(-110%); }
+  to { transform: translateX(370%); }
+}
+
+.project-output {
+  --output-primary: #8b5cf6;
+  --output-secondary: #22d3ee;
+  --output-dark: #111827;
+  position: relative;
+  min-height: 100%;
+  overflow: hidden;
+  color: #f8fafc;
+  background:
+    radial-gradient(circle at 12% 4%, color-mix(in srgb, var(--output-primary) 25%, transparent), transparent 26rem),
+    radial-gradient(circle at 92% 18%, color-mix(in srgb, var(--output-secondary) 18%, transparent), transparent 24rem),
+    linear-gradient(155deg, color-mix(in srgb, var(--output-dark) 82%, #070a12), #07090f 62%);
+}
+
+.project-output-ambient {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  opacity: 0.13;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.12) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.12) 1px, transparent 1px);
+  background-size: 52px 52px;
+  mask-image: linear-gradient(to bottom, black, transparent 54%);
+}
+
+.project-output-hero,
+.project-output-intro,
+.project-output-section,
+.project-output-action,
+.project-output-launch,
+.project-output-footer {
+  position: relative;
+  z-index: 1;
+}
+
+.project-output-hero {
+  min-height: min(720px, 88vh);
+  padding: clamp(1.25rem, 4vw, 3rem);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.project-output-wordmark {
+  max-width: 70%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.78rem;
+  font-weight: 750;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.project-output-mood,
+.project-output-kicker,
+.project-output-eyebrow {
+  font-size: 0.64rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--output-secondary) 82%, white);
+}
+
+.project-output-mood {
+  max-width: 45%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: rgba(255, 255, 255, 0.48);
+}
+
+.project-output-title {
+  max-width: 16ch;
+  margin-top: 1rem;
+  overflow-wrap: anywhere;
+  font-family: var(--font-display), Georgia, serif;
+  font-size: clamp(3rem, 7.8vw, 7.4rem);
+  font-weight: 500;
+  line-height: 0.91;
+  letter-spacing: -0.055em;
+  text-wrap: balance;
+}
+
+.project-output-subtitle {
+  max-width: 42rem;
+  margin-top: 1.6rem;
+  font-size: clamp(1rem, 1.8vw, 1.25rem);
+  line-height: 1.7;
+  color: rgba(255, 255, 255, 0.66);
+}
+
+.project-output-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.8rem;
+  margin-top: 2rem;
+  border-radius: 999px;
+  padding: 0.85rem 1.2rem;
+  color: #081016;
+  background: color-mix(in srgb, var(--output-primary) 68%, white);
+  font-size: 0.82rem;
+  font-weight: 760;
+  transition: transform 180ms ease, filter 180ms ease;
+}
+
+.project-output-cta:hover { transform: translateY(-2px); filter: brightness(1.08); }
+
+.project-output-intro,
+.project-output-section,
+.project-output-action,
+.project-output-launch {
+  padding: clamp(2rem, 5vw, 4.5rem) clamp(1.25rem, 4vw, 3rem);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.075);
+}
+
+.project-output-intro {
+  display: grid;
+  gap: 2.5rem;
+}
+
+.project-output-intro h2,
+.project-output-section h2,
+.project-output-action h2,
+.project-output-launch h2 {
+  margin-top: 0.75rem;
+  overflow-wrap: anywhere;
+  font-family: var(--font-display), Georgia, serif;
+  font-size: clamp(2rem, 4.5vw, 4rem);
+  font-weight: 500;
+  line-height: 1;
+  letter-spacing: -0.035em;
+  text-wrap: balance;
+}
+
+.project-output-intro p:not(.project-output-kicker),
+.project-output-section-body,
+.project-output-action > div > p,
+.project-output-launch > p:not(.project-output-kicker) {
+  margin-top: 0.9rem;
+  max-width: 50rem;
+  font-size: 0.95rem;
+  line-height: 1.75;
+  color: rgba(255, 255, 255, 0.63);
+}
+
+.project-output-items {
+  display: grid;
+  gap: 0.7rem;
+  margin-top: 2rem;
+}
+
+.project-output-items > div {
+  min-width: 0;
+  padding: 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 1.1rem;
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.project-output-items span { font-size: 0.62rem; color: color-mix(in srgb, var(--output-primary) 70%, white); }
+.project-output-items h3 { margin-top: 1.15rem; overflow-wrap: anywhere; font-size: 0.95rem; font-weight: 700; }
+.project-output-items p { margin-top: 0.45rem; overflow-wrap: anywhere; font-size: 0.8rem; line-height: 1.6; color: rgba(255, 255, 255, 0.56); }
+
+.project-output-action {
+  display: grid;
+  gap: 2.5rem;
+  background: color-mix(in srgb, var(--output-primary) 8%, transparent);
+}
+
+.project-output-form {
+  display: grid;
+  gap: 0.85rem;
+  min-width: 0;
+  padding: clamp(1rem, 3vw, 1.5rem);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 1.4rem;
+  background: rgba(5, 8, 15, 0.48);
+}
+
+.project-output-form label { display: grid; min-width: 0; gap: 0.4rem; }
+.project-output-form label > span { font-size: 0.68rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: rgba(255, 255, 255, 0.52); }
+.project-output-form input,
+.project-output-form textarea,
+.project-output-form select {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 0.85rem;
+  padding: 0.72rem 0.8rem;
+  color: #f8fafc;
+  background: rgba(255, 255, 255, 0.045);
+  outline: none;
+}
+
+.project-output-form input:focus,
+.project-output-form textarea:focus,
+.project-output-form select:focus { border-color: var(--output-secondary); box-shadow: 0 0 0 3px color-mix(in srgb, var(--output-secondary) 18%, transparent); }
+.project-output-form option { color: #111827; background: white; }
+.project-output-form button { justify-self: start; border-radius: 999px; padding: 0.75rem 1.1rem; color: #071015; background: color-mix(in srgb, var(--output-secondary) 70%, white); font-size: 0.78rem; font-weight: 750; }
+.project-output-confirmation { color: color-mix(in srgb, var(--output-secondary) 75%, white); font-size: 0.72rem; line-height: 1.5; }
+
+.project-output-launch blockquote {
+  margin-top: 1.5rem;
+  padding: 1.2rem;
+  border-left: 2px solid var(--output-primary);
+  color: rgba(255, 255, 255, 0.76);
+  background: rgba(255, 255, 255, 0.028);
+  font-size: 0.9rem;
+  line-height: 1.7;
+}
+
+.project-output-footer {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.25rem clamp(1.25rem, 4vw, 3rem) 2rem;
+  font-size: 0.65rem;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.project-output-footer span:last-child { max-width: 34rem; text-align: right; }
+
+.stage3-reveal-block {
+  animation: stage3-reveal 560ms cubic-bezier(0.2, 0.75, 0.2, 1) both;
+}
+
+@keyframes stage3-reveal {
+  from { opacity: 0; transform: translateY(18px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (min-width: 640px) {
+  .project-output-intro { grid-template-columns: 0.9fr 1.1fr; align-items: start; }
+  .project-output-items { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .project-output-action { grid-template-columns: minmax(0, 0.9fr) minmax(18rem, 1.1fr); align-items: start; }
+}
+
+@media (max-width: 639px) {
+  .project-output-hero { min-height: 620px; }
+  .project-output-title { font-size: clamp(2.7rem, 15vw, 4.4rem); }
+  .project-output-footer { flex-direction: column; }
+  .project-output-footer span:last-child { text-align: left; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .generation-progress > span,
+  .stage3-reveal-block { animation: none !important; }
+}
+
 html {
   color-scheme: dark;
 }
