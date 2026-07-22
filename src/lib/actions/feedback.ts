@@ -23,6 +23,7 @@ import {
 import { FEEDBACK_ANALYSIS_SCHEMA, FEEDBACK_IMPROVEMENT_SCHEMA } from "@/lib/feedback/schemas";
 import {
   sanitizeFeedbackAnalysis,
+  sanitizeTargetedFeedbackOutput,
   targetedFeedbackOutput,
   type FeedbackAnalysisState,
   type FeedbackImprovementProposal,
@@ -379,12 +380,15 @@ export async function proposeFeedbackImprovementAction(
     const textBlock = response.content.find((block) => block.type === "text");
     if (!textBlock || textBlock.type !== "text") throw new Error("missing_text");
     const parsed = JSON.parse(textBlock.text) as Record<string, unknown>;
-    const candidate = sanitizeStage3Output(parsed.output, context.stage3.output.preset);
+    const output = sanitizeTargetedFeedbackOutput(
+      context.stage3.output,
+      parsed.output,
+      recommendation.target,
+    );
     const title = plain(parsed.title, 120);
     const current = plain(parsed.current, 500);
     const proposed = plain(parsed.proposed, 500);
-    if (!candidate || !title || !current || !proposed) throw new Error("invalid_proposal");
-    const output = targetedFeedbackOutput(context.stage3.output, candidate, recommendation.target);
+    if (!output || !title || !current || !proposed) throw new Error("invalid_proposal");
     return {
       error: null,
       proposal: {

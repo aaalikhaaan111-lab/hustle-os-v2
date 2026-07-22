@@ -1,4 +1,7 @@
-import type { Stage3ProjectOutput } from "@/lib/build/stage3Types";
+import {
+  sanitizeStage3Output,
+  type Stage3ProjectOutput,
+} from "@/lib/build/stage3Types";
 
 export const FEEDBACK_TARGETS = [
   "positioning",
@@ -134,6 +137,46 @@ export function targetedFeedbackOutput(
         form: { ...candidate.form, fields: current.form.fields },
       };
   }
+}
+
+export function sanitizeTargetedFeedbackOutput(
+  current: Stage3ProjectOutput,
+  value: unknown,
+  target: FeedbackTarget,
+): Stage3ProjectOutput | null {
+  const complete = sanitizeStage3Output(value, current.preset);
+  if (complete) return targetedFeedbackOutput(current, complete, target);
+
+  // A targeted CTA proposal must not fail because the model also returned an
+  // invalid unrelated section. Rebuild a complete candidate from the trusted
+  // current output and only the small CTA patch that the user selected.
+  if (target !== "cta") return null;
+  const raw = record(value);
+  const hero = record(raw?.hero);
+  const cta = record(raw?.cta);
+  const form = record(raw?.form);
+  if (!hero || !cta || !form) return null;
+
+  const candidate = sanitizeStage3Output({
+    ...current,
+    hero: {
+      ...current.hero,
+      subheadline: hero.subheadline,
+    },
+    cta: {
+      label: cta.label,
+      action: current.cta.action,
+      supportingText: cta.supportingText,
+    },
+    form: {
+      ...current.form,
+      title: form.title,
+      description: form.description,
+      submitLabel: form.submitLabel,
+      fields: current.form.fields,
+    },
+  }, current.preset);
+  return candidate ? targetedFeedbackOutput(current, candidate, target) : null;
 }
 
 function record(value: unknown): Record<string, unknown> | null {
