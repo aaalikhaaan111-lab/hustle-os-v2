@@ -21,6 +21,25 @@ function matchesPrefix(pathname: string, prefixes: string[]) {
 }
 
 export async function updateSession(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+
+  // Public project pages are deliberately outside the authenticated product.
+  // Skip the Supabase session refresh and mark the request so the root layout
+  // can omit the dashboard shell and its client-side providers.
+  if (pathname.startsWith("/p/")) {
+    const requestHeaders = new Headers(request.headers);
+    requestHeaders.set("x-ventrio-public-route", "1");
+    return NextResponse.next({ request: { headers: requestHeaders } });
+  }
+
+  if (pathname.startsWith("/api/public/")) {
+    return NextResponse.next({ request });
+  }
+
+  // Never trust a client-supplied shell marker on authenticated routes. Only
+  // the public-path branch above is allowed to set it.
+  request.headers.delete("x-ventrio-public-route");
+
   let supabaseResponse = NextResponse.next({ request });
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -51,7 +70,6 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const { pathname } = request.nextUrl;
   const isProtected = matchesPrefix(pathname, PROTECTED_PREFIXES);
   const isAuthRoute = matchesPrefix(pathname, AUTH_ROUTES);
 

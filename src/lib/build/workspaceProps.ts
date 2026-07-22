@@ -10,6 +10,9 @@ import { getProofCount } from "@/lib/actions/proof";
 import type { WorkspaceViewProps } from "@/components/build/WorkspaceView";
 import type { RoadmapStage } from "@/components/build/RoadmapPanel";
 import { parseStage3ProjectState } from "@/lib/build/stage3Types";
+import { isLocale, DEFAULT_LOCALE } from "@/i18n/locale";
+import { loadProjectPublicationState } from "@/lib/publishing/queries";
+import { getSiteUrl } from "@/lib/site";
 
 type Client = SupabaseClient<Database>;
 type ProjectRow = Database["public"]["Tables"]["projects"]["Row"];
@@ -30,11 +33,12 @@ export async function buildWorkspaceViewProps(
   // Tasks, outputs, the preheated assistant conversation and the proof count are
   // all independent reads for this project — fetch them in parallel so the
   // workspace isn't a request waterfall.
-  const [tasks, outputs, assistant, proofCount] = await Promise.all([
+  const [tasks, outputs, assistant, proofCount, publication] = await Promise.all([
     getProjectTasks(supabase, project.id),
     getProjectOutputs(supabase, project.id),
     loadProjectAssistant(project.id),
     getProofCount(supabase, project.id),
+    loadProjectPublicationState(supabase, project.id, project.user_id),
   ]);
 
   const t = await getTranslations("build");
@@ -119,6 +123,7 @@ export async function buildWorkspaceViewProps(
     projectName,
     projectConcept: savedFields.solution ?? null,
     projectAudience: savedFields.audience ?? project.target_audience ?? null,
+    projectLocale: isLocale(project.locale) ? project.locale : DEFAULT_LOCALE,
     stageLabel,
     languageLabel,
     progress: project.progress,
@@ -139,6 +144,8 @@ export async function buildWorkspaceViewProps(
       phase: assistant.phase,
     },
     openingMessage,
+    publication,
+    publicBaseUrl: getSiteUrl(),
     stage3: {
       status: stage3?.status ?? null,
       direction: stage3?.direction ?? null,

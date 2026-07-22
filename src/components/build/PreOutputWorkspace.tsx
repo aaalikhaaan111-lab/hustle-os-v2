@@ -9,6 +9,9 @@ import { editProjectOutputAction, generateFirstVersionAction } from "@/lib/actio
 import type { CreationDirection } from "@/lib/build/creationTypes";
 import type { Stage3ProjectOutput, Stage3Status } from "@/lib/build/stage3Types";
 import { ProjectOutputRenderer } from "@/components/build/ProjectOutputRenderer";
+import { PublicationControls } from "@/components/publishing/PublicationControls";
+import type { Locale } from "@/i18n/locale";
+import type { ProjectPublicationState } from "@/lib/publishing/types";
 import { cn } from "@/lib/utils";
 
 interface PreOutputWorkspaceProps {
@@ -16,6 +19,7 @@ interface PreOutputWorkspaceProps {
   projectName: string;
   projectConcept: string | null;
   projectAudience: string | null;
+  projectLocale: Locale;
   stage3Status: Stage3Status | null;
   direction: CreationDirection | null;
   initialOutput: Stage3ProjectOutput | null;
@@ -25,6 +29,8 @@ interface PreOutputWorkspaceProps {
     messages: AssistantMessage[];
   };
   openingMessage: string;
+  publication: ProjectPublicationState | null;
+  publicBaseUrl: string;
 }
 
 interface ChatMessage {
@@ -38,11 +44,14 @@ export function PreOutputWorkspace({
   projectName,
   projectConcept,
   projectAudience,
+  projectLocale,
   stage3Status,
   direction,
   initialOutput,
   assistant,
   openingMessage,
+  publication,
+  publicBaseUrl,
 }: PreOutputWorkspaceProps) {
   const t = useTranslations("stage3");
   const [output, setOutput] = useState(initialOutput);
@@ -200,7 +209,17 @@ export function PreOutputWorkspace({
               <div className="generation-progress mt-9"><span /></div>
             </div>
           ) : output ? (
-            <ProjectOutputRenderer projectId={projectId} output={output} revealKey={revealKey} />
+            <div className="min-h-full">
+              <PublicationControls
+                key={publication?.updatedAt ?? "private-draft"}
+                projectId={projectId}
+                projectLocale={projectLocale}
+                output={output}
+                initialPublication={publication}
+                publicBaseUrl={publicBaseUrl}
+              />
+              <ProjectOutputRenderer projectKey={projectId} output={output} locale={projectLocale} revealKey={revealKey} />
+            </div>
           ) : (
             <div className="emergence mx-auto flex min-h-full max-w-xl flex-col justify-center px-5 py-12 sm:px-9 md:justify-between md:py-10">
               <div>

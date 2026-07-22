@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages, getTranslations } from "next-intl/server";
+import { headers } from "next/headers";
 import { AppShell } from "@/components/layout/AppShell";
 import "./globals.css";
 
@@ -38,6 +39,15 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const requestHeaders = await headers();
+  if (requestHeaders.get("x-ventrio-public-route") === "1") {
+    return (
+      <html lang="en" className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}>
+        <body className="min-h-full">{children}</body>
+      </html>
+    );
+  }
+
   const locale = await getLocale();
   const messages = await getMessages();
 

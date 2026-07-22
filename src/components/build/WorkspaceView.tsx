@@ -11,12 +11,15 @@ import { ContextOverlay } from "@/components/build/ContextOverlay";
 import type { RoadmapStage } from "@/components/build/RoadmapPanel";
 import type { CreationDirection } from "@/lib/build/creationTypes";
 import type { Stage3ProjectOutput, Stage3Status } from "@/lib/build/stage3Types";
+import type { Locale } from "@/i18n/locale";
+import type { ProjectPublicationState } from "@/lib/publishing/types";
 
 export interface WorkspaceViewProps {
   projectId: string;
   projectName: string;
   projectConcept: string | null;
   projectAudience: string | null;
+  projectLocale: Locale;
   stageLabel: string;
   languageLabel: string;
   progress: number;
@@ -39,6 +42,8 @@ export interface WorkspaceViewProps {
     phase: AssistantPhase;
   };
   openingMessage: string;
+  publication: ProjectPublicationState | null;
+  publicBaseUrl: string;
   stage3: {
     status: Stage3Status | null;
     direction: CreationDirection | null;
@@ -86,11 +91,14 @@ export function WorkspaceView(props: WorkspaceViewProps) {
         projectName={props.projectName}
         projectConcept={props.projectConcept}
         projectAudience={props.projectAudience}
+        projectLocale={props.projectLocale}
         stage3Status={props.stage3.status}
         direction={props.stage3.direction}
         initialOutput={props.stage3.output}
         assistant={props.assistant}
         openingMessage={props.openingMessage}
+        publication={props.publication}
+        publicBaseUrl={props.publicBaseUrl}
       />
     );
   }

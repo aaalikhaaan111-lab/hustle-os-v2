@@ -211,6 +211,75 @@ export interface Database {
         };
         Relationships: [];
       };
+      project_publications: {
+        Row: {
+          id: string;
+          project_id: string;
+          user_id: string;
+          slug: string;
+          locale: "en" | "ru";
+          output: unknown;
+          is_published: boolean;
+          published_at: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          project_id: string;
+          user_id: string;
+          slug: string;
+          locale: "en" | "ru";
+          output: unknown;
+          is_published?: boolean;
+          published_at?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          project_id?: string;
+          user_id?: string;
+          slug?: string;
+          locale?: "en" | "ru";
+          output?: unknown;
+          is_published?: boolean;
+          published_at?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      project_responses: {
+        Row: {
+          id: string;
+          publication_id: string;
+          project_id: string;
+          user_id: string;
+          payload: unknown;
+          submitter_hash: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          publication_id: string;
+          project_id: string;
+          user_id: string;
+          payload: unknown;
+          submitter_hash: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          publication_id?: string;
+          project_id?: string;
+          user_id?: string;
+          payload?: unknown;
+          submitter_hash?: string;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
       project_tasks: {
         Row: {
           id: string;
@@ -448,7 +517,26 @@ export interface Database {
       };
     };
     Views: Record<string, never>;
-    Functions: Record<string, never>;
+    Functions: {
+      get_public_project: {
+        Args: { p_slug: string };
+        Returns: {
+          slug: string;
+          locale: string;
+          output: unknown;
+          published_at: string;
+          updated_at: string;
+        }[];
+      };
+      submit_public_project_response: {
+        Args: {
+          p_slug: string;
+          p_payload: unknown;
+          p_server_submitter_hash: string;
+        };
+        Returns: string;
+      };
+    };
     Enums: Record<string, never>;
     CompositeTypes: Record<string, never>;
   };

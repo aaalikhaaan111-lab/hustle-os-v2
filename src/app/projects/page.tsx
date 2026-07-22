@@ -6,10 +6,11 @@ import { getCurrentUser } from "@/lib/supabase/currentUser";
 import { listProjects } from "@/lib/build/queries";
 import { parseSnapshotFields } from "@/lib/build/snapshot";
 import { parseStage3ProjectState } from "@/lib/build/stage3Types";
+import { loadProjectPublicationSummaries, type ProjectPublicationSummary } from "@/lib/publishing/queries";
 import type { Database } from "@/types/supabase";
 
 type ProjectRow = Database["public"]["Tables"]["projects"]["Row"];
-type ProjectStatusKey = "statusCompleted" | "statusReady" | "statusActive" | "statusExploring" | "statusTakingShape" | "statusFirstVersion";
+type ProjectStatusKey = "statusFirstVersion" | "statusLive" | "statusDraft";
 
 const TYPE_KEYS: Record<string, "typeDigitalProduct" | "typeService" | "typeContentMedia" | "typeCommunitySocial" | "typeOther"> = {
   digital_product: "typeDigitalProduct",
@@ -18,17 +19,12 @@ const TYPE_KEYS: Record<string, "typeDigitalProduct" | "typeService" | "typeCont
   community_social: "typeCommunitySocial",
 };
 
-function statusFor(project: ProjectRow): ProjectStatusKey {
-  if (project.status === "completed") return "statusCompleted";
+function statusFor(project: ProjectRow, publication?: ProjectPublicationSummary): ProjectStatusKey {
+  if (publication?.isPublished) return "statusLive";
+  if (publication) return "statusDraft";
   const stage3 = parseStage3ProjectState(project.snapshot_fields);
-  if (stage3?.status === "exploring") return "statusExploring";
-  if (stage3?.status === "shaping") return "statusTakingShape";
-  if (stage3?.status === "proposed" || stage3?.status === "ready") return "statusReady";
-  if (stage3?.status === "first_version_ready") return "statusFirstVersion";
-  if (project.current_stage === null && project.progress === 0 && project.intended_outcome === "first_version") {
-    return "statusReady";
-  }
-  return "statusActive";
+  if (stage3?.status === "first_version_ready" && stage3.output) return "statusFirstVersion";
+  return "statusDraft";
 }
 
 export default async function ProjectsPage() {
@@ -36,9 +32,10 @@ export default async function ProjectsPage() {
   const user = await getCurrentUser(supabase);
   if (!user) redirect("/login");
 
-  const [projects, t] = await Promise.all([
+  const [projects, t, publications] = await Promise.all([
     listProjects(supabase, user.id),
     getTranslations("projects"),
+    loadProjectPublicationSummaries(supabase, user.id),
   ]);
 
   return (
@@ -68,32 +65,39 @@ export default async function ProjectsPage() {
           {projects.map((project, index) => {
             const snapshot = parseSnapshotFields(project.snapshot_fields);
             const stage3 = parseStage3ProjectState(project.snapshot_fields);
+            const publication = publications.get(project.id);
             const concept = stage3?.output?.identity.description ?? stage3?.direction?.concept ?? snapshot.solution ?? (stage3 ? t("exploringDescription") : t("conceptFallback"));
-            const status = statusFor(project);
+            const status = statusFor(project, publication);
             const typeKey = TYPE_KEYS[project.project_type] ?? "typeOther";
             return (
-              <Link
-                key={project.id}
-                href={`/projects/${project.id}`}
-                className="project-collection-card group emergence focus-visible:outline-2 focus-visible:outline-offset-3 focus-visible:outline-accent"
-                style={{ animationDelay: `${Math.min(index, 8) * 65}ms` }}
-              >
-                <div className={`project-identity identity-${project.project_type}`} aria-hidden>
-                  <span />
-                </div>
+              <article key={project.id} className="project-collection-card group emergence" style={{ animationDelay: `${Math.min(index, 8) * 65}ms` }}>
+                <div className={`project-identity identity-${project.project_type}`} aria-hidden><span /></div>
                 <div className="flex items-center justify-between gap-3 text-[10px] font-semibold uppercase tracking-[0.15em] text-ink-muted">
                   <span>{t(typeKey)}</span>
-                  <span className="inline-flex items-center gap-1.5"><i className="h-1 w-1 rounded-full bg-accent not-italic" />{t(status)}</span>
+                  <span className="inline-flex items-center gap-1.5"><i className={`h-1 w-1 rounded-full not-italic ${publication?.isPublished ? "bg-success" : "bg-accent"}`} />{t(status)}</span>
                 </div>
                 <div className="mt-8">
-                  <h2 className="ventrio-display truncate text-[1.7rem] leading-none text-ink">{project.name || t("untitled")}</h2>
+                  <h2 className="ventrio-display truncate text-[1.7rem] leading-none text-ink">
+                    <Link href={`/projects/${project.id}`} className="focus-visible:outline-2 focus-visible:outline-offset-3 focus-visible:outline-accent">
+                      {project.name || t("untitled")}
+                    </Link>
+                  </h2>
                   <p className="mt-3 line-clamp-3 text-sm leading-6 text-ink-secondary">{concept}</p>
                 </div>
-                <div className="mt-auto flex items-center justify-between pt-10 text-xs font-semibold text-ink-muted">
-                  <span>{t("open")}</span>
-                  <span className="transition-transform duration-300 group-hover:translate-x-1" aria-hidden>→</span>
+                <div className="mt-auto pt-10">
+                  {publication?.isPublished && <p className="mb-3 text-[11px] font-semibold text-success">{t("responseCount", { count: publication.responseCount })}</p>}
+                  <div className="flex items-center justify-between gap-3 text-xs font-semibold text-ink-muted">
+                    <Link href={`/projects/${project.id}`} className="transition-colors hover:text-ink">{t("open")}</Link>
+                    {publication?.isPublished ? (
+                      <Link href={`/p/${publication.slug}`} target="_blank" className="inline-flex items-center gap-1.5 text-accent transition-colors hover:text-accent-hover">
+                        {t("viewLive")} <span aria-hidden>↗</span>
+                      </Link>
+                    ) : (
+                      <span className="transition-transform duration-300 group-hover:translate-x-1" aria-hidden>→</span>
+                    )}
+                  </div>
                 </div>
-              </Link>
+              </article>
             );
           })}
         </section>
