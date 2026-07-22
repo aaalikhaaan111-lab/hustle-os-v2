@@ -12,6 +12,8 @@ import {
   type AssistantProposal,
   type AssistantTurn,
 } from "@/lib/actions/buildAi";
+import { parseStage3ProjectState } from "@/lib/build/stage3Types";
+import { isFeedbackRequest, loadFeedbackConversationContext } from "@/lib/feedback/context";
 
 const MESSAGE_MAX_LENGTH = 2000;
 const RECENT_TURNS = 14; // how many recent messages go to the model each turn
@@ -172,9 +174,14 @@ export async function sendAssistantMessage(
   if (userMsgError) return fail(t("assistantUnavailable"));
 
   // Assemble context: authoritative project state + snapshot + memory + recent turns.
-  const [tasks, outputs] = await Promise.all([
+  const stage3 = parseStage3ProjectState(project.snapshot_fields);
+  const feedbackContextPromise = stage3?.output && isFeedbackRequest(message)
+    ? loadFeedbackConversationContext(supabase, projectId, user.id, stage3.output.preset)
+    : Promise.resolve(null);
+  const [tasks, outputs, feedbackContext] = await Promise.all([
     getProjectTasks(supabase, projectId),
     getProjectOutputs(supabase, projectId),
+    feedbackContextPromise,
   ]);
   const snapshotRows = buildSnapshot(project, tasks, outputs);
   const tSnap = t;
@@ -217,6 +224,7 @@ export async function sendAssistantMessage(
     snapshot,
     pitchSummary: pitch?.pitch30 ?? null,
     memorySummary: memoryRow?.summary ?? null,
+    feedbackContext,
   };
 
   const result = await generateAssistantReply(context, recent, locale);

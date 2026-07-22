@@ -280,6 +280,45 @@ export interface Database {
         };
         Relationships: [];
       };
+      project_feedback_analyses: {
+        Row: {
+          project_id: string;
+          publication_id: string;
+          user_id: string;
+          analysis: unknown | null;
+          analyzed_response_count: number | null;
+          analyzed_response_fingerprint: string | null;
+          analyzed_at: string | null;
+          analysis_started_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          project_id: string;
+          publication_id: string;
+          user_id: string;
+          analysis?: unknown | null;
+          analyzed_response_count?: number | null;
+          analyzed_response_fingerprint?: string | null;
+          analyzed_at?: string | null;
+          analysis_started_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          project_id?: string;
+          publication_id?: string;
+          user_id?: string;
+          analysis?: unknown | null;
+          analyzed_response_count?: number | null;
+          analyzed_response_fingerprint?: string | null;
+          analyzed_at?: string | null;
+          analysis_started_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
       project_tasks: {
         Row: {
           id: string;

@@ -1,5 +1,6 @@
 import type { Locale } from "@/i18n/locale";
 import type { Stage3ProjectOutput } from "@/lib/build/stage3Types";
+import type { FeedbackAnalysisState } from "@/lib/feedback/types";
 
 export interface ProjectResponseItem {
   id: string;
@@ -16,6 +17,7 @@ export interface ProjectPublicationState {
   updatedAt: string;
   responseCount: number;
   recentResponses: ProjectResponseItem[];
+  feedback: FeedbackAnalysisState;
 }
 
 export interface PublicProjectPublication {

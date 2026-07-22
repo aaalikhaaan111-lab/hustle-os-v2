@@ -12,6 +12,7 @@ import type { Stage3ProjectOutput } from "@/lib/build/stage3Types";
 import type { ProjectPublicationState, PublicationActionResult } from "@/lib/publishing/types";
 import { publicationMatchesDraft } from "@/lib/publishing/snapshot";
 import { cn } from "@/lib/utils";
+import { FeedbackPanel } from "@/components/publishing/FeedbackPanel";
 
 interface PublicationControlsProps {
   projectId: string;
@@ -19,6 +20,7 @@ interface PublicationControlsProps {
   output: Stage3ProjectOutput;
   initialPublication: ProjectPublicationState | null;
   publicBaseUrl: string;
+  onDraftChanged: (output: Stage3ProjectOutput) => void;
 }
 
 export function PublicationControls({
@@ -27,6 +29,7 @@ export function PublicationControls({
   output,
   initialPublication,
   publicBaseUrl,
+  onDraftChanged,
 }: PublicationControlsProps) {
   const t = useTranslations("publishing");
   const [publication, setPublication] = useState(initialPublication);
@@ -87,10 +90,6 @@ export function PublicationControls({
     run(() => unpublishProjectAction(projectId));
   }
 
-  const fieldLabels = new Map(
-    (publication?.output.form.fields ?? output.form.fields).map((field) => [field.id, field.label]),
-  );
-
   return (
     <aside className="publication-dock" aria-label={t("controlsLabel")}>
       <div className="publication-dock-main">
@@ -136,28 +135,12 @@ export function PublicationControls({
       )}
 
       {publication && (
-        <details className="publication-responses" open={publication.responseCount > 0}>
-          <summary>
-            <span>{t("firstResponses")}</span>
-            <strong>{t("responseCount", { count: publication.responseCount })}</strong>
-          </summary>
-          {publication.recentResponses.length === 0 ? (
-            <p className="publication-empty">{t("responsesEmpty")}</p>
-          ) : (
-            <div className="publication-response-list">
-              {publication.recentResponses.map((response) => (
-                <article key={response.id}>
-                  <time dateTime={response.createdAt}>
-                    {new Intl.DateTimeFormat(projectLocale, { dateStyle: "medium", timeStyle: "short" }).format(new Date(response.createdAt))}
-                  </time>
-                  {Object.entries(response.payload).map(([key, value]) => (
-                    <p key={key}><span>{fieldLabels.get(key) ?? key}</span>{value || "—"}</p>
-                  ))}
-                </article>
-              ))}
-            </div>
-          )}
-        </details>
+        <FeedbackPanel
+          projectId={projectId}
+          projectLocale={projectLocale}
+          publication={publication}
+          onDraftChanged={onDraftChanged}
+        />
       )}
     </aside>
   );

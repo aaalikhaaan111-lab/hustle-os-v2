@@ -16,6 +16,7 @@ import {
   type Stage3ProjectOutput,
   type Stage3ProjectState,
 } from "@/lib/build/stage3Types";
+import { isFeedbackRequest, loadFeedbackConversationContext } from "@/lib/feedback/context";
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const TOKEN_PATTERN = /^[a-zA-Z0-9_-]{8,80}$/;
@@ -119,7 +120,7 @@ function stableUuid(seed: string): string {
   return `${value.slice(0, 8)}-${value.slice(8, 12)}-${value.slice(12, 16)}-${value.slice(16, 20)}-${value.slice(20)}`;
 }
 
-function outputPrompt(locale: string, edit = false): string {
+function outputPrompt(locale: string, edit = false, feedbackGrounded = false): string {
   const language = locale === "ru" ? "Russian" : "English";
   return `You are Ventrio's structured first-version engine. ${edit ? "Edit the existing project output according to the user's latest request." : "Create a complete, visible first version from the chosen project direction."}
 
@@ -136,7 +137,14 @@ SAFETY AND QUALITY
 - Use exactly three #RRGGBB palette colors.
 - Keep the preset unchanged during edits. Preserve strong existing content unless the request requires changing it.
 - Make every section concrete and internally consistent with the audience, value, CTA, and form.
-- The identity name must be short and specific, never Untitled, New project, or a translated placeholder.`;
+- The identity name must be short and specific, never Untitled, New project, or a translated placeholder.
+${feedbackGrounded ? `
+FEEDBACK-GROUNDED EDIT
+- The request refers to real visitor feedback. Use only the supplied feedbackContext as evidence.
+- Never invent respondents, trends, demand, validation, complaints, percentages, or quotes.
+- If totalResponseCount is 0, say the edit cannot be based on feedback and preserve the output.
+- If there are only 1-2 responses, treat them as early individual signals, not a reliable pattern.
+- Contact fields have been deliberately removed. Do not infer or expose identities.` : ""}`;
 }
 
 function logUsage(operation: "first_version_generation" | "project_output_edit", projectId: string, startedAt: number, response: Anthropic.Message) {
@@ -276,13 +284,21 @@ export async function editProjectOutputAction(
 
   try {
     const startedAt = Date.now();
+    const feedbackContext = isFeedbackRequest(message)
+      ? await loadFeedbackConversationContext(supabase, projectId, user.id, stage3.output.preset)
+      : null;
     const client = new Anthropic();
     const response = await client.messages.create({
       model: "claude-sonnet-5",
       max_tokens: 3800,
       output_config: { effort: "low", format: { type: "json_schema", schema: EDIT_SCHEMA } },
-      system: outputPrompt(locale, true),
-      messages: [{ role: "user", content: JSON.stringify({ currentOutput: stage3.output, requestedEdit: message, projectLocale: locale }) }],
+      system: outputPrompt(locale, true, feedbackContext !== null),
+      messages: [{ role: "user", content: JSON.stringify({
+        currentOutput: stage3.output,
+        requestedEdit: message,
+        projectLocale: locale,
+        feedbackContext,
+      }) }],
     });
     logUsage("project_output_edit", projectId, startedAt, response);
     const textBlock = response.content.find((block) => block.type === "text");

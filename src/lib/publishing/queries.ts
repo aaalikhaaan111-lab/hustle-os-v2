@@ -6,6 +6,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { isLocale } from "@/i18n/locale";
 import { sanitizeStage3Output } from "@/lib/build/stage3Types";
 import { isPublicSlug } from "@/lib/publishing/slug";
+import { feedbackStateFromRow } from "@/lib/feedback/queries";
 import type {
   ProjectPublicationState,
   ProjectResponseItem,
@@ -44,7 +45,7 @@ export async function loadProjectPublicationState(
 ): Promise<ProjectPublicationState | null> {
   const { data: publication } = await supabase
     .from("project_publications")
-    .select("slug, locale, output, is_published, published_at, updated_at")
+    .select("id, slug, locale, output, is_published, published_at, updated_at")
     .eq("project_id", projectId)
     .eq("user_id", userId)
     .maybeSingle();
@@ -53,7 +54,7 @@ export async function loadProjectPublicationState(
   const output = sanitizeStage3Output(publication.output);
   if (!output) return null;
 
-  const [{ count }, { data: recent }] = await Promise.all([
+  const [{ count }, { data: recent }, { data: responseIds }, { data: feedbackRow }] = await Promise.all([
     supabase
       .from("project_responses")
       .select("id", { count: "exact", head: true })
@@ -65,8 +66,23 @@ export async function loadProjectPublicationState(
       .eq("project_id", projectId)
       .eq("user_id", userId)
       .order("created_at", { ascending: false })
-      .limit(6),
+      .limit(20),
+    supabase
+      .from("project_responses")
+      .select("id")
+      .eq("project_id", projectId)
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false })
+      .limit(1000),
+    supabase
+      .from("project_feedback_analyses")
+      .select("project_id, publication_id, user_id, analysis, analyzed_response_count, analyzed_response_fingerprint, analyzed_at, analysis_started_at, created_at, updated_at")
+      .eq("project_id", projectId)
+      .eq("user_id", userId)
+      .maybeSingle(),
   ]);
+
+  const responseCount = count ?? 0;
 
   return {
     slug: publication.slug,
@@ -75,8 +91,13 @@ export async function loadProjectPublicationState(
     isPublished: publication.is_published,
     publishedAt: publication.published_at,
     updatedAt: publication.updated_at,
-    responseCount: count ?? 0,
+    responseCount,
     recentResponses: (recent ?? []).map(toResponseItem),
+    feedback: feedbackStateFromRow(
+      feedbackRow,
+      (responseIds ?? []).map((row) => row.id),
+      responseCount,
+    ),
   };
 }
 

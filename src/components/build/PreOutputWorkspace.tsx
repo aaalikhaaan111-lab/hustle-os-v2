@@ -217,6 +217,11 @@ export function PreOutputWorkspace({
                 output={output}
                 initialPublication={publication}
                 publicBaseUrl={publicBaseUrl}
+                onDraftChanged={(nextOutput) => {
+                  setOutput(nextOutput);
+                  setRevealKey((value) => value + 1);
+                  setMobileMode("project");
+                }}
               />
               <ProjectOutputRenderer projectKey={projectId} output={output} locale={projectLocale} revealKey={revealKey} />
             </div>

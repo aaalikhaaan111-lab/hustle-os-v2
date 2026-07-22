@@ -481,6 +481,7 @@ export interface AssistantContext {
   snapshot: { label: string; value: string }[];
   pitchSummary: string | null;
   memorySummary: string | null;
+  feedbackContext: unknown | null;
 }
 
 export interface AssistantTurn {
@@ -553,7 +554,12 @@ Current stage: ${context.currentStage ?? "just starting"}${context.currentTaskTi
 Saved work so far (the user's real, confirmed inputs — treat as facts):
 ${snapshotLines}
 ${context.pitchSummary ? `\nPitch so far: ${context.pitchSummary}` : ""}
-${context.memorySummary ? `\nEarlier in this project's conversations: ${context.memorySummary}` : ""}`;
+${context.memorySummary ? `\nEarlier in this project's conversations: ${context.memorySummary}` : ""}
+${context.feedbackContext ? `
+
+PRIVATE RESPONSE EVIDENCE
+The user is asking about real project feedback. Use ONLY the redacted context below for claims about respondents. Never infer identities, expose contact details, invent trends, or claim validation. With 1-2 responses, describe only early individual signals. If totalResponseCount is 0, say there is no response evidence yet.
+${JSON.stringify(context.feedbackContext)}` : ""}`;
 }
 
 /**
