@@ -2,9 +2,7 @@
 
 import { useState, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
-import { LanguageSwitcher } from "@/components/layout/LanguageSwitcher";
 import { Wordmark } from "@/components/layout/Wordmark";
-import { PublicNav } from "@/components/layout/PublicNav";
 import { LandingComposer } from "@/components/landing/LandingComposer";
 import { usePrefersReducedMotion, useReveal } from "@/components/landing/hooks";
 import styles from "./LandingExperience.module.css";
@@ -120,10 +118,6 @@ export function LandingExperience({ isAuthenticated, children }: LandingExperien
         <button type="button" onClick={backToComposer} className={styles.wordmarkLink} aria-label={t("backToTop")}>
           <Wordmark className={styles.wordmark} />
         </button>
-        <div className={styles.headerActions}>
-          <LanguageSwitcher className={styles.languageSwitcher} />
-          <PublicNav isAuthenticated={isAuthenticated} />
-        </div>
       </header>
 
       <div className={styles.journey}>

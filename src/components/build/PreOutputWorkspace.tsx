@@ -155,7 +155,7 @@ export function PreOutputWorkspace({
   return (
     <div className="pre-output-workspace relative flex h-full min-h-0 flex-col overflow-hidden">
       <div aria-hidden className="creation-focus-field opacity-70" />
-      <header className="relative z-20 shrink-0 px-4 pt-[max(0.9rem,env(safe-area-inset-top))] sm:px-6 md:px-8 md:pt-5">
+      <header className="relative z-20 shrink-0 pl-4 pr-14 pt-[max(0.9rem,env(safe-area-inset-top))] sm:pl-6 md:pl-8 md:pt-5">
         <div className="flex items-center justify-between gap-4">
           <Link href="/projects" className="group inline-flex min-w-0 items-center gap-2 text-xs font-medium text-ink-muted transition-colors hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent">
             <span className="transition-transform duration-200 group-hover:-translate-x-0.5" aria-hidden>←</span>
@@ -166,9 +166,9 @@ export function PreOutputWorkspace({
             {output ? t("statusFirstVersion") : stage3Status === "ready" ? t("statusReady") : t("statusShaping")}
           </div>
         </div>
-        <div className="mt-4 grid grid-cols-2 rounded-full bg-white/[0.035] p-1 ring-1 ring-inset ring-white/[0.055] md:hidden">
+        <div className="mt-4 grid grid-cols-2 rounded-full bg-canvas p-1 ring-1 ring-inset ring-border md:hidden">
           {(["chat", "project"] as const).map((mode) => (
-            <button key={mode} type="button" onClick={() => setMobileMode(mode)} className={cn("rounded-full px-3 py-2 text-xs font-semibold transition-all focus-visible:outline-2 focus-visible:outline-accent", mobileMode === mode ? "bg-white/[0.08] text-ink shadow-sm" : "text-ink-muted")}>
+            <button key={mode} type="button" onClick={() => setMobileMode(mode)} className={cn("rounded-full px-3 py-2 text-xs font-semibold transition-all focus-visible:outline-2 focus-visible:outline-accent", mobileMode === mode ? "bg-surface text-ink shadow-sm ring-1 ring-border" : "text-ink-muted")}>
               {mode === "chat" ? t("chatTab") : t("projectTab")}
             </button>
           ))}
@@ -177,7 +177,7 @@ export function PreOutputWorkspace({
 
       <main className="relative z-10 min-h-0 flex-1 md:grid md:grid-cols-[minmax(330px,0.78fr)_minmax(0,1.22fr)] md:gap-px md:px-5 md:pb-5 md:pt-4 lg:px-8">
         <section className={cn("h-full min-h-0 overflow-hidden md:block", mobileMode !== "chat" && "hidden")} aria-label={t("chatTab")}>
-          <div className="flex h-full min-h-0 flex-col md:rounded-l-[2rem] md:bg-black/[0.08] md:ring-1 md:ring-inset md:ring-white/[0.04]">
+          <div className="flex h-full min-h-0 flex-col md:rounded-l-[2rem] md:bg-surface md:ring-1 md:ring-inset md:ring-border">
             <div className="hidden shrink-0 px-7 pt-6 md:block">
               <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-ink-muted">{t("creator")}</p>
             </div>
@@ -185,7 +185,7 @@ export function PreOutputWorkspace({
               <div className="mx-auto flex max-w-[680px] flex-col gap-6">
                 {messages.length === 0 && <p className="text-[16px] leading-7 text-ink">{openingMessage}</p>}
                 {messages.map((message) => message.role === "user" ? (
-                  <div key={message.id} className="flex justify-end"><p className="max-w-[88%] whitespace-pre-wrap rounded-[1.3rem] rounded-br-md bg-white/[0.075] px-4 py-2.5 text-sm leading-6 text-ink">{message.content}</p></div>
+                  <div key={message.id} className="flex justify-end"><p className="max-w-[88%] whitespace-pre-wrap rounded-[1.3rem] rounded-br-md bg-accent px-4 py-2.5 text-sm leading-6 text-white">{message.content}</p></div>
                 ) : (
                   <p key={message.id} className="whitespace-pre-wrap text-[16px] leading-7 text-ink">{message.content}</p>
                 ))}
@@ -209,7 +209,7 @@ export function PreOutputWorkspace({
           </div>
         </section>
 
-        <section className={cn("h-full min-h-0 overflow-x-hidden overflow-y-auto pb-[calc(4.5rem+env(safe-area-inset-bottom))] md:block md:rounded-r-[2rem] md:pb-0 md:ring-1 md:ring-inset md:ring-white/[0.055]", mobileMode !== "project" && "hidden")} aria-label={t("projectTab")}>
+        <section className={cn("h-full min-h-0 overflow-x-hidden overflow-y-auto pb-[calc(4.5rem+env(safe-area-inset-bottom))] md:block md:rounded-r-[2rem] md:pb-0 md:ring-1 md:ring-inset md:ring-border", mobileMode !== "project" && "hidden")} aria-label={t("projectTab")}>
           {isGenerating ? (
             <div className="generation-canvas flex min-h-full flex-col items-center justify-center px-6 text-center" role="status" aria-live="polite">
               <span className="creation-orbit" aria-hidden><span /></span>
@@ -243,7 +243,7 @@ export function PreOutputWorkspace({
                 <p className="mt-6 max-w-lg text-pretty text-[16px] leading-7 text-ink-secondary">{projectConcept ?? direction?.concept ?? t("conceptFallback")}</p>
                 {(projectAudience || direction?.audience) && <div className="mt-8 border-l border-accent/35 pl-4"><p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-ink-muted">{t("forLabel")}</p><p className="mt-1.5 text-sm leading-6 text-ink">{projectAudience ?? direction?.audience}</p></div>}
               </div>
-              <div className="mt-14 border-t border-white/[0.06] pt-7 md:mt-16">
+              <div className="mt-14 border-t border-border pt-7 md:mt-16">
                 <h2 className="ventrio-display text-2xl text-ink">{t("readyTitle")}</h2>
                 <p className="mt-2 max-w-md text-sm leading-6 text-ink-secondary">{t("readyBody")}</p>
                 <button type="button" onClick={createFirstVersion} disabled={!direction || busy} className="primary-action mt-6 focus-visible:outline-2 focus-visible:outline-offset-3 focus-visible:outline-accent disabled:opacity-35">{t("createFirstVersion")} <span aria-hidden>→</span></button>

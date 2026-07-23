@@ -221,7 +221,7 @@ export function AssistantChat({
               {messages.map((m) =>
                 m.role === "user" ? (
                   <div key={m.id} className="animate-message-in flex justify-end">
-                    <div className="max-w-[85%] whitespace-pre-wrap rounded-[1.35rem] rounded-br-md bg-white/[0.075] px-4 py-2.5 text-[15px] leading-relaxed text-ink ring-1 ring-inset ring-white/[0.055]">
+                    <div className="max-w-[85%] whitespace-pre-wrap rounded-[1.35rem] rounded-br-md bg-accent px-4 py-2.5 text-[15px] leading-relaxed text-white">
                       {m.content}
                     </div>
                   </div>

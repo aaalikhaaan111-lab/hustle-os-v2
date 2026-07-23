@@ -356,7 +356,7 @@ export function CreateExperience({ userId, initialDraft }: CreateExperienceProps
     <div className={cn("creation-canvas relative flex h-full min-h-0 flex-col", started && "is-started", turn?.transition === "focus" && "is-focused")}>
       <div aria-hidden className="creation-focus-field" />
 
-      <header className="relative z-10 flex shrink-0 items-center justify-between px-5 pt-[max(1rem,env(safe-area-inset-top))] sm:px-8 sm:pt-6">
+      <header className="relative z-10 flex shrink-0 items-center justify-between pl-5 pr-14 pt-[max(1rem,env(safe-area-inset-top))] sm:pl-8 sm:pr-14 sm:pt-6">
         <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-ink-muted">
           <span className="creation-signal-dot" />
           {t("eyebrow")}
@@ -366,7 +366,7 @@ export function CreateExperience({ userId, initialDraft }: CreateExperienceProps
             type="button"
             onClick={startOver}
             disabled={isSending || creating}
-            className="rounded-full px-3 py-1.5 text-xs font-medium text-ink-muted transition-colors hover:bg-white/[0.04] hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-40"
+            className="rounded-full px-3 py-1.5 text-xs font-medium text-ink-muted transition-colors hover:bg-surface-hover hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-40"
           >
             {t("startOver")}
           </button>
@@ -417,7 +417,7 @@ export function CreateExperience({ userId, initialDraft }: CreateExperienceProps
                   const isLatestAssistant = message.role === "assistant" && index === messages.length - 1;
                   return message.role === "user" ? (
                     <div key={index} className="animate-message-in flex justify-end">
-                      <div className="max-w-[88%] whitespace-pre-wrap rounded-[1.4rem] rounded-br-md bg-white/[0.075] px-4 py-2.5 text-[15px] leading-6 text-ink ring-1 ring-inset ring-white/[0.055] sm:max-w-[76%]">
+                      <div className="max-w-[88%] whitespace-pre-wrap rounded-[1.4rem] rounded-br-md bg-accent px-4 py-2.5 text-[15px] leading-6 text-white sm:max-w-[76%]">
                         {message.content}
                       </div>
                     </div>
@@ -673,7 +673,7 @@ function DirectionCard({
 
 function DirectionDetail({ label, value }: { label: string; value: string }) {
   return (
-    <div className="grid gap-1 border-t border-white/[0.055] pt-3">
+    <div className="grid gap-1 border-t border-border pt-3">
       <dt className="text-[10px] font-semibold uppercase tracking-[0.16em] text-ink-muted">{label}</dt>
       <dd className="text-[13px] leading-5 text-ink">{value}</dd>
     </div>

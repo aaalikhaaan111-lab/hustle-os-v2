@@ -50,6 +50,9 @@ export default async function RootLayout({
 
   const locale = await getLocale();
   const messages = await getMessages();
+  // Middleware forwards the authenticated user's id on live routes; the drawer
+  // uses it to show the right auth controls.
+  const isAuthenticated = Boolean(requestHeaders.get("x-user-id"));
 
   return (
     <html
@@ -58,7 +61,7 @@ export default async function RootLayout({
     >
       <body className="min-h-full">
         <NextIntlClientProvider locale={locale} messages={messages}>
-          <AppShell>{children}</AppShell>
+          <AppShell isAuthenticated={isAuthenticated}>{children}</AppShell>
         </NextIntlClientProvider>
       </body>
     </html>
