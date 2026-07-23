@@ -18,6 +18,7 @@ import {
   type CreationStartingPoint,
   type CreationTurn,
 } from "@/lib/build/creationTypes";
+import { takeSeed } from "@/lib/create/seed";
 import { cn } from "@/lib/utils";
 
 const STARTING_POINTS: {
@@ -77,6 +78,7 @@ export function CreateExperience({ userId, initialDraft }: CreateExperienceProps
       // Server persistence remains authoritative when storage is unavailable.
     }
   }, [initialDraft?.sessionId, storageKey]);
+
 
   useEffect(() => {
     if (!started) {
@@ -188,6 +190,39 @@ export function CreateExperience({ userId, initialDraft }: CreateExperienceProps
     setPendingRequestId(requestId);
     runTurn(message, point.id, requestId);
   }
+
+  // Begin the conversation from a homepage seed — the visitor's first message,
+  // carried here through sessionStorage. Idempotent: it only starts a fresh
+  // conversation, and the draft/message actions are already deduplicated
+  // server-side by session and request id.
+  function startFromSeed(message: string, point: CreationStartingPoint | null) {
+    if (isSending || creating || messages.length > 0) return;
+    const requestId = crypto.randomUUID();
+    setStartingPoint(point);
+    setMessages([{ role: "user", content: message }]);
+    setTurn(null);
+    setPendingRequestId(requestId);
+    runTurn(message, point, requestId);
+  }
+
+  // Consume a homepage seed exactly once on mount. A fresh visit starts the
+  // conversation from it; if a draft is already in progress we only pre-fill
+  // the composer so an existing conversation is never disturbed. Deferred to a
+  // microtask so the state updates happen outside the effect body.
+  const seedConsumedRef = useRef(false);
+  useEffect(() => {
+    if (seedConsumedRef.current) return;
+    seedConsumedRef.current = true;
+    const seed = takeSeed();
+    if (!seed) return;
+    if (initialDraft?.messages?.length) {
+      queueMicrotask(() => setInput(seed.message));
+      return;
+    }
+    queueMicrotask(() => startFromSeed(seed.message, seed.startingPoint));
+    // Runs once on mount; startFromSeed and initialDraft are stable for this instance.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   function pickChoice(choice: CreationChoice) {
     if (!turn || isSending || creating) return;
@@ -320,8 +355,6 @@ export function CreateExperience({ userId, initialDraft }: CreateExperienceProps
   return (
     <div className={cn("creation-canvas relative flex h-full min-h-0 flex-col", started && "is-started", turn?.transition === "focus" && "is-focused")}>
       <div aria-hidden className="creation-focus-field" />
-      <div aria-hidden className="creation-contour creation-contour-a" />
-      <div aria-hidden className="creation-contour creation-contour-b" />
 
       <header className="relative z-10 flex shrink-0 items-center justify-between px-5 pt-[max(1rem,env(safe-area-inset-top))] sm:px-8 sm:pt-6">
         <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-ink-muted">

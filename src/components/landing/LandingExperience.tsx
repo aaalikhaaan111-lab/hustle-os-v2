@@ -1,11 +1,15 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
-import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { LanguageSwitcher } from "@/components/layout/LanguageSwitcher";
 import { Wordmark } from "@/components/layout/Wordmark";
+import { PublicNav } from "@/components/layout/PublicNav";
+import { LandingComposer } from "@/components/landing/LandingComposer";
+import { usePrefersReducedMotion, useReveal } from "@/components/landing/hooks";
 import styles from "./LandingExperience.module.css";
+
+const HOME_COMPOSER_ID = "home-composer";
 
 const EXAMPLES = [
   {
@@ -70,6 +74,24 @@ const CYCLE_STEPS = [
   { number: "05", titleKey: "cycleImprove", bodyKey: "cycleImproveBody" },
 ] as const;
 
+function Reveal({
+  children,
+  className,
+  motion,
+}: {
+  children: ReactNode;
+  className?: string;
+  motion: boolean;
+}) {
+  const ref = useReveal<HTMLDivElement>(motion);
+  const classes = [styles.reveal, className].filter(Boolean).join(" ");
+  return (
+    <div ref={ref} className={classes}>
+      {children}
+    </div>
+  );
+}
+
 interface LandingExperienceProps {
   isAuthenticated: boolean;
   children: ReactNode;
@@ -77,97 +99,56 @@ interface LandingExperienceProps {
 
 export function LandingExperience({ isAuthenticated, children }: LandingExperienceProps) {
   const t = useTranslations("landing");
+  const reducedMotion = usePrefersReducedMotion();
+  const motion = !reducedMotion;
   const [activeExampleId, setActiveExampleId] = useState<(typeof EXAMPLES)[number]["id"]>(EXAMPLES[0].id);
   const activeExample = EXAMPLES.find((example) => example.id === activeExampleId) ?? EXAMPLES[0];
-  const primaryHref = isAuthenticated ? "/create" : "/signup";
+  const cycleRef = useReveal<HTMLOListElement>(motion);
+
+  // The wordmark is the way back to the composer: return to the top and focus
+  // the entry field, rather than navigating somewhere arbitrary.
+  function backToComposer() {
+    window.scrollTo({ top: 0, behavior: reducedMotion ? "auto" : "smooth" });
+    window.requestAnimationFrame(() => {
+      document.getElementById(HOME_COMPOSER_ID)?.focus();
+    });
+  }
 
   return (
     <div className={styles.experience}>
       <header className={styles.header}>
-        <Link href="/" aria-label="Ventrio" className={styles.wordmarkLink}>
+        <button type="button" onClick={backToComposer} className={styles.wordmarkLink} aria-label={t("backToTop")}>
           <Wordmark className={styles.wordmark} />
-        </Link>
-        <nav className={styles.headerNav} aria-label={t("navLabel")}>
-          <a href="#formation" className={styles.navLink}>
-            {t("navFormation")}
-          </a>
-          <a href="#after" className={styles.navLink}>
-            {t("navAfter")}
-          </a>
-        </nav>
+        </button>
         <div className={styles.headerActions}>
           <LanguageSwitcher className={styles.languageSwitcher} />
-          {isAuthenticated ? (
-            <Link href="/projects" className={styles.loginLink}>
-              {t("openProjects")}
-            </Link>
-          ) : (
-            <Link href="/login" className={styles.loginLink}>
-              {t("login")}
-            </Link>
-          )}
-          <Link href={primaryHref} className={styles.headerCta}>
-            {isAuthenticated ? t("createProject") : t("ctaShort")}
-          </Link>
+          <PublicNav isAuthenticated={isAuthenticated} />
         </div>
       </header>
 
       <div className={styles.journey}>
         <section className={styles.hero} aria-labelledby="landing-title">
-          <div className={styles.heroAtmosphere} aria-hidden>
-            <span className={styles.heroContourOne} />
-            <span className={styles.heroContourTwo} />
-            <span className={styles.heroSignal} />
+          <span className={styles.heroGlow} aria-hidden />
+          <p className={styles.eyebrow}>
+            <span className={styles.signalDot} aria-hidden />
+            {t("badge")}
+          </p>
+          <h1 id="landing-title" className={styles.heroTitle}>
+            {t("title")}
+          </h1>
+          <p className={styles.heroSubtitle}>{t("subtitle")}</p>
+          <div className={styles.heroComposer}>
+            <LandingComposer isAuthenticated={isAuthenticated} variant="hero" textareaId={HOME_COMPOSER_ID} />
           </div>
-          <div className={styles.heroCopy}>
-            <p className={styles.eyebrow}>
-              <span className={styles.signalDot} aria-hidden />
-              {t("badge")}
-            </p>
-            <h1 id="landing-title" className={styles.heroTitle}>
-              {t("title")}
-            </h1>
-            <p className={styles.heroSubtitle}>{t("subtitle")}</p>
-            <div className={styles.heroActions}>
-              <Link href={primaryHref} className={styles.primaryCta}>
-                <span>{isAuthenticated ? t("createProject") : t("cta")}</span>
-                <span className={styles.ctaArrow} aria-hidden>
-                  →
-                </span>
-              </Link>
-              <p className={styles.heroNote}>{t("heroNote")}</p>
-            </div>
-          </div>
-
-          <div className={styles.heroObject} aria-hidden>
-            <div className={styles.seedPhrase}>
-              <span>{t("heroSeedPrefix")}</span>
-              <strong>{t("heroSeed")}</strong>
-            </div>
-            <div className={styles.heroThread}>
-              <span />
-            </div>
-            <div className={styles.heroProject}>
-              <span className={styles.heroProjectBar} />
-              <span className={styles.heroProjectTitle} />
-              <span className={styles.heroProjectLine} />
-              <span className={styles.heroProjectLineShort} />
-              <span className={styles.heroProjectButton} />
-            </div>
-          </div>
-
-          <a href="#formation" className={styles.scrollCue}>
-            <span>{t("scrollCue")}</span>
-            <i aria-hidden />
-          </a>
+          <p className={styles.heroNote}>{t("heroNote")}</p>
         </section>
 
         <section id="formation" className={styles.formationSection} aria-labelledby="formation-title">
-          <div className={styles.sectionHeading}>
+          <Reveal className={styles.sectionHeading} motion={motion}>
             <p className={styles.eyebrow}>{t("formationEyebrow")}</p>
             <h2 id="formation-title">{t("formationTitle")}</h2>
             <p>{t("formationSubtitle")}</p>
-          </div>
+          </Reveal>
 
           <div className={styles.examplePicker} role="group" aria-label={t("examplePickerLabel")}>
             {EXAMPLES.map((example) => {
@@ -205,9 +186,6 @@ export function LandingExperience({ isAuthenticated, children }: LandingExperien
 
               <div className={styles.formationCore} aria-hidden>
                 <span className={styles.coreLine} />
-                <span className={styles.corePulseOne} />
-                <span className={styles.corePulseTwo} />
-                <span className={styles.corePulseThree} />
                 <span className={styles.fragmentMaterial}>{t(activeExample.materialKey)}</span>
                 <span className={styles.fragmentAudience}>{t(activeExample.audienceKey)}</span>
                 <span className={styles.fragmentFormat}>{t(activeExample.formatKey)}</span>
@@ -250,11 +228,11 @@ export function LandingExperience({ isAuthenticated, children }: LandingExperien
 
         <section id="after" className={styles.cycleSection} aria-labelledby="cycle-title">
           <div className={styles.cycleIntro}>
-            <div className={styles.sectionHeading}>
+            <Reveal className={styles.sectionHeading} motion={motion}>
               <p className={styles.eyebrow}>{t("cycleEyebrow")}</p>
               <h2 id="cycle-title">{t("cycleTitle")}</h2>
               <p>{t("cycleSubtitle")}</p>
-            </div>
+            </Reveal>
             <div className={styles.responseSignal} aria-label={t("responseSignalLabel")}>
               <span className={styles.responseAvatar} aria-hidden>
                 M
@@ -267,9 +245,9 @@ export function LandingExperience({ isAuthenticated, children }: LandingExperien
             </div>
           </div>
 
-          <ol className={styles.cycleTrack}>
-            {CYCLE_STEPS.map((step) => (
-              <li key={step.number}>
+          <ol className={styles.cycleTrack} ref={cycleRef}>
+            {CYCLE_STEPS.map((step, index) => (
+              <li key={step.number} style={{ transitionDelay: `${index * 90}ms` }}>
                 <span className={styles.cycleNumber}>{step.number}</span>
                 <span className={styles.cycleNode} aria-hidden />
                 <h3>{t(step.titleKey)}</h3>
@@ -283,24 +261,14 @@ export function LandingExperience({ isAuthenticated, children }: LandingExperien
         </section>
 
         <section className={styles.finalSection} aria-labelledby="final-title">
-          <div className={styles.finalFormation} aria-hidden>
-            <span className={styles.finalFragmentOne}>{t("finalFragmentOne")}</span>
-            <span className={styles.finalFragmentTwo}>{t("finalFragmentTwo")}</span>
-            <span className={styles.finalFragmentThree}>{t("finalFragmentThree")}</span>
-            <span className={styles.finalThread} />
-            <span className={styles.finalFrame} />
-          </div>
-          <div className={styles.finalCopy}>
+          <Reveal className={styles.finalCopy} motion={motion}>
             <p className={styles.eyebrow}>{t("finalEyebrow")}</p>
             <h2 id="final-title">{t("finalTitle")}</h2>
             <p>{t("finalSubtitle")}</p>
-            <Link href={primaryHref} className={styles.primaryCta}>
-              <span>{isAuthenticated ? t("createProject") : t("finalCta")}</span>
-              <span className={styles.ctaArrow} aria-hidden>
-                →
-              </span>
-            </Link>
-          </div>
+            <div className={styles.finalComposer}>
+              <LandingComposer isAuthenticated={isAuthenticated} variant="final" />
+            </div>
+          </Reveal>
         </section>
       </div>
 

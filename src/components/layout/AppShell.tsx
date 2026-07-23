@@ -17,7 +17,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   if (pathname === "/") {
     return (
       <div className="relative min-h-screen">
-        <BackgroundBlobs />
+        <BackgroundBlobs variant="minimal" />
         <main className="relative z-10">{children}</main>
       </div>
     );
