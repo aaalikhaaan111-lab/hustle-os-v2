@@ -60,7 +60,9 @@ export function PreOutputWorkspace({
     assistant.messages.map((message) => ({ id: message.id, role: message.role, content: message.content }))
   );
   const [conversationId, setConversationId] = useState(assistant.conversationId);
-  const [mobileMode, setMobileMode] = useState<"chat" | "project">(initialOutput ? "project" : "chat");
+  const [mobileMode, setMobileMode] = useState<"chat" | "project">(
+    initialOutput || (direction && stage3Status === "ready") ? "project" : "chat"
+  );
   const [input, setInput] = useState("");
   const [note, setNote] = useState<string | null>(null);
   const [revealKey, setRevealKey] = useState(initialOutput ? 1 : 0);

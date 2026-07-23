@@ -9,6 +9,7 @@ import {
   generateCreationTurnAction,
   selectCreationDirectionAction,
 } from "@/lib/actions/creation";
+import { generateFirstVersionAction } from "@/lib/actions/stage3";
 import {
   type CreationChoice,
   type CreationDirection,
@@ -37,7 +38,7 @@ interface CreateExperienceProps {
   initialDraft: PersistedCreationDraft | null;
 }
 
-type CreationPhase = "idle" | "resetting" | "persisting" | "handoff";
+type CreationPhase = "idle" | "resetting" | "persisting" | "generating" | "handoff";
 
 export function CreateExperience({ userId, initialDraft }: CreateExperienceProps) {
   const t = useTranslations("create");
@@ -58,11 +59,14 @@ export function CreateExperience({ userId, initialDraft }: CreateExperienceProps
   const [note, setNote] = useState<string | null>(null);
   const [selectedDirection, setSelectedDirection] = useState<number | null>(null);
   const [selectedChoices, setSelectedChoices] = useState<string[]>([]);
+  const [refineTarget, setRefineTarget] = useState<string | null>(null);
+  const [generationRetry, setGenerationRetry] = useState<{ direction: CreationDirection; index: number } | null>(null);
   const [creationPhase, setCreationPhase] = useState<CreationPhase>("idle");
   const [isSending, startSending] = useTransition();
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const selectionLockRef = useRef(false);
   const started = messages.length > 0;
   const creating = creationPhase !== "idle";
 
@@ -114,6 +118,7 @@ export function CreateExperience({ userId, initialDraft }: CreateExperienceProps
 
   function runTurn(content: string, point: CreationStartingPoint | null, requestId: string) {
     setNote(null);
+    setGenerationRetry(null);
     setSelectedChoices([]);
     startSending(async () => {
       try {
@@ -148,16 +153,20 @@ export function CreateExperience({ userId, initialDraft }: CreateExperienceProps
     });
   }
 
-  function send(text: string) {
+  function send(text: string, refinement: string | null = refineTarget) {
     const trimmed = text.trim();
     if (!trimmed || isSending || creating) return;
-    const next: CreationMessage[] = [...messages, { role: "user", content: trimmed }];
+    const content = refinement
+      ? t("refineAnswerMsg", { name: refinement, change: trimmed })
+      : trimmed;
+    const next: CreationMessage[] = [...messages, { role: "user", content }];
     const requestId = crypto.randomUUID();
     setMessages(next);
     setInput("");
     setTurn(null);
+    setRefineTarget(null);
     setPendingRequestId(requestId);
-    runTurn(trimmed, startingPoint, requestId);
+    runTurn(content, startingPoint, requestId);
   }
 
   function retry() {
@@ -183,7 +192,7 @@ export function CreateExperience({ userId, initialDraft }: CreateExperienceProps
   function pickChoice(choice: CreationChoice) {
     if (!turn || isSending || creating) return;
     if (turn.choiceMode === "single") {
-      send(choice.title);
+      send(choice.title, null);
       return;
     }
     setSelectedChoices((current) =>
@@ -199,22 +208,37 @@ export function CreateExperience({ userId, initialDraft }: CreateExperienceProps
       .filter((choice) => selectedChoices.includes(choice.id))
       .map((choice) => choice.title)
       .join(", ");
-    send(answer);
+    send(answer, null);
   }
 
   function chooseDirection(direction: CreationDirection, index: number) {
-    if (creating || isSending || !projectId) return;
+    if (creating || isSending || !projectId || selectionLockRef.current) return;
+    selectionLockRef.current = true;
     setSelectedDirection(index);
+    setGenerationRetry(null);
     setCreationPhase("persisting");
     setNote(null);
 
     void (async () => {
+      let selectedProjectId: string | null = null;
       try {
         const result = await selectCreationDirectionAction(projectId, direction, startingPoint);
         if (result.error || !result.projectId) {
+          selectionLockRef.current = false;
           setCreationPhase("idle");
           setSelectedDirection(null);
           setNote(result.error ?? t("errorSaveFailed"));
+          return;
+        }
+        selectedProjectId = result.projectId;
+        setCreationPhase("generating");
+        const generation = await generateFirstVersionAction(result.projectId);
+        if (generation.error || !generation.output) {
+          selectionLockRef.current = false;
+          setCreationPhase("idle");
+          setSelectedDirection(null);
+          setGenerationRetry({ direction, index });
+          setNote(generation.error ?? t("errorSaveFailed"));
           return;
         }
         try {
@@ -225,11 +249,34 @@ export function CreateExperience({ userId, initialDraft }: CreateExperienceProps
         setCreationPhase("handoff");
         router.push(`/projects/${result.projectId}`);
       } catch {
+        if (selectedProjectId) {
+          try {
+            window.localStorage.removeItem(storageKey);
+          } catch {
+            // The selected project is already canonical on the server.
+          }
+          setCreationPhase("handoff");
+          router.push(`/projects/${selectedProjectId}`);
+          return;
+        }
+        selectionLockRef.current = false;
         setCreationPhase("idle");
         setSelectedDirection(null);
         setNote(t("errorSaveFailed"));
       }
     })();
+  }
+
+  function beginRefine(name: string) {
+    if (creating || isSending) return;
+    setNote(null);
+    setGenerationRetry(null);
+    setRefineTarget(name);
+    setInput("");
+    requestAnimationFrame(() => {
+      textareaRef.current?.focus();
+      scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
+    });
   }
 
   function startOver() {
@@ -251,6 +298,8 @@ export function CreateExperience({ userId, initialDraft }: CreateExperienceProps
         setTurn(null);
         setStartingPoint(null);
         setSelectedChoices([]);
+        setRefineTarget(null);
+        setGenerationRetry(null);
         setSelectedDirection(null);
         setSessionId(null);
         setProjectId(null);
@@ -381,13 +430,13 @@ export function CreateExperience({ userId, initialDraft }: CreateExperienceProps
                       selected={selectedDirection === index}
                       busy={creating || isSending}
                       onChoose={() => chooseDirection(direction, index)}
-                      onRefine={() => send(t("refineMsg", { name: direction.name }))}
+                      onRefine={() => beginRefine(direction.name)}
                     />
                   ))}
                   <button
                     type="button"
                     disabled={creating || isSending}
-                    onClick={() => send(t("anotherMsg"))}
+                    onClick={() => send(t("anotherMsg"), null)}
                     className="direction-another focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-40"
                   >
                     <span aria-hidden>↗</span>
@@ -403,11 +452,23 @@ export function CreateExperience({ userId, initialDraft }: CreateExperienceProps
       <div className="relative z-20 shrink-0 px-4 pb-[calc(4.5rem+env(safe-area-inset-bottom))] pt-3 md:pb-5 sm:px-7">
         <div className="mx-auto w-full max-w-[760px]">
           {showChoices && <p className="mb-2 px-1 text-xs text-ink-muted">{t("orType")}</p>}
+          {refineTarget && (
+            <p className="mb-2 px-1 text-xs leading-5 text-ink-secondary">
+              {t("refineQuestion", { name: refineTarget })}
+            </p>
+          )}
           {note && (
             <div className="mb-2 flex items-center gap-3 px-1" role="status">
               <p className="text-xs text-danger">{note}</p>
               {started && (
-                <button type="button" onClick={retry} disabled={isSending || creating} className="text-xs font-semibold text-accent hover:underline disabled:opacity-50">
+                <button
+                  type="button"
+                  onClick={() => generationRetry
+                    ? chooseDirection(generationRetry.direction, generationRetry.index)
+                    : retry()}
+                  disabled={isSending || creating}
+                  className="text-xs font-semibold text-accent hover:underline disabled:opacity-50"
+                >
                   {t("retry")}
                 </button>
               )}
@@ -416,7 +477,7 @@ export function CreateExperience({ userId, initialDraft }: CreateExperienceProps
           <Composer
             ref={textareaRef}
             value={input}
-            placeholder={t("placeholder")}
+            placeholder={refineTarget ? t("refinePlaceholder") : t("placeholder")}
             sendLabel={t("send")}
             disabled={isSending || creating}
             onChange={setInput}
@@ -597,7 +658,7 @@ function CreationTransition({ direction, phase }: { direction: CreationDirection
         <h2 className="ventrio-display mt-3 text-[clamp(2.4rem,10vw,4.6rem)] leading-[0.98] text-ink">{t("makeReal")}</h2>
         <div className="mt-9 grid w-full max-w-sm gap-3 text-left">
           <TransitionStep label={t("step1")} state="done" />
-          <TransitionStep label={t("step2")} state={phase === "persisting" ? "active" : "done"} />
+          <TransitionStep label={t("step2")} state={phase === "persisting" || phase === "generating" ? "active" : "done"} />
           <TransitionStep label={t("step3")} state={phase === "handoff" ? "active" : "waiting"} />
         </div>
       </div>

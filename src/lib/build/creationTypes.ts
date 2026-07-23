@@ -5,9 +5,9 @@ import type { StartingStage } from "@/lib/build/types";
 // ============================================================================
 // The creation experience is deliberately separate from the project mentor: its
 // only job is understand → narrow → propose a realistic project → create it.
-// It runs BEFORE a project exists, so it never touches the project_ai_* tables;
-// the client holds the conversation (persisted to localStorage) and sends it to
-// a stateless server action each turn.
+// It runs inside an unfinished project draft and persists its conversation and
+// latest structured turn in the existing project_ai_* / snapshot infrastructure.
+// Local storage holds only the opaque idempotency token used to resume safely.
 
 // The four project presets Ventrio's V1 output engine supports. The AI infers
 // one of these per direction; it is internal intelligence, not a user choice.
@@ -46,6 +46,20 @@ export function startingStageFor(point: CreationStartingPoint | null): StartingS
   }
 }
 
+// A compact, generation-ready summary of what discovery learned. The fields are
+// intentionally small and live inside the existing Stage 3 snapshot; no new
+// persistence system is needed. Older directions are upgraded with safe
+// fallbacks by sanitizeCreationDirection.
+export interface CreationCreativeBrief {
+  startingMaterial: string;
+  motivation: string;
+  firstAudience: string;
+  desiredExperience: string;
+  personalIngredients: string[];
+  constraints: string[];
+  assumptions: string[];
+}
+
 // One proposed project direction — everything the user needs to choose, plus the
 // structured context persisted when they pick it.
 export interface CreationDirection {
@@ -58,6 +72,7 @@ export interface CreationDirection {
   problem: string; // initial problem/desire (persisted)
   audience: string; // target audience (persisted)
   niche: string; // short free-text topic/skill (persisted)
+  creativeBrief: CreationCreativeBrief;
 }
 
 // Contextual controls are model-selected but rendered through a fixed,
@@ -109,6 +124,7 @@ export const CREATION_LIMITS = {
   choiceId: 48,
   choiceTitle: 80,
   choiceDescription: 180,
+  briefItem: 240,
 } as const;
 
 export function sanitizeCreationDirection(value: unknown): CreationDirection | null {
@@ -126,7 +142,44 @@ export function sanitizeCreationDirection(value: unknown): CreationDirection | n
   const niche = clean(direction.niche, CREATION_LIMITS.niche) || "other";
   if (!isV1Preset(direction.projectType)) return null;
   if (!name || !concept || !forWho || !creates || !whyFits || !problem || !audience) return null;
-  return { name, concept, forWho, creates, whyFits, projectType: direction.projectType, problem, audience, niche };
+
+  const brief = direction.creativeBrief && typeof direction.creativeBrief === "object"
+    ? direction.creativeBrief as Record<string, unknown>
+    : {};
+  const cleanList = (input: unknown) => {
+    if (!Array.isArray(input)) return [];
+    const seen = new Set<string>();
+    const items: string[] = [];
+    for (const entry of input.slice(0, 6)) {
+      const item = clean(entry, CREATION_LIMITS.briefItem);
+      const key = item.toLocaleLowerCase();
+      if (!item || seen.has(key)) continue;
+      seen.add(key);
+      items.push(item);
+    }
+    return items;
+  };
+  const creativeBrief: CreationCreativeBrief = {
+    startingMaterial: clean(brief.startingMaterial, CREATION_LIMITS.text) || niche,
+    motivation: clean(brief.motivation, CREATION_LIMITS.text) || problem,
+    firstAudience: clean(brief.firstAudience, CREATION_LIMITS.audience) || audience,
+    desiredExperience: clean(brief.desiredExperience, CREATION_LIMITS.text) || creates,
+    personalIngredients: cleanList(brief.personalIngredients),
+    constraints: cleanList(brief.constraints),
+    assumptions: cleanList(brief.assumptions),
+  };
+  return {
+    name,
+    concept,
+    forWho,
+    creates,
+    whyFits,
+    projectType: direction.projectType,
+    problem,
+    audience,
+    niche,
+    creativeBrief,
+  };
 }
 
 export function sanitizeCreationTurn(value: unknown): CreationTurn | null {

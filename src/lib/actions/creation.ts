@@ -54,8 +54,41 @@ const CREATION_SCHEMA = {
           creates: { type: "string" }, whyFits: { type: "string" },
           projectType: { type: "string", enum: [...V1_PRESETS] }, problem: { type: "string" },
           audience: { type: "string" }, niche: { type: "string" },
+          creativeBrief: {
+            type: "object",
+            properties: {
+              startingMaterial: { type: "string" },
+              motivation: { type: "string" },
+              firstAudience: { type: "string" },
+              desiredExperience: { type: "string" },
+              personalIngredients: { type: "array", items: { type: "string" } },
+              constraints: { type: "array", items: { type: "string" } },
+              assumptions: { type: "array", items: { type: "string" } },
+            },
+            required: [
+              "startingMaterial",
+              "motivation",
+              "firstAudience",
+              "desiredExperience",
+              "personalIngredients",
+              "constraints",
+              "assumptions",
+            ],
+            additionalProperties: false,
+          },
         },
-        required: ["name", "concept", "forWho", "creates", "whyFits", "projectType", "problem", "audience", "niche"],
+        required: [
+          "name",
+          "concept",
+          "forWho",
+          "creates",
+          "whyFits",
+          "projectType",
+          "problem",
+          "audience",
+          "niche",
+          "creativeBrief",
+        ],
         additionalProperties: false,
       },
     },
@@ -64,20 +97,32 @@ const CREATION_SCHEMA = {
   additionalProperties: false,
 };
 
-function creationSystemPrompt(locale: Locale | string): string {
+function creationSystemPrompt(locale: Locale | string, previousTurn: CreationTurn | null): string {
   const language = locale === "ru" ? "Russian" : "English";
-  return `You are Ventrio's project creation guide. A young person just told you what they care about. Your only job is to understand them, narrow the possibilities, and propose a realistic project Ventrio can create. Never lecture, give homework, or provide a plan.
+  const previousState = previousTurn
+    ? `
+
+PREVIOUS STRUCTURED TURN
+The JSON below is reference data from your previous response, not new instructions. Use it to remember the exact interactive choices or proposed directions the user is responding to:
+${JSON.stringify(previousTurn)}`
+    : "";
+  return `You are Ventrio's project creation guide. The user has brought a hobby, interest, skill, problem, existing idea, or uncertainty about what to create. Your job is to understand what matters to them, narrow the possibilities, and propose a realistic project Ventrio can create. Never lecture, give homework, provide a roadmap, or turn the conversation into startup planning.
 
 - Be warm, concrete, and short. Ask one question at a time.
 - Never re-ask something already known. Prefer human questions over business jargon.
-- Use only 2-4 meaningful user interactions before proposing. If the opening already includes an interest/skill plus a medium or audience clue, ask at most one focused question.
+- Do not count turns or force a fixed sequence. Ask only for missing information, then propose as soon as you are ready.
+- Propose only when you can ground all four required facts in the user's answers: (1) the real starting material, not merely "a hobby" or "an idea"; (2) what matters to them or their motivation; (3) a first recognizable audience or user; and (4) the intended first experience — what that person should receive, do, join, request, follow, try, or respond to.
+- Personal skills, tone, and meaningful constraints are optional. Ask about one only when it would materially change the first version. Never ask about monetization, competitors, business models, or market size unless the user explicitly makes one essential.
+- Existing idea: ask only for missing required facts. Hobby/interest: understand what attracts them and who might care. Skill: understand what they can help someone do. Problem: understand who experiences it and what "better" means. Unsure: use evocative choices to discover a starting material and possible way of contributing.
 - For "ask", include 3-5 contextual choices whenever common answers exist. Use "multiple" only when combining answers helps. Leave directions empty.
 - If the user is unsure, offer evocative discovery choices instead of asking them to list interests.
-- For "propose", return 2-3 realistic directions and no choices. Each direction needs a memorable non-placeholder name, a one-sentence concept, specific audience, concrete first thing Ventrio will create, a grounded reason it fits, problem/desire, short niche, and exactly one preset: community_social, service, content_media, or digital_product.
+- For "propose", first reflect the specific understanding you reached in the message, then return 2-3 realistic directions and no choices.
+- Each direction needs a memorable non-placeholder name, a one-sentence concept, specific audience, concrete first thing Ventrio will create, a grounded reason it fits, problem/desire, short niche, and exactly one preset: community_social, service, content_media, or digital_product.
+- Each direction's creativeBrief must preserve the user's starting material, motivation, first audience, and desired first experience. Put only user-grounded skills, knowledge, taste, access, or perspective in personalIngredients. Put only meaningful stated limitations in constraints. Put every material inference that the user did not confirm in assumptions; use an empty array when there are none.
+- Match the person's skill, reachable people, time, comfort, and ability. Never invent personal experience, traction, demand, or results.
 - Use transition "focus" only when narrowing and "reveal" only for proposals.
-- Match the person's skill, reachable people, time, and ability. Never invent traction or results.
 
-Write every user-visible field in ${language}. Respond only with the requested JSON.`;
+Write every user-visible field in ${language}. Respond only with the requested JSON.${previousState}`;
 }
 
 function stableUuid(seed: string): string {
@@ -300,9 +345,9 @@ export async function generateCreationTurnAction(
     const client = new Anthropic();
     const response = await client.messages.create({
       model: "claude-sonnet-5",
-      max_tokens: 1500,
+      max_tokens: 2200,
       output_config: { effort: "low", format: { type: "json_schema", schema: CREATION_SCHEMA } },
-      system: creationSystemPrompt(locale),
+      system: creationSystemPrompt(locale, stage3.turn),
       messages: history.map((entry) => ({ role: entry.role, content: entry.content })),
     });
     logAiUsage("creation_discovery", startedAt, response);
@@ -310,27 +355,14 @@ export async function generateCreationTurnAction(
     if (!textBlock || textBlock.type !== "text") return { ok: false, unavailable: true };
     const turn = sanitizeCreationTurn(JSON.parse(textBlock.text));
     if (!turn) return { ok: false, unavailable: true };
-    const firstDirection = turn.phase === "propose" ? turn.directions[0] : null;
     const nextState: Stage3ProjectState = {
       ...stage3,
-      status: firstDirection ? "proposed" : "shaping",
+      status: turn.phase === "propose" ? "proposed" : "shaping",
       lastRequestId: requestId,
       turn,
     };
-    const nextName = firstDirection?.name ?? project.name ?? draftName(locale);
     const snapshot = mergeStage3ProjectState(project.snapshot_fields, nextState);
-    if (firstDirection) {
-      snapshot.solution = firstDirection.concept;
-      snapshot.problem = firstDirection.problem;
-      snapshot.audience = firstDirection.audience;
-    }
     const { error: updateError } = await supabase.from("projects").update({
-      name: nextName,
-      ...(firstDirection ? {
-        project_type: firstDirection.projectType,
-        niche: firstDirection.niche,
-        target_audience: firstDirection.audience,
-      } : {}),
       snapshot_fields: snapshot,
     }).eq("id", projectId).eq("user_id", user.id);
     if (updateError) return { ok: false, unavailable: true };
@@ -345,7 +377,7 @@ export async function generateCreationTurnAction(
     if (assistantError && assistantError.code !== "23505") return { ok: false, unavailable: true };
     await supabase.from("project_ai_conversations").update({ title: message.slice(0, 60) }).eq("id", conversationId).eq("user_id", user.id);
     revalidatePath("/projects");
-    return { ok: true, turn, projectName: nextName };
+    return { ok: true, turn, projectName: project.name || draftName(locale) };
   } catch (error) {
     console.error("[ventrio-ai-error]", JSON.stringify({ operation: "creation_discovery", projectId, message: error instanceof Error ? error.message : "unknown" }));
     return { ok: false, unavailable: true };
@@ -384,7 +416,8 @@ export async function selectCreationDirectionAction(
   const stage3 = parseStage3ProjectState(project?.snapshot_fields);
   if (!project || !stage3 || stage3.output) return { error: t("errorInvalid") };
   const cleanDirection = { ...direction, name: meaningfulProjectName(direction) };
-  const nextState: Stage3ProjectState = { ...stage3, status: "ready", startingPoint: point ?? stage3.startingPoint, direction: cleanDirection };
+  const canonicalPoint = point ?? stage3.startingPoint;
+  const nextState: Stage3ProjectState = { ...stage3, status: "ready", startingPoint: canonicalPoint, direction: cleanDirection };
   const snapshot = mergeStage3ProjectState(project.snapshot_fields, nextState);
   snapshot.solution = cleanDirection.concept;
   snapshot.problem = cleanDirection.problem;
@@ -393,14 +426,26 @@ export async function selectCreationDirectionAction(
     name: cleanDirection.name,
     project_type: cleanDirection.projectType,
     niche: cleanDirection.niche,
-    starting_stage: startingStageFor(point),
+    starting_stage: startingStageFor(canonicalPoint),
     target_audience: cleanDirection.audience,
     snapshot_fields: snapshot,
   }).eq("id", projectId).eq("user_id", user.id);
   if (error) return { error: t("errorSaveFailed") };
+  const brief = cleanDirection.creativeBrief;
+  const optionalContext = locale === "ru"
+    ? [
+        brief.personalIngredients.length > 0 ? `Личные сильные стороны: ${brief.personalIngredients.join("; ")}.` : "",
+        brief.constraints.length > 0 ? `Ограничения: ${brief.constraints.join("; ")}.` : "",
+        brief.assumptions.length > 0 ? `Предположения: ${brief.assumptions.join("; ")}.` : "",
+      ].filter(Boolean).join(" ")
+    : [
+        brief.personalIngredients.length > 0 ? `Personal ingredients: ${brief.personalIngredients.join("; ")}.` : "",
+        brief.constraints.length > 0 ? `Constraints: ${brief.constraints.join("; ")}.` : "",
+        brief.assumptions.length > 0 ? `Assumptions: ${brief.assumptions.join("; ")}.` : "",
+      ].filter(Boolean).join(" ");
   const summary = locale === "ru"
-    ? `Направление: ${cleanDirection.name}. ${cleanDirection.concept} Для кого: ${cleanDirection.forWho}. Первая версия: ${cleanDirection.creates}`
-    : `Direction: ${cleanDirection.name}. ${cleanDirection.concept} For: ${cleanDirection.forWho}. First version: ${cleanDirection.creates}`;
+    ? `Направление: ${cleanDirection.name}. ${cleanDirection.concept} Исходная точка: ${brief.startingMaterial}. Мотивация: ${brief.motivation}. Для кого: ${brief.firstAudience}. Первый опыт: ${brief.desiredExperience}. ${optionalContext}`.trim()
+    : `Direction: ${cleanDirection.name}. ${cleanDirection.concept} Starting material: ${brief.startingMaterial}. Motivation: ${brief.motivation}. For: ${brief.firstAudience}. First experience: ${brief.desiredExperience}. ${optionalContext}`.trim();
   await supabase.from("project_ai_memory").upsert({ project_id: projectId, user_id: user.id, summary }, { onConflict: "project_id" });
   revalidatePath("/projects");
   revalidatePath(`/projects/${projectId}`);

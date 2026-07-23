@@ -60,7 +60,7 @@
     "eyebrow": "Create",
     "openingSignal": "IDEA → POSSIBILITY",
     "headline": "What could we turn into something real?",
-    "subhead": "Start anywhere. Ventrio will find the shape inside what you care about.",
+    "subhead": "Start with a hobby, skill, problem, or idea. Ventrio will ask a few questions, suggest realistic directions, then build a first version you can edit and publish.",
     "placeholder": "A hobby, skill, idea, problem, or anything you care about…",
     "send": "Send",
     "startOver": "Start over",
@@ -96,11 +96,14 @@
     "refine": "Refine",
     "showAnother": "Show another",
     "refineMsg": "Refine the \"{name}\" direction.",
+    "refineQuestion": "What would you like to change about “{name}”? You can change the audience, idea, style, format, constraints, or ambition.",
+    "refinePlaceholder": "Describe what you would like to change…",
+    "refineAnswerMsg": "For the “{name}” direction, change this: {change}",
     "anotherMsg": "Show me another direction.",
     "makeReal": "Let's make this real.",
     "step1": "Direction understood",
-    "step2": "Shaping the project",
-    "step3": "Opening your workspace"
+    "step2": "Building the first version",
+    "step3": "Revealing your project"
   },
   "stage3": {
     "errorInvalid": "That project request was invalid. Please try again.",

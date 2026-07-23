@@ -126,6 +126,13 @@ function outputPrompt(locale: string, edit = false, feedbackGrounded = false): s
 
 This is a real public-facing draft, not advice, a roadmap, or a plan. Write finished launch-ready copy in ${language}. Never mention that the user should research, validate, design, or build something later.
 
+${edit ? "" : `
+CREATIVE BRIEF
+- The selected direction includes a creativeBrief. Treat it as the authoritative personalized context for the first version.
+- Preserve its starting material, motivation, first audience, desired experience, personal ingredients, and meaningful constraints throughout the identity, copy, sections, CTA, form, and launch copy.
+- Treat assumptions as unconfirmed design guidance, never as facts, evidence, demand, or personal history.
+- Do not replace specific user-grounded details with generic startup, business, course, or education language.
+`}
 PRESET RULES
 - community_social: sections may only be about, audience, activity, how_it_works; CTA action must be join; form is a join form; include the first activity/event concept and invitation copy.
 - service: sections may only be about, audience, offer, how_it_works; CTA action is request or contact; form captures a service request; include offer, onboarding questions, and outreach-ready launch copy.
