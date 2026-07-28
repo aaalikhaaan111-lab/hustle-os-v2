@@ -39,7 +39,7 @@ export default async function ProjectsPage() {
   ]);
 
   return (
-    <div className="projects-collection mx-auto flex w-full max-w-5xl flex-col">
+    <div className="projects-collection mx-auto flex w-full max-w-5xl flex-col px-4 pb-16 pt-10 sm:px-6 sm:pt-14 lg:px-8">
       <header className="emergence flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-accent/75">{t("eyebrow")}</p>

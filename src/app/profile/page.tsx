@@ -28,7 +28,7 @@ export default async function ProfilePage() {
   const tFooter = await getTranslations("footer");
 
   return (
-    <div className="flex flex-col gap-8">
+    <div className="mx-auto flex w-full max-w-5xl flex-col gap-8 px-4 pb-16 pt-10 sm:px-6 sm:pt-14 lg:px-8">
       <PageHeader title={t("title")} description={t("description")} actions={<LogoutButton />} />
       <Card className="max-w-xl">
         <CardContent className="flex flex-col gap-5 py-5">
