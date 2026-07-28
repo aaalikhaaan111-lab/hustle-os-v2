@@ -15,6 +15,12 @@ import type { Locale } from "@/i18n/locale";
 import type { ProjectPublicationState } from "@/lib/publishing/types";
 import { cn } from "@/lib/utils";
 
+// The design/build moment shown while generateFirstVersionAction runs. Steps
+// advance forward on a timer and hold on the last one — never loop — so it
+// reads as real progress toward a finished website, not decorative filler.
+const BUILDING_STEP_KEYS = ["buildingStep1", "buildingStep2", "buildingStep3", "buildingStep4"] as const;
+const BUILDING_STEP_INTERVAL_MS = 2600;
+
 interface PreOutputWorkspaceProps {
   projectId: string;
   projectName: string;
@@ -69,12 +75,24 @@ export function PreOutputWorkspace({
   const [isGenerating, startGenerating] = useTransition();
   const [isSending, startSending] = useTransition();
   const [isEditingOutput, setIsEditingOutput] = useState(false);
+  const [buildingStep, setBuildingStep] = useState(0);
   const scrollRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [messages, isSending]);
+
+  useEffect(() => {
+    if (!isGenerating) {
+      queueMicrotask(() => setBuildingStep(0));
+      return;
+    }
+    const id = setInterval(() => {
+      setBuildingStep((step) => Math.min(step + 1, BUILDING_STEP_KEYS.length - 1));
+    }, BUILDING_STEP_INTERVAL_MS);
+    return () => clearInterval(id);
+  }, [isGenerating]);
 
   useEffect(() => {
     const textarea = textareaRef.current;
@@ -212,11 +230,18 @@ export function PreOutputWorkspace({
         <section className={cn("h-full min-h-0 overflow-x-hidden overflow-y-auto pb-[calc(4.5rem+env(safe-area-inset-bottom))] md:block md:rounded-r-[2rem] md:pb-0 md:ring-1 md:ring-inset md:ring-border", mobileMode !== "project" && "hidden")} aria-label={t("projectTab")}>
           {isGenerating ? (
             <div className="generation-canvas flex min-h-full flex-col items-center justify-center px-6 text-center" role="status" aria-live="polite">
-              <span className="creation-orbit" aria-hidden><span /></span>
+              <div className="generation-blueprint" aria-hidden><span /><span /><span /><span /></div>
               <p className="mt-8 text-xs font-semibold uppercase tracking-[0.2em] text-accent/80">{projectName}</p>
               <h1 className="ventrio-display mt-3 max-w-xl text-[clamp(2.5rem,8vw,5rem)] leading-[0.96] text-ink">{t("buildingTitle")}</h1>
               <p className="mt-4 max-w-md text-sm leading-6 text-ink-secondary">{t("buildingBody")}</p>
-              <div className="generation-progress mt-9"><span /></div>
+              <ol className="generation-steps mt-8">
+                {BUILDING_STEP_KEYS.map((key, index) => (
+                  <li key={key} data-done={index < buildingStep} data-active={index === buildingStep}>
+                    <span className="generation-step-dot" aria-hidden>{index < buildingStep ? "✓" : ""}</span>
+                    {t(key)}
+                  </li>
+                ))}
+              </ol>
             </div>
           ) : output ? (
             <div className="min-h-full">

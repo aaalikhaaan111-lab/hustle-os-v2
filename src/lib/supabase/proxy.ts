@@ -1,6 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import type { Database } from "@/types/supabase";
+import { getSiteUrl, isSafeRedirectPath } from "@/lib/site";
 
 const PROTECTED_PREFIXES = [
   "/create",
@@ -34,6 +35,22 @@ export async function updateSession(request: NextRequest) {
 
   if (pathname.startsWith("/api/public/")) {
     return NextResponse.next({ request });
+  }
+
+  // Google OAuth's PKCE code verifier is written to a cookie scoped to
+  // whatever origin /login or /signup was actually loaded from, but
+  // `redirectTo` always points at the one canonical origin (lib/site.ts).
+  // If those two origins differ, exchangeCodeForSession fails silently and
+  // the visitor lands back on /login with no visible error — requiring a
+  // second attempt, which only succeeds because by then they're on the
+  // canonical origin. Canonicalizing the auth pages up front removes the
+  // mismatch instead of relying on a retry to fix it.
+  if (matchesPrefix(pathname, AUTH_ROUTES) && process.env.NODE_ENV === "production") {
+    const canonicalHost = new URL(getSiteUrl()).host;
+    if (request.nextUrl.host !== canonicalHost) {
+      const canonicalUrl = new URL(`${pathname}${request.nextUrl.search}`, getSiteUrl());
+      return NextResponse.redirect(canonicalUrl, 308);
+    }
   }
 
   // Never trust a client-supplied shell marker on authenticated routes. Only
@@ -74,18 +91,19 @@ export async function updateSession(request: NextRequest) {
   const isAuthRoute = matchesPrefix(pathname, AUTH_ROUTES);
 
   if (!user && isProtected) {
-    return NextResponse.redirect(new URL("/login", request.url));
+    // Preserve where the visitor was headed so a successful login can return
+    // them there instead of always dropping them on the default home.
+    const loginUrl = new URL("/login", request.url);
+    loginUrl.searchParams.set("next", `${pathname}${request.nextUrl.search}`);
+    return NextResponse.redirect(loginUrl);
   }
 
   if (user && isAuthRoute) {
-    // Returning users land on their collection; first-time users enter the
-    // canonical AI creation flow instead of the retired learning onboarding.
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("onboarding_completed_at")
-      .eq("id", user.id)
-      .maybeSingle();
-    const destination = profile?.onboarding_completed_at ? "/projects" : "/create";
+    // An already-authenticated visitor landing on an auth page (stale
+    // bookmark, back button) is sent home — or to their preserved
+    // destination, same as a fresh login.
+    const requestedNext = request.nextUrl.searchParams.get("next");
+    const destination = isSafeRedirectPath(requestedNext) ? requestedNext : "/";
     return NextResponse.redirect(new URL(destination, request.url));
   }
 

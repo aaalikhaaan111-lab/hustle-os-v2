@@ -21,6 +21,10 @@ export function LoginForm() {
   const oauthErrorCode = searchParams.get("error");
   const oauthError = oauthErrorCode ? t("googleSignInFailed") : null;
   const displayError = state.error || oauthError;
+  // Set by the proxy when an auth-required page redirected here — carried
+  // through both sign-in paths so a successful login returns the visitor to
+  // where they were headed instead of always landing on the default home.
+  const next = searchParams.get("next") ?? undefined;
 
   return (
     <div className="mx-auto flex w-full max-w-sm flex-col gap-8 py-12 sm:py-20">
@@ -32,7 +36,7 @@ export function LoginForm() {
       <Card>
         <CardContent className="flex flex-col gap-5 py-5">
           <div className="flex flex-col gap-2">
-            <GoogleSignInButton label={t("continueWithGoogle")} />
+            <GoogleSignInButton label={t("continueWithGoogle")} next={next} />
             <p className="text-center text-[11px] leading-relaxed text-ink-muted">
               {t("googleConsentNotice")}
             </p>
@@ -45,6 +49,7 @@ export function LoginForm() {
           </div>
 
           <form action={formAction} className="flex flex-col gap-4">
+            {next && <input type="hidden" name="next" value={next} />}
             <Field label={t("email")} htmlFor="email" required>
               <Input
                 id="email"

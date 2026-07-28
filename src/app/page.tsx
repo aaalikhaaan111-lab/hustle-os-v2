@@ -1,25 +1,22 @@
 import { LandingExperience } from "@/components/landing/LandingExperience";
 import { PublicFooter } from "@/components/layout/PublicFooter";
-import { CreateExperience } from "@/components/create/CreateExperience";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/supabase/currentUser";
-import { loadCreationDraftAction } from "@/lib/actions/creation";
 
-// The homepage is the single entry surface. A signed-in visitor lands directly
-// in the Create workspace (so submitting the first message never navigates away
-// — the onboarding is simply behind them); a logged-out visitor sees the
-// chat-first landing that carries their first message through signup.
+// The homepage is always the public onboarding — for logged-out AND
+// logged-in visitors alike, so the Ventrio logo/brand control reliably
+// returns here from anywhere. Submitting the composer (or a starting-point
+// button) writes a seed and routes an authenticated visitor straight into
+// /create — same mechanism already used to carry a logged-out visitor's
+// first message through signup. If they already have a draft in progress,
+// CreateExperience only pre-fills the seed into the composer rather than
+// starting a new conversation, so returning home never loses existing data.
 export default async function Home() {
   const supabase = await createClient();
   const user = await getCurrentUser(supabase);
 
-  if (user) {
-    const initialDraft = await loadCreationDraftAction();
-    return <CreateExperience userId={user.id} initialDraft={initialDraft} />;
-  }
-
   return (
-    <LandingExperience isAuthenticated={false}>
+    <LandingExperience isAuthenticated={Boolean(user)}>
       <PublicFooter />
     </LandingExperience>
   );

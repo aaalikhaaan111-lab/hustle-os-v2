@@ -3,7 +3,6 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { BackgroundBlobs } from "@/components/layout/BackgroundBlobs";
 import { NavDrawer } from "@/components/layout/NavDrawer";
-import { DevResetBar } from "@/components/dev/DevResetBar";
 import { RoutePrefetcher } from "@/components/layout/RoutePrefetcher";
 import { GameProgressProvider } from "@/lib/game-progress/GameProgressContext";
 import { cn } from "@/lib/utils";
@@ -59,7 +58,6 @@ export function AppShell({ children, isAuthenticated }: { children: ReactNode; i
           {children}
         </main>
         <RoutePrefetcher />
-        {process.env.NODE_ENV === "development" && <DevResetBar />}
       </div>
     </GameProgressProvider>
   );

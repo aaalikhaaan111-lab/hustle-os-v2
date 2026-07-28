@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Geist, Geist_Mono, Lora } from "next/font/google";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages, getTranslations } from "next-intl/server";
 import { headers } from "next/headers";
@@ -14,6 +14,15 @@ const geistSans = Geist({
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin", "cyrillic"],
+});
+
+// A premium editorial serif, used only by generated-project themes
+// ("editorial"/"atmospheric") for a genuinely different typographic voice
+// from the app's own Geist Sans UI — see .output-theme-* in globals.css.
+const lora = Lora({
+  variable: "--font-editorial",
+  subsets: ["latin", "cyrillic"],
+  style: ["normal", "italic"],
 });
 
 // viewport-fit=cover is what makes the env(safe-area-inset-*) padding used
@@ -42,7 +51,7 @@ export default async function RootLayout({
   const requestHeaders = await headers();
   if (requestHeaders.get("x-ventrio-public-route") === "1") {
     return (
-      <html lang="en" className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}>
+      <html lang="en" className={`${geistSans.variable} ${geistMono.variable} ${lora.variable} h-full antialiased`}>
         <body className="min-h-full">{children}</body>
       </html>
     );
@@ -57,7 +66,7 @@ export default async function RootLayout({
   return (
     <html
       lang={locale}
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${geistSans.variable} ${geistMono.variable} ${lora.variable} h-full antialiased`}
     >
       <body className="min-h-full">
         <NextIntlClientProvider locale={locale} messages={messages}>

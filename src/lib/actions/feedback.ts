@@ -328,7 +328,20 @@ function improvementPrompt(locale: string, target: string): string {
 - No HTML, Markdown, URLs, or executable content.
 - This is only a proposal. Do not claim it has already been applied.
 
-Return only the requested JSON.`;
+Return ONLY raw JSON — no markdown code fences, no commentary before or after — that validates exactly against this JSON Schema (every "required" property must be present; use "" / [] for any field that doesn't apply, never omit it):
+${JSON.stringify(FEEDBACK_IMPROVEMENT_SCHEMA)}`;
+}
+
+// Structured output (output_config.format) is deliberately not used here —
+// FEEDBACK_IMPROVEMENT_SCHEMA embeds the full Stage3 output schema, which
+// trips Anthropic's "compiled grammar is too large" limit (see stage3.ts).
+// The schema is embedded as text in improvementPrompt above instead, and
+// enforced by sanitizeTargetedFeedbackOutput. This strips an occasional
+// stray ```json fence before parsing.
+function parseJsonRelaxed(text: string): unknown {
+  const trimmed = text.trim();
+  const fenced = /^```(?:json)?\s*([\s\S]*?)\s*```$/.exec(trimmed);
+  return JSON.parse(fenced ? fenced[1] : trimmed);
 }
 
 export async function proposeFeedbackImprovementAction(
@@ -364,7 +377,6 @@ export async function proposeFeedbackImprovementAction(
     const response = await client.messages.create({
       model: FEEDBACK_MODEL,
       max_tokens: 3800,
-      output_config: { format: { type: "json_schema", schema: FEEDBACK_IMPROVEMENT_SCHEMA } },
       system: improvementPrompt(context.project.locale, recommendation.target),
       messages: [{
         role: "user",
@@ -379,7 +391,7 @@ export async function proposeFeedbackImprovementAction(
     logUsage("feedback_improvement_proposal", projectId, context.responseCount, startedAt, response);
     const textBlock = response.content.find((block) => block.type === "text");
     if (!textBlock || textBlock.type !== "text") throw new Error("missing_text");
-    const parsed = JSON.parse(textBlock.text) as Record<string, unknown>;
+    const parsed = parseJsonRelaxed(textBlock.text) as Record<string, unknown>;
     const output = sanitizeTargetedFeedbackOutput(
       context.stage3.output,
       parsed.output,

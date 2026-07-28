@@ -162,61 +162,47 @@ export function LandingExperience({ isAuthenticated, children }: LandingExperien
             })}
           </div>
 
-          <div className={styles.formationFrame}>
-            <div className={styles.formationLabels} aria-hidden>
-              <span>{t("formationInputLabel")}</span>
-              <span>{t("formationUnderstandingLabel")}</span>
-              <span>{t("formationProjectLabel")}</span>
+          <div className={styles.formationStage} key={activeExample.id}>
+            <div className={styles.beforeCard}>
+              <span className={styles.beatLabel}>{t("formationInputLabel")}</span>
+              <span className={styles.beforeMark} aria-hidden>
+                “
+              </span>
+              <p className={styles.beforeText}>{t(activeExample.labelKey)}</p>
             </div>
 
-            <div className={styles.formationStage} key={activeExample.id}>
-              <div className={styles.sourceThought}>
-                <span className={styles.sourceMark} aria-hidden>
-                  “
-                </span>
-                <p>{t(activeExample.labelKey)}</p>
-                <span className={styles.sourceStatus}>{t("formationEnough")}</span>
+            <div className={styles.arrowBeat} aria-hidden>
+              <span className={styles.arrowBadge}>
+                <svg viewBox="0 0 20 20" fill="none" className={styles.arrowGlyph}>
+                  <path d="M4 10h12m0 0-5-5m5 5-5 5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </span>
+              <span className={styles.arrowLabel}>{t("formationUnderstandingLabel")}</span>
+            </div>
+
+            <article className={styles.projectPreview} aria-live="polite">
+              <span className={styles.beatLabel}>{t("formationProjectLabel")}</span>
+              <div className={styles.previewChrome}>
+                <span />
+                <span />
+                <span />
+                <p>{t(activeExample.projectNameKey)}</p>
+                <i>{t("liveFirstVersion")}</i>
               </div>
-
-              <div className={styles.formationCore} aria-hidden>
-                <span className={styles.coreLine} />
-                <span className={styles.fragmentMaterial}>{t(activeExample.materialKey)}</span>
-                <span className={styles.fragmentAudience}>{t(activeExample.audienceKey)}</span>
-                <span className={styles.fragmentFormat}>{t(activeExample.formatKey)}</span>
-                <span className={styles.coreNode}>
-                  <i />
-                </span>
+              <div className={styles.previewBody}>
+                <p className={styles.previewEyebrow}>{t(activeExample.eyebrowKey)}</p>
+                <h3>{t(activeExample.projectTitleKey)}</h3>
+                <p className={styles.previewDescription}>{t(activeExample.projectBodyKey)}</p>
+                <div className={styles.previewAction}>
+                  <span>{t(activeExample.projectCtaKey)}</span>
+                  <i aria-hidden>↗</i>
+                </div>
+                <div className={styles.previewMeta}>
+                  <span>{t(activeExample.projectMetaKey)}</span>
+                  <span>{t("previewEditable")}</span>
+                </div>
               </div>
-
-              <article className={styles.projectPreview} aria-live="polite">
-                <div className={styles.previewChrome}>
-                  <span />
-                  <span />
-                  <span />
-                  <p>{t(activeExample.projectNameKey)}</p>
-                  <i>{t("liveFirstVersion")}</i>
-                </div>
-                <div className={styles.previewBody}>
-                  <p className={styles.previewEyebrow}>{t(activeExample.eyebrowKey)}</p>
-                  <h3>{t(activeExample.projectTitleKey)}</h3>
-                  <p className={styles.previewDescription}>{t(activeExample.projectBodyKey)}</p>
-                  <div className={styles.previewAction}>
-                    <span>{t(activeExample.projectCtaKey)}</span>
-                    <i aria-hidden>↗</i>
-                  </div>
-                  <div className={styles.previewMeta}>
-                    <span>{t(activeExample.projectMetaKey)}</span>
-                    <span>{t("previewEditable")}</span>
-                  </div>
-                </div>
-                <span className={styles.previewScan} aria-hidden />
-              </article>
-            </div>
-
-            <div className={styles.formationCaption}>
-              <span>{t("formationCaptionLead")}</span>
-              <p>{t("formationCaption")}</p>
-            </div>
+            </article>
           </div>
         </section>
 

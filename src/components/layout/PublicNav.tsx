@@ -11,8 +11,8 @@ interface PublicNavProps {
 }
 
 // Minimal hamburger for the public shell. Only real destinations are linked;
-// Explore is shown as an explicitly-unavailable "soon" row, and the secondary
-// items are in-page anchors to sections that actually exist on this page.
+// the secondary items are in-page anchors to sections that actually exist on
+// this page.
 export function PublicNav({ isAuthenticated }: PublicNavProps) {
   const t = useTranslations("landing");
   const tNav = useTranslations("nav");
@@ -74,7 +74,6 @@ export function PublicNav({ isAuthenticated }: PublicNavProps) {
 
             <MenuLink href="/create" onClick={close}>{tNav("create")}</MenuLink>
             <MenuLink href="/projects" onClick={close}>{tNav("projects")}</MenuLink>
-            <MenuDisabled>{t("exploreSoon")}</MenuDisabled>
             <MenuLink href="/profile" onClick={close}>{tNav("profile")}</MenuLink>
 
             <div className="my-2 h-px bg-white/[0.06]" aria-hidden />
@@ -130,13 +129,5 @@ function MenuAnchor({ href, onClick, children }: { href: string; onClick: () => 
     >
       {children}
     </a>
-  );
-}
-
-function MenuDisabled({ children }: { children: React.ReactNode }) {
-  return (
-    <span aria-disabled="true" className="flex items-center gap-2 rounded-xl px-3 py-3 text-[15px] font-medium text-ink-muted/60">
-      {children}
-    </span>
   );
 }

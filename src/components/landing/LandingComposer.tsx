@@ -1,11 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { writeSeed } from "@/lib/create/seed";
 import type { CreationStartingPoint } from "@/lib/build/creationTypes";
-import { usePrefersReducedMotion, useTypewriter } from "@/components/landing/hooks";
 import { cn } from "@/lib/utils";
 
 // Lightweight starting points. Labels and canned first messages are reused
@@ -23,13 +22,6 @@ const STARTING_POINTS: {
   { id: "unsure", labelKey: "spUnsure", msgKey: "spUnsureMsg" },
 ];
 
-const PLACEHOLDER_KEYS = [
-  "composerExampleHobby",
-  "composerExampleSkill",
-  "composerExampleProblem",
-  "composerExampleIdea",
-] as const;
-
 interface LandingComposerProps {
   isAuthenticated: boolean;
   variant: "hero" | "final";
@@ -44,17 +36,12 @@ export function LandingComposer({ isAuthenticated, variant, textareaId }: Landin
   const t = useTranslations("landing");
   const tCreate = useTranslations("create");
   const router = useRouter();
-  const reducedMotion = usePrefersReducedMotion();
 
   const [value, setValue] = useState("");
-  const [focused, setFocused] = useState(false);
   const [routing, setRouting] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  const examples = useMemo(() => PLACEHOLDER_KEYS.map((key) => t(key)), [t]);
-  const animatePlaceholder = !reducedMotion && !focused && value.length === 0;
-  const typedPlaceholder = useTypewriter(examples, animatePlaceholder);
-  const placeholder = animatePlaceholder ? typedPlaceholder : t("composerPlaceholder");
+  const placeholder = t("composerPlaceholder");
 
   useEffect(() => {
     const el = textareaRef.current;
@@ -85,8 +72,6 @@ export function LandingComposer({ isAuthenticated, variant, textareaId }: Landin
           ref={textareaRef}
           value={value}
           onChange={(event) => setValue(event.target.value)}
-          onFocus={() => setFocused(true)}
-          onBlur={() => setFocused(false)}
           disabled={routing}
           rows={1}
           maxLength={2000}

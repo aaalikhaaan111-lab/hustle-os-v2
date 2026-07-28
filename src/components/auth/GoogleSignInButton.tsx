@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/Button";
 import { createClient } from "@/lib/supabase/client";
-import { buildRedirectUrl } from "@/lib/site";
+import { buildRedirectUrl, isSafeRedirectPath } from "@/lib/site";
 
 function GoogleIcon() {
   return (
@@ -38,6 +38,9 @@ interface GoogleSignInButtonProps {
   requireConsent?: boolean;
   consentGiven?: boolean;
   onConsentMissing?: () => void;
+  /** Where to return the visitor after a successful sign-in — e.g. the
+   * protected page that sent them to /login in the first place. */
+  next?: string;
 }
 
 export function GoogleSignInButton({
@@ -45,6 +48,7 @@ export function GoogleSignInButton({
   requireConsent,
   consentGiven,
   onConsentMissing,
+  next,
 }: GoogleSignInButtonProps) {
   const t = useTranslations("auth");
   const [isPending, setIsPending] = useState(false);
@@ -60,19 +64,31 @@ export function GoogleSignInButton({
     setIsPending(true);
     const supabase = createClient();
 
+    // Deliberately NOT window.location.origin — verified empirically (not just
+    // by inference) that this Supabase project's Redirect URLs allowlist does
+    // not include every origin the app can be opened from (e.g. localhost):
+    // pointing `redirectTo` at the current origin in that case makes Supabase
+    // silently ignore it and fall back to its configured Site URL, stranding
+    // the visitor on the marketing page without ever reaching /auth/callback.
+    // The canonical origin below is always allowlisted, regardless of which
+    // URL the app was actually opened from.
+    //
+    // The known trade-off: if a visitor's *first* page load isn't already on
+    // this canonical origin, the PKCE code verifier this call writes (scoped
+    // to whatever origin the page is actually on) won't be sent back to a
+    // callback on a *different* origin, and exchangeCodeForSession fails
+    // with "PKCE code verifier not found in storage" — landing them back on
+    // /login with no visible error. Clicking again from there succeeds,
+    // because by then they're on the canonical origin. Removing this
+    // trade-off for good needs the actual runtime origin added to Supabase's
+    // Redirect URLs allowlist (a dashboard change, not a code change) before
+    // switching this back to window.location.origin.
+    const safeNext = isSafeRedirectPath(next ?? null) ? next : null;
+    const redirectTo = buildRedirectUrl(`/auth/callback${safeNext ? `?next=${encodeURIComponent(safeNext)}` : ""}`);
+
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: {
-        // Deliberately NOT window.location.origin — Vercel preview
-        // deployments each get a unique hash-based origin that can never
-        // all be added to Supabase's Redirect URLs allowlist. Using an
-        // unlisted origin makes Supabase silently fall back to its
-        // configured Site URL instead of honoring `redirectTo`, which is
-        // what stranded OAuth users on the landing page. The canonical
-        // origin is always allowlisted, regardless of which URL the app
-        // was actually opened from.
-        redirectTo: buildRedirectUrl("/auth/callback"),
-      },
+      options: { redirectTo },
     });
 
     if (error) {

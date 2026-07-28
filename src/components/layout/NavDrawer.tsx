@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useTranslations } from "next-intl";
+import { usePrefersReducedMotion } from "@/components/landing/hooks";
 import { Wordmark } from "@/components/layout/Wordmark";
 import { LanguageSwitcher } from "@/components/layout/LanguageSwitcher";
 import { signOutAction } from "@/lib/actions/auth";
@@ -22,12 +23,12 @@ function isActive(pathname: string, href: string) {
 
 // Single right-side navigation drawer for the whole live product. Desktop:
 // open by default, collapsible, reopened from the fixed trigger. Mobile: a
-// sheet that opens over the content. Real destinations only — Explore is an
-// explicit "soon" row until the feature exists.
+// sheet that opens over the content. Real destinations only.
 export function NavDrawer({ isAuthenticated, open, onOpenChange }: NavDrawerProps) {
   const t = useTranslations("landing");
   const tNav = useTranslations("nav");
   const pathname = usePathname();
+  const reducedMotion = usePrefersReducedMotion();
 
   useEffect(() => {
     if (!open) return;
@@ -89,7 +90,23 @@ export function NavDrawer({ isAuthenticated, open, onOpenChange }: NavDrawerProp
         )}
       >
         <div className="flex items-center justify-between px-5 pt-[max(1.1rem,env(safe-area-inset-top))] pb-4">
-          <Link href="/" onClick={() => onOpenChange(false)} aria-label="Ventrio" className="rounded-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent">
+          <Link
+            href="/"
+            // On a genuine internal-page -> "/" navigation, keep Next's default
+            // (scroll to top of the new page). On "/" itself, this is a same-URL
+            // click Next won't act on at all, so disable it here and scroll
+            // ourselves — otherwise Link's scroll-position-restoring behavior
+            // fights and undoes the manual scrollTo below.
+            scroll={pathname !== "/"}
+            onClick={() => {
+              onOpenChange(false);
+              if (pathname === "/") {
+                window.scrollTo({ top: 0, behavior: reducedMotion ? "auto" : "smooth" });
+              }
+            }}
+            aria-label="Ventrio"
+            className="rounded-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+          >
             <Wordmark className="text-[15px] tracking-[-0.03em]" />
           </Link>
           <button
@@ -111,9 +128,6 @@ export function NavDrawer({ isAuthenticated, open, onOpenChange }: NavDrawerProp
                 {item.label}
               </DrawerLink>
             ))}
-            <span aria-disabled="true" className="flex items-center gap-2 rounded-xl px-3 py-2.5 text-[14px] font-medium text-ink-muted">
-              {t("exploreSoon")}
-            </span>
           </Section>
 
           <Section label={t("sectionVentrio")}>

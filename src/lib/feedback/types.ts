@@ -89,35 +89,21 @@ export function targetedFeedbackOutput(
         identity: candidate.identity,
         targetUser: candidate.targetUser,
         hero: candidate.hero,
-        sections: current.sections.map((section) =>
-          section.type === "audience"
-            ? candidate.sections.find((entry) => entry.type === "audience") ?? section
-            : section
-        ),
         launchCopy: candidate.launchCopy,
       };
+    // Sections aren't individually typed by role the way the old fixed
+    // about/offer/content slots were, so "offer"/"content"/"structure" each
+    // regenerate the section list as a whole rather than patching one slot.
     case "offer":
       return {
         ...current,
         primaryValue: candidate.primaryValue,
         hero: { ...current.hero, subheadline: candidate.hero.subheadline },
-        sections: current.sections.map((section) =>
-          section.type === "offer"
-            ? candidate.sections.find((entry) => entry.type === "offer") ?? section
-            : section
-        ),
+        sections: candidate.sections,
         cta: candidate.cta,
       };
     case "content":
-      return {
-        ...current,
-        sections: current.sections.map((section) =>
-          section.type === "content"
-            ? candidate.sections.find((entry) => entry.type === "content") ?? section
-            : section
-        ),
-        launchCopy: candidate.launchCopy,
-      };
+      return { ...current, sections: candidate.sections, launchCopy: candidate.launchCopy };
     case "structure":
       return { ...current, sections: candidate.sections };
     case "positioning":

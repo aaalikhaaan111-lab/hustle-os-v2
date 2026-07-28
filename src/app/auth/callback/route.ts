@@ -30,17 +30,12 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(`${origin}/login?error=oauth_failed`);
   }
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("onboarding_completed_at")
-    .eq("id", data.user.id)
-    .maybeSingle();
-
   await syncLocaleCookieAfterLogin(supabase, data.user.id);
 
-  // Returning users resume their project collection; first-time users enter
-  // the AI creation environment rather than the retired learning onboarding.
+  // Return to whatever protected page started this auth flow; otherwise land
+  // on the default home, which already resumes an in-progress draft or opens
+  // a fresh Create conversation for authenticated visitors.
   const safeNext = isSafeRedirectPath(requestedNext) ? requestedNext : null;
-  const destination = profile?.onboarding_completed_at ? "/projects" : (safeNext ?? "/create");
+  const destination = safeNext ?? "/";
   return NextResponse.redirect(`${origin}${destination}`);
 }

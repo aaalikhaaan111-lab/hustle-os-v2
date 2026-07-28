@@ -1,10 +1,10 @@
 "use client";
 
 import { forwardRef, useEffect, useRef, useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import {
-  discardCreationDraftAction,
   ensureCreationDraftAction,
   generateCreationTurnAction,
   selectCreationDirectionAction,
@@ -19,6 +19,8 @@ import {
   type CreationTurn,
 } from "@/lib/build/creationTypes";
 import { takeSeed } from "@/lib/create/seed";
+import { usePrefersReducedMotion } from "@/components/landing/hooks";
+import { Wordmark } from "@/components/layout/Wordmark";
 import { cn } from "@/lib/utils";
 
 const STARTING_POINTS: {
@@ -34,6 +36,10 @@ const STARTING_POINTS: {
   { id: "unsure", labelKey: "spUnsure", detailKey: "spUnsureDetail", msgKey: "spUnsureMsg" },
 ];
 
+// Short, calm phrases cycled while waiting on the AI — never a percentage or
+// a busy loader, just a sense that something specific is happening.
+const THINKING_STEP_KEYS = ["thinkingStep1", "thinkingStep2", "thinkingStep3"] as const;
+
 interface CreateExperienceProps {
   userId: string;
   initialDraft: PersistedCreationDraft | null;
@@ -45,6 +51,8 @@ export function CreateExperience({ userId, initialDraft }: CreateExperienceProps
   const t = useTranslations("create");
   const locale = useLocale();
   const router = useRouter();
+  const pathname = usePathname();
+  const reducedMotion = usePrefersReducedMotion();
   // Local storage remembers only the opaque idempotency token. The real draft,
   // conversation, and AI turn live in Supabase and are loaded by the page.
   const storageKey = `ventrio:create-session:${userId}:${locale}`;
@@ -64,12 +72,24 @@ export function CreateExperience({ userId, initialDraft }: CreateExperienceProps
   const [generationRetry, setGenerationRetry] = useState<{ direction: CreationDirection; index: number } | null>(null);
   const [creationPhase, setCreationPhase] = useState<CreationPhase>("idle");
   const [isSending, startSending] = useTransition();
+  const [thinkingStep, setThinkingStep] = useState(0);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const selectionLockRef = useRef(false);
   const started = messages.length > 0;
   const creating = creationPhase !== "idle";
+
+  useEffect(() => {
+    if (!isSending) {
+      queueMicrotask(() => setThinkingStep(0));
+      return;
+    }
+    const id = setInterval(() => {
+      setThinkingStep((step) => (step + 1) % THINKING_STEP_KEYS.length);
+    }, 2200);
+    return () => clearInterval(id);
+  }, [isSending]);
 
   useEffect(() => {
     try {
@@ -314,63 +334,31 @@ export function CreateExperience({ userId, initialDraft }: CreateExperienceProps
     });
   }
 
-  function startOver() {
-    if (isSending || creating) return;
-    setCreationPhase("resetting");
-    setNote(null);
-    void (async () => {
-      try {
-        if (projectId) {
-          const result = await discardCreationDraftAction(projectId);
-          if (result.error) {
-            setNote(result.error);
-            setCreationPhase("idle");
-            return;
-          }
-        }
-        try { window.localStorage.removeItem(storageKey); } catch { /* no-op */ }
-        setMessages([]);
-        setTurn(null);
-        setStartingPoint(null);
-        setSelectedChoices([]);
-        setRefineTarget(null);
-        setGenerationRetry(null);
-        setSelectedDirection(null);
-        setSessionId(null);
-        setProjectId(null);
-        setConversationId(null);
-        setPendingRequestId(null);
-        setCreationPhase("idle");
-        router.refresh();
-      } catch {
-        setNote(t("errorSaveFailed"));
-        setCreationPhase("idle");
-      }
-    })();
-  }
-
   const showDirections = turn?.phase === "propose" && turn.directions.length > 0;
   const showChoices = turn?.phase === "ask" && turn.choices.length > 0;
 
   return (
-    <div className={cn("creation-canvas relative flex h-full min-h-0 flex-col", started && "is-started", turn?.transition === "focus" && "is-focused")}>
+    <div className={cn("creation-canvas relative flex h-[100dvh] min-h-0 flex-col", started && "is-started", turn?.transition === "focus" && "is-focused")}>
       <div aria-hidden className="creation-focus-field" />
 
-      <header className="relative z-10 flex shrink-0 items-center justify-between pl-5 pr-14 pt-[max(1rem,env(safe-area-inset-top))] sm:pl-8 sm:pr-14 sm:pt-6">
+      <header className="relative z-10 flex shrink-0 items-center gap-3 pl-5 pr-14 pt-[max(1rem,env(safe-area-inset-top))] sm:pl-8 sm:pr-14 sm:pt-6">
+        <Link
+          href="/"
+          scroll={pathname !== "/"}
+          onClick={() => {
+            if (pathname === "/") {
+              scrollRef.current?.scrollTo({ top: 0, behavior: reducedMotion ? "auto" : "smooth" });
+            }
+          }}
+          aria-label="Ventrio"
+          className="rounded-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+        >
+          <Wordmark />
+        </Link>
         <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-ink-muted">
           <span className="creation-signal-dot" />
           {t("eyebrow")}
         </div>
-        {started && (
-          <button
-            type="button"
-            onClick={startOver}
-            disabled={isSending || creating}
-            className="rounded-full px-3 py-1.5 text-xs font-medium text-ink-muted transition-colors hover:bg-surface-hover hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-40"
-          >
-            {t("startOver")}
-          </button>
-        )}
       </header>
 
       <div ref={scrollRef} className="relative z-10 min-h-0 flex-1 overflow-y-auto overscroll-contain">
@@ -435,9 +423,9 @@ export function CreateExperience({ userId, initialDraft }: CreateExperienceProps
                 })}
 
                 {isSending && (
-                  <div className="flex items-center gap-3 text-sm text-ink-secondary" aria-live="polite">
-                    <span className="thinking-signal" aria-hidden><span /></span>
-                    {t("thinking")}
+                  <div className="flex items-center gap-2.5 text-sm text-ink-secondary" aria-live="polite">
+                    <span className="creation-signal-dot" aria-hidden />
+                    <span key={thinkingStep} className="animate-field-in">{t(THINKING_STEP_KEYS[thinkingStep])}</span>
                   </div>
                 )}
               </div>
@@ -482,7 +470,7 @@ export function CreateExperience({ userId, initialDraft }: CreateExperienceProps
         </div>
       </div>
 
-      <div className="relative z-20 shrink-0 px-4 pb-[calc(4.5rem+env(safe-area-inset-bottom))] pt-3 md:pb-5 sm:px-7">
+      <div className="relative z-20 shrink-0 bg-gradient-to-t from-canvas via-canvas to-transparent px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-6 sm:px-7 md:pb-5">
         <div className="mx-auto w-full max-w-[760px]">
           {showChoices && <p className="mb-2 px-1 text-xs text-ink-muted">{t("orType")}</p>}
           {refineTarget && (

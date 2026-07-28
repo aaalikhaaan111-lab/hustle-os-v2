@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
 import { syncLocaleCookieAfterLogin } from "@/lib/actions/locale";
-import { buildRedirectUrl } from "@/lib/site";
+import { buildRedirectUrl, isSafeRedirectPath } from "@/lib/site";
 
 export interface AuthActionState {
   error: string | null;
@@ -44,15 +44,13 @@ export async function loginAction(
     return { error: error.message };
   }
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("onboarding_completed_at")
-    .eq("id", data.user.id)
-    .maybeSingle();
-
   await syncLocaleCookieAfterLogin(supabase, data.user.id);
 
-  redirect(profile?.onboarding_completed_at ? "/projects" : "/create");
+  // Return to whatever protected page sent the visitor to /login; otherwise
+  // land on the default home, which already resumes an in-progress draft or
+  // opens a fresh Create conversation for authenticated visitors.
+  const requestedNext = String(formData.get("next") ?? "");
+  redirect(isSafeRedirectPath(requestedNext) ? requestedNext : "/");
 }
 
 export async function signupAction(
@@ -153,13 +151,7 @@ export async function devAutoLoginAction(): Promise<AuthActionState> {
     return { error: error.message };
   }
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("onboarding_completed_at")
-    .eq("id", data.user.id)
-    .maybeSingle();
-
   await syncLocaleCookieAfterLogin(supabase, data.user.id);
 
-  redirect(profile?.onboarding_completed_at ? "/projects" : "/create");
+  redirect("/");
 }
