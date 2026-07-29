@@ -660,6 +660,34 @@ function sanitizeInteractiveSection(raw: Record<string, unknown>): Stage3Interac
   return { kind: "interactive", title, body, experience };
 }
 
+// Compatibility for Stage3 output stored before the current section-kind
+// taxonomy existed. That earlier shape used `type` (not `kind`) as the
+// section discriminator, with its own now-retired label set — confirmed
+// against every project in the database still using it (2026-07-29 audit):
+// "about" and "how_it_works" always carried an empty `items` array (pure
+// title+body content), while "audience"/"activity"/"features" always carried
+// >=2 `{title, body}` items, and "how_it_works" specifically was always a
+// numbered, sequential list. This maps that shape onto current SectionKind
+// so those existing generations keep rendering, without changing anything
+// for current output (which always sets `kind` directly, never `type`).
+const LEGACY_SECTION_TYPE_TO_KIND: Record<string, SectionKind> = {
+  audience: "showcase",
+  activity: "showcase",
+  features: "showcase",
+  how_it_works: "process",
+};
+
+function normalizeLegacySection(raw: Record<string, unknown>): Record<string, unknown> {
+  if (typeof raw.kind === "string" || typeof raw.type !== "string") return raw;
+  const items = Array.isArray(raw.items) ? raw.items : [];
+  // No items to carry (e.g. the legacy "about" label) can only ever satisfy
+  // "story", the one current kind that needs just a title and body.
+  if (items.length === 0) return { ...raw, kind: "story" };
+  const mappedKind = LEGACY_SECTION_TYPE_TO_KIND[raw.type] ?? "showcase";
+  // "process" sections key their list as `steps`, not `items`.
+  return mappedKind === "process" ? { ...raw, kind: mappedKind, steps: items } : { ...raw, kind: mappedKind };
+}
+
 // At most one "interactive" section survives — a second one is dropped
 // rather than failing the whole output, since the experience is an optional
 // embellishment, not the product itself.
@@ -668,8 +696,9 @@ function sanitizeSections(value: unknown): Stage3Section[] {
   let hasInteractive = false;
   for (const entry of (Array.isArray(value) ? value : []).slice(0, 10)) {
     if (sections.length >= 7) break;
-    const raw = record(entry);
-    if (!raw) continue;
+    const entryRaw = record(entry);
+    if (!entryRaw) continue;
+    const raw = normalizeLegacySection(entryRaw);
     let section: Stage3Section | null = null;
     if (raw.kind === "story") section = sanitizeStorySection(raw);
     else if (raw.kind === "showcase") section = sanitizeShowcaseSection(raw);
