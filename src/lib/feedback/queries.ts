@@ -6,7 +6,13 @@ import type { Database } from "@/types/supabase";
 import { sanitizeFeedbackAnalysis, type FeedbackAnalysisState } from "@/lib/feedback/types";
 
 type Client = SupabaseClient<Database>;
-type FeedbackRow = Database["public"]["Tables"]["project_feedback_analyses"]["Row"];
+// Only the fields this module actually reads — callers that .select() a
+// narrower column list (e.g. omitting proposal_cache, which this helper
+// never touches) still satisfy this type.
+type FeedbackRow = Pick<
+  Database["public"]["Tables"]["project_feedback_analyses"]["Row"],
+  "analysis" | "analyzed_response_count" | "analyzed_response_fingerprint" | "analysis_started_at" | "analyzed_at"
+>;
 
 const ANALYSIS_LOCK_MS = 5 * 60 * 1000;
 

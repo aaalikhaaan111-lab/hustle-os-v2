@@ -25,6 +25,7 @@ import {
   parseStage3ProjectState,
   type Stage3ProjectState,
 } from "@/lib/build/stage3Types";
+import { consumeAiUsage, releaseAiUsage, type LimitReachedInfo } from "@/lib/ai/usage";
 
 const TOKEN_PATTERN = /^[a-zA-Z0-9_-]{8,80}$/;
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -273,7 +274,7 @@ export async function loadCreationDraftAction(): Promise<PersistedCreationDraft 
 
 export type CreationTurnResult =
   | { ok: true; turn: CreationTurn; projectName: string }
-  | { ok: false; unavailable: boolean };
+  | { ok: false; unavailable: boolean; limitReached?: LimitReachedInfo };
 
 export async function generateCreationTurnAction(
   projectId: string,
@@ -332,6 +333,23 @@ export async function generateCreationTurnAction(
     if (messageError && messageError.code !== "23505") return { ok: false, unavailable: true };
   }
 
+  if (!process.env.ANTHROPIC_API_KEY) return { ok: false, unavailable: true };
+
+  // Reserve one discovery turn BEFORE spending on the model, so a rejected
+  // request never reaches the Anthropic call. Placed after the lastRequestId
+  // cache check and the message-save above, so a retried request (same
+  // requestId) short-circuits before ever getting here and can't consume
+  // quota twice.
+  const reservation = await consumeAiUsage(user.id, "discovery_turn");
+  if (!reservation.allowed) {
+    if (reservation.checkFailed) return { ok: false, unavailable: true };
+    return {
+      ok: false,
+      unavailable: false,
+      limitReached: { metric: "discovery_turn", used: reservation.used, limit: reservation.limit },
+    };
+  }
+
   const { data: recentRows } = await supabase
     .from("project_ai_messages")
     .select("role, content, created_at")
@@ -340,7 +358,11 @@ export async function generateCreationTurnAction(
     .order("created_at", { ascending: false })
     .limit(20);
   const history: CreationMessage[] = (recentRows ?? []).reverse().map((row) => ({ role: row.role, content: row.content }));
-  if (!process.env.ANTHROPIC_API_KEY) return { ok: false, unavailable: true };
+
+  async function releaseAndFail(unavailable: boolean): Promise<CreationTurnResult> {
+    await releaseAiUsage(user!.id, "discovery_turn");
+    return { ok: false, unavailable };
+  }
 
   try {
     const startedAt = Date.now();
@@ -354,9 +376,9 @@ export async function generateCreationTurnAction(
     });
     logAiUsage("creation_discovery", startedAt, response);
     const textBlock = response.content.find((block) => block.type === "text");
-    if (!textBlock || textBlock.type !== "text") return { ok: false, unavailable: true };
+    if (!textBlock || textBlock.type !== "text") return releaseAndFail(true);
     const turn = sanitizeCreationTurn(JSON.parse(textBlock.text));
-    if (!turn) return { ok: false, unavailable: true };
+    if (!turn) return releaseAndFail(true);
     const nextState: Stage3ProjectState = {
       ...stage3,
       status: turn.phase === "propose" ? "proposed" : "shaping",
@@ -367,7 +389,7 @@ export async function generateCreationTurnAction(
     const { error: updateError } = await supabase.from("projects").update({
       snapshot_fields: snapshot,
     }).eq("id", projectId).eq("user_id", user.id);
-    if (updateError) return { ok: false, unavailable: true };
+    if (updateError) return releaseAndFail(true);
     const { error: assistantError } = await supabase.from("project_ai_messages").insert({
       id: assistantMessageId,
       conversation_id: conversationId,
@@ -376,13 +398,13 @@ export async function generateCreationTurnAction(
       role: "assistant",
       content: turn.message,
     });
-    if (assistantError && assistantError.code !== "23505") return { ok: false, unavailable: true };
+    if (assistantError && assistantError.code !== "23505") return releaseAndFail(true);
     await supabase.from("project_ai_conversations").update({ title: message.slice(0, 60) }).eq("id", conversationId).eq("user_id", user.id);
     revalidatePath("/projects");
     return { ok: true, turn, projectName: project.name || draftName(locale) };
   } catch (error) {
     console.error("[ventrio-ai-error]", JSON.stringify({ operation: "creation_discovery", projectId, message: error instanceof Error ? error.message : "unknown" }));
-    return { ok: false, unavailable: true };
+    return releaseAndFail(true);
   }
 }
 

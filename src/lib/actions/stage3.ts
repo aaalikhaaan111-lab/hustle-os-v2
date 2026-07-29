@@ -14,6 +14,7 @@ import {
   type Stage3ProjectState,
 } from "@/lib/build/stage3Types";
 import { isFeedbackRequest, loadFeedbackConversationContext } from "@/lib/feedback/context";
+import { consumeAiUsage, releaseAiUsage, type LimitReachedInfo } from "@/lib/ai/usage";
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const TOKEN_PATTERN = /^[a-zA-Z0-9_-]{8,80}$/;
@@ -202,7 +203,13 @@ function logUsage(
   }));
 }
 
-type Stage3Result = { error: string | null; output: Stage3ProjectOutput | null; reply: string | null; durationMs?: number };
+type Stage3Result = {
+  error: string | null;
+  output: Stage3ProjectOutput | null;
+  reply: string | null;
+  durationMs?: number;
+  limitReached?: LimitReachedInfo;
+};
 
 async function ownedProject(projectId: string) {
   const supabase = await createClient();
@@ -227,6 +234,25 @@ export async function generateFirstVersionAction(projectId: string): Promise<Sta
   if (stage3.output) return { error: null, output: stage3.output, reply: t("alreadyReady"), durationMs: 0 };
   if (!process.env.ANTHROPIC_API_KEY) return { error: t("unavailable"), output: null, reply: null };
 
+  // Reserved before the model call: the only path that can consume this
+  // metric a second time for the same project is `if (stage3.output)` above,
+  // which already short-circuits before this point.
+  const reservation = await consumeAiUsage(user.id, "first_version_generation");
+  if (!reservation.allowed) {
+    if (reservation.checkFailed) return { error: t("unavailable"), output: null, reply: null };
+    return {
+      error: null,
+      output: null,
+      reply: null,
+      limitReached: { metric: "first_version_generation", used: reservation.used, limit: reservation.limit },
+    };
+  }
+
+  async function releaseAndFail(errorMessage: string): Promise<Stage3Result> {
+    await releaseAiUsage(user!.id, "first_version_generation");
+    return { error: errorMessage, output: null, reply: null };
+  }
+
   try {
     const startedAt = Date.now();
     const client = new Anthropic();
@@ -244,9 +270,9 @@ export async function generateFirstVersionAction(projectId: string): Promise<Sta
     });
     logUsage("first_version_generation", projectId, startedAt, response);
     const textBlock = response.content.find((block) => block.type === "text");
-    if (!textBlock || textBlock.type !== "text") return { error: t("unavailable"), output: null, reply: null };
+    if (!textBlock || textBlock.type !== "text") return releaseAndFail(t("unavailable"));
     const output = sanitizeStage3Output(parseJsonRelaxed(textBlock.text), stage3.direction.projectType);
-    if (!output) return { error: t("unavailable"), output: null, reply: null };
+    if (!output) return releaseAndFail(t("unavailable"));
     const nextState: Stage3ProjectState = { ...stage3, status: "first_version_ready", output };
     const snapshot = mergeStage3ProjectState(project.snapshot_fields, nextState);
     snapshot.solution = output.identity.description;
@@ -257,7 +283,7 @@ export async function generateFirstVersionAction(projectId: string): Promise<Sta
       target_audience: output.targetUser,
       snapshot_fields: snapshot,
     }).eq("id", projectId).eq("user_id", user.id);
-    if (error) return { error: t("errorSave"), output: null, reply: null };
+    if (error) return releaseAndFail(t("errorSave"));
     const reply = t("generationReply", { name: output.identity.name });
     await supabase.from("project_ai_messages").insert({
       id: stableUuid(`${stage3.conversationId}:first-version-ready`),
@@ -273,7 +299,7 @@ export async function generateFirstVersionAction(projectId: string): Promise<Sta
     return { error: null, output, reply, durationMs: Date.now() - startedAt };
   } catch (error) {
     console.error("[ventrio-ai-error]", JSON.stringify({ operation: "first_version_generation", projectId, message: error instanceof Error ? error.message : "unknown" }));
-    return { error: t("unavailable"), output: null, reply: null };
+    return releaseAndFail(t("unavailable"));
   }
 }
 
@@ -331,6 +357,25 @@ export async function editProjectOutputAction(
   }
   if (!process.env.ANTHROPIC_API_KEY) return { error: t("unavailable"), output: null, reply: null };
 
+  // Reserved after the lastRequestId cache check and the user-message-save
+  // above, so a retried request (same requestId) never reaches this a second
+  // time — it already returned the cached reply before this point.
+  const reservation = await consumeAiUsage(user.id, "project_edit");
+  if (!reservation.allowed) {
+    if (reservation.checkFailed) return { error: t("unavailable"), output: null, reply: null };
+    return {
+      error: null,
+      output: null,
+      reply: null,
+      limitReached: { metric: "project_edit", used: reservation.used, limit: reservation.limit },
+    };
+  }
+
+  async function releaseAndFail(errorMessage: string): Promise<Stage3Result> {
+    await releaseAiUsage(user!.id, "project_edit");
+    return { error: errorMessage, output: null, reply: null };
+  }
+
   try {
     const startedAt = Date.now();
     const feedbackContext = isFeedbackRequest(message)
@@ -351,11 +396,11 @@ export async function editProjectOutputAction(
     });
     logUsage("project_output_edit", projectId, startedAt, response);
     const textBlock = response.content.find((block) => block.type === "text");
-    if (!textBlock || textBlock.type !== "text") return { error: t("unavailable"), output: null, reply: null };
+    if (!textBlock || textBlock.type !== "text") return releaseAndFail(t("unavailable"));
     const parsed = parseJsonRelaxed(textBlock.text) as Record<string, unknown>;
     const output = sanitizeStage3Output(parsed.output, stage3.output.preset);
     const reply = typeof parsed.message === "string" ? parsed.message.trim().slice(0, 500) : "";
-    if (!output || !reply) return { error: t("unavailable"), output: null, reply: null };
+    if (!output || !reply) return releaseAndFail(t("unavailable"));
     const nextState: Stage3ProjectState = { ...stage3, status: "first_version_ready", lastRequestId: requestMarker, output };
     const snapshot = mergeStage3ProjectState(project.snapshot_fields, nextState);
     snapshot.solution = output.identity.description;
@@ -366,7 +411,7 @@ export async function editProjectOutputAction(
       target_audience: output.targetUser,
       snapshot_fields: snapshot,
     }).eq("id", projectId).eq("user_id", user.id);
-    if (error) return { error: t("errorSave"), output: null, reply: null };
+    if (error) return releaseAndFail(t("errorSave"));
     await supabase.from("project_ai_messages").insert({
       id: assistantMessageId,
       conversation_id: conversationId,
@@ -381,7 +426,7 @@ export async function editProjectOutputAction(
     return { error: null, output, reply, durationMs: Date.now() - startedAt };
   } catch (error) {
     console.error("[ventrio-ai-error]", JSON.stringify({ operation: "project_output_edit", projectId, message: error instanceof Error ? error.message : "unknown" }));
-    return { error: t("unavailable"), output: null, reply: null };
+    return releaseAndFail(t("unavailable"));
   }
 }
 

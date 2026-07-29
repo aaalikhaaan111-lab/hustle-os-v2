@@ -66,6 +66,10 @@ export function CreateExperience({ userId, initialDraft }: CreateExperienceProps
   const [pendingRequestId, setPendingRequestId] = useState<string | null>(null);
   const [input, setInput] = useState("");
   const [note, setNote] = useState<string | null>(null);
+  // A limit-reached note is permanent for this account, not a transient
+  // failure — hides the "Retry" button so it doesn't offer a retry that can
+  // only fail again the same way.
+  const [noteIsLimitReached, setNoteIsLimitReached] = useState(false);
   const [selectedDirection, setSelectedDirection] = useState<number | null>(null);
   const [selectedChoices, setSelectedChoices] = useState<string[]>([]);
   const [refineTarget, setRefineTarget] = useState<string | null>(null);
@@ -140,6 +144,7 @@ export function CreateExperience({ userId, initialDraft }: CreateExperienceProps
 
   function runTurn(content: string, point: CreationStartingPoint | null, requestId: string) {
     setNote(null);
+    setNoteIsLimitReached(false);
     setGenerationRetry(null);
     setSelectedChoices([]);
     startSending(async () => {
@@ -160,6 +165,11 @@ export function CreateExperience({ userId, initialDraft }: CreateExperienceProps
         }
         const result = await generateCreationTurnAction(activeProjectId, activeConversationId, requestId, content);
         if (!result.ok) {
+          if (result.limitReached) {
+            setNote(t("discoveryLimitReached", { limit: result.limitReached.limit }));
+            setNoteIsLimitReached(true);
+            return;
+          }
           setNote(t("unavailable"));
           return;
         }
@@ -273,6 +283,7 @@ export function CreateExperience({ userId, initialDraft }: CreateExperienceProps
     setGenerationRetry(null);
     setCreationPhase("persisting");
     setNote(null);
+    setNoteIsLimitReached(false);
 
     void (async () => {
       let selectedProjectId: string | null = null;
@@ -292,6 +303,11 @@ export function CreateExperience({ userId, initialDraft }: CreateExperienceProps
           selectionLockRef.current = false;
           setCreationPhase("idle");
           setSelectedDirection(null);
+          if (generation.limitReached) {
+            setNote(t("firstVersionLimitReached"));
+            setNoteIsLimitReached(true);
+            return;
+          }
           setGenerationRetry({ direction, index });
           setNote(generation.error ?? t("errorSaveFailed"));
           return;
@@ -325,6 +341,7 @@ export function CreateExperience({ userId, initialDraft }: CreateExperienceProps
   function beginRefine(name: string) {
     if (creating || isSending) return;
     setNote(null);
+    setNoteIsLimitReached(false);
     setGenerationRetry(null);
     setRefineTarget(name);
     setInput("");
@@ -481,7 +498,7 @@ export function CreateExperience({ userId, initialDraft }: CreateExperienceProps
           {note && (
             <div className="mb-2 flex items-center gap-3 px-1" role="status">
               <p className="text-xs text-danger">{note}</p>
-              {started && (
+              {started && !noteIsLimitReached && (
                 <button
                   type="button"
                   onClick={() => generationRetry

@@ -27,6 +27,7 @@ import {
   targetedFeedbackOutput,
   type FeedbackAnalysisState,
   type FeedbackImprovementProposal,
+  type FeedbackTarget,
 } from "@/lib/feedback/types";
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -140,7 +141,7 @@ async function ownedFeedbackContext(projectId: string) {
       .eq("user_id", user.id),
     supabase
       .from("project_feedback_analyses")
-      .select("project_id, publication_id, user_id, analysis, analyzed_response_count, analyzed_response_fingerprint, analyzed_at, analysis_started_at, created_at, updated_at")
+      .select("project_id, publication_id, user_id, analysis, analyzed_response_count, analyzed_response_fingerprint, analyzed_at, analysis_started_at, proposal_cache, created_at, updated_at")
       .eq("project_id", projectId)
       .eq("user_id", user.id)
       .maybeSingle(),
@@ -344,6 +345,36 @@ function parseJsonRelaxed(text: string): unknown {
   return JSON.parse(fenced ? fenced[1] : trimmed);
 }
 
+// Caches the last generated proposal per recommendation id on the same
+// project_feedback_analyses row the analysis itself lives on (see
+// supabase/migrations/20260723130000_add_feedback_proposal_cache.sql) — a
+// content cache, not a spend counter, so it's kept separate from
+// user_ai_usage entirely. A cache hit requires the entry's fingerprint to
+// match the CURRENT analysis's fingerprint: recommendation ids are freshly
+// model-generated on every analysis run, so this only ever matters within
+// one analysis cycle — a re-analysis naturally produces new ids the cache
+// has no entry for.
+function readCachedProposal(
+  cache: unknown,
+  recommendationId: string,
+  fingerprint: string,
+  currentOutput: Stage3ProjectOutput,
+  target: FeedbackTarget,
+): FeedbackImprovementProposal | null {
+  if (!fingerprint || !cache || typeof cache !== "object" || Array.isArray(cache)) return null;
+  const entry = (cache as Record<string, unknown>)[recommendationId];
+  if (!entry || typeof entry !== "object") return null;
+  const candidate = entry as Record<string, unknown>;
+  if (candidate.fingerprint !== fingerprint) return null;
+  const title = plain(candidate.title, 120);
+  const current = plain(candidate.current, 500);
+  const proposed = plain(candidate.proposed, 500);
+  if (!title || !current || !proposed) return null;
+  const output = sanitizeTargetedFeedbackOutput(currentOutput, candidate.output, target);
+  if (!output) return null;
+  return { recommendationId, title, current, proposed, target, output };
+}
+
 export async function proposeFeedbackImprovementAction(
   projectId: string,
   recommendationId: string,
@@ -369,6 +400,17 @@ export async function proposeFeedbackImprovementAction(
   );
   const recommendation = analysis?.recommendedChanges.find((entry) => entry.id === recommendationId);
   if (!recommendation) return { error: t("errorRecommendation"), proposal: null };
+
+  const fingerprint = context.feedbackRow?.analyzed_response_fingerprint ?? "";
+  const cached = readCachedProposal(
+    context.feedbackRow?.proposal_cache,
+    recommendationId,
+    fingerprint,
+    context.stage3.output,
+    recommendation.target,
+  );
+  if (cached) return { error: null, proposal: cached };
+
   if (!process.env.ANTHROPIC_API_KEY) return { error: t("improvementFailed"), proposal: null };
 
   try {
@@ -401,6 +443,25 @@ export async function proposeFeedbackImprovementAction(
     const current = plain(parsed.current, 500);
     const proposed = plain(parsed.proposed, 500);
     if (!output || !title || !current || !proposed) throw new Error("invalid_proposal");
+
+    // Best-effort: caching is a nice-to-have, so a failure here still returns
+    // the proposal the model just generated rather than failing the request.
+    if (fingerprint) {
+      const existingCache =
+        context.feedbackRow?.proposal_cache && typeof context.feedbackRow.proposal_cache === "object"
+          ? (context.feedbackRow.proposal_cache as Record<string, unknown>)
+          : {};
+      const nextCache = {
+        ...existingCache,
+        [recommendationId]: { title, current, proposed, output, fingerprint },
+      };
+      await context.supabase
+        .from("project_feedback_analyses")
+        .update({ proposal_cache: nextCache })
+        .eq("project_id", projectId)
+        .eq("user_id", context.user.id);
+    }
+
     return {
       error: null,
       proposal: {

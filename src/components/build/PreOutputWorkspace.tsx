@@ -117,6 +117,10 @@ export function PreOutputWorkspace({
     startGenerating(async () => {
       const result = await generateFirstVersionAction(projectId);
       if (result.error || !result.output) {
+        if (result.limitReached) {
+          setNote(t("firstVersionLimitReached"));
+          return;
+        }
         setNote(result.error ?? t("unavailable"));
         return;
       }
@@ -144,6 +148,11 @@ export function PreOutputWorkspace({
           }
           const result = await editProjectOutputAction(projectId, conversationId, crypto.randomUUID(), content);
           if (result.error || !result.output) {
+            if (result.limitReached) {
+              setNote(t("editLimitReached", { limit: result.limitReached.limit }));
+              setInput(content);
+              return;
+            }
             setNote(result.error ?? t("unavailable"));
             setInput(content);
             return;

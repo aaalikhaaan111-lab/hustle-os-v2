@@ -290,6 +290,8 @@ export interface Database {
           analyzed_response_fingerprint: string | null;
           analyzed_at: string | null;
           analysis_started_at: string | null;
+          // Added by *_add_feedback_proposal_cache.sql (manual apply).
+          proposal_cache: unknown;
           created_at: string;
           updated_at: string;
         };
@@ -302,6 +304,7 @@ export interface Database {
           analyzed_response_fingerprint?: string | null;
           analyzed_at?: string | null;
           analysis_started_at?: string | null;
+          proposal_cache?: unknown;
           created_at?: string;
           updated_at?: string;
         };
@@ -314,6 +317,7 @@ export interface Database {
           analyzed_response_fingerprint?: string | null;
           analyzed_at?: string | null;
           analysis_started_at?: string | null;
+          proposal_cache?: unknown;
           created_at?: string;
           updated_at?: string;
         };
@@ -554,6 +558,31 @@ export interface Database {
         };
         Relationships: [];
       };
+      // Added by *_add_user_ai_usage.sql (manual apply).
+      user_ai_usage: {
+        Row: {
+          user_id: string;
+          metric: string;
+          used: number;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          user_id: string;
+          metric: string;
+          used?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          user_id?: string;
+          metric?: string;
+          used?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: {
@@ -574,6 +603,15 @@ export interface Database {
           p_server_submitter_hash: string;
         };
         Returns: string;
+      };
+      // Added by *_add_user_ai_usage.sql (manual apply).
+      consume_ai_usage: {
+        Args: { p_user_id: string; p_metric: string; p_limit: number };
+        Returns: { allowed: boolean; used_count: number }[];
+      };
+      release_ai_usage: {
+        Args: { p_user_id: string; p_metric: string };
+        Returns: undefined;
       };
     };
     Enums: Record<string, never>;
