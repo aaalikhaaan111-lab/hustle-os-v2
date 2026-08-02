@@ -15,6 +15,7 @@ import {
 } from "@/lib/build/stage3Types";
 import { isFeedbackRequest, loadFeedbackConversationContext } from "@/lib/feedback/context";
 import { consumeAiUsage, releaseAiUsage, type LimitReachedInfo } from "@/lib/ai/usage";
+import { toJson } from "@/lib/supabase/json";
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const TOKEN_PATTERN = /^[a-zA-Z0-9_-]{8,80}$/;
@@ -281,7 +282,7 @@ export async function generateFirstVersionAction(projectId: string): Promise<Sta
     const { error } = await supabase.from("projects").update({
       name: output.identity.name,
       target_audience: output.targetUser,
-      snapshot_fields: snapshot,
+      snapshot_fields: toJson(snapshot),
     }).eq("id", projectId).eq("user_id", user.id);
     if (error) return releaseAndFail(t("errorSave"));
     const reply = t("generationReply", { name: output.identity.name });
@@ -409,7 +410,7 @@ export async function editProjectOutputAction(
     const { error } = await supabase.from("projects").update({
       name: output.identity.name,
       target_audience: output.targetUser,
-      snapshot_fields: snapshot,
+      snapshot_fields: toJson(snapshot),
     }).eq("id", projectId).eq("user_id", user.id);
     if (error) return releaseAndFail(t("errorSave"));
     await supabase.from("project_ai_messages").insert({

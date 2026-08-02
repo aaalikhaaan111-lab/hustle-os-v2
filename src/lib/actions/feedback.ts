@@ -29,6 +29,7 @@ import {
   type FeedbackImprovementProposal,
   type FeedbackTarget,
 } from "@/lib/feedback/types";
+import { toJson } from "@/lib/supabase/json";
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const RECOMMENDATION_ID_PATTERN = /^[a-z0-9][a-z0-9_-]{0,47}$/;
@@ -287,7 +288,7 @@ export async function analyzeProjectFeedbackAction(projectId: string): Promise<A
     const { error } = await context.supabase
       .from("project_feedback_analyses")
       .update({
-        analysis,
+        analysis: toJson(analysis),
         analyzed_response_count: context.responseCount,
         analyzed_response_fingerprint: fingerprint,
         analyzed_at: analyzedAt,
@@ -457,7 +458,7 @@ export async function proposeFeedbackImprovementAction(
       };
       await context.supabase
         .from("project_feedback_analyses")
-        .update({ proposal_cache: nextCache })
+        .update({ proposal_cache: toJson(nextCache) })
         .eq("project_id", projectId)
         .eq("user_id", context.user.id);
     }
@@ -531,7 +532,7 @@ export async function applyFeedbackImprovementAction(
     .update({
       name: output.identity.name,
       target_audience: output.targetUser,
-      snapshot_fields: snapshot,
+      snapshot_fields: toJson(snapshot),
     })
     .eq("id", projectId)
     .eq("user_id", context.user.id);

@@ -11,6 +11,7 @@ import type { PublicationActionResult } from "@/lib/publishing/types";
 import { getSiteUrl } from "@/lib/site";
 import { getCurrentUser } from "@/lib/supabase/currentUser";
 import { createClient } from "@/lib/supabase/server";
+import { toJson } from "@/lib/supabase/json";
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -77,7 +78,7 @@ export async function publishProjectAction(projectId: string): Promise<Publicati
     const { error } = await supabase
       .from("project_publications")
       .update({
-        output,
+        output: toJson(output),
         locale: project.locale,
         is_published: true,
         published_at: new Date().toISOString(),
@@ -98,7 +99,7 @@ export async function publishProjectAction(projectId: string): Promise<Publicati
       user_id: user.id,
       slug,
       locale: project.locale,
-      output,
+      output: toJson(output),
       is_published: true,
     });
     if (!error) {
@@ -132,7 +133,7 @@ export async function updatePublishedVersionAction(projectId: string): Promise<P
 
   const { error } = await supabase
     .from("project_publications")
-    .update({ output, locale: project.locale })
+    .update({ output: toJson(output), locale: project.locale })
     .eq("project_id", projectId)
     .eq("user_id", user.id);
   if (error) return failure(t("errorUpdate"));

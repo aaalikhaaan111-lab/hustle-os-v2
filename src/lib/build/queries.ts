@@ -3,10 +3,10 @@ import type { Database } from "@/types/supabase";
 
 type Client = SupabaseClient<Database>;
 
-// Only a project still in progress — used solely to block starting a second
-// *concurrent* project. A completed project must not count here, or a user
-// could never start a new one after finishing the last (see getCurrentProject).
-export async function getActiveProject(supabase: Client, userId: string) {
+// Only a project still in progress. Kept separate from getCurrentProject
+// because "active" and "most recent" are different questions and the fallback
+// below depends on asking them in that order.
+async function getActiveProject(supabase: Client, userId: string) {
   const { data } = await supabase
     .from("projects")
     .select("*")
@@ -62,34 +62,4 @@ export async function getProjectById(supabase: Client, userId: string, projectId
     .eq("user_id", userId)
     .maybeSingle();
   return data;
-}
-
-export async function getProjectTasks(supabase: Client, projectId: string) {
-  const { data } = await supabase
-    .from("project_tasks")
-    .select("*")
-    .eq("project_id", projectId)
-    .order("order_index", { ascending: true });
-  return data ?? [];
-}
-
-export async function getProjectOutputs(supabase: Client, projectId: string) {
-  const { data } = await supabase
-    .from("project_outputs")
-    .select("*")
-    .eq("project_id", projectId);
-  return data ?? [];
-}
-
-type TaskRow = Database["public"]["Tables"]["project_tasks"]["Row"];
-
-export function computeProgress(tasks: TaskRow[]): { progress: number; currentStage: string | null } {
-  if (tasks.length === 0) return { progress: 0, currentStage: null };
-
-  const completed = tasks.filter((task) => task.status === "completed").length;
-  const progress = Math.round((completed / tasks.length) * 100);
-  const nextPending = tasks.find((task) => task.status !== "completed");
-  const currentStage = nextPending ? nextPending.stage : tasks[tasks.length - 1].stage;
-
-  return { progress, currentStage };
 }

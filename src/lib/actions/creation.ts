@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 import { getLocale, getTranslations } from "next-intl/server";
 import type { Locale } from "@/i18n/locale";
 import { createClient } from "@/lib/supabase/server";
+import { toJson } from "@/lib/supabase/json";
 import {
   CREATION_LIMITS,
   isStartingPoint,
@@ -26,6 +27,18 @@ import {
   type Stage3ProjectState,
 } from "@/lib/build/stage3Types";
 import { consumeAiUsage, releaseAiUsage, type LimitReachedInfo } from "@/lib/ai/usage";
+
+/**
+ * Narrows a stored message role to the two the product actually has.
+ *
+ * The column is plain text, so the database cannot promise more than `string`.
+ * Anything unrecognised is read as a user turn: that is the safe direction —
+ * a stray value shown as the person's own words is merely wrong, whereas
+ * showing it as the assistant's would put words in Ventrio's mouth.
+ */
+function asChatRole(value: string): "user" | "assistant" {
+  return value === "assistant" ? "assistant" : "user";
+}
 
 const TOKEN_PATTERN = /^[a-zA-Z0-9_-]{8,80}$/;
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -208,7 +221,7 @@ export async function ensureCreationDraftAction(
       time_availability: "2_4h",
       pathway_mode: "standard",
       locale,
-      snapshot_fields: { stage3 },
+      snapshot_fields: toJson({ stage3 }),
     });
     if (error && error.code !== "23505") return fail(t("errorSaveFailed"));
   } else if (!stage3 || stage3.sessionId !== sessionId || stage3.output) {
@@ -217,7 +230,7 @@ export async function ensureCreationDraftAction(
     stage3 = { ...stage3, startingPoint: point };
     await supabase.from("projects").update({
       starting_stage: startingStageFor(point),
-      snapshot_fields: mergeStage3ProjectState(existing.snapshot_fields, stage3),
+      snapshot_fields: toJson(mergeStage3ProjectState(existing.snapshot_fields, stage3)),
     }).eq("id", projectId).eq("user_id", user.id);
   }
 
@@ -266,7 +279,7 @@ export async function loadCreationDraftAction(): Promise<PersistedCreationDraft 
     conversationId: stage3.conversationId,
     sessionId: stage3.sessionId,
     projectName: project.name || draftName(locale),
-    messages: (messages ?? []).map((message) => ({ id: message.id, role: message.role, content: message.content })),
+    messages: (messages ?? []).map((message) => ({ id: message.id, role: asChatRole(message.role), content: message.content })),
     turn: stage3.turn,
     startingPoint: stage3.startingPoint,
   };
@@ -357,7 +370,7 @@ export async function generateCreationTurnAction(
     .eq("user_id", user.id)
     .order("created_at", { ascending: false })
     .limit(20);
-  const history: CreationMessage[] = (recentRows ?? []).reverse().map((row) => ({ role: row.role, content: row.content }));
+  const history: CreationMessage[] = (recentRows ?? []).reverse().map((row) => ({ role: asChatRole(row.role), content: row.content }));
 
   async function releaseAndFail(unavailable: boolean): Promise<CreationTurnResult> {
     await releaseAiUsage(user!.id, "discovery_turn");
@@ -387,7 +400,7 @@ export async function generateCreationTurnAction(
     };
     const snapshot = mergeStage3ProjectState(project.snapshot_fields, nextState);
     const { error: updateError } = await supabase.from("projects").update({
-      snapshot_fields: snapshot,
+      snapshot_fields: toJson(snapshot),
     }).eq("id", projectId).eq("user_id", user.id);
     if (updateError) return releaseAndFail(true);
     const { error: assistantError } = await supabase.from("project_ai_messages").insert({
@@ -452,7 +465,7 @@ export async function selectCreationDirectionAction(
     niche: cleanDirection.niche,
     starting_stage: startingStageFor(canonicalPoint),
     target_audience: cleanDirection.audience,
-    snapshot_fields: snapshot,
+    snapshot_fields: toJson(snapshot),
   }).eq("id", projectId).eq("user_id", user.id);
   if (error) return { error: t("errorSaveFailed") };
   const brief = cleanDirection.creativeBrief;

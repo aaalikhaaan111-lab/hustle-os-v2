@@ -2,8 +2,6 @@
 
 import { getTranslations } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
-import { getProjectTasks, getProjectOutputs } from "@/lib/build/queries";
-import { buildSnapshot } from "@/lib/build/snapshot";
 import { assistantPhase, type AssistantPhase } from "@/lib/build/assistantPrompts";
 import {
   generateAssistantReply,
@@ -178,18 +176,14 @@ export async function sendAssistantMessage(
   const feedbackContextPromise = stage3?.output && isFeedbackRequest(message)
     ? loadFeedbackConversationContext(supabase, projectId, user.id, stage3.output.preset)
     : Promise.resolve(null);
-  const [tasks, outputs, feedbackContext] = await Promise.all([
-    getProjectTasks(supabase, projectId),
-    getProjectOutputs(supabase, projectId),
-    feedbackContextPromise,
-  ]);
-  const snapshotRows = buildSnapshot(project, tasks, outputs);
-  const tSnap = t;
-  const snapshot = snapshotRows
-    .filter((row) => row.value !== null)
-    .map((row) => ({ label: tSnap(row.labelKey as Parameters<typeof t>[0]), value: row.value as string }));
+  const feedbackContext = await feedbackContextPromise;
 
-  const currentTask = tasks.find((task) => task.status !== "completed");
+  // The snapshot and current-task lines were derived from the retired
+  // educational product's roadmap tables. No project created by the current
+  // flow has ever had a row in them, so both have been empty for every project
+  // this prompt is built for — removing the reads leaves the model's input
+  // exactly as it already was, minus two round trips per message.
+  const snapshot: { label: string; value: string }[] = [];
 
   const { data: memoryRow } = await supabase
     .from("project_ai_memory")
@@ -220,7 +214,7 @@ export async function sendAssistantMessage(
     targetAudience: project.target_audience,
     timeAvailability: project.time_availability,
     currentStage: project.current_stage,
-    currentTaskTitle: currentTask?.title ?? null,
+    currentTaskTitle: null,
     snapshot,
     pitchSummary: pitch?.pitch30 ?? null,
     memorySummary: memoryRow?.summary ?? null,

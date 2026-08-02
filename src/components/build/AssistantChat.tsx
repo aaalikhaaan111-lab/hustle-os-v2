@@ -1,22 +1,42 @@
 "use client";
 
 import { useEffect, useRef, useState, useTransition } from "react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import {
   sendAssistantMessage,
   startNewConversation,
   type AssistantMessage,
 } from "@/lib/actions/assistant";
-import { saveStructuredFieldAction } from "@/lib/actions/build";
+import { saveStructuredFieldAction } from "@/lib/actions/projectFields";
 import type { AssistantProposal } from "@/lib/actions/buildAi";
 import { FIELD_TO_LABELKEY, type StructuredField } from "@/lib/build/snapshot";
 import { STARTER_PROMPT_KEYS, type AssistantPhase } from "@/lib/build/assistantPrompts";
+import { AiComposer } from "@/components/ui/AiComposer";
+import { WorkspaceComposer } from "@/components/workspace-ui/Composer";
+import { VentrioButton } from "@/components/ui/VentrioButton";
+import { UsageMenu } from "@/components/workspace-ui/UsageMenu";
+import type { WorkspaceUsage } from "@/lib/workspace/usage";
+import { useVoiceInput } from "@/lib/workspace/useVoiceInput";
 import { cn } from "@/lib/utils";
 
 interface ChatMessage {
   id: string;
   role: "user" | "assistant";
   content: string;
+}
+
+/** One place the usage popover's copy is assembled, shared by both composers. */
+export function usageLabels(tw: ReturnType<typeof useTranslations<"workspace">>) {
+  return {
+    trigger: tw("usageTrigger"),
+    title: tw("usage"),
+    aiChanges: tw("usageChanges"),
+    projectBuilds: tw("usageBuilds"),
+    evolutionCredits: tw("usageEvolution"),
+    trackedSessions: tw("usageSessions"),
+    unavailable: tw("usageUnavailable"),
+    note: tw("usageNote"),
+  };
 }
 
 // Project-specific "thinking" copy, cycled while the assistant replies —
@@ -45,7 +65,17 @@ export interface AssistantChatProps {
   existingValues: Partial<Record<StructuredField, string>>;
   /** Called after a structured field is confirmed and persisted. */
   onFieldSaved: (field: StructuredField, value: string) => void;
-  variant?: "legacy" | "creator";
+  variant?: "legacy" | "creator" | "workspace";
+  /** Reading measure in px for the workspace variant — narrower beside a preview. */
+  measure?: number;
+  /** Real ledger, read behind the composer's settings control rather than printed. */
+  usage?: WorkspaceUsage;
+  /**
+   * Rendered after the conversation. Build uses it for the approved
+   * "first version ready" card, which belongs in the conversation rather than
+   * in chrome around it.
+   */
+  footer?: React.ReactNode;
 }
 
 // The project assistant as an immersive conversation canvas: a wide, readable
@@ -61,8 +91,12 @@ export function AssistantChat({
   existingValues,
   onFieldSaved,
   variant = "legacy",
+  measure = 820,
+  usage,
+  footer,
 }: AssistantChatProps) {
   const t = useTranslations("build");
+  const tw = useTranslations("workspace");
   const [conversationId, setConversationId] = useState<string | null>(initialConversationId);
   const [messages, setMessages] = useState<ChatMessage[]>(
     initialMessages.map((m) => ({ id: m.id, role: m.role, content: m.content }))
@@ -74,10 +108,18 @@ export function AssistantChat({
   const [savedConfirm, setSavedConfirm] = useState(false);
   const [atBottom, setAtBottom] = useState(true);
   const [thinkIdx, setThinkIdx] = useState(0);
+
   const [isSending, startSending] = useTransition();
+  // Dictation appends to whatever is already typed rather than replacing it,
+  // so speaking a second thought never destroys the first.
+  const locale = useLocale();
+  const voice = useVoiceInput({
+    lang: locale === "ru" ? "ru-RU" : "en-US",
+    disabled: isSending || !available,
+    onTranscript: (text) => setInput((prev) => (prev ? `${prev.trimEnd()} ${text}` : text)),
+  });
   const [isSaving, startSaving] = useTransition();
   const scrollRef = useRef<HTMLDivElement>(null);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const idCounter = useRef(0);
   const nextId = (prefix: string) => `${prefix}-${(idCounter.current += 1)}`;
 
@@ -106,15 +148,6 @@ export function AssistantChat({
     const id = setInterval(() => setThinkIdx((i) => (i + 1) % THINKING_KEYS.length), 1800);
     return () => clearInterval(id);
   }, [isSending]);
-
-  // Grow the composer with its content (up to a cap) without any layout jump.
-  function autosize() {
-    const el = textareaRef.current;
-    if (!el) return;
-    el.style.height = "auto";
-    el.style.height = `${Math.min(el.scrollHeight, 160)}px`;
-  }
-  useEffect(autosize, [input]);
 
   function submit(text: string) {
     const trimmed = text.trim();
@@ -193,6 +226,170 @@ export function AssistantChat({
   const creatorStarters = ["creatorStarterShape", "creatorStarterAudience", "creatorStarterFirstVersion"] as const;
   const starters = variant === "creator" ? creatorStarters : STARTER_PROMPT_KEYS[phase].slice(0, 3);
   const isEmpty = messages.length === 0;
+
+  const proposalBlock = proposal ? (
+    <ProposalCard
+      proposal={proposal}
+      existing={existingValues[proposal.field] ?? null}
+      disabled={isSaving}
+      onSave={(value) => saveField(proposal.field, value)}
+      onImprove={() => {
+        const label = proposal.label;
+        setProposal(null);
+        submit(t("proposalImproveMsg", { label }));
+      }}
+      onDismiss={() => setProposal(null)}
+    />
+  ) : null;
+
+  const voiceError = voice.error && (
+    <p role="alert" className="mt-1.5 text-[13px]" style={{ color: "var(--warn)" }}>
+      {voice.error === "permission"
+        ? t("voiceDenied")
+        : voice.error === "no-speech"
+          ? t("voiceNoSpeech")
+          : t("voiceFailed")}
+    </p>
+  );
+
+  // The approved workspace conversation: assistant speech set as plain prose at
+  // a reading measure, the person's own words in a quiet raised bubble, and the
+  // composer pinned below at the same measure. Same submission path as every
+  // other surface — only the presentation differs.
+  if (variant === "workspace") {
+    return (
+      <>
+        <div ref={scrollRef} onScroll={handleScroll} className="min-h-0 flex-1 overflow-y-auto">
+          <div className="mx-auto w-full px-5 py-8 sm:px-8" style={{ maxWidth: measure }}>
+            {!available ? (
+              <p className="text-[15px] leading-[1.65]" style={{ color: "var(--ink-2)" }}>
+                {t("assistantUnavailable")}
+              </p>
+            ) : isEmpty ? (
+              <div className="flex flex-col gap-6">
+                <div>
+                  <p className="whitespace-pre-wrap text-[19px] font-semibold leading-snug tracking-[-0.01em]">
+                    {openingMessage}
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {starters.map((key) => (
+                    <VentrioButton
+                      key={key}
+                      variant="secondary"
+                      size="sm"
+                      shape="pill"
+                      disabled={isSending}
+                      onClick={() => submit(t(key as Parameters<typeof t>[0]))}
+                      weight="medium"
+                    >
+                      {t(key as Parameters<typeof t>[0])}
+                    </VentrioButton>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div className="flex flex-col gap-7">
+                {messages.map((m) =>
+                  m.role === "user" ? (
+                    <div key={m.id} className="ws-turn flex justify-end">
+                      <p
+                        className="max-w-[80%] whitespace-pre-wrap rounded-[var(--r-lg)] px-3.5 py-2.5 text-[15px] leading-[1.6]"
+                        style={{ background: "var(--sunken)" }}
+                      >
+                        {m.content}
+                      </p>
+                    </div>
+                  ) : (
+                    <div key={m.id} className="ws-turn whitespace-pre-wrap text-[15px] leading-[1.65]">
+                      {m.content}
+                    </div>
+                  )
+                )}
+
+                {isSending && (
+                  <div className="flex items-center gap-2 text-[14px]" aria-live="polite" style={{ color: "var(--ink-2)" }}>
+                    <span className="h-1.5 w-1.5 animate-pulse rounded-full" style={{ background: "var(--accent)" }} />
+                    {t(THINKING_KEYS[thinkIdx] as Parameters<typeof t>[0])}
+                  </div>
+                )}
+
+                {savedConfirm && (
+                  <div className="flex items-center gap-2 text-[14px] font-medium" style={{ color: "var(--ok)" }}>
+                    <span
+                      className="grid h-5 w-5 place-items-center rounded-full text-[11px]"
+                      style={{ background: "var(--ok-soft)" }}
+                    >
+                      ✓
+                    </span>
+                    {t("proposalSavedInline")}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {proposalBlock && <div className="mt-7">{proposalBlock}</div>}
+            {footer && <div className="mt-7">{footer}</div>}
+          </div>
+        </div>
+
+        <div className="shrink-0 px-5 pb-5 pt-2 sm:px-8 sm:pb-7">
+          <div className="mx-auto w-full" style={{ maxWidth: measure }}>
+            {!isEmpty && available && (
+              <div className="mb-2 flex justify-end">
+                <VentrioButton
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleNewConversation}
+                  disabled={isSending}
+                  weight="medium" className="text-[13px]"
+                >
+                  {t("assistantNewChat")}
+                </VentrioButton>
+              </div>
+            )}
+            {note && (
+              <p role="status" className="mb-1.5 text-[13px]" style={{ color: "var(--warn)" }}>
+                {note}
+              </p>
+            )}
+            {flash && (
+              <p className="mb-1.5 text-[13px] font-medium" style={{ color: "var(--ok)" }}>
+                {flash}
+              </p>
+            )}
+
+            <WorkspaceComposer
+              value={input}
+              onChange={setInput}
+              onSend={() => submit(input)}
+              disabled={isSending || !available}
+              sending={isSending}
+              placeholder={t("assistantPlaceholder")}
+              sendLabel={t("assistantSend")}
+              settings={usage ? <UsageMenu usage={usage} labels={usageLabels(tw)} /> : null}
+              listeningLabel={t("voiceListening")}
+              keyboardHint={t("composerKeys")}
+              voice={{
+                supported: voice.supported,
+                listening: voice.listening,
+                state: voice.state,
+                onToggle: () => (voice.listening ? voice.stop() : voice.start()),
+                label: t("voiceStart"),
+                unsupportedLabel: t("voiceUnsupported"),
+                requestingLabel: t("voiceRequesting"),
+                listeningLabel: t("voiceListening"),
+              }}
+            />
+            <p role="status" aria-live="polite" className="sr-only">
+              {voice.listening ? t("voiceListening") : ""}
+            </p>
+            {voiceError}
+          </div>
+        </div>
+      </>
+    );
+  }
 
   return (
     <div className={cn("flex h-full min-h-0 flex-col", variant === "creator" && "creator-chat")}>
@@ -296,45 +493,37 @@ export function AssistantChat({
           {note && <p className="mb-1.5 px-1 text-xs text-danger">{note}</p>}
           {flash && <p className="mb-1.5 px-1 text-xs font-semibold text-success">{flash}</p>}
 
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              submit(input);
+          <AiComposer
+            value={input}
+            onChange={setInput}
+            onSend={() => submit(input)}
+            disabled={isSending || !available}
+            sending={isSending}
+            placeholder={t("assistantPlaceholder")}
+            sendLabel={t("assistantSend")}
+            maxHeight={160}
+            voice={{
+              supported: voice.supported,
+              listening: voice.listening,
+              onToggle: () => (voice.listening ? voice.stop() : voice.start()),
+              label: voice.listening ? t("voiceStop") : t("voiceStart"),
+              unsupportedLabel: t("voiceUnsupported"),
             }}
-            className="ventrio-composer"
-          >
-            <textarea
-              ref={textareaRef}
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              disabled={isSending || !available}
-              rows={1}
-              placeholder={t("assistantPlaceholder")}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey) {
-                  e.preventDefault();
-                  submit(input);
-                }
-              }}
-              className="max-h-40 min-h-[34px] min-w-0 flex-1 resize-none bg-transparent px-2 py-1.5 text-[15px] leading-6 text-ink placeholder:text-ink-muted focus:outline-none disabled:opacity-60"
-            />
-            <button
-              type="submit"
-              aria-label={t("assistantSend")}
-              disabled={isSending || !available || input.trim().length === 0}
-              className="composer-send press-scale focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-25"
-            >
-              <svg viewBox="0 0 20 20" fill="none" className="h-4 w-4" aria-hidden>
-                <path
-                  d="M10 16V4M10 4l-5 5M10 4l5 5"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-            </button>
-          </form>
+          />
+          {/* Announced, not just coloured: a dictation failure has to reach
+              someone who cannot see the control change state. */}
+          <p role="status" aria-live="polite" className="sr-only">
+            {voice.listening ? t("voiceListening") : ""}
+          </p>
+          {voice.error && (
+            <p role="alert" className="mt-1.5 px-1 text-xs text-danger">
+              {voice.error === "permission"
+                ? t("voiceBlocked")
+                : voice.error === "no-speech"
+                  ? t("voiceNoSpeech")
+                  : t("voiceFailed")}
+            </p>
+          )}
         </div>
       </div>
     </div>

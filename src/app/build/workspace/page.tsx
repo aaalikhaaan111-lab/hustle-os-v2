@@ -2,28 +2,19 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/supabase/currentUser";
 import { getCurrentProject } from "@/lib/build/queries";
-import { buildWorkspaceViewProps } from "@/lib/build/workspaceProps";
-import { WorkspaceView } from "@/components/build/WorkspaceView";
 
-// Legacy single-project workspace: resolves the user's current project
-// implicitly. The multi-project surface lives at /projects/[id]; this route is
-// kept working for backward compatibility until it is redirected.
-export default async function ProjectWorkspacePage() {
+// Retired. This was the single-project workspace, which resolved "the" project
+// implicitly — an assumption the product outgrew the moment someone could have
+// more than one. The canonical surface is /projects/[id].
+//
+// Kept as a redirect rather than deleted because the URL was live and may sit
+// in a bookmark or someone's history. It lands on the same project the old page
+// would have opened, so an old link still arrives somewhere true.
+export default async function RetiredWorkspacePage() {
   const supabase = await createClient();
   const user = await getCurrentUser(supabase);
-
-  if (!user) {
-    redirect("/login");
-  }
+  if (!user) redirect("/login");
 
   const project = await getCurrentProject(supabase, user.id);
-  if (!project) {
-    redirect("/build");
-  }
-
-  const props = await buildWorkspaceViewProps(supabase, project, {
-    pitchHref: "/build/workspace/pitch",
-  });
-
-  return <WorkspaceView {...props} />;
+  redirect(project ? `/projects/${project.id}` : "/create");
 }
