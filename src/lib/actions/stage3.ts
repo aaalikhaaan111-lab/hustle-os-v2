@@ -15,6 +15,21 @@ import {
 } from "@/lib/build/stage3Types";
 import { isFeedbackRequest, loadFeedbackConversationContext } from "@/lib/feedback/context";
 import { consumeAiUsage, releaseAiUsage, type LimitReachedInfo } from "@/lib/ai/usage";
+import {
+  attemptsSoFar,
+  beat,
+  claimJob,
+  expireStale,
+  expireStaleForUser,
+  finishFailed,
+  finishSucceeded,
+  isStale,
+  jobCountSoFar,
+  latestJob,
+  releaseUsage,
+  reserveUsage,
+} from "@/lib/jobs/generationJobs";
+import { MAX_FIRST_VERSION_ATTEMPTS, type FirstVersionJobView } from "@/lib/jobs/firstVersion";
 import { toJson } from "@/lib/supabase/json";
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -210,6 +225,8 @@ type Stage3Result = {
   reply: string | null;
   durationMs?: number;
   limitReached?: LimitReachedInfo;
+  /** Set by first-version generation so the caller can poll the job. */
+  jobId?: string | null;
 };
 
 async function ownedProject(projectId: string) {
@@ -225,6 +242,44 @@ async function ownedProject(projectId: string) {
   return { supabase, user, project, stage3: parseStage3ProjectState(project?.snapshot_fields) };
 }
 
+/**
+ * The state the Build screen polls. Expires an abandoned job before reporting,
+ * so a killed request surfaces as a failure with a retry rather than as a
+ * spinner nobody will ever resolve.
+ */
+export async function getFirstVersionJobAction(projectId: string): Promise<FirstVersionJobView> {
+  const empty: FirstVersionJobView = { job: null, hasOutput: false, attemptsRemaining: MAX_FIRST_VERSION_ATTEMPTS };
+  if (!UUID_PATTERN.test(projectId)) return empty;
+  const { user, stage3 } = await ownedProject(projectId);
+  if (!user) return empty;
+
+  let job = await latestJob(projectId, user.id);
+  if (job && isStale(job)) {
+    await expireStale(projectId, user.id);
+    job = await latestJob(projectId, user.id);
+  }
+  const attempts = await attemptsSoFar(projectId, user.id);
+  return {
+    job,
+    hasOutput: Boolean(stage3?.output),
+    attemptsRemaining: Math.max(0, MAX_FIRST_VERSION_ATTEMPTS - attempts),
+  };
+}
+
+/**
+ * Generates the first version, recording every state transition in
+ * `generation_jobs` so the interface can recover after a refresh.
+ *
+ * The model call still runs inline (see the note in lib/jobs/generationJobs.ts
+ * — there is no worker to hand it to). What changed is that the work is now
+ * observable: a row exists before the call starts, stages are written at real
+ * boundaries, and success and failure are both recorded rather than existing
+ * only in the reply this function happens to return.
+ *
+ * Ordering is deliberate and unchanged where it matters: the already-generated
+ * short-circuit comes first, the job claim second, and the usage reservation
+ * only after both — so neither a replay nor a losing race can spend quota.
+ */
 export async function generateFirstVersionAction(projectId: string): Promise<Stage3Result> {
   const t = await getTranslations("stage3");
   if (!UUID_PATTERN.test(projectId)) return { error: t("errorInvalid"), output: null, reply: null };
@@ -232,48 +287,94 @@ export async function generateFirstVersionAction(projectId: string): Promise<Sta
   if (!user) return { error: t("errorSession"), output: null, reply: null };
   if (!project || !stage3 || !stage3.direction) return { error: t("errorDirection"), output: null, reply: null };
   const locale = project.locale;
+
+  // A finished first version is final. Nothing below may run again for it.
   if (stage3.output) return { error: null, output: stage3.output, reply: t("alreadyReady"), durationMs: 0 };
+
+  // Clear abandoned attempts across the whole account, not just this project.
+  // Quota is user-wide, so a dead hold left by a crash somewhere else would
+  // otherwise read as "you've used your free generation" here. This must
+  // happen before anything reads the limit, so the reservation below sees a
+  // counter with no dead holds in it.
+  await expireStaleForUser(user.id);
+
+  const previous = await latestJob(projectId, user.id);
+  if (previous && (previous.status === "queued" || previous.status === "running")) {
+    return { error: null, output: null, reply: null, jobId: previous.id };
+  }
+
+  const attempts = await attemptsSoFar(projectId, user.id);
+  if (attempts >= MAX_FIRST_VERSION_ATTEMPTS) {
+    return { error: t("errorRetriesExhausted"), output: null, reply: null };
+  }
+
   if (!process.env.ANTHROPIC_API_KEY) return { error: t("unavailable"), output: null, reply: null };
 
-  // Reserved before the model call: the only path that can consume this
-  // metric a second time for the same project is `if (stage3.output)` above,
-  // which already short-circuits before this point.
-  const reservation = await consumeAiUsage(user.id, "first_version_generation");
+  // The request id is derived, not random: a replayed submission of the same
+  // attempt collides on the idempotency constraint instead of starting a
+  // second model call.
+  const requestId = `first-version:${(await jobCountSoFar(projectId, user.id)) + 1}`;
+  const job = await claimJob(projectId, user.id, requestId, attempts + 1);
+  if (!job) {
+    // Lost the race, or an exact replay. Either way someone else owns it.
+    const active = await latestJob(projectId, user.id);
+    return { error: null, output: null, reply: null, jobId: active?.id ?? null };
+  }
+
+  // Reserved only once the job is genuinely ours, so a losing race never
+  // spends quota — and reserved *through* the job, so the unit is recorded
+  // against something durable rather than only in this request's memory.
+  const reservation = await reserveUsage(job.id, user.id, "first_version_generation");
   if (!reservation.allowed) {
-    if (reservation.checkFailed) return { error: t("unavailable"), output: null, reply: null };
+    if (reservation.checkFailed) {
+      await finishFailed(job.id, "usage_check_failed", "Usage check failed.");
+      return { error: t("unavailable"), output: null, reply: null, jobId: job.id };
+    }
+    await finishFailed(job.id, "limit_reached", "Free generations used up.");
     return {
       error: null,
       output: null,
       reply: null,
+      jobId: job.id,
       limitReached: { metric: "first_version_generation", used: reservation.used, limit: reservation.limit },
     };
   }
 
-  async function releaseAndFail(errorMessage: string): Promise<Stage3Result> {
-    await releaseAiUsage(user!.id, "first_version_generation");
-    return { error: errorMessage, output: null, reply: null };
+  async function releaseAndFail(
+    errorMessage: string,
+    code: Parameters<typeof finishFailed>[1],
+    detail: string,
+  ): Promise<Stage3Result> {
+    // Ordered so the refund is attempted while the job still reads as failed
+    // rather than succeeded, and idempotent either way — the database, not
+    // this function, decides whether anything is actually owed.
+    await finishFailed(job!.id, code, detail);
+    await releaseUsage(job!.id, "first_version_generation");
+    return { error: errorMessage, output: null, reply: null, jobId: job!.id };
   }
 
   try {
     const startedAt = Date.now();
+    await beat(job.id, "generating");
     const client = new Anthropic();
     const response = await client.messages.create({
       model: "claude-sonnet-5",
       max_tokens: 16000,
-      // "high" effort measured ~35-55% of the output-token budget going to an
-      // internal "thinking" block the app never reads or stores, roughly
-      // doubling latency for no visible-quality gain — the prompt already
-      // spells out the design reasoning explicitly (BEFORE YOU WRITE ANYTHING
-      // above), so "medium" has plenty of budget to follow it.
       output_config: { effort: "medium" },
       system: outputPrompt(locale),
       messages: [{ role: "user", content: JSON.stringify({ direction: stage3.direction, projectLocale: locale }) }],
     });
     logUsage("first_version_generation", projectId, startedAt, response);
     const textBlock = response.content.find((block) => block.type === "text");
-    if (!textBlock || textBlock.type !== "text") return releaseAndFail(t("unavailable"));
+    if (!textBlock || textBlock.type !== "text") {
+      return releaseAndFail(t("unavailable"), "provider_unavailable", "No text block in provider response.");
+    }
     const output = sanitizeStage3Output(parseJsonRelaxed(textBlock.text), stage3.direction.projectType);
-    if (!output) return releaseAndFail(t("unavailable"));
+    if (!output) {
+      return releaseAndFail(t("unavailable"), "invalid_output", "Provider output failed validation.");
+    }
+
+    await beat(job.id, "saving");
     const nextState: Stage3ProjectState = { ...stage3, status: "first_version_ready", output };
     const snapshot = mergeStage3ProjectState(project.snapshot_fields, nextState);
     snapshot.solution = output.identity.description;
@@ -284,7 +385,8 @@ export async function generateFirstVersionAction(projectId: string): Promise<Sta
       target_audience: output.targetUser,
       snapshot_fields: toJson(snapshot),
     }).eq("id", projectId).eq("user_id", user.id);
-    if (error) return releaseAndFail(t("errorSave"));
+    if (error) return releaseAndFail(t("errorSave"), "save_failed", "Saving the generated version failed.");
+
     const reply = t("generationReply", { name: output.identity.name });
     await supabase.from("project_ai_messages").insert({
       id: stableUuid(`${stage3.conversationId}:first-version-ready`),
@@ -295,12 +397,13 @@ export async function generateFirstVersionAction(projectId: string): Promise<Sta
       content: reply,
     });
     await supabase.from("project_ai_conversations").update({ title: output.identity.name.slice(0, 60) }).eq("id", stage3.conversationId).eq("user_id", user.id);
+    await finishSucceeded(job.id);
     revalidatePath("/projects");
     revalidatePath(`/projects/${projectId}`);
-    return { error: null, output, reply, durationMs: Date.now() - startedAt };
+    return { error: null, output, reply, durationMs: Date.now() - startedAt, jobId: job.id };
   } catch (error) {
     console.error("[ventrio-ai-error]", JSON.stringify({ operation: "first_version_generation", projectId, message: error instanceof Error ? error.message : "unknown" }));
-    return releaseAndFail(t("unavailable"));
+    return releaseAndFail(t("unavailable"), "provider_unavailable", "The generation request did not complete.");
   }
 }
 

@@ -1,0 +1,366 @@
+/* VentrioButton — one button, five materials.
+
+   Written as plain CSS rather than utility classes for one reason: every colour
+   here reads a workspace token with a literal fallback, so the same component
+   works inside .wsRoot (where the tokens are defined) and on the auth and error
+   pages (where they are not).
+
+   THE EDGE. Every surface in this system is built the same way: a translucent
+   fill clipped to the padding box, and a 1px rim clipped to the border box
+   carrying a gradient that runs white → violet → white. That rim is light
+   catching the bevel of a piece of glass, and it is the one idea the workspace
+   is built on — it appears on the primary button, on the focused composer and
+   on a selected card, and nowhere else. It travels on hover; it never loops.
+
+   Hierarchy is how much of that material a variant is given:
+
+     primary    fill + edge + glow      the action the screen is about
+     secondary  glass + edge            a real alternative
+     ghost      nothing until hover     tertiary
+     icon       nothing until hover     bare controls
+     composer   nothing until hover     the composer's own controls
+
+   That progression is the hierarchy — not size, not colour.
+
+   Deliberately unlayered. Tailwind's preflight in this build is unlayered too,
+   and layered rules lose to unlayered ones whatever their specificity — putting
+   this file in @layer components let preflight reset border-width and radius on
+   every button. The few places a utility needs to beat these rules pass an
+   inline style instead, which wins over any stylesheet. */
+.vbtn {
+  --vbtn-ease: var(--ease, cubic-bezier(0.22, 1, 0.36, 1));
+  --vbtn-fast: var(--t-hover, 150ms);
+  --vbtn-slow: var(--t-ctl, 220ms);
+
+  position: relative;
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  white-space: nowrap;
+  user-select: none;
+  cursor: pointer;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--ink, #0e1016);
+  transition:
+    background-color var(--vbtn-fast) var(--vbtn-ease),
+    background-position 520ms var(--vbtn-ease),
+    border-color var(--vbtn-fast) var(--vbtn-ease),
+    color var(--vbtn-fast) var(--vbtn-ease),
+    box-shadow var(--vbtn-slow) var(--vbtn-ease),
+    transform var(--vbtn-fast) var(--vbtn-ease),
+    filter var(--vbtn-slow) var(--vbtn-ease);
+}
+
+.vbtn:focus-visible {
+  outline: 2px solid var(--accent, #6b64f2);
+  outline-offset: 2px;
+}
+
+.vbtn:active:not(:disabled):not([aria-disabled="true"]) {
+  transform: translateY(0.5px) scale(0.985);
+}
+
+.vbtn:disabled,
+.vbtn[aria-disabled="true"] {
+  cursor: default;
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+/* ── Sizes ─────────────────────────────────────────────────────────────── */
+.vbtn--sm {
+  height: 36px;
+  padding: 0 14px;
+  font-size: 13.5px;
+}
+.vbtn--md {
+  height: 40px;
+  padding: 0 16px;
+  font-size: 14px;
+}
+.vbtn--lg {
+  height: 44px;
+  padding: 0 20px;
+  font-size: 15px;
+}
+
+/* Square controls match their height and drop horizontal padding. */
+.vbtn--square.vbtn--sm {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+}
+.vbtn--square.vbtn--md {
+  width: 36px;
+  height: 36px;
+  padding: 0;
+}
+.vbtn--square.vbtn--lg {
+  width: 40px;
+  height: 40px;
+  padding: 0;
+}
+
+/* ── Shapes ────────────────────────────────────────────────────────────── */
+.vbtn--default {
+  border-radius: var(--r-sm, 10px);
+}
+.vbtn--pill,
+.vbtn--circle {
+  border-radius: 999px;
+}
+
+/* ── Primary: fill, edge and glow ──────────────────────────────────────── */
+.vbtn--primary {
+  color: #fff;
+  background-image:
+    linear-gradient(180deg, rgb(255 255 255 / 0.26), rgb(255 255 255 / 0) 52%),
+    var(--accent-grad, linear-gradient(135deg, #4b3fe4 0%, #6b64f2 52%, #8b86f7 100%)),
+    linear-gradient(
+      145deg,
+      rgb(255 255 255 / 0.95) 0%,
+      rgb(255 255 255 / 0.4) 30%,
+      rgb(139 134 247 / 0.75) 62%,
+      rgb(255 255 255 / 0.75) 100%
+    );
+  background-origin: padding-box, padding-box, border-box;
+  background-clip: padding-box, padding-box, border-box;
+  background-size: 100% 100%, 180% 180%, 200% 100%;
+  background-position: 0 0, 0% 50%, 0% 0;
+  box-shadow:
+    inset 0 -1px 0 rgb(0 0 0 / 0.16),
+    0 1px 2px rgb(14 16 22 / 0.14),
+    0 8px 20px -10px rgb(75 63 228 / 0.55);
+}
+.vbtn--primary:hover:not(:disabled) {
+  background-position: 0 0, 100% 50%, 100% 0;
+  filter: saturate(1.06);
+  transform: translateY(-1px);
+  box-shadow:
+    inset 0 -1px 0 rgb(0 0 0 / 0.16),
+    0 2px 4px rgb(14 16 22 / 0.12),
+    0 14px 32px -10px rgb(75 63 228 / 0.68),
+    0 0 0 4px var(--accent-glow, rgb(107 100 242 / 0.16));
+}
+.vbtn--primary:active:not(:disabled) {
+  transform: translateY(0.5px) scale(0.985);
+  box-shadow:
+    inset 0 1px 3px rgb(0 0 0 / 0.2),
+    0 1px 2px rgb(14 16 22 / 0.16);
+}
+
+/* ── Secondary: glass with an edge ─────────────────────────────────────── */
+.vbtn--secondary {
+  color: var(--ink, #0e1016);
+  -webkit-backdrop-filter: saturate(180%) blur(14px);
+  backdrop-filter: saturate(180%) blur(14px);
+  background-image:
+    linear-gradient(180deg, rgb(255 255 255 / 0.96), rgb(255 255 255 / 0.74)),
+    linear-gradient(
+      145deg,
+      rgb(255 255 255 / 1) 0%,
+      rgb(219 223 232 / 1) 34%,
+      rgb(139 134 247 / 0.42) 68%,
+      rgb(219 223 232 / 1) 100%
+    );
+  background-origin: padding-box, border-box;
+  background-clip: padding-box, border-box;
+  background-size: 100% 100%, 200% 100%;
+  background-position: 0 0, 0% 0;
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.9),
+    0 1px 2px rgb(14 16 22 / 0.05);
+}
+.vbtn--secondary:hover:not(:disabled) {
+  transform: translateY(-1px);
+  background-position: 0 0, 100% 0;
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 1),
+    0 2px 4px rgb(14 16 22 / 0.05),
+    0 10px 24px -12px rgb(14 16 22 / 0.26);
+}
+
+/* ── Generative: the actions that ask the model to make something ─────────
+   Primary's material plus the animated ring (.ws-edge, shared with the
+   composer — see workspace-ui/tokens.css). Reserved for real AI actions:
+   creating a first version, regenerating, applying a change. Never for
+   navigation, filters, settings or ordinary utility controls. */
+.vbtn--generative {
+  isolation: isolate;
+  color: #fff;
+  border-color: transparent;
+  background-image:
+    linear-gradient(180deg, rgb(255 255 255 / 0.24), rgb(255 255 255 / 0) 54%),
+    var(--accent-grad, linear-gradient(135deg, #4b3fe4 0%, #6b64f2 52%, #8b86f7 100%));
+  box-shadow:
+    inset 0 -1px 0 rgb(0 0 0 / 0.18),
+    0 1px 2px rgb(14 16 22 / 0.16),
+    0 10px 24px -12px rgb(75 63 228 / 0.6);
+}
+/* Label above the ring; the ring above nothing. */
+.vbtn--generative > * {
+  position: relative;
+  z-index: 1;
+}
+.vbtn--generative::before {
+  --ws-edge-cycle: 7s;
+  opacity: 0.85;
+  animation-play-state: running;
+}
+.vbtn--generative:hover:not(:disabled) {
+  transform: translateY(-1px);
+  filter: saturate(1.06);
+  box-shadow:
+    inset 0 -1px 0 rgb(0 0 0 / 0.18),
+    0 2px 4px rgb(14 16 22 / 0.14),
+    0 16px 34px -12px rgb(75 63 228 / 0.72),
+    0 0 0 4px var(--accent-glow, rgb(107 100 242 / 0.16));
+}
+.vbtn--generative:hover:not(:disabled)::before {
+  --ws-edge-cycle: 4.5s;
+  opacity: 1;
+}
+.vbtn--generative:active:not(:disabled) {
+  transform: translateY(0.5px) scale(0.985);
+  box-shadow:
+    inset 0 1px 3px rgb(0 0 0 / 0.22),
+    0 1px 2px rgb(14 16 22 / 0.18);
+}
+.vbtn--generative:disabled::before {
+  animation-play-state: paused;
+  opacity: 0.25;
+}
+
+/* ── Ghost, icon, composer: no material until asked for ────────────────── */
+.vbtn--ghost {
+  color: var(--ink-2, #454b57);
+}
+.vbtn--icon {
+  color: var(--ink-2, #454b57);
+}
+.vbtn--composer {
+  color: var(--ink-3, #6e7482);
+}
+.vbtn--ghost:hover:not(:disabled),
+.vbtn--icon:hover:not(:disabled),
+.vbtn--composer:hover:not(:disabled) {
+  background-color: rgb(255 255 255 / 0.92);
+  color: var(--ink, #0e1016);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.9),
+    0 0 0 1px rgb(14 16 22 / 0.05),
+    0 2px 6px -2px rgb(14 16 22 / 0.1);
+}
+
+/* Danger: only where a real destructive route exists. */
+.vbtn--danger {
+  color: #c2410c;
+}
+.vbtn--danger:hover:not(:disabled) {
+  background-color: #fef2ec;
+}
+
+/* ── Selected ─────────────────────────────────────────────────────────────
+   A toggle that is on is lit the same way the active nav row is, so
+   "current" means one thing across the product.
+
+   Written as plain compound selectors per variant rather than
+   `.vbtn.is-on:not(.vbtn--primary)`: that form's colour was not landing in
+   this build, while its sibling declarations were, and an explicit list is
+   easier to read than a negation anyway. */
+.vbtn--ghost.is-on,
+.vbtn--icon.is-on,
+.vbtn--composer.is-on {
+  color: var(--accent, #6b64f2);
+  background-color: rgb(255 255 255 / 0.94);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.95),
+    0 0 0 1px rgb(107 100 242 / 0.22),
+    0 4px 12px -8px rgb(75 63 228 / 0.45);
+}
+.vbtn--ghost.is-on:hover,
+.vbtn--icon.is-on:hover,
+.vbtn--composer.is-on:hover {
+  color: var(--accent, #6b64f2);
+}
+.vbtn--secondary.is-on {
+  color: var(--accent, #6b64f2);
+  background-image:
+    linear-gradient(180deg, rgb(255 255 255 / 0.98), rgb(244 243 255 / 0.94)),
+    linear-gradient(
+      145deg,
+      rgb(255 255 255 / 1) 0%,
+      rgb(139 134 247 / 0.7) 34%,
+      rgb(107 100 242 / 0.95) 66%,
+      rgb(139 134 247 / 0.7) 100%
+    );
+  background-position: 0 0, 100% 0;
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 1),
+    0 0 0 3px var(--accent-glow, rgb(107 100 242 / 0.16)),
+    0 8px 22px -14px rgb(75 63 228 / 0.45);
+}
+.vbtn--secondary.is-on:hover {
+  color: var(--accent, #6b64f2);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .vbtn {
+    transition: none;
+  }
+  .vbtn:hover:not(:disabled),
+  .vbtn:active:not(:disabled) {
+    transform: none;
+  }
+}
+/* Text colour, deliberately outside the components layer.
+
+   Tailwind's preflight resets `color: inherit` on <a> and <button>, and in this
+   build that reset is not layered — so a layered rule of ours, however specific,
+   loses to it and every link and button fell back to the inherited body ink.
+   (The icon inside a nav row kept its colour because the reset does not match a
+   <span>, which is what made the cause visible.)
+
+   Only colour lives here. Everything else stays in the layer, where Tailwind
+   utilities can still override it. */
+.vbtn {
+  color: var(--ink, #0e1016);
+}
+.vbtn--primary,
+.vbtn--generative {
+  color: #fff;
+}
+.vbtn--secondary {
+  color: var(--ink, #0e1016);
+}
+.vbtn--ghost,
+.vbtn--icon {
+  color: var(--ink-2, #454b57);
+}
+.vbtn--composer {
+  color: var(--ink-3, #6e7482);
+}
+.vbtn--danger {
+  color: #c2410c;
+}
+.vbtn--ghost:hover:not(:disabled),
+.vbtn--icon:hover:not(:disabled),
+.vbtn--composer:hover:not(:disabled),
+.vbtn--secondary:hover:not(:disabled) {
+  color: var(--ink, #0e1016);
+}
+.vbtn--ghost.is-on,
+.vbtn--icon.is-on,
+.vbtn--composer.is-on,
+.vbtn--secondary.is-on,
+.vbtn--ghost.is-on:hover,
+.vbtn--icon.is-on:hover,
+.vbtn--composer.is-on:hover,
+.vbtn--secondary.is-on:hover {
+  color: var(--accent, #6b64f2);
+}

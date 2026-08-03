@@ -1,8 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useTransition } from "react";
-import Link from "next/link";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import type { AssistantMessage } from "@/lib/actions/assistant";
 import { sendAssistantMessage } from "@/lib/actions/assistant";
 import { editProjectOutputAction, generateFirstVersionAction } from "@/lib/actions/stage3";
@@ -11,15 +10,18 @@ import { isProjectOutputEditRequest } from "@/lib/build/editIntent";
 import type { Stage3ProjectOutput, Stage3Status } from "@/lib/build/stage3Types";
 import { ProjectOutputRenderer } from "@/components/build/ProjectOutputRenderer";
 import { PublicationControls } from "@/components/publishing/PublicationControls";
+import { BuildScreen, OpenPreviewButton } from "@/components/workspace/BuildScreen";
+import { WorkspaceComposer } from "@/components/workspace-ui/Composer";
+import { UsageMenu } from "@/components/workspace-ui/UsageMenu";
+import { usageLabels } from "@/components/build/AssistantChat";
+import { GenerationSteps, type GenerationStep } from "@/components/workspace-ui/GenerationSteps";
+import { GenerativeButton, IconBuild, IconEye } from "@/components/workspace-ui/parts";
+import { VentrioButton } from "@/components/ui/VentrioButton";
+import { useVoiceInput } from "@/lib/workspace/useVoiceInput";
+import { useFirstVersionJob } from "@/lib/workspace/useFirstVersionJob";
 import type { Locale } from "@/i18n/locale";
 import type { ProjectPublicationState } from "@/lib/publishing/types";
-import { cn } from "@/lib/utils";
-
-// The design/build moment shown while generateFirstVersionAction runs. Steps
-// advance forward on a timer and hold on the last one — never loop — so it
-// reads as real progress toward a finished website, not decorative filler.
-const BUILDING_STEP_KEYS = ["buildingStep1", "buildingStep2", "buildingStep3", "buildingStep4"] as const;
-const BUILDING_STEP_INTERVAL_MS = 2600;
+import type { WorkspaceUsage } from "@/lib/workspace/usage";
 
 interface PreOutputWorkspaceProps {
   projectId: string;
@@ -38,6 +40,7 @@ interface PreOutputWorkspaceProps {
   openingMessage: string;
   publication: ProjectPublicationState | null;
   publicBaseUrl: string;
+  usage: WorkspaceUsage;
 }
 
 interface ChatMessage {
@@ -46,6 +49,14 @@ interface ChatMessage {
   content: string;
 }
 
+/**
+ * Build before a first version exists — the approved chat-first state.
+ *
+ * Nothing has been generated, so nothing is reserved for it: the conversation
+ * takes the whole frame at a reading measure, and the one thing the person can
+ * do next sits inside the conversation as a card rather than as a second column
+ * standing empty. The preview panel appears only once real output exists.
+ */
 export function PreOutputWorkspace({
   projectId,
   projectName,
@@ -59,49 +70,53 @@ export function PreOutputWorkspace({
   openingMessage,
   publication,
   publicBaseUrl,
+  usage,
 }: PreOutputWorkspaceProps) {
   const t = useTranslations("stage3");
+  const tb = useTranslations("build");
+  const tw = useTranslations("workspace");
+  const locale = useLocale();
+
   const [output, setOutput] = useState(initialOutput);
   const [messages, setMessages] = useState<ChatMessage[]>(
     assistant.messages.map((message) => ({ id: message.id, role: message.role, content: message.content }))
   );
   const [conversationId, setConversationId] = useState(assistant.conversationId);
-  const [mobileMode, setMobileMode] = useState<"chat" | "project">(
-    initialOutput || (direction && stage3Status === "ready") ? "project" : "chat"
-  );
   const [input, setInput] = useState("");
   const [note, setNote] = useState<string | null>(null);
   const [revealKey, setRevealKey] = useState(initialOutput ? 1 : 0);
   const [isGenerating, startGenerating] = useTransition();
   const [isSending, startSending] = useTransition();
   const [isEditingOutput, setIsEditingOutput] = useState(false);
-  const [buildingStep, setBuildingStep] = useState(0);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  const job = useFirstVersionJob(projectId, Boolean(output));
+  const hasFailed = job.phase === "failed" || job.phase === "stale";
+  // A quota wall, not a failure — so it never borrows failure's wording, and it
+  // offers no retry, because retrying would fail the same way every time.
+  //
+  // Read from the live counter rather than from the last job's error code: a
+  // job that once hit the limit is history, and if the account has room again
+  // the action must come back on its own rather than staying walled off by a
+  // stale row.
+  const outOfQuota =
+    usage.projectBuilds.available && usage.projectBuilds.used >= usage.projectBuilds.limit;
+  const elapsed = useElapsedSeconds(job.active);
+
+  // A job in flight counts as busy even when this tab did not start it — after
+  // a refresh the transition is gone but the generation is not.
+  const busy = isGenerating || isSending || job.active;
+
+  const voice = useVoiceInput({
+    lang: locale === "ru" ? "ru-RU" : "en-US",
+    disabled: busy || !assistant.available,
+    onTranscript: (text) => setInput((prev) => (prev ? `${prev.trimEnd()} ${text}` : text)),
+  });
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
-  }, [messages, isSending]);
+  }, [messages, isSending, isGenerating, output]);
 
-  useEffect(() => {
-    if (!isGenerating) {
-      queueMicrotask(() => setBuildingStep(0));
-      return;
-    }
-    const id = setInterval(() => {
-      setBuildingStep((step) => Math.min(step + 1, BUILDING_STEP_KEYS.length - 1));
-    }, BUILDING_STEP_INTERVAL_MS);
-    return () => clearInterval(id);
-  }, [isGenerating]);
-
-  useEffect(() => {
-    const textarea = textareaRef.current;
-    if (!textarea) return;
-    textarea.style.height = "auto";
-    textarea.style.height = `${Math.min(textarea.scrollHeight, 150)}px`;
-  }, [input]);
-
-  const busy = isGenerating || isSending;
   const suggestions = output
     ? [t("editPremium"), t("editAudience"), t("editCta")]
     : [t("sharpenDirection"), t("whoFirst"), t("firstVersionCouldBe")];
@@ -110,23 +125,33 @@ export function PreOutputWorkspace({
     setMessages((current) => [...current, { id: `${role}-${crypto.randomUUID()}`, role, content }]);
   }
 
-  function createFirstVersion() {
-    if (busy || !direction) return;
+  function createFirstVersion(retry = false) {
+    if (busy || !direction || output) return;
     setNote(null);
-    setMobileMode("project");
+    // Before the round trip, so the button answers on the first frame rather
+    // than after the job row exists.
+    job.markStarting(retry);
     startGenerating(async () => {
-      const result = await generateFirstVersionAction(projectId);
-      if (result.error || !result.output) {
-        if (result.limitReached) {
-          setNote(t("firstVersionLimitReached"));
+      try {
+        const result = await generateFirstVersionAction(projectId);
+        if (result.error || !result.output) {
+          if (result.limitReached) {
+            setNote(t("firstVersionLimitReached"));
+            return;
+          }
+          // A job came back with no output and no error: this click lost the
+          // race to one already in flight. The progress card speaks for it, so
+          // saying anything here would only contradict what is on screen.
+          if (result.jobId && !result.error) return;
+          setNote(result.error ?? t("unavailable"));
           return;
         }
-        setNote(result.error ?? t("unavailable"));
-        return;
+        setOutput(result.output);
+        setRevealKey((value) => value + 1);
+        if (result.reply) append("assistant", result.reply);
+      } finally {
+        job.settle();
       }
-      setOutput(result.output);
-      setRevealKey((value) => value + 1);
-      if (result.reply) append("assistant", result.reply);
     });
   }
 
@@ -160,7 +185,6 @@ export function PreOutputWorkspace({
           setOutput(result.output);
           setRevealKey((value) => value + 1);
           if (result.reply) append("assistant", result.reply);
-          setMobileMode("project");
           return;
         }
 
@@ -179,114 +203,310 @@ export function PreOutputWorkspace({
     });
   }
 
+  // Each completed row is something the project genuinely already contains —
+  // a saved concept, a saved audience, a chosen direction. Only the last row is
+  // the request actually in flight, so nothing here is a staged performance.
+  const generationSteps: GenerationStep[] = [
+    { label: t("genUnderstanding"), state: projectConcept || direction?.concept ? "done" : "waiting" },
+    { label: t("genAudience"), state: projectAudience || direction?.audience ? "done" : "waiting" },
+    { label: t("genDirection"), state: direction ? "done" : "waiting" },
+    { label: activeStageLabel(), state: "active" },
+  ];
+
+  /**
+   * For the first few seconds the last row says what the click did, because
+   * that is all anyone knows yet. Once the job has been running long enough for
+   * a stage to have been written and read back, it says what is actually
+   * happening — never a guess, and never a stage the row has not reported.
+   */
+  function activeStageLabel(): string {
+    if (job.phase === "retrying") return t("genRetryingLabel");
+    if (elapsed < 3 || !job.stage) return t("genBuilding");
+    if (job.stage === "queued") return t("genQueued");
+    if (job.stage === "preparing") return t("genPreparing");
+    if (job.stage === "saving") return t("genSaving");
+    return t("genGenerating");
+  }
+
   return (
-    <div className="pre-output-workspace relative flex h-full min-h-0 flex-col overflow-hidden">
-      <div aria-hidden className="creation-focus-field opacity-70" />
-      <header className="relative z-20 shrink-0 pl-4 pr-14 pt-[max(0.9rem,env(safe-area-inset-top))] sm:pl-6 md:pl-8 md:pt-5">
-        <div className="flex items-center justify-between gap-4">
-          <Link href="/projects" className="group inline-flex min-w-0 items-center gap-2 text-xs font-medium text-ink-muted transition-colors hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent">
-            <span className="transition-transform duration-200 group-hover:-translate-x-0.5" aria-hidden>←</span>
-            <span className="truncate">{t("back")}</span>
-          </Link>
-          <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-ink-muted">
-            <span className="creation-signal-dot" />
-            {output ? t("statusFirstVersion") : stage3Status === "ready" ? t("statusReady") : t("statusShaping")}
-          </div>
-        </div>
-        <div className="mt-4 grid grid-cols-2 rounded-full bg-canvas p-1 ring-1 ring-inset ring-border md:hidden">
-          {(["chat", "project"] as const).map((mode) => (
-            <button key={mode} type="button" onClick={() => setMobileMode(mode)} className={cn("rounded-full px-3 py-2 text-xs font-semibold transition-all focus-visible:outline-2 focus-visible:outline-accent", mobileMode === mode ? "bg-surface text-ink shadow-sm ring-1 ring-border" : "text-ink-muted")}>
-              {mode === "chat" ? t("chatTab") : t("projectTab")}
-            </button>
-          ))}
-        </div>
-      </header>
-
-      <main className="relative z-10 min-h-0 flex-1 md:grid md:grid-cols-[minmax(330px,0.78fr)_minmax(0,1.22fr)] md:gap-px md:px-5 md:pb-5 md:pt-4 lg:px-8">
-        <section className={cn("h-full min-h-0 overflow-hidden md:block", mobileMode !== "chat" && "hidden")} aria-label={t("chatTab")}>
-          <div className="flex h-full min-h-0 flex-col md:rounded-l-[2rem] md:bg-surface md:ring-1 md:ring-inset md:ring-border">
-            <div className="hidden shrink-0 px-7 pt-6 md:block">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-ink-muted">{t("creator")}</p>
-            </div>
-            <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto px-5 py-8 sm:px-8 md:px-7">
-              <div className="mx-auto flex max-w-[680px] flex-col gap-6">
-                {messages.length === 0 && <p className="text-[16px] leading-7 text-ink">{openingMessage}</p>}
-                {messages.map((message) => message.role === "user" ? (
-                  <div key={message.id} className="flex justify-end"><p className="max-w-[88%] whitespace-pre-wrap rounded-[1.3rem] rounded-br-md bg-accent px-4 py-2.5 text-sm leading-6 text-white">{message.content}</p></div>
+    <BuildScreen
+      published={Boolean(publication?.isPublished)}
+      shareUrl={
+        // Draft previews are real but unaddressable; only a publication has a URL.
+        publication?.isPublished && publication.slug ? `${publicBaseUrl}/p/${publication.slug}` : null
+      }
+      preview={
+        output ? (
+          <ProjectOutputRenderer
+            projectKey={projectId}
+            output={output}
+            locale={projectLocale}
+            revealKey={revealKey}
+            mode="preview"
+          />
+        ) : null
+      }
+      chat={({ previewOpen, canOpenPreview, openPreview }) => {
+        const measure = previewOpen ? 560 : 820;
+        return (
+          <>
+            <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto">
+              <div className="mx-auto flex w-full flex-col gap-7 px-5 py-8 sm:px-8" style={{ maxWidth: measure }}>
+                {messages.length === 0 ? (
+                  <p className="whitespace-pre-wrap text-[19px] font-semibold leading-snug tracking-[-0.01em]">
+                    {openingMessage}
+                  </p>
                 ) : (
-                  <p key={message.id} className="whitespace-pre-wrap text-[16px] leading-7 text-ink">{message.content}</p>
-                ))}
-                {isSending && <div className="flex items-center gap-3 text-sm text-ink-secondary" role="status"><span className="thinking-signal" aria-hidden><span /></span>{isEditingOutput ? t("editing") : t("thinking")}</div>}
-              </div>
-            </div>
-            <div className="shrink-0 bg-gradient-to-t from-canvas via-canvas/95 to-transparent px-4 pb-[calc(4.5rem+env(safe-area-inset-bottom))] pt-3 sm:px-7 md:pb-5">
-              <div className="mx-auto max-w-[680px]">
-                <div className="mb-2 flex flex-wrap gap-1.5">
-                  {suggestions.map((suggestion) => <button key={suggestion} type="button" disabled={busy} onClick={() => submit(suggestion)} className="quiet-action text-left disabled:opacity-40">{suggestion}</button>)}
-                </div>
-                {note && <p className="mb-2 px-1 text-xs text-danger" role="status">{note}</p>}
-                <form onSubmit={(event) => { event.preventDefault(); submit(input); }} className="ventrio-composer">
-                  <textarea ref={textareaRef} value={input} onChange={(event) => setInput(event.target.value)} disabled={busy || !assistant.available} rows={1} maxLength={2000} placeholder={output ? t("editPlaceholder") : t("chatPlaceholder")} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); submit(input); } }} className="max-h-36 min-h-[34px] min-w-0 flex-1 resize-none bg-transparent px-2 py-1.5 text-[15px] leading-6 text-ink placeholder:text-ink-muted focus:outline-none disabled:opacity-50" />
-                  <button type="submit" aria-label={t("send")} disabled={busy || !assistant.available || input.trim().length === 0} className="composer-send press-scale focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-25">
-                    <svg viewBox="0 0 20 20" fill="none" className="h-4 w-4" aria-hidden><path d="M10 15.5v-11m0 0L5.5 9M10 4.5 14.5 9" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>
-                  </button>
-                </form>
-              </div>
-            </div>
-          </div>
-        </section>
+                  messages.map((message) =>
+                    message.role === "user" ? (
+                      <div key={message.id} className="ws-turn flex justify-end">
+                        <p
+                          className="max-w-[80%] whitespace-pre-wrap rounded-[var(--r-lg)] px-3.5 py-2.5 text-[15px] leading-[1.6]"
+                          style={{ background: "var(--sunken)" }}
+                        >
+                          {message.content}
+                        </p>
+                      </div>
+                    ) : (
+                      <div key={message.id} className="ws-turn whitespace-pre-wrap text-[15px] leading-[1.65]">
+                        {message.content}
+                      </div>
+                    )
+                  )
+                )}
 
-        <section className={cn("h-full min-h-0 overflow-x-hidden overflow-y-auto pb-[calc(4.5rem+env(safe-area-inset-bottom))] md:block md:rounded-r-[2rem] md:pb-0 md:ring-1 md:ring-inset md:ring-border", mobileMode !== "project" && "hidden")} aria-label={t("projectTab")}>
-          {isGenerating ? (
-            <div className="generation-canvas flex min-h-full flex-col items-center justify-center px-6 text-center" role="status" aria-live="polite">
-              <div className="generation-blueprint" aria-hidden><span /><span /><span /><span /></div>
-              <p className="mt-8 text-xs font-semibold uppercase tracking-[0.2em] text-accent/80">{projectName}</p>
-              <h1 className="ventrio-display mt-3 max-w-xl text-[clamp(2.5rem,8vw,5rem)] leading-[0.96] text-ink">{t("buildingTitle")}</h1>
-              <p className="mt-4 max-w-md text-sm leading-6 text-ink-secondary">{t("buildingBody")}</p>
-              <ol className="generation-steps mt-8">
-                {BUILDING_STEP_KEYS.map((key, index) => (
-                  <li key={key} data-done={index < buildingStep} data-active={index === buildingStep}>
-                    <span className="generation-step-dot" aria-hidden>{index < buildingStep ? "✓" : ""}</span>
-                    {t(key)}
-                  </li>
-                ))}
-              </ol>
-            </div>
-          ) : output ? (
-            <div className="min-h-full">
-              <PublicationControls
-                key={publication?.updatedAt ?? "private-draft"}
-                projectId={projectId}
-                projectLocale={projectLocale}
-                output={output}
-                initialPublication={publication}
-                publicBaseUrl={publicBaseUrl}
-                onDraftChanged={(nextOutput) => {
-                  setOutput(nextOutput);
-                  setRevealKey((value) => value + 1);
-                  setMobileMode("project");
-                }}
-              />
-              <ProjectOutputRenderer projectKey={projectId} output={output} locale={projectLocale} revealKey={revealKey} />
-            </div>
-          ) : (
-            <div className="emergence mx-auto flex min-h-full max-w-xl flex-col justify-center px-5 py-12 sm:px-9 md:justify-between md:py-10">
-              <div>
-                <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-accent/80">{t("projectDirection")}</p>
-                <h1 className="ventrio-display mt-4 break-words text-balance text-[clamp(2.65rem,6.5vw,4.6rem)] leading-[0.93] text-ink">{projectName}</h1>
-                <p className="mt-6 max-w-lg text-pretty text-[16px] leading-7 text-ink-secondary">{projectConcept ?? direction?.concept ?? t("conceptFallback")}</p>
-                {(projectAudience || direction?.audience) && <div className="mt-8 border-l border-accent/35 pl-4"><p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-ink-muted">{t("forLabel")}</p><p className="mt-1.5 text-sm leading-6 text-ink">{projectAudience ?? direction?.audience}</p></div>}
+                {isSending && (
+                  <div className="flex items-center gap-2 text-[14px]" role="status" style={{ color: "var(--ink-2)" }}>
+                    <span className="h-1.5 w-1.5 animate-pulse rounded-full" style={{ background: "var(--accent)" }} />
+                    {isEditingOutput ? t("editing") : t("thinking")}
+                  </div>
+                )}
+
+                {/* The first second is the button's own pressed state; a card
+                    appearing under the click would read as a jump. */}
+                {job.active && elapsed >= 1 && (
+                  <div className="flex flex-col gap-2">
+                    <GenerationSteps title={t("genTitle")} steps={generationSteps} />
+                    {elapsed >= 20 && (
+                      <p className="text-[13px] leading-relaxed" style={{ color: "var(--ink-3)" }}>
+                        {t("genStillWorking")}
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                {/* Before anything is generated: the direction, and the one
+                    action that turns it into a first version. A failed attempt
+                    changes what this card offers, never whether it is here —
+                    losing sight of the direction is the last thing someone
+                    needs when generation has just gone wrong. */}
+                {!output && !job.active && (
+                  <div
+                    className="rise rounded-[var(--r-lg)] border p-5"
+                    style={{ borderColor: "var(--line-2)", background: "var(--surface)" }}
+                  >
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.09em]" style={{ color: "var(--ink-3)" }}>
+                      {t("projectDirection")}
+                    </p>
+                    <p className="mt-2 text-[17px] font-semibold leading-snug tracking-[-0.01em]">{projectName}</p>
+                    <p className="mt-1.5 text-[14px] leading-relaxed" style={{ color: "var(--ink-2)" }}>
+                      {projectConcept ?? direction?.concept ?? t("conceptFallback")}
+                    </p>
+                    {(projectAudience || direction?.audience) && (
+                      <p className="mt-2.5 text-[13px]" style={{ color: "var(--ink-3)" }}>
+                        {t("forLabel")}: {projectAudience ?? direction?.audience}
+                      </p>
+                    )}
+
+                    <div className="mt-4 border-t pt-4" style={{ borderColor: "var(--line)" }}>
+                      {(() => {
+                        // The heading states what happened; the body says what
+                        // to do about it. Neither ever carries a provider
+                        // message, a database error or a stack trace — the
+                        // error code chooses the wording, and that is all.
+                        //
+                        // Running out of free generations is not a failure of
+                        // generation, so it never borrows failure's wording. It
+                        // says what is actually true and offers no retry,
+                        // because retrying would fail the same way every time.
+                        const heading = outOfQuota
+                          ? t("firstVersionLimitReached")
+                          : !hasFailed
+                            ? t("readyTitle")
+                            : job.phase === "stale"
+                              ? t("genStale")
+                              : t("genFailed");
+                        const body = outOfQuota
+                          ? null
+                          : !hasFailed || job.canRetry
+                            ? t("readyBody")
+                            : t("errorRetriesExhausted");
+                        return (
+                          <>
+                            <p className="text-[14px] font-medium" role={hasFailed ? "status" : undefined}>
+                              {heading}
+                            </p>
+                            {body && (
+                              <p className="mt-1 text-[14px] leading-relaxed" style={{ color: "var(--ink-2)" }}>
+                                {body}
+                              </p>
+                            )}
+                          </>
+                        );
+                      })()}
+                      <div className={outOfQuota ? "" : "mt-3.5"}>
+                        {outOfQuota ? null : hasFailed ? (
+                          job.canRetry && (
+                            <VentrioButton
+                              variant="primary"
+                              size="sm"
+                              disabled={!direction || busy}
+                              onClick={() => createFirstVersion(true)}
+                            >
+                              {t("genRetry")}
+                            </VentrioButton>
+                          )
+                        ) : (
+                          <GenerativeButton onClick={() => createFirstVersion()} disabled={!direction || busy} size="sm">
+                            <IconBuild className="h-4 w-4" />
+                            {t("createFirstVersion")}
+                          </GenerativeButton>
+                        )}
+                      </div>
+                      {!direction && (
+                        <p className="mt-2.5 text-[13px] leading-relaxed" style={{ color: "var(--ink-3)" }}>
+                          {t("directionNeeded")}
+                        </p>
+                      )}
+                      {stage3Status === "ready" && direction && !hasFailed && (
+                        <p className="mt-2.5 text-[13px]" style={{ color: "var(--ink-3)" }}>
+                          {t("statusReady")}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {output && (
+                  <div className="flex flex-col gap-4">
+                    {canOpenPreview && (
+                      <div
+                        className="rise rounded-[var(--r-lg)] border p-4"
+                        style={{ borderColor: "var(--line-accent)", background: "var(--surface)" }}
+                      >
+                        <p className="text-[14px] font-medium">{tw("buildVersionReady")}</p>
+                        <p className="mt-1 text-[14px] leading-relaxed" style={{ color: "var(--ink-2)" }}>
+                          {tw("buildVersionReadyBody")}
+                        </p>
+                        <div className="mt-3.5">
+                          <OpenPreviewButton
+                            onOpen={openPreview}
+                            label={tw("openPreview")}
+                            icon={<IconEye className="h-4 w-4" />}
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    <PublicationControls
+                      key={publication?.updatedAt ?? "private-draft"}
+                      projectId={projectId}
+                      projectLocale={projectLocale}
+                      output={output}
+                      initialPublication={publication}
+                      publicBaseUrl={publicBaseUrl}
+                      onDraftChanged={(nextOutput) => {
+                        setOutput(nextOutput);
+                        setRevealKey((value) => value + 1);
+                      }}
+                    />
+                  </div>
+                )}
               </div>
-              <div className="mt-14 border-t border-border pt-7 md:mt-16">
-                <h2 className="ventrio-display text-2xl text-ink">{t("readyTitle")}</h2>
-                <p className="mt-2 max-w-md text-sm leading-6 text-ink-secondary">{t("readyBody")}</p>
-                <button type="button" onClick={createFirstVersion} disabled={!direction || busy} className="primary-action mt-6 focus-visible:outline-2 focus-visible:outline-offset-3 focus-visible:outline-accent disabled:opacity-35">{t("createFirstVersion")} <span aria-hidden>→</span></button>
-                {!direction && <p className="mt-3 text-xs leading-5 text-ink-muted">{t("directionNeeded")}</p>}
+            </div>
+
+            <div className="shrink-0 px-5 pb-5 pt-2 sm:px-8 sm:pb-7">
+              <div className="mx-auto w-full" style={{ maxWidth: measure }}>
+                <div className="mb-2 flex flex-wrap gap-2">
+                  {suggestions.map((suggestion) => (
+                    <VentrioButton
+                      key={suggestion}
+                      variant="secondary"
+                      size="sm"
+                      shape="pill"
+                      disabled={busy}
+                      onClick={() => submit(suggestion)}
+                      weight="medium"
+                    >
+                      {suggestion}
+                    </VentrioButton>
+                  ))}
+                </div>
+                {note && (
+                  <p className="mb-1.5 text-[13px]" role="status" style={{ color: "var(--warn)" }}>
+                    {note}
+                  </p>
+                )}
+                <WorkspaceComposer
+                  value={input}
+                  onChange={setInput}
+                  onSend={() => submit(input)}
+                  disabled={busy || !assistant.available}
+                  sending={isSending}
+                  placeholder={output ? t("editPlaceholder") : t("chatPlaceholder")}
+                  sendLabel={t("send")}
+                  settings={<UsageMenu usage={usage} labels={usageLabels(tw)} />}
+                  listeningLabel={tb("voiceListening")}
+                  keyboardHint={tb("composerKeys")}
+                  voice={{
+                    supported: voice.supported,
+                    listening: voice.listening,
+                    state: voice.state,
+                    onToggle: () => (voice.listening ? voice.stop() : voice.start()),
+                    label: tb("voiceStart"),
+                    unsupportedLabel: tb("voiceUnsupported"),
+                    requestingLabel: tb("voiceRequesting"),
+                    listeningLabel: tb("voiceListening"),
+                  }}
+                />
+                {voice.error && (
+                  <p role="alert" className="mt-1.5 text-[13px]" style={{ color: "var(--warn)" }}>
+                    {voice.error === "permission"
+                      ? tb("voiceBlocked")
+                      : voice.error === "no-speech"
+                        ? tb("voiceNoSpeech")
+                        : tb("voiceFailed")}
+                  </p>
+                )}
               </div>
             </div>
-          )}
-        </section>
-      </main>
-    </div>
+          </>
+        );
+      }}
+    />
   );
+}
+
+/**
+ * Seconds since the current generation began, resetting to zero each time one
+ * starts. The interface reveals progress detail in stages rather than all at
+ * once, so a fast generation never flashes a card that is gone before it can be
+ * read, and a slow one is never silent.
+ */
+function useElapsedSeconds(active: boolean): number {
+  const [seconds, setSeconds] = useState(0);
+
+  useEffect(() => {
+    if (!active) return;
+    const startedAt = Date.now();
+    const id = window.setInterval(() => {
+      setSeconds(Math.floor((Date.now() - startedAt) / 1000));
+    }, 500);
+    return () => {
+      window.clearInterval(id);
+      setSeconds(0);
+    };
+  }, [active]);
+
+  return active ? seconds : 0;
 }

@@ -1,0 +1,233 @@
+/* Premium glass shell, entirely token-driven (--color-*) so it looks right
+   both on the landing page's dark scoped palette and on the app's real
+   light surfaces — the same component, no theme branching. */
+.shell {
+  position: relative;
+  width: 100%;
+  border-radius: 1.3rem;
+  padding: 2px;
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--color-accent) 45%, transparent),
+    transparent 55%,
+    color-mix(in srgb, var(--color-accent) 25%, transparent)
+  );
+  transition: background 320ms ease;
+}
+
+.shell[data-focused="true"] {
+  background: linear-gradient(
+    135deg,
+    var(--color-accent),
+    color-mix(in srgb, var(--color-accent) 35%, transparent) 55%,
+    var(--color-accent)
+  );
+}
+
+.form {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: flex-end;
+  gap: 0.5rem;
+  border-radius: 1.24rem;
+  padding: 0.55rem 0.6rem;
+  background:
+    radial-gradient(130% 150% at 15% 0%, color-mix(in srgb, var(--color-accent) 13%, transparent), transparent 62%),
+    linear-gradient(155deg, color-mix(in srgb, var(--color-accent) 7%, var(--color-surface)), var(--color-surface) 60%);
+  box-shadow:
+    inset 0 0 0 1px var(--color-border),
+    0 20px 50px -30px color-mix(in srgb, var(--color-accent) 34%, black 50%);
+  transition: box-shadow 240ms ease, transform 240ms var(--ease-out-soft, ease);
+}
+
+/* A slow breath on the inset hairline, scoped to the public landing — the
+   composer is the one thing on that page asking to be typed into, so it is
+   the one thing that pulses. Composers inside the product are left alone.
+   Paused while focused, where the focus ring takes over. */
+:global(.landing-root) .form {
+  animation: form-border-breathe 5.5s ease-in-out infinite;
+}
+
+/* Distinct from `composer-breathe` below, which belongs to .glow and drives
+   opacity/scale — sharing that name silently handed .glow's 0.18 opacity to
+   this element. */
+@keyframes form-border-breathe {
+  0%, 100% {
+    box-shadow:
+      inset 0 0 0 1px var(--color-border),
+      0 20px 50px -30px color-mix(in srgb, var(--color-accent) 34%, black 50%);
+  }
+  50% {
+    box-shadow:
+      inset 0 0 0 1px color-mix(in srgb, var(--color-accent) 34%, var(--color-border)),
+      0 20px 50px -30px color-mix(in srgb, var(--color-accent) 40%, black 50%);
+  }
+}
+
+.shell[data-focused="true"] .form {
+  animation: none;
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--color-accent) 50%, transparent),
+    0 0 0 4px color-mix(in srgb, var(--color-accent) 12%, transparent),
+    0 24px 56px -24px color-mix(in srgb, var(--color-accent) 38%, black 46%);
+  transform: translateY(-1px);
+}
+
+.textarea {
+  flex: 1;
+  min-width: 0;
+  min-height: 44px;
+  max-height: 160px;
+  resize: none;
+  border: none;
+  background: transparent;
+  padding: 0.6rem 0.65rem;
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--color-ink);
+}
+
+.textarea::placeholder {
+  color: var(--color-ink-muted);
+}
+
+.textarea:focus {
+  outline: none;
+}
+
+.textarea:disabled {
+  opacity: 0.5;
+}
+
+.send {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 2.2rem;
+  height: 2.2rem;
+  border-radius: 999px;
+  background: var(--color-accent);
+  color: #fff;
+  transition: transform 130ms var(--ease-out-soft, ease), background-color 160ms ease, opacity 160ms ease;
+}
+
+.send:hover:not(:disabled) {
+  background: var(--color-accent-hover);
+}
+
+.send:active:not(:disabled) {
+  transform: scale(0.94);
+}
+
+.send:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.send:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+/* A hairline glass highlight along the top inner edge. */
+.edge {
+  pointer-events: none;
+  position: absolute;
+  left: 14%;
+  right: 14%;
+  top: 2px;
+  z-index: 2;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, white 45%, transparent), transparent);
+  opacity: 0.4;
+}
+
+/* Ambient by default, intensifying to full presence on focus — two stacked
+   layers (tight core + soft atmospheric halo) instead of one flat blur. */
+.glow {
+  pointer-events: none;
+  position: absolute;
+  inset: -16px;
+  z-index: -1;
+  border-radius: inherit;
+  background: radial-gradient(60% 60% at 50% 45%, color-mix(in srgb, var(--color-accent) 28%, transparent), transparent 72%);
+  filter: blur(6px);
+  opacity: 0.22;
+  animation: composer-breathe 4.5s ease-in-out infinite;
+  transition: opacity 320ms ease;
+}
+
+.glow::before {
+  content: "";
+  position: absolute;
+  inset: -40px;
+  border-radius: inherit;
+  background:
+    radial-gradient(55% 55% at 38% 30%, color-mix(in srgb, var(--color-accent) 20%, transparent), transparent 70%),
+    radial-gradient(50% 50% at 68% 78%, color-mix(in srgb, var(--color-accent-2) 12%, transparent), transparent 72%);
+  filter: blur(26px);
+}
+
+.shell[data-focused="true"] .glow {
+  opacity: 0.85;
+  animation: none;
+}
+
+@keyframes composer-breathe {
+  0%, 100% { opacity: 0.18; transform: scale(1); }
+  50% { opacity: 0.3; transform: scale(1.03); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .glow {
+    animation: none;
+    opacity: 0.2;
+  }
+
+  .shell[data-focused="true"] .form {
+    transform: none;
+  }
+
+  .form {
+    animation: none;
+  }
+}
+
+
+/* Dictation. Only rendered when a caller passes a voice control, so the
+   landing composers keep exactly the geometry they were approved with. */
+.mic {
+  display: grid;
+  height: 2rem;
+  width: 2rem;
+  flex-shrink: 0;
+  place-items: center;
+  align-self: flex-end;
+  border-radius: 999px;
+  color: var(--color-ink-muted);
+  transition: color var(--dur-hover) ease, background-color var(--dur-hover) ease;
+}
+
+.mic:hover:not(:disabled) {
+  background: var(--color-surface-hover);
+  color: var(--color-ink);
+}
+
+.mic:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+/* Listening is a state, not an animation: the control stays lit and pressed
+   rather than pulsing, so a long dictation is not a blinking light. */
+.mic[data-listening] {
+  background: var(--color-accent-soft);
+  color: var(--color-accent);
+}
+
+.mic:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
