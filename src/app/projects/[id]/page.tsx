@@ -3,6 +3,8 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/supabase/currentUser";
 import { getProjectById } from "@/lib/build/queries";
 import { buildWorkspaceViewProps } from "@/lib/build/workspaceProps";
+import { loadWorkspaceUsage } from "@/lib/workspace/usage";
+import { WorkspaceShell } from "@/components/workspace-ui/WorkspaceShell";
 import { WorkspaceView } from "@/components/build/WorkspaceView";
 
 interface ProjectWorkspacePageProps {
@@ -27,7 +29,23 @@ export default async function ProjectWorkspacePage({ params }: ProjectWorkspaceP
     notFound();
   }
 
-  const props = await buildWorkspaceViewProps(supabase, project);
+  const [props, usage] = await Promise.all([
+    buildWorkspaceViewProps(supabase, project),
+    loadWorkspaceUsage(supabase, user.id),
+  ]);
 
-  return <WorkspaceView {...props} />;
+  const published = Boolean(props.publication?.isPublished);
+
+  // The shell is new; what it wraps is the same WorkspaceView with the same
+  // assistant, publication and stage-3 props it already received.
+  return (
+    <WorkspaceShell
+      initials={(user.email ?? "?").slice(0, 2).toUpperCase()}
+      project={{ id: project.id, name: props.projectName, state: published ? "published" : "draft" }}
+      defaultCollapsed
+      fill
+    >
+      <WorkspaceView {...props} usage={usage} />
+    </WorkspaceShell>
+  );
 }

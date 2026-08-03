@@ -3,20 +3,18 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { NAV_ITEMS } from "@/lib/constants";
-import { useGameProgress } from "@/lib/game-progress/GameProgressContext";
 
 // Once the user is authenticated and the app shell is idle, warm the router
-// cache for the 5 primary destinations so the first tap on each nav item
-// doesn't pay the full navigation cost. Gated on userId so this never fires
-// for a logged-out visitor on /login or /signup (those prefetches would just
-// bounce through the auth redirect for nothing). Five cheap prefetches once
+// cache for the primary destinations so the first tap on each nav item
+// doesn't pay the full navigation cost. Gated on isAuthenticated so this never
+// fires for a logged-out visitor on /login or /signup (those prefetches would
+// just bounce through the auth redirect for nothing). Cheap prefetches once
 // per login, not on every render or every navigation.
-export function RoutePrefetcher() {
+export function RoutePrefetcher({ isAuthenticated }: { isAuthenticated: boolean }) {
   const router = useRouter();
-  const { userId } = useGameProgress();
 
   useEffect(() => {
-    if (!userId) return;
+    if (!isAuthenticated) return;
 
     const prefetchAll = () => {
       for (const item of NAV_ITEMS) {
@@ -31,7 +29,7 @@ export function RoutePrefetcher() {
 
     const timeout = setTimeout(prefetchAll, 300);
     return () => clearTimeout(timeout);
-  }, [router, userId]);
+  }, [router, isAuthenticated]);
 
   return null;
 }
