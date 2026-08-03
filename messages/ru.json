@@ -769,7 +769,8 @@
     "logoutPending": "Выходим...",
     "saving": "Сохраняем...",
     "saved": "Сохранено.",
-    "displayNamePlaceholder": "Добавь имя"
+    "displayNamePlaceholder": "Добавь имя",
+    "languageInUse": "Используется"
   },
   "footer": {
     "privacy": "Конфиденциальность",

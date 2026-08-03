@@ -769,7 +769,8 @@
     "logoutPending": "Logging out...",
     "saving": "Saving...",
     "saved": "Saved.",
-    "displayNamePlaceholder": "Add your name"
+    "displayNamePlaceholder": "Add your name",
+    "languageInUse": "In use"
   },
   "footer": {
     "privacy": "Privacy",

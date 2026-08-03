@@ -47,10 +47,11 @@ export async function loginAction(
   await syncLocaleCookieAfterLogin(supabase, data.user.id);
 
   // Return to whatever protected page sent the visitor to /login; otherwise
-  // land on the default home, which already resumes an in-progress draft or
-  // opens a fresh Create conversation for authenticated visitors.
+  // land on Overview, the authenticated home. It shows real work where there
+  // is any and a first-project state where there is not, so nobody is pushed
+  // into /create every time they sign in.
   const requestedNext = String(formData.get("next") ?? "");
-  redirect(isSafeRedirectPath(requestedNext) ? requestedNext : "/");
+  redirect(isSafeRedirectPath(requestedNext) ? requestedNext : "/dashboard");
 }
 
 export async function signupAction(

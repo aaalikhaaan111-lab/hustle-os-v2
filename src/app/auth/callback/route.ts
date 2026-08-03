@@ -33,9 +33,9 @@ export async function GET(request: NextRequest) {
   await syncLocaleCookieAfterLogin(supabase, data.user.id);
 
   // Return to whatever protected page started this auth flow; otherwise land
-  // on the default home, which already resumes an in-progress draft or opens
-  // a fresh Create conversation for authenticated visitors.
+  // on Overview, the authenticated home — the same entry point as password
+  // sign-in, so Google users do not arrive somewhere different.
   const safeNext = isSafeRedirectPath(requestedNext) ? requestedNext : null;
-  const destination = safeNext ?? "/";
+  const destination = safeNext ?? "/dashboard";
   return NextResponse.redirect(`${origin}${destination}`);
 }

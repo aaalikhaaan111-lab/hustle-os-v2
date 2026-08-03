@@ -1,8 +1,7 @@
 "use client";
 
-import { forwardRef, useEffect, useRef, useState, useTransition } from "react";
-import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { useEffect, useRef, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import {
   ensureCreationDraftAction,
@@ -19,8 +18,9 @@ import {
   type CreationTurn,
 } from "@/lib/build/creationTypes";
 import { takeSeed } from "@/lib/create/seed";
-import { usePrefersReducedMotion } from "@/components/landing/hooks";
-import { Wordmark } from "@/components/layout/Wordmark";
+import { WorkspaceComposer } from "@/components/workspace-ui/Composer";
+import { VentrioButton } from "@/components/ui/VentrioButton";
+import { useVoiceInput } from "@/lib/workspace/useVoiceInput";
 import { cn } from "@/lib/utils";
 
 const STARTING_POINTS: {
@@ -49,10 +49,9 @@ type CreationPhase = "idle" | "resetting" | "persisting" | "generating" | "hando
 
 export function CreateExperience({ userId, initialDraft }: CreateExperienceProps) {
   const t = useTranslations("create");
+  const tb = useTranslations("build");
   const locale = useLocale();
   const router = useRouter();
-  const pathname = usePathname();
-  const reducedMotion = usePrefersReducedMotion();
   // Local storage remembers only the opaque idempotency token. The real draft,
   // conversation, and AI turn live in Supabase and are loaded by the page.
   const storageKey = `ventrio:create-session:${userId}:${locale}`;
@@ -116,13 +115,6 @@ export function CreateExperience({ userId, initialDraft }: CreateExperienceProps
       });
     });
   }, [isSending, messages, started, turn]);
-
-  useEffect(() => {
-    const el = textareaRef.current;
-    if (!el) return;
-    el.style.height = "auto";
-    el.style.height = `${Math.min(el.scrollHeight, 144)}px`;
-  }, [input]);
 
   function getOrCreateSessionId(): string {
     if (sessionId) return sessionId;
@@ -351,37 +343,25 @@ export function CreateExperience({ userId, initialDraft }: CreateExperienceProps
     });
   }
 
+  // The same dictation hook the workspace composers use — one implementation,
+  // and the permission request happens inside the click it starts from.
+  const voice = useVoiceInput({
+    lang: locale === "ru" ? "ru-RU" : "en-US",
+    disabled: isSending || creating,
+    onTranscript: (text) => setInput((prev) => (prev ? `${prev.trimEnd()} ${text}` : text)),
+  });
+
   const showDirections = turn?.phase === "propose" && turn.directions.length > 0;
   const showChoices = turn?.phase === "ask" && turn.choices.length > 0;
 
   return (
-    <div className={cn("creation-canvas relative flex h-[100dvh] min-h-0 flex-col", started && "is-started", turn?.transition === "focus" && "is-focused")}>
+    <div className={cn("creation-canvas relative flex h-full min-h-0 flex-col", started && "is-started", turn?.transition === "focus" && "is-focused")}>
       <div aria-hidden className="creation-focus-field" />
 
-      <header className="relative z-10 flex shrink-0 items-center gap-3 pl-5 pr-14 pt-[max(1rem,env(safe-area-inset-top))] sm:pl-8 sm:pr-14 sm:pt-6">
-        <Link
-          href="/"
-          scroll={pathname !== "/"}
-          onClick={() => {
-            if (pathname === "/") {
-              scrollRef.current?.scrollTo({ top: 0, behavior: reducedMotion ? "auto" : "smooth" });
-            }
-          }}
-          aria-label="Ventrio"
-          className="rounded-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-        >
-          <Wordmark />
-        </Link>
-        <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-ink-muted">
-          <span className="creation-signal-dot" />
-          {t("eyebrow")}
-        </div>
-      </header>
-
       <div ref={scrollRef} className="relative z-10 min-h-0 flex-1 overflow-y-auto overscroll-contain">
-        <div className={cn("mx-auto flex min-h-full w-full max-w-[860px] flex-col px-4 sm:px-7", started ? "py-8 sm:py-12" : "justify-center py-9 sm:py-14")}>
+        <div className={cn("mx-auto flex min-h-full w-full max-w-[760px] flex-col px-4 sm:px-7", started ? "py-8 sm:py-12" : "justify-center py-9 sm:py-14")}>
           {!started ? (
-            <section className="emergence mx-auto flex w-full max-w-[760px] flex-col items-center text-center">
+            <section className="emergence mx-auto flex w-full flex-col items-center text-center">
               <p className="mb-4 text-xs font-medium tracking-[0.18em] text-accent/80">
                 {t("openingSignal")}
               </p>
@@ -422,7 +402,10 @@ export function CreateExperience({ userId, initialDraft }: CreateExperienceProps
                   const isLatestAssistant = message.role === "assistant" && index === messages.length - 1;
                   return message.role === "user" ? (
                     <div key={index} className="animate-message-in flex justify-end">
-                      <div className="max-w-[88%] whitespace-pre-wrap rounded-[1.4rem] rounded-br-md bg-accent px-4 py-2.5 text-[15px] leading-6 text-white sm:max-w-[76%]">
+                      <div
+                        className="max-w-[86%] whitespace-pre-wrap rounded-[var(--r-lg)] px-3.5 py-2.5 text-[15px] leading-[1.6]"
+                        style={{ background: "var(--sunken)" }}
+                      >
                         {message.content}
                       </div>
                     </div>
@@ -487,8 +470,13 @@ export function CreateExperience({ userId, initialDraft }: CreateExperienceProps
         </div>
       </div>
 
-      <div className="relative z-20 shrink-0 bg-gradient-to-t from-canvas via-canvas to-transparent px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-6 sm:px-7 md:pb-5">
-        <div className="mx-auto w-full max-w-[760px]">
+      {/* The fade is drawn in the workspace background, not the app canvas —
+          the two are different neutrals and the seam shows. */}
+      <div
+        className="relative z-20 shrink-0 px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-6 sm:px-7 md:pb-5"
+        style={{ background: "linear-gradient(to top, var(--canvas) 68%, transparent)" }}
+      >
+        <div className="mx-auto w-full max-w-[704px]">
           {showChoices && <p className="mb-2 px-1 text-xs text-ink-muted">{t("orType")}</p>}
           {refineTarget && (
             <p className="mb-2 px-1 text-xs leading-5 text-ink-secondary">
@@ -499,28 +487,54 @@ export function CreateExperience({ userId, initialDraft }: CreateExperienceProps
             <div className="mb-2 flex items-center gap-3 px-1" role="status">
               <p className="text-xs text-danger">{note}</p>
               {started && !noteIsLimitReached && (
-                <button
-                  type="button"
-                  onClick={() => generationRetry
-                    ? chooseDirection(generationRetry.direction, generationRetry.index)
-                    : retry()}
+                <VentrioButton
+                  variant="ghost"
+                  size="sm"
+                  onClick={() =>
+                    generationRetry ? chooseDirection(generationRetry.direction, generationRetry.index) : retry()
+                  }
                   disabled={isSending || creating}
-                  className="text-xs font-semibold text-accent hover:underline disabled:opacity-50"
+                  weight="medium" className="text-[13px]"
                 >
                   {t("retry")}
-                </button>
+                </VentrioButton>
               )}
             </div>
           )}
-          <Composer
-            ref={textareaRef}
+          <WorkspaceComposer
             value={input}
             placeholder={refineTarget ? t("refinePlaceholder") : t("placeholder")}
             sendLabel={t("send")}
             disabled={isSending || creating}
+            sending={isSending}
             onChange={setInput}
             onSend={() => send(input)}
+            textareaRef={textareaRef}
+            listeningLabel={tb("voiceListening")}
+            keyboardHint={tb("composerKeys")}
+            voice={{
+              supported: voice.supported,
+              listening: voice.listening,
+              state: voice.state,
+              onToggle: () => (voice.listening ? voice.stop() : voice.start()),
+              label: tb("voiceStart"),
+              unsupportedLabel: tb("voiceUnsupported"),
+              requestingLabel: tb("voiceRequesting"),
+              listeningLabel: tb("voiceListening"),
+            }}
           />
+          <p role="status" aria-live="polite" className="sr-only">
+            {voice.listening ? tb("voiceListening") : ""}
+          </p>
+          {voice.error && (
+            <p role="alert" className="mt-1.5 px-1 text-[13px]" style={{ color: "var(--warn)" }}>
+              {voice.error === "permission"
+                ? tb("voiceBlocked")
+                : voice.error === "no-speech"
+                  ? tb("voiceNoSpeech")
+                  : tb("voiceFailed")}
+            </p>
+          )}
         </div>
       </div>
 
@@ -534,56 +548,6 @@ export function CreateExperience({ userId, initialDraft }: CreateExperienceProps
   );
 }
 
-interface ComposerProps {
-  value: string;
-  placeholder: string;
-  sendLabel: string;
-  disabled: boolean;
-  onChange: (value: string) => void;
-  onSend: () => void;
-}
-
-const Composer = forwardRef<HTMLTextAreaElement, ComposerProps>(function Composer(
-  { value, placeholder, sendLabel, disabled, onChange, onSend }: ComposerProps,
-  ref: React.ForwardedRef<HTMLTextAreaElement>
-) {
-  return (
-    <form
-      onSubmit={(event) => {
-        event.preventDefault();
-        onSend();
-      }}
-      className="ventrio-composer"
-    >
-      <textarea
-        ref={ref}
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        disabled={disabled}
-        rows={1}
-        maxLength={2000}
-        placeholder={placeholder}
-        onKeyDown={(event) => {
-          if (event.key === "Enter" && !event.shiftKey) {
-            event.preventDefault();
-            onSend();
-          }
-        }}
-        className="max-h-36 min-h-[34px] min-w-0 flex-1 resize-none bg-transparent px-2 py-1.5 text-[15px] leading-6 text-ink placeholder:text-ink-muted focus:outline-none disabled:opacity-50"
-      />
-      <button
-        type="submit"
-        aria-label={sendLabel}
-        disabled={disabled || value.trim().length === 0}
-        className="composer-send press-scale focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-25"
-      >
-        <svg viewBox="0 0 20 20" fill="none" className="h-4 w-4" aria-hidden>
-          <path d="M10 15.5v-11m0 0L5.5 9M10 4.5 14.5 9" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
-      </button>
-    </form>
-  );
-});
 
 function ChoiceGrid({
   choices,
@@ -627,9 +591,16 @@ function ChoiceGrid({
         })}
       </div>
       {multiple && (
-        <button type="button" disabled={busy || selected.length === 0} onClick={onContinue} className="primary-action w-fit disabled:opacity-35">
+        <VentrioButton
+          variant="primary"
+          size="sm"
+          shape="pill"
+          disabled={busy || selected.length === 0}
+          onClick={onContinue}
+          className="w-fit"
+        >
           {t("continueChoices")} <span aria-hidden>→</span>
-        </button>
+        </VentrioButton>
       )}
     </div>
   );
@@ -665,12 +636,12 @@ function DirectionCard({
         <DirectionDetail label={t("cardWhyFits")} value={direction.whyFits} />
       </dl>
       <div className="mt-7 flex flex-wrap items-center gap-2">
-        <button type="button" disabled={busy} onClick={onChoose} className="primary-action disabled:opacity-35">
+        <VentrioButton variant="generative" size="sm" shape="pill" disabled={busy} onClick={onChoose}>
           {t("buildThis")} <span aria-hidden>→</span>
-        </button>
-        <button type="button" disabled={busy} onClick={onRefine} className="quiet-action disabled:opacity-40">
+        </VentrioButton>
+        <VentrioButton variant="ghost" size="sm" shape="pill" disabled={busy} onClick={onRefine}>
           {t("refine")}
-        </button>
+        </VentrioButton>
       </div>
     </article>
   );

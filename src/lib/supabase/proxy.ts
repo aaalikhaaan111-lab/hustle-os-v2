@@ -3,7 +3,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import type { Database } from "@/types/supabase";
 import { getSiteUrl, isSafeRedirectPath } from "@/lib/site";
 
-const PROTECTED_PREFIXES = ["/create", "/projects", "/build", "/profile"];
+const PROTECTED_PREFIXES = ["/create", "/projects", "/build", "/profile", "/dashboard", "/settings"];
 const AUTH_ROUTES = ["/login", "/signup"];
 
 function matchesPrefix(pathname: string, prefixes: string[]) {
