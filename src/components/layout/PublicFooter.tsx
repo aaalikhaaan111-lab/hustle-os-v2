@@ -67,10 +67,19 @@ export async function PublicFooter() {
           <p className="mt-3 text-[13px] leading-relaxed text-ink-muted">{t("blurb")}</p>
         </div>
 
-        <nav className="grid grid-cols-2 gap-x-8 gap-y-8 sm:grid-cols-4 md:gap-x-12" aria-label={t("groupsLabel")}>
+        {/* Four columns only while the nav has the container to itself. From md
+            it sits beside the blurb, which leaves each of four tracks ~42px —
+            narrower than a single heading in either language, so the row
+            overflowed the page. Two tracks there, four again at lg where the
+            row is wide enough. `min-w-0` lets a track shrink to its box rather
+            than to its longest word. */}
+        <nav
+          className="grid min-w-0 grid-cols-2 gap-x-8 gap-y-8 sm:grid-cols-4 md:grid-cols-2 md:gap-x-10 lg:grid-cols-4 lg:gap-x-12"
+          aria-label={t("groupsLabel")}
+        >
           {groups.map((group) => (
-            <div key={group.title}>
-              <h2 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-ink-secondary">
+            <div key={group.title} className="min-w-0">
+              <h2 className="break-words text-[11px] font-semibold uppercase tracking-[0.14em] text-ink-secondary">
                 {group.title}
               </h2>
               <ul className="mt-3 flex flex-col gap-2 text-[13px]">
@@ -85,13 +94,14 @@ export async function PublicFooter() {
             </div>
           ))}
 
-          <div>
-            <h2 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-ink-secondary">
+          <div className="min-w-0">
+            <h2 className="break-words text-[11px] font-semibold uppercase tracking-[0.14em] text-ink-secondary">
               {t("groupContact")}
             </h2>
             <ul className="mt-3 flex flex-col gap-2 text-[13px]">
               <li>
-                <a href={`mailto:${CONTACT_EMAIL}`} className={linkClass}>
+                {/* The one token here with no natural break point. */}
+                <a href={`mailto:${CONTACT_EMAIL}`} className={`${linkClass} break-all`}>
                   {CONTACT_EMAIL}
                 </a>
               </li>
