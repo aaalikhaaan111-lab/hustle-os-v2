@@ -79,7 +79,7 @@ export default async function ProjectAnalyticsPage({ params }: AnalyticsPageProp
   return (
     <WorkspaceShell
       initials={(user.email ?? "?").slice(0, 2).toUpperCase()}
-      project={{ id: project.id, name: project.name ?? "Untitled project", state: published ? "published" : "draft" }}
+      project={{ id: project.id, name: project.name ?? t("untitledProject"), state: published ? "published" : "draft" }}
     >
       <PageBody>
         <PageHeading

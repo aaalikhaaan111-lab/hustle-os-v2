@@ -1,6 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { useTranslations } from "next-intl";
 import { VentrioButton } from "@/components/ui/VentrioButton";
 /** What a preview needs in order to be drawn — satisfied by a real project row
  *  or by lab demo content, without either knowing about the other. */
@@ -193,20 +194,21 @@ export const IconMinimize = ({ className }: IconProps) => (
 
 /* ── Shared primitives ──────────────────────────────────────────────────── */
 
-const STATE_STYLE: Record<ProjectState, { label: string; fg: string; bg: string }> = {
-  draft: { label: "Draft", fg: "var(--ink-2)", bg: "var(--sunken)" },
-  published: { label: "Published", fg: "var(--ok)", bg: "var(--ok-soft)" },
-  proposal: { label: "Update ready", fg: "var(--accent-ink)", bg: "var(--accent-soft)" },
+const STATE_STYLE: Record<ProjectState, { key: "statusDraft" | "statusPublished" | "statusProposal"; fg: string; bg: string }> = {
+  draft: { key: "statusDraft", fg: "var(--ink-2)", bg: "var(--sunken)" },
+  published: { key: "statusPublished", fg: "var(--ok)", bg: "var(--ok-soft)" },
+  proposal: { key: "statusProposal", fg: "var(--accent-ink)", bg: "var(--accent-soft)" },
 };
 
 export function StatusPill({ state }: { state: ProjectState }) {
+  const t = useTranslations("workspace");
   const style = STATE_STYLE[state];
   return (
     <span
       className="inline-flex shrink-0 items-center rounded-full px-2 py-[3px] text-[12px] font-semibold leading-none"
       style={{ color: style.fg, background: style.bg }}
     >
-      {style.label}
+      {t(style.key)}
     </span>
   );
 }

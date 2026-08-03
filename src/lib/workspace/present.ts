@@ -20,7 +20,7 @@ export interface PresentedProject {
   name: string;
   summary: string | null;
   state: ProjectState;
-  updated: string;
+  updated: RelativeAge;
   hasOutput: boolean;
   preview: PreviewSpec;
 }
@@ -42,15 +42,27 @@ function accentFor(id: string): string {
   return ACCENTS[hash % ACCENTS.length];
 }
 
-/** Short relative age so a list of projects is scannable. */
-export function relativeTime(iso: string | null): string {
-  if (!iso) return "—";
+/**
+ * Short relative age so a list of projects is scannable.
+ *
+ * Returned as a unit and a count rather than a formatted string: this runs on
+ * the server, where the reader's language is not this module's business, and
+ * the screens turn it into words through the message catalogue.
+ */
+export type RelativeAge =
+  | { unit: "unknown" }
+  | { unit: "today" }
+  | { unit: "yesterday" }
+  | { unit: "days" | "months" | "years"; value: number };
+
+export function relativeAge(iso: string | null): RelativeAge {
+  if (!iso) return { unit: "unknown" };
   const days = Math.floor((Date.now() - new Date(iso).getTime()) / 86_400_000);
-  if (days <= 0) return "today";
-  if (days === 1) return "yesterday";
-  if (days < 30) return `${days}d ago`;
-  if (days < 365) return `${Math.floor(days / 30)}mo ago`;
-  return `${Math.floor(days / 365)}y ago`;
+  if (days <= 0) return { unit: "today" };
+  if (days === 1) return { unit: "yesterday" };
+  if (days < 30) return { unit: "days", value: days };
+  if (days < 365) return { unit: "months", value: Math.floor(days / 30) };
+  return { unit: "years", value: Math.floor(days / 365) };
 }
 
 export function presentProject(
@@ -63,12 +75,14 @@ export function presentProject(
 
   return {
     id: project.id,
-    name: project.name?.trim() || "Untitled project",
+    // Left empty rather than filled with an English placeholder; the screens
+    // supply the localised fallback.
+    name: project.name?.trim() ?? "",
     summary: stage3?.output?.identity.description ?? stage3?.direction?.concept ?? snapshot.solution ?? null,
     // "proposal" is reserved for a real proposed next version. Nothing produces
     // one yet, so no project can be given that state by accident.
     state: publication?.isPublished ? "published" : "draft",
-    updated: relativeTime(project.updated_at),
+    updated: relativeAge(project.updated_at),
     hasOutput,
     preview: {
       shape: SHAPE_BY_TYPE[project.project_type] ?? "form",

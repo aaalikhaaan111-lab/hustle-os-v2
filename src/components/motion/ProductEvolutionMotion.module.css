@@ -1,0 +1,202 @@
+/* Only what the second motion adds. The canvas, hero, headlines, cards and
+   support all come from the first motion's stylesheet unchanged, so the two
+   read as one project at two moments in its life.
+
+   The layer order is the design: product (2–4) recedes, overlay (5) separates,
+   and the centred controls (6) stay bright on top. Nothing that must stay
+   legible is ever a child of something that dims. */
+
+/* ── Layer 2–4: the product plane ───────────────────────────────────────── */
+
+.productLayer {
+  position: absolute;
+  inset: 0;
+  will-change: opacity, filter;
+}
+
+/* The region the visits keep landing on. Fill and hairline, no selection UI. */
+.region {
+  position: absolute;
+  border-radius: 0.7cqw;
+  background: color-mix(in srgb, var(--flow-accent) 11%, transparent);
+  box-shadow: inset 0 0 0 0.18cqw color-mix(in srgb, var(--flow-accent) 62%, transparent);
+}
+
+/* A visitor, reduced to the smallest honest mark: a point of contact. */
+.visit {
+  position: absolute;
+  height: 1.05cqw;
+  width: 1.05cqw;
+  margin: -0.525cqw 0 0 -0.525cqw;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--flow-accent) 74%, #ffffff);
+  box-shadow: 0 0 0 0.25cqw color-mix(in srgb, var(--flow-accent) 24%, transparent);
+}
+
+.visitPulse {
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+  background: var(--flow-accent);
+}
+
+/* The signal sits against the canvas edge at the region's own height, with a
+   short tie back to it. Set beside what produced it, it reads as a
+   consequence; set anywhere else, it reads as decoration. */
+.signal {
+  position: absolute;
+  top: 73.5%;
+  left: 74.5%;
+  display: flex;
+  width: 13%;
+  flex-direction: column;
+  border-radius: 0.7cqw;
+  padding: 1cqw;
+  background: color-mix(in srgb, #171233 94%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--flow-accent) 52%, transparent);
+}
+
+.signal::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  right: 100%;
+  height: 0.16cqw;
+  width: 1.5cqw;
+  transform: scaleX(var(--tie, 0));
+  transform-origin: right center;
+  background: color-mix(in srgb, var(--flow-accent) 55%, transparent);
+}
+
+.signalBar {
+  height: 0.6cqw;
+  width: 100%;
+  border-radius: 0.3cqw;
+  background: color-mix(in srgb, var(--flow-accent) 72%, transparent);
+}
+
+/* One outline across the zone that is about to change — the before, marked so
+   the after can be compared to it. */
+.changeOutline {
+  position: absolute;
+  left: 3%;
+  width: 94%;
+  border-radius: 0.7cqw;
+  box-shadow: inset 0 0 0 0.16cqw color-mix(in srgb, var(--flow-accent) 45%, transparent);
+}
+
+.newBlock {
+  position: absolute;
+  top: 86%;
+  left: 6%;
+  height: 5%;
+  width: 88%;
+  border-radius: 0.4cqw;
+  background: color-mix(in srgb, var(--flow-accent) 14%, var(--flow-skeleton-soft));
+}
+
+/* ── Layer 5: dimming ───────────────────────────────────────────────────── */
+
+/* Weighted to the centre rather than a flat wash: the centred control always
+   lands on calm ground, while the edges stay light enough that the product
+   keeps its silhouette instead of going muddy. */
+.overlay {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    62% 58% at 50% 50%,
+    rgb(8 6 15) 0%,
+    rgb(8 6 15 / 0.94) 38%,
+    rgb(8 6 15 / 0.6) 100%
+  );
+  pointer-events: none;
+}
+
+/* ── Layer 6: the centred controls ──────────────────────────────────────── */
+
+/* Dead centre of the export frame, and the only lit thing while it waits. */
+.publish {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  border-radius: 999px;
+  padding: 1.35cqw 3.4cqw;
+  background: var(--flow-accent);
+  color: #fff;
+  font-size: 2cqw;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1;
+  white-space: nowrap;
+  box-shadow:
+    0 0 0 0.12cqw color-mix(in srgb, #b9beff 70%, transparent),
+    0 1.4cqw 3.2cqw rgb(4 2 16 / 0.55);
+}
+
+/* One ring on the press, expanding out and gone. */
+.emit {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  height: 100%;
+  width: 100%;
+  border-radius: 999px;
+  box-shadow: 0 0 0 0.16cqw color-mix(in srgb, var(--flow-accent) 75%, transparent);
+  pointer-events: none;
+}
+
+/* Announced in the centre, then it goes and sits quietly on the product. */
+.live {
+  position: absolute;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55cqw;
+  transform: translate(-50%, -50%);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--flow-accent) 14%, #14102c);
+  color: #cfd3ff;
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.live::before {
+  content: "";
+  height: 0.62cqw;
+  width: 0.62cqw;
+  border-radius: 999px;
+  background: var(--flow-accent);
+}
+
+/* The last frame: prepared, and waiting on the owner. */
+.approval {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5cqw;
+  transform: translate(-50%, -50%);
+  text-align: center;
+}
+
+.ready {
+  color: #e7e4f5;
+  font-size: 1.9cqw;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+}
+
+.approve {
+  border-radius: 999px;
+  padding: 1.1cqw 2.8cqw;
+  background: var(--flow-accent);
+  color: #fff;
+  font-size: 1.6cqw;
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+  box-shadow: 0 0 0 0.1cqw color-mix(in srgb, #b9beff 55%, transparent);
+}

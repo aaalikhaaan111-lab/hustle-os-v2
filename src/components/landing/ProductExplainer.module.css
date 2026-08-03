@@ -1,0 +1,138 @@
+/* Media just over half, copy a little under, and the rest is the gutter
+   between them — the two columns never touch. */
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 50fr) minmax(0, 42fr);
+  gap: clamp(2.5rem, 6vw, 5rem);
+  align-items: center;
+}
+
+/* The second section mirrors the first so the page alternates rather than
+   repeating. Same proportions and gap — only the sides swap. */
+.reversed {
+  grid-template-columns: minmax(0, 42fr) minmax(0, 50fr);
+}
+
+.reversed .media {
+  grid-column: 2;
+  grid-row: 1;
+}
+
+.reversed .steps {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+.media {
+  min-width: 0;
+}
+
+.steps {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: clamp(1.5rem, 2.6vw, 2.1rem);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+/* Inactive steps sit at 0.7 rather than lower: against this canvas that still
+   clears 4.5:1 on the body copy, which is the point at which "muted" would
+   otherwise start meaning "unreadable". */
+.step {
+  position: relative;
+  padding-left: 1.4rem;
+  opacity: 0.7;
+  transition: opacity 300ms var(--ease-out-soft);
+}
+
+.stepActive {
+  opacity: 1;
+}
+
+.rail {
+  position: absolute;
+  top: 0.3rem;
+  bottom: 0.3rem;
+  left: 0;
+  width: 2px;
+  overflow: hidden;
+  border-radius: 1px;
+  /* The stronger hairline, not the standard one: at the muted step's 0.7 the
+     10%-white rule fades to nothing and the rail stops reading as a track with
+     a position on it. */
+  background: var(--color-border-strong);
+}
+
+.railFill {
+  display: block;
+  height: 100%;
+  width: 100%;
+  transform-origin: top center;
+  background: var(--color-accent);
+  transition: transform 120ms linear;
+}
+
+.stepTitle {
+  font-family: var(--font-display);
+  font-size: clamp(1.05rem, 1.5vw, 1.25rem);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.25;
+  color: var(--color-ink);
+  transition: color 300ms var(--ease-out-soft);
+}
+
+.stepActive .stepTitle {
+  color: #fff;
+}
+
+.stepBody {
+  margin-top: 0.45rem;
+  color: var(--color-ink-secondary);
+  font-size: clamp(0.92rem, 1.15vw, 1rem);
+  line-height: 1.6;
+  text-wrap: pretty;
+}
+
+/* ── Mobile: heading, then the frame, then the steps ─────────────────────
+   Not the desktop layout scaled down — the frame goes full width, the rail
+   thins to a hairline so it reads as a margin mark rather than a bar, and the
+   copy keeps its full size. */
+@media (max-width: 899px) {
+  .layout,
+  .reversed {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 2rem;
+    align-items: stretch;
+  }
+
+  /* One column, and the frame leads in both sections — the mirrored desktop
+     order must not survive the breakpoint. */
+  .reversed .media,
+  .reversed .steps {
+    grid-column: 1;
+    grid-row: auto;
+  }
+
+  .steps {
+    gap: 1.5rem;
+  }
+
+  .step {
+    padding-left: 1.1rem;
+  }
+
+  .rail {
+    width: 1px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .step,
+  .stepTitle,
+  .railFill {
+    transition: none;
+  }
+}

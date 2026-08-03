@@ -2,12 +2,21 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
+import { useTranslations } from "next-intl";
 import { IconPlus, IconSearch, StatusPill } from "@/components/workspace-ui/parts";
 import { PageBody, PageHeading } from "@/components/workspace-ui/PageBody";
 import { VentrioButton, VentrioLinkButton } from "@/components/ui/VentrioButton";
+import { formatAge } from "@/lib/workspace/formatAge";
 import type { PresentedProject } from "@/lib/workspace/present";
 
 type Filter = "all" | "draft" | "published";
+
+/** Label keys sit beside the values so the control never shows a raw enum. */
+const FILTERS = [
+  { option: "all", labelKey: "projectsFilterAll" },
+  { option: "draft", labelKey: "projectsFilterDraft" },
+  { option: "published", labelKey: "projectsFilterPublished" },
+] as const;
 
 /**
  * Projects, as the conversations they are.
@@ -19,6 +28,7 @@ type Filter = "all" | "draft" | "published";
  * real client-side operations over the signed-in user's real rows.
  */
 export function ProjectsScreen({ projects }: { projects: PresentedProject[] }) {
+  const t = useTranslations("workspace");
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<Filter>("all");
 
@@ -40,16 +50,18 @@ export function ProjectsScreen({ projects }: { projects: PresentedProject[] }) {
   return (
     <PageBody>
       <PageHeading
-        title="Projects"
+        title={t("projectsTitle")}
         lead={
           projects.length === 0
-            ? "Nothing here yet."
-            : `${projects.length} project${projects.length === 1 ? "" : "s"}${publishedCount > 0 ? `, ${publishedCount} live` : ""}.`
+            ? t("projectsNothingYet")
+            : publishedCount > 0
+              ? t("projectsCountLive", { count: projects.length, live: publishedCount })
+              : t("projectsCount", { count: projects.length })
         }
         actions={
           <VentrioLinkButton href="/create" variant="primary">
             <IconPlus className="h-4 w-4" />
-            New project
+            {t("navNewProject")}
           </VentrioLinkButton>
         }
       />
@@ -59,12 +71,12 @@ export function ProjectsScreen({ projects }: { projects: PresentedProject[] }) {
           className="rise mt-7 rounded-[var(--r-lg)] border px-8 py-12 text-center"
           style={{ borderColor: "var(--line)", background: "var(--surface)" }}
         >
-          <p className="text-[17px] font-semibold tracking-[-0.01em]">Start your first project</p>
+          <p className="text-[17px] font-semibold tracking-[-0.01em]">{t("startFirstTitle")}</p>
           <p className="mx-auto mt-2 max-w-md text-[14px] leading-relaxed" style={{ color: "var(--ink-2)" }}>
-            For example: let people join a weekly football game, or book a maths tutor for next week.
+            {t("startFirstBody")}
           </p>
           <VentrioLinkButton href="/create" variant="primary" className="mt-6">
-            New project
+            {t("navNewProject")}
           </VentrioLinkButton>
         </div>
       ) : (
@@ -78,8 +90,8 @@ export function ProjectsScreen({ projects }: { projects: PresentedProject[] }) {
               <input
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
-                placeholder="Search projects"
-                aria-label="Search projects"
+                placeholder={t("projectsSearch")}
+                aria-label={t("projectsSearch")}
                 className="w-full bg-transparent text-[14px] outline-none placeholder:text-[var(--ink-3)]"
               />
             </label>
@@ -88,7 +100,7 @@ export function ProjectsScreen({ projects }: { projects: PresentedProject[] }) {
               className="flex h-10 items-center gap-0.5 rounded-[var(--r-md)] p-1"
               style={{ background: "var(--sunken)" }}
             >
-              {(["all", "draft", "published"] as const).map((option) => (
+              {FILTERS.map(({ option, labelKey }) => (
                 <VentrioButton
                   key={option}
                   variant="ghost"
@@ -96,21 +108,21 @@ export function ProjectsScreen({ projects }: { projects: PresentedProject[] }) {
                   onClick={() => setFilter(option)}
                   aria-pressed={filter === option}
                   on={filter === option}
-                  className="h-8 rounded-[var(--r-xs)] capitalize"
+                  className="h-8 rounded-[var(--r-xs)]"
                 >
-                  {option}
+                  {t(labelKey)}
                 </VentrioButton>
               ))}
             </div>
 
             <span className="ml-auto hidden text-[13px] sm:block" style={{ color: "var(--ink-3)" }}>
-              Sorted by last updated
+              {t("projectsSorted")}
             </span>
           </div>
 
           {visible.length === 0 ? (
             <p className="mt-12 text-center text-[14px]" style={{ color: "var(--ink-2)" }}>
-              Nothing matches “{query}”.
+              {t("projectsNoMatch", { query })}
             </p>
           ) : (
             <ul className="mt-5 flex flex-col">
@@ -138,7 +150,7 @@ export function ProjectsScreen({ projects }: { projects: PresentedProject[] }) {
                     <span className="min-w-0 flex-1">
                       <span className="flex min-w-0 flex-wrap items-center gap-x-2.5 gap-y-1">
                         <span className="min-w-0 max-w-full truncate text-[15px] font-semibold tracking-[-0.01em]">
-                          {project.name}
+                          {project.name || t("untitledProject")}
                         </span>
                         <StatusPill state={project.state} />
                       </span>
@@ -146,12 +158,12 @@ export function ProjectsScreen({ projects }: { projects: PresentedProject[] }) {
                         className="mt-1 block truncate text-[13.5px] leading-relaxed"
                         style={{ color: "var(--ink-2)" }}
                       >
-                        {project.summary ?? (project.hasOutput ? "First version ready." : "No first version yet.")}
+                        {project.summary ?? (project.hasOutput ? t("summaryReady") : t("summaryNoVersion"))}
                       </span>
                     </span>
 
                     <span className="shrink-0 pt-0.5 text-[13px] tabular-nums" style={{ color: "var(--ink-3)" }}>
-                      {project.updated}
+                      {formatAge(t, project.updated)}
                     </span>
                   </Link>
                 </li>

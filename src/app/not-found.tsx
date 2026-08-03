@@ -12,7 +12,7 @@ export default async function NotFound() {
         icon={<QuestionIcon className="h-6 w-6" />}
         title={t("notFoundTitle")}
         description={t("notFoundDescription")}
-        action={<Button href="/dashboard">{t("backHome")}</Button>}
+        action={<Button href="/projects">{t("backHome")}</Button>}
       />
     </div>
   );

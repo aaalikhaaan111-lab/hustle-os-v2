@@ -1,0 +1,173 @@
+/* The export frame. Everything the recording contains lives inside this box and
+   nothing animates outside it. Tokens are local so the component renders the
+   same in the landing, in the preview route, and in a headless export. */
+.frame {
+  --flow-canvas: #0d0a1f;
+  --flow-surface: #171233;
+  --flow-accent: #6d7bff;
+  --flow-paper: #f5f4f8;
+  --flow-skeleton: #e4e1ee;
+  --flow-skeleton-soft: #edebf4;
+
+  position: relative;
+  overflow: hidden;
+  aspect-ratio: 16 / 10;
+  width: 100%;
+  background: var(--flow-canvas);
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  /* Every small dimension below is in cqw — 1% of this frame's width — so the
+     composition is identical at the landing's 652px and at a 1920px export.
+     A fixed 4px line would be a hairline in one and a slab in the other. */
+  container-type: size;
+}
+
+/* ── Phase 1 — composer ─────────────────────────────────────────────────── */
+
+.composer {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  display: flex;
+  width: 46%;
+  flex-direction: column;
+  align-items: flex-start;
+  /* Not a percentage: in a column whose height comes from its content, a
+     percentage gap resolves against that unresolved height and collapses. */
+  gap: 1.9cqw;
+  padding: 3.4cqw 2.6cqw 6.4cqw;
+  border-radius: 0.9cqw;
+  background: color-mix(in srgb, var(--flow-surface) 88%, transparent);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12);
+  will-change: transform, opacity;
+}
+
+.promptLine {
+  height: 0.62cqw;
+  border-radius: 0.31cqw;
+  background: rgba(255, 255, 255, 0.26);
+}
+
+.submit {
+  position: absolute;
+  right: 5.5%;
+  bottom: 14%;
+  height: 13%;
+  aspect-ratio: 1;
+  border-radius: 999px;
+  background: var(--flow-accent);
+}
+
+/* The submission response: one ring, expanding and gone. */
+.submitRing {
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+  background: var(--flow-accent);
+}
+
+/* ── Phases 2–3 — the generated product ─────────────────────────────────── */
+
+/* Inset with wide calm margins, the way all three references frame it — the
+   canvas is the one focal object, not a full-bleed screenshot. */
+.canvas {
+  position: absolute;
+  top: 9%;
+  left: 27%;
+  height: 82%;
+  width: 46%;
+  border-radius: 0.85cqw;
+  background: var(--flow-paper);
+  will-change: opacity, clip-path;
+}
+
+.nav {
+  position: absolute;
+  top: 4.5%;
+  left: 6%;
+  display: flex;
+  width: 88%;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 5%;
+  height: 3%;
+}
+
+.navChip {
+  height: 0.55cqw;
+  width: 11%;
+  border-radius: 0.28cqw;
+  background: var(--flow-skeleton);
+}
+
+
+.hero {
+  position: absolute;
+  top: 11%;
+  left: 6%;
+  height: 28%;
+  width: 88%;
+  overflow: hidden;
+  transform-origin: top center;
+  border-radius: 0.5cqw;
+  background: linear-gradient(160deg, #7b86ff 0%, #6d7bff 42%, #b9beff 100%);
+  will-change: transform, opacity;
+}
+
+/* A single pass across the hero while it is still being built, then never
+   again — a surface that keeps shimmering reads as perpetually loading. */
+.shimmer {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 40%;
+  transform: skewX(-12deg);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+}
+
+.headline {
+  position: absolute;
+  left: 6%;
+  height: 0.72cqw;
+  border-radius: 0.36cqw;
+  background: var(--flow-skeleton);
+}
+
+.cta {
+  position: absolute;
+  top: 58%;
+  left: 6%;
+  height: 6.5%;
+  width: 26%;
+  border-radius: 0.4cqw;
+}
+
+.card {
+  position: absolute;
+  top: 71%;
+  height: 12%;
+  border-radius: 0.45cqw;
+  background: var(--flow-skeleton-soft);
+  box-shadow: inset 0 0 0 1px rgba(19, 14, 48, 0.06);
+}
+
+.support {
+  position: absolute;
+  bottom: 5.5%;
+  left: 6%;
+  height: 5%;
+  width: 88%;
+  border-radius: 0.4cqw;
+  background: var(--flow-skeleton-soft);
+}
+
+/* The second interaction trace: the area under revision, outlined once. */
+.focusRing {
+  position: absolute;
+  top: 68%;
+  left: 2.5%;
+  height: 18%;
+  width: 95%;
+  border-radius: 0.6cqw;
+  box-shadow: 0 0 0 0.22cqw color-mix(in srgb, var(--flow-accent) 70%, transparent);
+}

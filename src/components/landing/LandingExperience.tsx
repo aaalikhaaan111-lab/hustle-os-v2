@@ -1,76 +1,38 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+/*
+  DIRECTION CONTRACT v5 — one register, not two. The approved hero is the
+  only visual source; every section below it continues the hero's own dark
+  indigo atmosphere. The light/cream register introduced in v4 is gone, and
+  with it the workspace feature grid it carried.
+  THESIS: the hero states the promise, then one short product explanation
+  shows how it is kept — the motion carries it, the page around it stays quiet.
+  OWN-WORLD: Helvetica Neue throughout; dark tokens carried verbatim from
+  the hero (#0d0a1f canvas, #171233 surface, 10%-white hairlines, #6d7bff
+  accent); grain and radial bloom for depth; no second palette.
+  STORY: hero acts -> one looping explanation of what Ventrio does, its three
+  steps lit in time with the motion -> closing scene back in the hero's own
+  register. The project showcase and the four-card loop it used to sit above
+  are both gone: one explanation replaces both.
+  FIRST VIEWPORT: unchanged (hero only).
+  FORM: hero -> product explainer -> closing CTA, all dark and continuous.
+  FINISH: unreviewed and undocumented is unfinished; this build ends with
+  the finish review, the verdict, and DESIGN.md.
+*/
+
+import type { ReactNode } from "react";
 import { useTranslations } from "next-intl";
-import { Wordmark } from "@/components/layout/Wordmark";
 import { LandingComposer } from "@/components/landing/LandingComposer";
+import { ClosingSection } from "@/components/landing/ClosingSection";
+import { ProductExplainer } from "@/components/landing/ProductExplainer";
+import { WaveField } from "@/components/ui/WaveField";
+import { GrainField } from "@/components/ui/GrainField";
+import { WAVE_EMISSIVE } from "@/components/ui/waveLight";
+import { FloatingNav } from "@/components/ui/FloatingNav";
 import { usePrefersReducedMotion, useReveal } from "@/components/landing/hooks";
 import styles from "./LandingExperience.module.css";
 
 const HOME_COMPOSER_ID = "home-composer";
-
-const EXAMPLES = [
-  {
-    id: "photography",
-    labelKey: "examplePhotography",
-    materialKey: "photographyMaterial",
-    audienceKey: "photographyAudience",
-    formatKey: "photographyFormat",
-    eyebrowKey: "photographyEyebrow",
-    projectNameKey: "photographyName",
-    projectTitleKey: "photographyTitle",
-    projectBodyKey: "photographyBody",
-    projectCtaKey: "photographyCta",
-    projectMetaKey: "photographyMeta",
-  },
-  {
-    id: "math",
-    labelKey: "exampleMath",
-    materialKey: "mathMaterial",
-    audienceKey: "mathAudience",
-    formatKey: "mathFormat",
-    eyebrowKey: "mathEyebrow",
-    projectNameKey: "mathName",
-    projectTitleKey: "mathTitle",
-    projectBodyKey: "mathBody",
-    projectCtaKey: "mathCta",
-    projectMetaKey: "mathMeta",
-  },
-  {
-    id: "problem",
-    labelKey: "exampleProblem",
-    materialKey: "problemMaterial",
-    audienceKey: "problemAudience",
-    formatKey: "problemFormat",
-    eyebrowKey: "problemEyebrow",
-    projectNameKey: "problemName",
-    projectTitleKey: "problemTitle",
-    projectBodyKey: "problemBody",
-    projectCtaKey: "problemCta",
-    projectMetaKey: "problemMeta",
-  },
-  {
-    id: "idea",
-    labelKey: "exampleIdea",
-    materialKey: "ideaMaterial",
-    audienceKey: "ideaAudience",
-    formatKey: "ideaFormat",
-    eyebrowKey: "ideaEyebrow",
-    projectNameKey: "ideaName",
-    projectTitleKey: "ideaTitle",
-    projectBodyKey: "ideaBody",
-    projectCtaKey: "ideaCta",
-    projectMetaKey: "ideaMeta",
-  },
-] as const;
-
-const CYCLE_STEPS = [
-  { number: "01", titleKey: "cycleCreate", bodyKey: "cycleCreateBody" },
-  { number: "02", titleKey: "cycleChange", bodyKey: "cycleChangeBody" },
-  { number: "03", titleKey: "cyclePublish", bodyKey: "cyclePublishBody" },
-  { number: "04", titleKey: "cycleListen", bodyKey: "cycleListenBody" },
-  { number: "05", titleKey: "cycleImprove", bodyKey: "cycleImproveBody" },
-] as const;
 
 function Reveal({
   children,
@@ -99,160 +61,73 @@ export function LandingExperience({ isAuthenticated, children }: LandingExperien
   const t = useTranslations("landing");
   const reducedMotion = usePrefersReducedMotion();
   const motion = !reducedMotion;
-  const [activeExampleId, setActiveExampleId] = useState<(typeof EXAMPLES)[number]["id"]>(EXAMPLES[0].id);
-  const activeExample = EXAMPLES.find((example) => example.id === activeExampleId) ?? EXAMPLES[0];
-  const cycleRef = useReveal<HTMLOListElement>(motion);
-
-  // The wordmark is the way back to the composer: return to the top and focus
-  // the entry field, rather than navigating somewhere arbitrary.
-  function backToComposer() {
-    window.scrollTo({ top: 0, behavior: reducedMotion ? "auto" : "smooth" });
-    window.requestAnimationFrame(() => {
-      document.getElementById(HOME_COMPOSER_ID)?.focus();
-    });
-  }
 
   return (
-    <div className={styles.experience}>
-      <header className={styles.header}>
-        <button type="button" onClick={backToComposer} className={styles.wordmarkLink} aria-label={t("backToTop")}>
-          <Wordmark className={styles.wordmark} />
-        </button>
-      </header>
+    <div
+      className={`${styles.experience} landing-root`}
+      style={{ "--wave-emissive": WAVE_EMISSIVE } as React.CSSProperties}
+    >
+      {/* One animated atmosphere for the whole landing, mounted once here so
+          the same grain runs from the hero to the footer. */}
+      <div className={styles.glow} aria-hidden />
+      <GrainField className={styles.atmosphere} />
 
-      <div className={styles.journey}>
-        <section className={styles.hero} aria-labelledby="landing-title">
-          <span className={styles.heroGlow} aria-hidden />
-          <p className={styles.eyebrow}>
-            <span className={styles.signalDot} aria-hidden />
-            {t("badge")}
-          </p>
-          <h1 id="landing-title" className={styles.heroTitle}>
+      <FloatingNav isAuthenticated={isAuthenticated} />
+
+      {/* Hero — unchanged */}
+      <section className={styles.stage} aria-labelledby="landing-title">
+        <WaveField className={styles.stageField} />
+        <div className={styles.stageContent}>
+          <h1 id="landing-title" className={styles.stageTitle}>
             {t("title")}
           </h1>
-          <p className={styles.heroSubtitle}>{t("subtitle")}</p>
-          <div className={styles.heroComposer}>
+          <p className={styles.stageSubtitle}>{t("subtitle")}</p>
+          <div className={styles.stageComposer}>
             <LandingComposer isAuthenticated={isAuthenticated} variant="hero" textareaId={HOME_COMPOSER_ID} />
           </div>
-          <p className={styles.heroNote}>{t("heroNote")}</p>
-        </section>
+        </div>
+      </section>
 
-        <section id="formation" className={styles.formationSection} aria-labelledby="formation-title">
+      {/* Everything below the hero — one continuous dark arc in the hero's
+          own register */}
+      <div className={styles.dark}>
+        {/* The wave's light, carried past the boundary */}
+        <div className={styles.spill} aria-hidden />
+
+        <section id="how-it-works" className={styles.section} aria-labelledby="explainer-title">
           <Reveal className={styles.sectionHeading} motion={motion}>
-            <p className={styles.eyebrow}>{t("formationEyebrow")}</p>
-            <h2 id="formation-title">{t("formationTitle")}</h2>
-            <p>{t("formationSubtitle")}</p>
+            <h2 id="explainer-title">{t("explainerTitle")}</h2>
+            <p>{t("explainerSubtitle")}</p>
           </Reveal>
-
-          <div className={styles.examplePicker} role="group" aria-label={t("examplePickerLabel")}>
-            {EXAMPLES.map((example) => {
-              const selected = example.id === activeExample.id;
-              return (
-                <button
-                  key={example.id}
-                  type="button"
-                  aria-pressed={selected}
-                  onClick={() => setActiveExampleId(example.id)}
-                  className={selected ? styles.exampleButtonActive : styles.exampleButton}
-                >
-                  <span aria-hidden>{selected ? "●" : "○"}</span>
-                  {t(example.labelKey)}
-                </button>
-              );
-            })}
-          </div>
-
-          <div className={styles.formationStage} key={activeExample.id}>
-            <div className={styles.beforeCard}>
-              <span className={styles.beatLabel}>{t("formationInputLabel")}</span>
-              <span className={styles.beforeMark} aria-hidden>
-                “
-              </span>
-              <p className={styles.beforeText}>{t(activeExample.labelKey)}</p>
-            </div>
-
-            <div className={styles.arrowBeat} aria-hidden>
-              <span className={styles.arrowBadge}>
-                <svg viewBox="0 0 20 20" fill="none" className={styles.arrowGlyph}>
-                  <path d="M4 10h12m0 0-5-5m5 5-5 5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-              </span>
-              <span className={styles.arrowLabel}>{t("formationUnderstandingLabel")}</span>
-            </div>
-
-            <article className={styles.projectPreview} aria-live="polite">
-              <span className={styles.beatLabel}>{t("formationProjectLabel")}</span>
-              <div className={styles.previewChrome}>
-                <span />
-                <span />
-                <span />
-                <p>{t(activeExample.projectNameKey)}</p>
-                <i>{t("liveFirstVersion")}</i>
-              </div>
-              <div className={styles.previewBody}>
-                <p className={styles.previewEyebrow}>{t(activeExample.eyebrowKey)}</p>
-                <h3>{t(activeExample.projectTitleKey)}</h3>
-                <p className={styles.previewDescription}>{t(activeExample.projectBodyKey)}</p>
-                <div className={styles.previewAction}>
-                  <span>{t(activeExample.projectCtaKey)}</span>
-                  <i aria-hidden>↗</i>
-                </div>
-                <div className={styles.previewMeta}>
-                  <span>{t(activeExample.projectMetaKey)}</span>
-                  <span>{t("previewEditable")}</span>
-                </div>
-              </div>
-            </article>
+          <div className={styles.sectionBody}>
+            <ProductExplainer />
           </div>
         </section>
 
-        <section id="after" className={styles.cycleSection} aria-labelledby="cycle-title">
-          <div className={styles.cycleIntro}>
-            <Reveal className={styles.sectionHeading} motion={motion}>
-              <p className={styles.eyebrow}>{t("cycleEyebrow")}</p>
-              <h2 id="cycle-title">{t("cycleTitle")}</h2>
-              <p>{t("cycleSubtitle")}</p>
-            </Reveal>
-            <div className={styles.responseSignal} aria-label={t("responseSignalLabel")}>
-              <span className={styles.responseAvatar} aria-hidden>
-                M
-              </span>
-              <div>
-                <p>{t("responseQuote")}</p>
-                <span>{t("responseMeta")}</span>
-              </div>
-              <i aria-hidden>↗</i>
-            </div>
-          </div>
-
-          <ol className={styles.cycleTrack} ref={cycleRef}>
-            {CYCLE_STEPS.map((step, index) => (
-              <li key={step.number} style={{ transitionDelay: `${index * 90}ms` }}>
-                <span className={styles.cycleNumber}>{step.number}</span>
-                <span className={styles.cycleNode} aria-hidden />
-                <h3>{t(step.titleKey)}</h3>
-                <p>{t(step.bodyKey)}</p>
-              </li>
-            ))}
-            <span className={styles.cycleRail} aria-hidden>
-              <i />
-            </span>
-          </ol>
-        </section>
-
-        <section className={styles.finalSection} aria-labelledby="final-title">
-          <Reveal className={styles.finalCopy} motion={motion}>
-            <p className={styles.eyebrow}>{t("finalEyebrow")}</p>
-            <h2 id="final-title">{t("finalTitle")}</h2>
-            <p>{t("finalSubtitle")}</p>
-            <div className={styles.finalComposer}>
-              <LandingComposer isAuthenticated={isAuthenticated} variant="final" />
-            </div>
+        {/* The second half of the same story: what happens after publish. No
+            anchor of its own — it reads as the continuation of the section
+            above it, not as a separate destination. */}
+        <section className={styles.section} aria-labelledby="evolve-title">
+          <Reveal className={styles.sectionHeading} motion={motion}>
+            <h2 id="evolve-title">{t("evolveTitle")}</h2>
+            <p>{t("evolveSubtitle")}</p>
           </Reveal>
+          <div className={styles.sectionBody}>
+            <ProductExplainer variant="evolve" reversed />
+          </div>
         </section>
+
+        {/* The ending: who this is for, and one way in. It absorbs the closing
+            CTA that used to sit here — two closing calls in a row would blunt
+            each other. */}
+        {/* The ending carries its own two headings, one per column, so the
+            section takes no centred header of its own. */}
+        <section className={styles.section} aria-labelledby="closing-title">
+          <ClosingSection isAuthenticated={isAuthenticated} />
+        </section>
+
+        <div className={styles.footer}>{children}</div>
       </div>
-
-      <div className={styles.footer}>{children}</div>
     </div>
   );
 }

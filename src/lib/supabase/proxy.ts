@@ -89,10 +89,11 @@ export async function updateSession(request: NextRequest) {
 
   if (user && isAuthRoute) {
     // An already-authenticated visitor landing on an auth page (stale
-    // bookmark, back button) is sent home — or to their preserved
-    // destination, same as a fresh login.
+    // bookmark, back button) is sent to Overview — the same place a fresh
+    // sign-in lands, so the two never disagree — or to their preserved
+    // destination when a protected route sent them here.
     const requestedNext = request.nextUrl.searchParams.get("next");
-    const destination = isSafeRedirectPath(requestedNext) ? requestedNext : "/";
+    const destination = isSafeRedirectPath(requestedNext) ? requestedNext : "/dashboard";
     return NextResponse.redirect(new URL(destination, request.url));
   }
 

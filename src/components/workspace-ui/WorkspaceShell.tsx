@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useState, useSyncExternalStore, type ReactNode } from "react";
 import {
   IconAnalytics,
@@ -81,6 +82,7 @@ export function WorkspaceShell({
   actions,
   children,
 }: WorkspaceShellProps) {
+  const t = useTranslations("workspace");
   const pathname = usePathname();
   const narrow = useSyncExternalStore(
     subscribeToNarrow,
@@ -92,16 +94,16 @@ export function WorkspaceShell({
   const collapsed = override ?? defaultCollapsed;
 
   const globalItems = [
-    { href: "/dashboard", label: "Overview", Icon: IconOverview },
-    { href: "/projects", label: "Projects", Icon: IconProjects },
-    { href: "/create", label: "New project", Icon: IconPlus },
+    { href: "/dashboard", label: t("navOverview"), Icon: IconOverview },
+    { href: "/projects", label: t("projectsTitle"), Icon: IconProjects },
+    { href: "/create", label: t("navNewProject"), Icon: IconPlus },
   ];
 
   const projectItems = project
     ? [
-        { href: `/projects/${project.id}`, label: "Build", Icon: IconBuild },
-        { href: `/projects/${project.id}/analytics`, label: "Analytics", Icon: IconAnalytics },
-        { href: `/projects/${project.id}/versions`, label: "Versions", Icon: IconVersions },
+        { href: `/projects/${project.id}`, label: t("navBuild"), Icon: IconBuild },
+        { href: `/projects/${project.id}/analytics`, label: t("navAnalytics"), Icon: IconAnalytics },
+        { href: `/projects/${project.id}/versions`, label: t("navVersions"), Icon: IconVersions },
       ]
     : [];
 
@@ -154,7 +156,7 @@ export function WorkspaceShell({
                 {initials}
               </span>
             </span>
-            {!compact && <span className="min-w-0 truncate">Account</span>}
+            {!compact && <span className="min-w-0 truncate">{t("navAccount")}</span>}
           </Link>
     );
 
@@ -181,8 +183,8 @@ export function WorkspaceShell({
         </Link>
 
         {showToggle && !compact && (
-          <Tooltip label="Collapse sidebar" side="left">
-            <VentrioButton variant="icon" size="sm" label="Collapse sidebar" onClick={() => setOverride(true)}>
+          <Tooltip label={t("railCollapse")} side="left">
+            <VentrioButton variant="icon" size="sm" label={t("railCollapse")} onClick={() => setOverride(true)}>
               <IconCollapse className="h-[18px] w-[18px]" />
             </VentrioButton>
           </Tooltip>
@@ -191,8 +193,8 @@ export function WorkspaceShell({
 
       {showToggle && compact && (
         <div className="flex shrink-0 justify-center pb-1">
-          <Tooltip label="Expand sidebar">
-            <VentrioButton variant="icon" size="sm" label="Expand sidebar" onClick={() => setOverride(false)}>
+          <Tooltip label={t("railExpand")}>
+            <VentrioButton variant="icon" size="sm" label={t("railExpand")} onClick={() => setOverride(false)}>
               <IconCollapse className="h-[18px] w-[18px]" />
             </VentrioButton>
           </Tooltip>
@@ -200,7 +202,7 @@ export function WorkspaceShell({
       )}
 
       <nav
-        aria-label="Workspace"
+        aria-label={t("navLabel")}
         className="flex flex-1 flex-col gap-5 overflow-y-auto overflow-x-hidden pb-3"
         style={{ padding: compact ? "0 14px 12px" : "0 12px 12px" }}
       >
@@ -213,7 +215,7 @@ export function WorkspaceShell({
             {!compact ? (
               <div className="flex min-w-0 items-center gap-1.5 px-2.5 pb-1">
                 <span className="dot" style={{ background: "var(--accent)" }} />
-                <span className="ws-nav-label min-w-0 truncate">{project.name}</span>
+                <span className="ws-nav-label min-w-0 truncate">{project.name || t("untitledProject")}</span>
               </div>
             ) : null}
             {projectItems.map((item) => navItem(item, compact))}
@@ -222,7 +224,7 @@ export function WorkspaceShell({
 
         {!compact && !project && recent.length > 0 && (
           <div className="flex flex-col gap-0.5">
-            <p className="ws-nav-label px-2.5 pb-1.5">Recent</p>
+            <p className="ws-nav-label px-2.5 pb-1.5">{t("navRecent")}</p>
             {recent.map((item) => (
               <Link
                 key={item.id}
@@ -234,7 +236,7 @@ export function WorkspaceShell({
                 <span className="ws-nav-icon">
                   <span className="dot" style={{ background: item.accent }} />
                 </span>
-                <span className="min-w-0 truncate">{item.name}</span>
+                <span className="min-w-0 truncate">{item.name || t("untitledProject")}</span>
               </Link>
             ))}
           </div>
@@ -245,9 +247,9 @@ export function WorkspaceShell({
         className={`flex shrink-0 flex-col gap-1 ${compact ? "items-center" : ""}`}
         style={{ padding: compact ? "10px 14px 14px" : "10px 12px 14px" }}
       >
-        {navItem({ href: "/settings", label: "Settings", Icon: IconSettings }, compact)}
+        {navItem({ href: "/settings", label: t("navSettings"), Icon: IconSettings }, compact)}
         {compact ? (
-          <Tooltip label="Account">{accountLink}</Tooltip>
+          <Tooltip label={t("navAccount")}>{accountLink}</Tooltip>
         ) : (
           accountLink
         )}
@@ -272,7 +274,7 @@ export function WorkspaceShell({
               a bare button on purpose so it carries no button styling. */}
           <button
             type="button"
-            aria-label="Close navigation"
+            aria-label={t("navClose")}
             onClick={() => setDrawerOpen(false)}
             className="ws-scrim absolute inset-0 cursor-default"
           />
@@ -300,7 +302,7 @@ export function WorkspaceShell({
             <VentrioButton
               variant="icon"
               size="md"
-              label="Open navigation"
+              label={t("navOpen")}
               className="-ml-1"
               onClick={() => setDrawerOpen(true)}
             >
@@ -316,20 +318,22 @@ export function WorkspaceShell({
                 style={{ color: "var(--ink-3)", outlineColor: "var(--accent)" }}
               >
                 <IconBack className="h-4 w-4" />
-                Projects
+                {t("projectsTitle")}
               </Link>
-              <span className="min-w-0 truncate text-[15px] font-bold tracking-[-0.01em]">{project.name}</span>
+              <span className="min-w-0 truncate text-[15px] font-bold tracking-[-0.01em]">
+                {project.name || t("untitledProject")}
+              </span>
               <StatusPill state={project.state} />
             </div>
           ) : (
             <span className="min-w-0 flex-1 truncate text-[15px] font-bold tracking-[-0.01em]">
               {pathname === "/settings"
-                ? "Settings"
+                ? t("navSettings")
                 : pathname === "/projects"
-                  ? "Projects"
+                  ? t("projectsTitle")
                   : pathname === "/create"
-                    ? "New project"
-                    : "Overview"}
+                    ? t("navNewProject")
+                    : t("navOverview")}
             </span>
           )}
 

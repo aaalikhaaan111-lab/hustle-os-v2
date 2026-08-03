@@ -1,19 +1,22 @@
 "use client";
 
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { IconBuild, IconPlus, ProductPreview, StatusPill } from "@/components/workspace-ui/parts";
 import { PageBody, PageHeading } from "@/components/workspace-ui/PageBody";
 import { VentrioLinkButton } from "@/components/ui/VentrioButton";
+import { formatAge } from "@/lib/workspace/formatAge";
 import type { PresentedProject } from "@/lib/workspace/present";
 
-const LIFECYCLE = [
-  "Project created",
-  "First version ready",
-  "Published",
-  "First visitor",
-  "Emerging pattern",
-  "Next version",
-];
+/** The six stages, named in the catalogue so they read in either language. */
+const LIFECYCLE_KEYS = [
+  "lifecycleCreated",
+  "lifecycleFirstVersion",
+  "lifecyclePublished",
+  "lifecycleFirstVisitor",
+  "lifecyclePattern",
+  "lifecycleNextVersion",
+] as const;
 
 export interface OverviewScreenProps {
   active: PresentedProject | null;
@@ -31,24 +34,24 @@ export interface OverviewScreenProps {
  * and in Settings, not in front of someone deciding what to do next.
  */
 export function OverviewScreen({ active, recent, activeResponses }: OverviewScreenProps) {
+  const t = useTranslations("workspace");
+  const lifecycle = LIFECYCLE_KEYS.map((key) => t(key));
+
   if (!active) {
     return (
       <PageBody>
-        <PageHeading
-          title="Overview"
-          lead="Nothing built yet. Describe what visitors should be able to do and Ventrio will shape the first version."
-        />
+        <PageHeading title={t("navOverview")} lead={t("overviewEmptyLead")} />
         <div
           className="rise mt-7 rounded-[var(--r-lg)] border px-8 py-12 text-center"
           style={{ borderColor: "var(--line)", background: "var(--surface)" }}
         >
-          <p className="text-[17px] font-semibold tracking-[-0.01em]">Start your first project</p>
+          <p className="text-[17px] font-semibold tracking-[-0.01em]">{t("startFirstTitle")}</p>
           <p className="mx-auto mt-2 max-w-md text-[14px] leading-relaxed" style={{ color: "var(--ink-2)" }}>
-            For example: let people join a weekly football game, or book a maths tutor for next week.
+            {t("startFirstBody")}
           </p>
           <VentrioLinkButton href="/create" variant="primary" className="mt-6">
             <IconPlus className="h-4 w-4" />
-            New project
+            {t("navNewProject")}
           </VentrioLinkButton>
         </div>
       </PageBody>
@@ -58,13 +61,18 @@ export function OverviewScreen({ active, recent, activeResponses }: OverviewScre
   // Only stages the data actually supports. Tracking has no pipeline, so the
   // furthest any project can currently reach is "published".
   const reached = active.state === "published" ? (activeResponses > 0 ? 3 : 2) : active.hasOutput ? 1 : 0;
-  const nextStage = LIFECYCLE[Math.min(reached + 1, LIFECYCLE.length - 1)];
+  const nextStage = lifecycle[Math.min(reached + 1, lifecycle.length - 1)];
+  const activeName = active.name || t("untitledProject");
 
   return (
     <PageBody>
       <PageHeading
-        title="Overview"
-        lead={active.state === "published" ? `${active.name} is live.` : `${active.name} is still a draft.`}
+        title={t("navOverview")}
+        lead={
+          active.state === "published"
+            ? t("overviewLeadLive", { name: activeName })
+            : t("overviewLeadDraft", { name: activeName })
+        }
       />
 
       {/* The one project that matters most, at full size. */}
@@ -88,7 +96,7 @@ export function OverviewScreen({ active, recent, activeResponses }: OverviewScre
           <div className="flex min-w-0 flex-1 flex-col justify-between gap-6 p-5">
             <div>
               <div className="flex min-w-0 items-center gap-2">
-                <h2 className="min-w-0 truncate text-[18px] font-semibold tracking-[-0.01em]">{active.name}</h2>
+                <h2 className="min-w-0 truncate text-[18px] font-semibold tracking-[-0.01em]">{activeName}</h2>
                 <StatusPill state={active.state} />
               </div>
               {active.summary && (
@@ -97,7 +105,7 @@ export function OverviewScreen({ active, recent, activeResponses }: OverviewScre
                 </p>
               )}
               <p className="mt-2.5 text-[13px]" style={{ color: "var(--ink-3)" }}>
-                Updated {active.updated}
+                {t("projectsUpdated", { when: formatAge(t, active.updated) })}
               </p>
             </div>
 
@@ -106,14 +114,14 @@ export function OverviewScreen({ active, recent, activeResponses }: OverviewScre
                   nothing about what happens next. */}
               <div className="flex items-baseline justify-between gap-3">
                 <p className="text-[13px] font-semibold" style={{ color: "var(--ink-2)" }}>
-                  {LIFECYCLE[reached]}
+                  {lifecycle[reached]}
                 </p>
                 <p className="text-[13px] tabular-nums" style={{ color: "var(--ink-3)" }}>
-                  {reached + 1}/{LIFECYCLE.length}
+                  {reached + 1}/{lifecycle.length}
                 </p>
               </div>
               <div className="mt-2 flex items-center gap-1.5">
-                {LIFECYCLE.map((stage, index) => (
+                {lifecycle.map((stage, index) => (
                   <span
                     key={stage}
                     className="h-1 flex-1 rounded-full transition-colors duration-[var(--t-ctl)]"
@@ -123,11 +131,11 @@ export function OverviewScreen({ active, recent, activeResponses }: OverviewScre
               </div>
               <div className="mt-3.5 flex flex-wrap items-center justify-between gap-3">
                 <p className="text-[13px]" style={{ color: "var(--ink-3)" }}>
-                  Next: <span style={{ color: "var(--ink-2)" }}>{nextStage}</span>
+                  {t("overviewNextLabel")} <span style={{ color: "var(--ink-2)" }}>{nextStage}</span>
                 </p>
                 <VentrioLinkButton href={`/projects/${active.id}`} variant="primary">
                   <IconBuild className="h-4 w-4" />
-                  Continue building
+                  {t("overviewContinue")}
                 </VentrioLinkButton>
               </div>
             </div>
@@ -138,13 +146,13 @@ export function OverviewScreen({ active, recent, activeResponses }: OverviewScre
       {recent.length > 0 && (
         <section className="mt-9">
           <div className="flex items-baseline justify-between">
-            <h2 className="text-[15px] font-semibold">Recent projects</h2>
+            <h2 className="text-[15px] font-semibold">{t("overviewRecent")}</h2>
             <Link
               href="/projects"
               className="text-[13px] font-semibold transition-opacity duration-[var(--t-hover)] hover:opacity-70"
               style={{ color: "var(--accent-ink)" }}
             >
-              All projects
+              {t("overviewAllProjects")}
             </Link>
           </div>
 
@@ -161,15 +169,17 @@ export function OverviewScreen({ active, recent, activeResponses }: OverviewScre
                   />
                   <span className="min-w-0 flex-1">
                     <span className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
-                      <span className="min-w-0 truncate text-[14.5px] font-semibold tracking-[-0.01em]">{project.name}</span>
+                      <span className="min-w-0 truncate text-[14.5px] font-semibold tracking-[-0.01em]">
+                        {project.name || t("untitledProject")}
+                      </span>
                       <StatusPill state={project.state} />
                     </span>
                     <span className="mt-0.5 block truncate text-[13px]" style={{ color: "var(--ink-2)" }}>
-                      {project.summary ?? (project.hasOutput ? "First version ready." : "No first version yet.")}
+                      {project.summary ?? (project.hasOutput ? t("summaryReady") : t("summaryNoVersion"))}
                     </span>
                   </span>
                   <span className="shrink-0 pt-0.5 text-[13px] tabular-nums" style={{ color: "var(--ink-3)" }}>
-                    {project.updated}
+                    {formatAge(t, project.updated)}
                   </span>
                 </Link>
               </li>
@@ -179,7 +189,7 @@ export function OverviewScreen({ active, recent, activeResponses }: OverviewScre
       )}
 
       <section className="mt-9">
-        <h2 className="text-[15px] font-semibold">Product evolution</h2>
+        <h2 className="text-[15px] font-semibold">{t("overviewEvolution")}</h2>
         <div
           className="mt-2.5 flex flex-wrap items-center justify-between gap-3 rounded-[var(--r-md)] border px-4 py-3.5"
           style={{ borderColor: "var(--line-accent)", background: "var(--accent-soft)" }}
@@ -187,11 +197,9 @@ export function OverviewScreen({ active, recent, activeResponses }: OverviewScre
           {/* No detection pipeline exists, so no project can have a signal.
               The state is honest rather than aspirational. */}
           <div className="min-w-0">
-            <p className="text-[14px] font-semibold">No repeated signal yet</p>
+            <p className="text-[14px] font-semibold">{t("overviewSignalTitle")}</p>
             <p className="mt-0.5 text-[13px] leading-relaxed" style={{ color: "var(--ink-2)" }}>
-              {active.state === "published"
-                ? "Bring the first visitors to begin learning from real use."
-                : "Publish and bring the first visitors to begin learning from real use."}
+              {active.state === "published" ? t("overviewSignalLive") : t("overviewSignalDraft")}
             </p>
           </div>
           <Link
@@ -199,7 +207,7 @@ export function OverviewScreen({ active, recent, activeResponses }: OverviewScre
             className="shrink-0 text-[13px] font-semibold transition-opacity duration-[var(--t-hover)] hover:opacity-70"
             style={{ color: "var(--accent-ink)" }}
           >
-            See what Ventrio will look for
+            {t("overviewSignalLink")}
           </Link>
         </div>
       </section>
