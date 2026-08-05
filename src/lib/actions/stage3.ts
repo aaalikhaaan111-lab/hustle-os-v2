@@ -280,7 +280,15 @@ export async function getFirstVersionJobAction(projectId: string): Promise<First
  * short-circuit comes first, the job claim second, and the usage reservation
  * only after both — so neither a replay nor a losing race can spend quota.
  */
-export async function generateFirstVersionAction(projectId: string): Promise<Stage3Result> {
+/**
+ * `intake` carries the user's two structured choices. Optional and additive:
+ * every existing caller keeps working, and a fully-deferred intake passes
+ * nothing at all rather than a placeholder the generator has to interpret.
+ */
+export async function generateFirstVersionAction(
+  projectId: string,
+  intake?: { productType?: string; designDirection?: string } | null,
+): Promise<Stage3Result> {
   const t = await getTranslations("stage3");
   if (!UUID_PATTERN.test(projectId)) return { error: t("errorInvalid"), output: null, reply: null };
   const { supabase, user, project, stage3 } = await ownedProject(projectId);
@@ -362,7 +370,7 @@ export async function generateFirstVersionAction(projectId: string): Promise<Sta
       max_tokens: 16000,
       output_config: { effort: "medium" },
       system: outputPrompt(locale),
-      messages: [{ role: "user", content: JSON.stringify({ direction: stage3.direction, projectLocale: locale }) }],
+      messages: [{ role: "user", content: JSON.stringify({ direction: stage3.direction, projectLocale: locale, ...(intake ? { intake } : {}) }) }],
     });
     logUsage("first_version_generation", projectId, startedAt, response);
     const textBlock = response.content.find((block) => block.type === "text");

@@ -133,10 +133,18 @@ check("ru edit detection still works", isProjectOutputEditRequest("сделай 
   const component = readFileSync(
     new URL("../src/components/build/PreOutputWorkspace.tsx", import.meta.url), "utf8");
 
-  check("the workspace prefers the project locale over the UI locale",
-    /const locale = projectLocale \|\| uiLocale/.test(component));
-  check("useLocale is no longer bound directly to `locale`",
-    !/const locale = useLocale\(\)/.test(component));
+  // CORRECTED. The original assertion here checked that a variable existed,
+  // which proved nothing: that variable only ever fed the speech-recognition
+  // language tag, while every visible label still came from the root provider.
+  // What actually makes the workspace speak the project's language is the page
+  // scoping the subtree, so that is what is asserted now.
+  const page = readFileSync(
+    new URL("../src/app/projects/[id]/page.tsx", import.meta.url), "utf8");
+  check("the workspace subtree is scoped to the project locale",
+    /<NextIntlClientProvider locale=\{props\.projectLocale\}/.test(page));
+  check("…with the project locale's messages",
+    /messages\/\$\{props\.projectLocale\}\.json/.test(page));
+  check("the speech locale still prefers the project", /speechLocale = projectLocale \|\| uiLocale/.test(component));
   check("an explicit build request is routed to generation before the chat",
     /isFirstVersionRequest\(content\)[\s\S]{0,80}createFirstVersion\(\)/.test(component));
 

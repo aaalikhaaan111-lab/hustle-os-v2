@@ -7,6 +7,10 @@ import { sendAssistantMessage } from "@/lib/actions/assistant";
 import { editProjectOutputAction, generateFirstVersionAction } from "@/lib/actions/stage3";
 import type { CreationDirection } from "@/lib/build/creationTypes";
 import { isFirstVersionRequest, isProjectOutputEditRequest } from "@/lib/build/editIntent";
+import { StructuredChoice } from "./StructuredChoice";
+import { useBuildIntake } from "@/lib/build/useBuildIntake";
+import type { DesignPreviewId } from "@/lib/build/intake";
+import { intakeGenerationBrief, type IntakeAnswers } from "@/lib/build/intake";
 import type { Stage3ProjectOutput, Stage3Status } from "@/lib/build/stage3Types";
 import { ProjectOutputRenderer } from "@/components/build/ProjectOutputRenderer";
 import { PublicationControls } from "@/components/publishing/PublicationControls";
@@ -75,13 +79,12 @@ export function PreOutputWorkspace({
   const t = useTranslations("stage3");
   const tb = useTranslations("build");
   const tw = useTranslations("workspace");
-  // The assistant answers in the project's language (see assistant.ts, which
-  // passes project.locale to the model), so the chips beside it must use the
-  // same one. Reading the UI locale here is what produced Russian replies next
-  // to English chips for anyone whose interface cookie disagreed with their
-  // project.
+  // Labels come from the provider, which the workspace page scopes to the
+  // project's locale — so `useTranslations` here is already the project's
+  // language. This value exists only for the speech-recognition language tag,
+  // which is not a message lookup and cannot come from the provider.
   const uiLocale = useLocale();
-  const locale = projectLocale || uiLocale;
+  const speechLocale = projectLocale || uiLocale;
 
   const [output, setOutput] = useState(initialOutput);
   const [messages, setMessages] = useState<ChatMessage[]>(
@@ -114,7 +117,7 @@ export function PreOutputWorkspace({
   const busy = isGenerating || isSending || job.active;
 
   const voice = useVoiceInput({
-    lang: locale === "ru" ? "ru-RU" : "en-US",
+    lang: speechLocale === "ru" ? "ru-RU" : "en-US",
     disabled: busy || !assistant.available,
     onTranscript: (text) => setInput((prev) => (prev ? `${prev.trimEnd()} ${text}` : text)),
   });
@@ -127,11 +130,26 @@ export function PreOutputWorkspace({
     ? [t("editPremium"), t("editAudience"), t("editCta")]
     : [t("sharpenDirection"), t("whoFirst"), t("firstVersionCouldBe")];
 
+  // The words the intake reasons about. The saved concept is the user's own
+  // description; `direction` is what the create flow already distilled from it.
+  const ideaText =
+    projectConcept?.trim() ||
+    [direction?.concept, direction?.niche, direction?.problem].filter(Boolean).join(" ").trim() ||
+    projectName;
+
+  const intake = useBuildIntake({
+    projectId,
+    idea: ideaText,
+    // Intake exists only in the gap between "has an idea" and "has output".
+    enabled: !output && !!direction && !job.active && assistant.available,
+    onComplete: (answers: IntakeAnswers) => createFirstVersion(false, answers),
+  });
+
   function append(role: ChatMessage["role"], content: string) {
     setMessages((current) => [...current, { id: `${role}-${crypto.randomUUID()}`, role, content }]);
   }
 
-  function createFirstVersion(retry = false) {
+  function createFirstVersion(retry = false, answers?: IntakeAnswers) {
     if (busy || !direction || output) return;
     setNote(null);
     // Before the round trip, so the button answers on the first frame rather
@@ -139,7 +157,7 @@ export function PreOutputWorkspace({
     job.markStarting(retry);
     startGenerating(async () => {
       try {
-        const result = await generateFirstVersionAction(projectId);
+        const result = await generateFirstVersionAction(projectId, answers ? intakeGenerationBrief(answers) : null);
         if (result.error || !result.output) {
           if (result.limitReached) {
             setNote(t("firstVersionLimitReached"));
@@ -164,6 +182,9 @@ export function PreOutputWorkspace({
   function submit(raw: string) {
     const content = raw.trim();
     if (!content || busy || !assistant.available) return;
+    // Typing is an answer of its own: the person has decided the question is
+    // not what they want to do next, so it should not still be sitting there.
+    intake.dismiss();
     setInput("");
     setNote(null);
     append("user", content);
@@ -440,7 +461,24 @@ export function PreOutputWorkspace({
 
             <div className="shrink-0 px-5 pb-5 pt-2 sm:px-8 sm:pb-7">
               <div className="mx-auto w-full" style={{ maxWidth: measure }}>
-                <div className="mb-2 flex flex-wrap gap-2">
+                {intake.step ? (
+                  <StructuredChoice
+                    key={intake.step.id}
+                    labelledById="build-intake-title"
+                    title={tb(intake.step.titleKey as never)}
+                    deferLabel={tb(intake.step.deferKey as never)}
+                    progress={intake.progress ?? undefined}
+                    disabled={busy}
+                    options={intake.step.options.map((option) => ({
+                      id: option.id,
+                      label: tb(option.labelKey as never),
+                      hint: option.hintKey ? tb(option.hintKey as never) : undefined,
+                      preview: "preview" in option ? (option as { preview: DesignPreviewId }).preview : undefined,
+                    }))}
+                    onChoose={intake.choose}
+                  />
+                ) : null}
+                <div className="mb-2 flex flex-wrap gap-2" hidden={!!intake.step}>
                   {suggestions.map((suggestion) => (
                     <VentrioButton
                       key={suggestion}
