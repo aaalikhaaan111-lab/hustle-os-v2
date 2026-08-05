@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { detectMessageLocale, replyLocaleFor } from "@/lib/build/messageLocale";
 import { DEFAULT_LOCALE, isLocale, type Locale } from "@/i18n/locale";
 import { assistantPhase, type AssistantPhase } from "@/lib/build/assistantPrompts";
+import { classifyBuildIntent } from "@/lib/build/buildIntent";
 import {
   generateAssistantReply,
   summarizeProjectMemory,
@@ -129,6 +130,11 @@ export interface SendMessageResult {
   reply: string | null;
   /** A structured field the user may confirm-and-save; never applied here. */
   proposal: AssistantProposal | null;
+  /**
+   * The caller must start generating the first version now. Set only when the
+   * person explicitly asked to build and no version exists yet.
+   */
+  startGeneration?: boolean;
 }
 
 // Sends one user message and returns the assistant's reply, persisting both.
@@ -223,6 +229,40 @@ export async function sendAssistantMessage(
 
   // Assemble context: authoritative project state + snapshot + memory + recent turns.
   const stage3 = parseStage3ProjectState(project.snapshot_fields);
+
+  /**
+   * An explicit "build it" is answered by building, not by asking the model.
+   *
+   * The reported failure was a loop: told three times to "сгенерируй сайт", the
+   * assistant replied three times that it would not invent a problem statement
+   * and needed confirmation first, each time with a "Save as problem" card. A
+   * model free to re-decide every turn will eventually keep choosing discovery,
+   * so this turn is decided in code and the model is not consulted at all —
+   * there is no prompt left for it to refuse from.
+   *
+   * The reply is fixed, localized, and says plainly that assumptions are being
+   * made and can be changed. No proposal is attached, so no confirmation card
+   * can appear on a turn that asked for a build.
+   */
+  if (classifyBuildIntent(message, { hasOutput: !!stage3?.output }) === "BUILD_NOW") {
+    const tBuild = await getTranslations({ locale, namespace: "build" });
+    const reply = tBuild("buildAcknowledged");
+    await supabase.from("project_ai_messages").insert({
+      conversation_id: convId,
+      project_id: projectId,
+      user_id: user.id,
+      role: "assistant",
+      content: reply,
+    });
+    return {
+      error: null,
+      unavailableNote: null,
+      conversationId: convId,
+      reply,
+      proposal: null,
+      startGeneration: true,
+    };
+  }
   const feedbackContextPromise = stage3?.output && isFeedbackRequest(message)
     ? loadFeedbackConversationContext(supabase, projectId, user.id, stage3.output.preset)
     : Promise.resolve(null);

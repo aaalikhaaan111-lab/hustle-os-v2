@@ -145,8 +145,15 @@ check("ru edit detection still works", isProjectOutputEditRequest("сделай 
   check("…with the project locale's messages",
     /messages\/\$\{props\.projectLocale\}\.json/.test(page));
   check("the speech locale still prefers the project", /speechLocale = projectLocale \|\| uiLocale/.test(component));
+  // The routing survives, but the decision moved to the shared classifier so
+  // that "просто сделай, остальное придумай сам" counts as a build too. The
+  // `direction &&` that used to sit in this condition is deliberately gone:
+  // requiring a chosen direction is what sent build requests to a model that
+  // could only answer them with a refusal.
   check("an explicit build request is routed to generation before the chat",
-    /isFirstVersionRequest\(content\)[\s\S]{0,80}createFirstVersion\(\)/.test(component));
+    /classifyBuildIntent\(content, \{ hasOutput: false \}\) === "BUILD_NOW"[\s\S]{0,80}createFirstVersion\(\)/.test(component));
+  check("and no longer requires a direction to have been chosen",
+    !/direction && isFirstVersionRequest/.test(component));
 
   // Both locales must actually carry the chip strings, or "follow the locale"
   // silently falls back to the other language.

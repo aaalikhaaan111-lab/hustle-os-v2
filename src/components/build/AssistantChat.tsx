@@ -9,6 +9,7 @@ import {
   type AssistantMessage,
 } from "@/lib/actions/assistant";
 import { saveStructuredFieldAction } from "@/lib/actions/projectFields";
+import { generateFirstVersionAction } from "@/lib/actions/stage3";
 import type { AssistantProposal } from "@/lib/actions/buildAi";
 import { FIELD_TO_LABELKEY, type StructuredField } from "@/lib/build/snapshot";
 import { STARTER_PROMPT_KEYS, type AssistantPhase } from "@/lib/build/assistantPrompts";
@@ -182,6 +183,20 @@ export function AssistantChat({
         ]);
       }
       if (result.proposal) setProposal(result.proposal);
+      // The server decided this turn is a build. Actually start generation —
+      // the acknowledgement above is not the work, and a reply that says
+      // "creating your first version" while nothing runs is the same broken
+      // promise in nicer words.
+      if (result.startGeneration) {
+        const generated = await generateFirstVersionAction(projectId);
+        if (generated.error) {
+          setNote(generated.error);
+          return;
+        }
+        // The workspace reads the version from the server, so re-render rather
+        // than duplicating output state here.
+        router.refresh();
+      }
     });
   }
 

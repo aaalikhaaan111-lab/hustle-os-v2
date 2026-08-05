@@ -18,6 +18,7 @@ import {
   type CreationTurn,
 } from "@/lib/build/creationTypes";
 import { takeSeed } from "@/lib/create/seed";
+import { classifyBuildIntent } from "@/lib/build/buildIntent";
 import { WorkspaceComposer } from "@/components/workspace-ui/Composer";
 import { VentrioButton } from "@/components/ui/VentrioButton";
 import { useVoiceInput, voiceErrorKey } from "@/lib/workspace/useVoiceInput";
@@ -134,6 +135,68 @@ export function CreateExperience({ userId, initialDraft }: CreateExperienceProps
     return next;
   }
 
+  function chooseDirection(direction: CreationDirection, index: number) {
+    if (creating || isSending || !projectId || selectionLockRef.current) return;
+    selectionLockRef.current = true;
+    setSelectedDirection(index);
+    setGenerationRetry(null);
+    setCreationPhase("persisting");
+    setNote(null);
+    setNoteIsLimitReached(false);
+
+    void (async () => {
+      let selectedProjectId: string | null = null;
+      try {
+        const result = await selectCreationDirectionAction(projectId, direction, startingPoint);
+        if (result.error || !result.projectId) {
+          selectionLockRef.current = false;
+          setCreationPhase("idle");
+          setSelectedDirection(null);
+          setNote(result.error ?? t("errorSaveFailed"));
+          return;
+        }
+        selectedProjectId = result.projectId;
+        setCreationPhase("generating");
+        const generation = await generateFirstVersionAction(result.projectId);
+        if (generation.error || !generation.output) {
+          selectionLockRef.current = false;
+          setCreationPhase("idle");
+          setSelectedDirection(null);
+          if (generation.limitReached) {
+            setNote(t("firstVersionLimitReached"));
+            setNoteIsLimitReached(true);
+            return;
+          }
+          setGenerationRetry({ direction, index });
+          setNote(generation.error ?? t("errorSaveFailed"));
+          return;
+        }
+        try {
+          window.localStorage.removeItem(storageKey);
+        } catch {
+          // Non-fatal: the successful project is already persisted.
+        }
+        setCreationPhase("handoff");
+        router.push(`/projects/${result.projectId}`);
+      } catch {
+        if (selectedProjectId) {
+          try {
+            window.localStorage.removeItem(storageKey);
+          } catch {
+            // The selected project is already canonical on the server.
+          }
+          setCreationPhase("handoff");
+          router.push(`/projects/${selectedProjectId}`);
+          return;
+        }
+        selectionLockRef.current = false;
+        setCreationPhase("idle");
+        setSelectedDirection(null);
+        setNote(t("errorSaveFailed"));
+      }
+    })();
+  }
+
   /**
    * `sessionOverride` starts this turn in a brand-new creation session.
    *
@@ -185,6 +248,25 @@ export function CreateExperience({ userId, initialDraft }: CreateExperienceProps
           { role: "assistant", content: result.turn.message },
         ]);
         setPendingRequestId(null);
+
+        // "Сам придумай" means build, not "show me three cards".
+        //
+        // When the person has explicitly handed the decision over, stopping to
+        // ask which of three directions they prefer is the same interruption
+        // they just declined. If this turn proposed directions and the message
+        // that produced them was an explicit build instruction, the first
+        // direction is taken and generation starts in the same turn. The other
+        // directions were the model's own alternatives, so picking its first is
+        // a choice it already ranked — and everything it produces is editable
+        // afterwards anyway.
+        if (
+          result.turn.phase === "propose" &&
+          result.turn.directions.length > 0 &&
+          classifyBuildIntent(content, { hasOutput: false }) === "BUILD_NOW"
+        ) {
+          queueMicrotask(() => chooseDirection(result.turn.directions[0], 0));
+          return;
+        }
         // The conversation's language is settled by the message, not by the
         // account cookie, so the surrounding chrome may now be in the wrong
         // one. Re-rendering the server component picks up the project's locale
@@ -303,67 +385,6 @@ export function CreateExperience({ userId, initialDraft }: CreateExperienceProps
     send(answer, null);
   }
 
-  function chooseDirection(direction: CreationDirection, index: number) {
-    if (creating || isSending || !projectId || selectionLockRef.current) return;
-    selectionLockRef.current = true;
-    setSelectedDirection(index);
-    setGenerationRetry(null);
-    setCreationPhase("persisting");
-    setNote(null);
-    setNoteIsLimitReached(false);
-
-    void (async () => {
-      let selectedProjectId: string | null = null;
-      try {
-        const result = await selectCreationDirectionAction(projectId, direction, startingPoint);
-        if (result.error || !result.projectId) {
-          selectionLockRef.current = false;
-          setCreationPhase("idle");
-          setSelectedDirection(null);
-          setNote(result.error ?? t("errorSaveFailed"));
-          return;
-        }
-        selectedProjectId = result.projectId;
-        setCreationPhase("generating");
-        const generation = await generateFirstVersionAction(result.projectId);
-        if (generation.error || !generation.output) {
-          selectionLockRef.current = false;
-          setCreationPhase("idle");
-          setSelectedDirection(null);
-          if (generation.limitReached) {
-            setNote(t("firstVersionLimitReached"));
-            setNoteIsLimitReached(true);
-            return;
-          }
-          setGenerationRetry({ direction, index });
-          setNote(generation.error ?? t("errorSaveFailed"));
-          return;
-        }
-        try {
-          window.localStorage.removeItem(storageKey);
-        } catch {
-          // Non-fatal: the successful project is already persisted.
-        }
-        setCreationPhase("handoff");
-        router.push(`/projects/${result.projectId}`);
-      } catch {
-        if (selectedProjectId) {
-          try {
-            window.localStorage.removeItem(storageKey);
-          } catch {
-            // The selected project is already canonical on the server.
-          }
-          setCreationPhase("handoff");
-          router.push(`/projects/${selectedProjectId}`);
-          return;
-        }
-        selectionLockRef.current = false;
-        setCreationPhase("idle");
-        setSelectedDirection(null);
-        setNote(t("errorSaveFailed"));
-      }
-    })();
-  }
 
   function beginRefine(name: string) {
     if (creating || isSending) return;

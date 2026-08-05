@@ -773,7 +773,8 @@
     "intakeDesignWarmCraftHint": "Warm paper, hand-made",
     "intakeBack": "Back",
     "voiceDismissed": "Dictation needs the microphone. Press the microphone again and choose Allow.",
-    "voiceInsecure": "Voice input needs a secure (https) connection."
+    "voiceInsecure": "Voice input needs a secure (https) connection.",
+    "buildAcknowledged": "Got it. I'm building the first version now — I'll make reasonable choices about the structure, content and look, and you can change any of it afterwards."
   },
   "profile": {
     "title": "Profile",

@@ -6,7 +6,8 @@ import type { AssistantMessage } from "@/lib/actions/assistant";
 import { sendAssistantMessage } from "@/lib/actions/assistant";
 import { editProjectOutputAction, generateFirstVersionAction } from "@/lib/actions/stage3";
 import type { CreationDirection } from "@/lib/build/creationTypes";
-import { isFirstVersionRequest, isProjectOutputEditRequest } from "@/lib/build/editIntent";
+import { isProjectOutputEditRequest } from "@/lib/build/editIntent";
+import { classifyBuildIntent } from "@/lib/build/buildIntent";
 import { StructuredChoice } from "./StructuredChoice";
 import { useBuildIntake } from "@/lib/build/useBuildIntake";
 import type { DesignPreviewId } from "@/lib/build/intake";
@@ -150,7 +151,10 @@ export function PreOutputWorkspace({
   }
 
   function createFirstVersion(retry = false, answers?: IntakeAnswers) {
-    if (busy || !direction || output) return;
+    // No `!direction` here either: the server infers one when nobody picked a
+    // card, so refusing on the client would only reinstate the gate one layer
+    // up and leave the button silently dead.
+    if (busy || output) return;
     setNote(null);
     // Before the round trip, so the button answers on the first frame rather
     // than after the job row exists.
@@ -191,7 +195,13 @@ export function PreOutputWorkspace({
     // An explicit "build the site" before any output exists is a request for
     // generation, not for conversation. Routing it to the chat is what let the
     // assistant answer a build request with a refusal.
-    if (!output && !job.active && direction && isFirstVersionRequest(content)) {
+    //
+    // The `direction &&` that used to be here was half the reported bug: with
+    // no direction chosen, a build request fell through to the assistant, which
+    // had no way to build and so asked for the problem to be confirmed instead.
+    // Generation now infers a direction rather than requiring one, so intent is
+    // the only thing this needs to check.
+    if (!output && !job.active && classifyBuildIntent(content, { hasOutput: false }) === "BUILD_NOW") {
       createFirstVersion();
       return;
     }

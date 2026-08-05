@@ -262,8 +262,11 @@ function runFlow(idea: string, picks: (string | null)[]) {
   // The action must have no other way to build the body.
   const action = readFileSync(new URL("../src/lib/actions/stage3.ts", import.meta.url), "utf8");
   const firstVersionCall = action.slice(action.indexOf("generateFirstVersionAction"));
+  // The direction is now resolved before the call — it may have been inferred
+  // rather than chosen — but the body must still come from the tested function
+  // and nowhere else.
   check("the action builds its body through the tested function",
-    /content: buildFirstVersionUserContent\(stage3\.direction, locale, intake\)/.test(firstVersionCall));
+    /content: buildFirstVersionUserContent\(direction, locale, intake, inferredDirection\)/.test(firstVersionCall));
   check("no hand-rolled payload remains beside it",
     !/content: JSON\.stringify\(\{ direction: stage3\.direction/.test(action));
 }
