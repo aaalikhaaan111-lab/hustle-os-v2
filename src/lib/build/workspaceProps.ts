@@ -27,14 +27,20 @@ type ProjectRow = Database["public"]["Tables"]["projects"]["Row"];
  */
 export async function buildWorkspaceViewProps(
   supabase: Client,
-  project: ProjectRow
+  project: ProjectRow,
+  /** Conversation named by the URL, so a reload reopens it rather than the latest. */
+  requestedConversationId?: string | null
 ): Promise<Omit<WorkspaceViewProps, "usage">> {
   const [assistant, publication] = await Promise.all([
-    loadProjectAssistant(project.id),
+    loadProjectAssistant(project.id, requestedConversationId),
     loadProjectPublicationState(supabase, project.id, project.user_id),
   ]);
 
-  const t = await getTranslations("build");
+  // Scoped to the PROJECT's language, not the request's. The workspace renders
+  // in the project's locale, so a greeting built from the account cookie
+  // arrived in the wrong language and sat there beside Russian answers.
+  const projectLocale = isLocale(project.locale) ? project.locale : DEFAULT_LOCALE;
+  const t = await getTranslations({ locale: projectLocale, namespace: "build" });
 
   const projectName = project.name || t("untitledProject");
   const savedFields = parseSnapshotFields(project.snapshot_fields);
@@ -70,7 +76,7 @@ export async function buildWorkspaceViewProps(
     projectName,
     projectConcept: savedFields.solution ?? null,
     projectAudience: savedFields.audience ?? project.target_audience ?? null,
-    projectLocale: isLocale(project.locale) ? project.locale : DEFAULT_LOCALE,
+    projectLocale,
     awaitingFirstVersion,
     savedFields,
     assistant: {

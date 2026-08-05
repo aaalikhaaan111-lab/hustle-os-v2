@@ -2,6 +2,8 @@
 
 import { getTranslations } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
+import { detectMessageLocale, replyLocaleFor } from "@/lib/build/messageLocale";
+import { DEFAULT_LOCALE, isLocale, type Locale } from "@/i18n/locale";
 import { assistantPhase, type AssistantPhase } from "@/lib/build/assistantPrompts";
 import {
   generateAssistantReply,
@@ -32,9 +34,24 @@ export interface LoadAssistantResult {
   phase: AssistantPhase;
 }
 
-// Loads the most recent conversation for a project (or none). Verifies the
-// project is owned by the caller before touching anything.
-export async function loadProjectAssistant(projectId: string): Promise<LoadAssistantResult> {
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * Loads one conversation for a project, and its messages.
+ *
+ * With `requestedConversationId` it loads exactly that conversation, which is
+ * how a reload reopens what the URL names. Without one it falls back to the
+ * most recently updated conversation, which is the right behaviour for opening
+ * a project from a list where no particular conversation was asked for.
+ *
+ * Ownership is checked either way: the id is matched together with the caller's
+ * user_id and this project, so naming someone else's conversation finds nothing
+ * rather than loading it.
+ */
+export async function loadProjectAssistant(
+  projectId: string,
+  requestedConversationId?: string | null
+): Promise<LoadAssistantResult> {
   const t = await getTranslations("build");
   const supabase = await createClient();
   const {
@@ -62,14 +79,26 @@ export async function loadProjectAssistant(projectId: string): Promise<LoadAssis
 
   const phase = assistantPhase(project.current_stage);
 
-  const { data: conversation, error: convError } = await supabase
+  // A requested conversation wins over "the most recent one".
+  //
+  // Without this, a conversation had no address: the workspace always reopened
+  // whichever row sorted first by updated_at, so starting a new chat and then
+  // reloading — or opening the project again later — silently put the person
+  // back in the previous conversation. Selecting by id when one is asked for is
+  // what makes the URL, rather than a timestamp race, decide what is on screen.
+  const requested = requestedConversationId && UUID_PATTERN.test(requestedConversationId)
+    ? requestedConversationId
+    : null;
+
+  const query = supabase
     .from("project_ai_conversations")
     .select("id")
     .eq("project_id", projectId)
-    .eq("user_id", user.id)
-    .order("updated_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
+    .eq("user_id", user.id);
+
+  const { data: conversation, error: convError } = requested
+    ? await query.eq("id", requested).maybeSingle()
+    : await query.order("updated_at", { ascending: false }).limit(1).maybeSingle();
 
   // Tables not applied yet (or unreachable) → assistant is unavailable but the
   // rest of Build is unaffected.
@@ -136,8 +165,29 @@ export async function sendAssistantMessage(
     .maybeSingle();
   if (!project) return fail(t("errorProjectNotFound"));
 
-  // The assistant replies in the project's own language.
-  const locale = project.locale;
+  // The assistant replies in the language the person is writing in.
+  //
+  // This used to be `project.locale` alone, which is set from the interface
+  // cookie when the project row is created — before a word has been typed. A
+  // Russian message on an English-cookie account got an English answer, which
+  // is the reported defect. The message is the stronger signal, so it wins;
+  // `project.locale` only carries the conversation when a message says nothing
+  // about its language ("ok", a link, a number).
+  const storedLocale: Locale = isLocale(project.locale) ? project.locale : DEFAULT_LOCALE;
+  const locale = replyLocaleFor(trimmed, storedLocale);
+
+  // Persist a settled change so the workspace chrome, the greeting and any
+  // later generation follow the same language as the conversation. Only a
+  // confident reading writes — `replyLocaleFor` has already fallen back to the
+  // stored value when the message was uninformative, so this cannot be flipped
+  // by a one-word reply.
+  if (locale !== storedLocale && detectMessageLocale(trimmed) !== null) {
+    await supabase
+      .from("projects")
+      .update({ locale })
+      .eq("id", projectId)
+      .eq("user_id", user.id);
+  }
 
   // Ensure a conversation exists (create lazily on the first message).
   let convId = conversationId;

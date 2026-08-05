@@ -406,7 +406,11 @@ export async function generateFirstVersionAction(
     }).eq("id", projectId).eq("user_id", user.id);
     if (error) return releaseAndFail(t("errorSave"), "save_failed", "Saving the generated version failed.");
 
-    const reply = t("generationReply", { name: output.identity.name });
+    // In the PROJECT's language, not the request's. `t` above is scoped to the
+    // account cookie, so a Russian project on an English account greeted its
+    // owner in English — the message is persisted, so it stayed wrong forever.
+    const tProject = await getTranslations({ locale, namespace: "stage3" });
+    const reply = tProject("generationReply", { name: output.identity.name });
     await supabase.from("project_ai_messages").insert({
       id: stableUuid(`${stage3.conversationId}:first-version-ready`),
       conversation_id: stage3.conversationId,

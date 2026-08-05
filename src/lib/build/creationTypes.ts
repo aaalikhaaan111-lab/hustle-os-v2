@@ -104,6 +104,8 @@ export interface CreationMessage {
 }
 
 export interface PersistedCreationDraft {
+  /** The conversation's own language, which the /create chrome follows. */
+  locale: string;
   projectId: string;
   conversationId: string;
   sessionId: string;

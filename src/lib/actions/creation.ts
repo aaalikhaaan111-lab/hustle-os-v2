@@ -4,7 +4,8 @@ import { createHash } from "node:crypto";
 import Anthropic from "@anthropic-ai/sdk";
 import { revalidatePath } from "next/cache";
 import { getLocale, getTranslations } from "next-intl/server";
-import type { Locale } from "@/i18n/locale";
+import { DEFAULT_LOCALE, isLocale, type Locale } from "@/i18n/locale";
+import { detectMessageLocale, replyLocaleFor } from "@/lib/build/messageLocale";
 import { createClient } from "@/lib/supabase/server";
 import { toJson } from "@/lib/supabase/json";
 import {
@@ -138,7 +139,7 @@ ${JSON.stringify(previousTurn)}`
 - Match the person's skill, reachable people, time, comfort, and ability. Never invent personal experience, traction, demand, or results.
 - Use transition "focus" only when narrowing and "reveal" only for proposals.
 
-Write every user-visible field in ${language}. Respond only with the requested JSON.${previousState}`;
+LANGUAGE: write every user-visible field in ${language}. That is the language of the user's own most recent message, and it overrides the interface language and the language of earlier turns. If the person switches language, follow them. Respond only with the requested JSON.${previousState}`;
 }
 
 function stableUuid(seed: string): string {
@@ -262,7 +263,10 @@ export async function loadCreationDraftAction(): Promise<PersistedCreationDraft 
     .limit(30);
   const project = (projects ?? []).find((candidate) => {
     const state = parseStage3ProjectState(candidate.snapshot_fields);
-    return candidate.locale === locale && state !== null && state.status !== "first_version_ready" && state.output === null;
+    // Deliberately not filtered by the interface locale: a project's language
+    // is a property of the project, and matching it against the cookie hid a
+    // person's own unfinished draft whenever the two disagreed.
+    return state !== null && state.status !== "first_version_ready" && state.output === null;
   });
   if (!project) return null;
   const stage3 = parseStage3ProjectState(project.snapshot_fields);
@@ -275,6 +279,7 @@ export async function loadCreationDraftAction(): Promise<PersistedCreationDraft 
     .eq("user_id", user.id)
     .order("created_at", { ascending: true });
   return {
+    locale: project.locale,
     projectId: project.id,
     conversationId: stage3.conversationId,
     sessionId: stage3.sessionId,
@@ -286,7 +291,7 @@ export async function loadCreationDraftAction(): Promise<PersistedCreationDraft 
 }
 
 export type CreationTurnResult =
-  | { ok: true; turn: CreationTurn; projectName: string }
+  | { ok: true; turn: CreationTurn; projectName: string; locale: string }
   | { ok: false; unavailable: boolean; limitReached?: LimitReachedInfo };
 
 export async function generateCreationTurnAction(
@@ -311,7 +316,25 @@ export async function generateCreationTurnAction(
     .maybeSingle();
   const stage3 = parseStage3ProjectState(project?.snapshot_fields);
   if (!project || !stage3 || stage3.conversationId !== conversationId || stage3.output) return { ok: false, unavailable: true };
-  const locale = project.locale;
+
+  // The creation guide speaks the language the person is writing in.
+  //
+  // `project.locale` is written from the interface cookie by
+  // ensureCreationDraftAction, which runs before the first message exists — so
+  // it cannot know. Reading the message is what makes a Russian idea typed on
+  // an English-cookie account get a Russian conversation. A message that says
+  // nothing about its language keeps whatever the project already had.
+  const storedLocale: Locale = isLocale(project.locale) ? project.locale : DEFAULT_LOCALE;
+  const locale = replyLocaleFor(message, storedLocale);
+  if (locale !== storedLocale && detectMessageLocale(message) !== null) {
+    // Persisted so the draft name, the workspace chrome and the generated
+    // first version all follow the same language as the conversation.
+    await supabase
+      .from("projects")
+      .update({ locale })
+      .eq("id", projectId)
+      .eq("user_id", user.id);
+  }
   const { data: conversation } = await supabase
     .from("project_ai_conversations")
     .select("id")
@@ -324,7 +347,7 @@ export async function generateCreationTurnAction(
   const userMessageId = stableUuid(`${conversationId}:user:${requestId}`);
   const assistantMessageId = stableUuid(`${conversationId}:assistant:${requestId}`);
   if (stage3.lastRequestId === requestId && stage3.turn) {
-    return { ok: true, turn: stage3.turn, projectName: project.name || draftName(locale) };
+    return { ok: true, turn: stage3.turn, projectName: project.name || draftName(locale), locale };
   }
   const { data: latestRows } = await supabase
     .from("project_ai_messages")
@@ -414,7 +437,7 @@ export async function generateCreationTurnAction(
     if (assistantError && assistantError.code !== "23505") return releaseAndFail(true);
     await supabase.from("project_ai_conversations").update({ title: message.slice(0, 60) }).eq("id", conversationId).eq("user_id", user.id);
     revalidatePath("/projects");
-    return { ok: true, turn, projectName: project.name || draftName(locale) };
+    return { ok: true, turn, projectName: project.name || draftName(locale), locale };
   } catch (error) {
     console.error("[ventrio-ai-error]", JSON.stringify({ operation: "creation_discovery", projectId, message: error instanceof Error ? error.message : "unknown" }));
     return releaseAndFail(true);
