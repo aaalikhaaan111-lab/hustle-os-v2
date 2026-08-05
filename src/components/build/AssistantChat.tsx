@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import {
   sendAssistantMessage,
@@ -97,6 +98,7 @@ export function AssistantChat({
 }: AssistantChatProps) {
   const t = useTranslations("build");
   const tw = useTranslations("workspace");
+  const router = useRouter();
   const [conversationId, setConversationId] = useState<string | null>(initialConversationId);
   const [messages, setMessages] = useState<ChatMessage[]>(
     initialMessages.map((m) => ({ id: m.id, role: m.role, content: m.content }))
@@ -213,6 +215,13 @@ export function AssistantChat({
         setNote(result.error);
         return;
       }
+      // Put the new conversation in the URL. Local state alone made "new chat"
+      // last only until the next reload: nothing addressed the conversation, so
+      // the workspace reopened whichever one sorted newest by updated_at and
+      // the person landed back in the old thread. `replace` rather than `push`
+      // so Back still leaves the project instead of stepping through every
+      // conversation started along the way.
+      router.replace(`/projects/${projectId}?c=${result.conversationId}`, { scroll: false });
       setConversationId(result.conversationId);
       setMessages([]);
       setProposal(null);

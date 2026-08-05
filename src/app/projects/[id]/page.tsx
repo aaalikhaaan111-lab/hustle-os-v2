@@ -10,14 +10,17 @@ import { WorkspaceView } from "@/components/build/WorkspaceView";
 
 interface ProjectWorkspacePageProps {
   params: Promise<{ id: string }>;
+  /** `?c=` names the conversation to open; absent, the latest one opens. */
+  searchParams: Promise<{ c?: string }>;
 }
 
 // The canonical, id-scoped project workspace. The project is resolved by its
 // explicit id and ownership-checked; every read and mutation inside the
 // workspace is scoped to this same project. Pitch is intentionally not passed
 // (retired from the multi-project surface), which hides the pitch menu.
-export default async function ProjectWorkspacePage({ params }: ProjectWorkspacePageProps) {
+export default async function ProjectWorkspacePage({ params, searchParams }: ProjectWorkspacePageProps) {
   const { id } = await params;
+  const { c: requestedConversationId } = await searchParams;
   const supabase = await createClient();
   const user = await getCurrentUser(supabase);
 
@@ -31,7 +34,7 @@ export default async function ProjectWorkspacePage({ params }: ProjectWorkspaceP
   }
 
   const [props, usage] = await Promise.all([
-    buildWorkspaceViewProps(supabase, project),
+    buildWorkspaceViewProps(supabase, project, requestedConversationId),
     loadWorkspaceUsage(supabase, user.id),
   ]);
 
