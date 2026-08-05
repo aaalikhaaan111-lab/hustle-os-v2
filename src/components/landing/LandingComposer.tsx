@@ -33,7 +33,14 @@ export function LandingComposer({ isAuthenticated, variant, textareaId }: Landin
     if (!trimmed || routing) return;
     writeSeed(trimmed, null);
     setRouting(true);
-    router.push(isAuthenticated ? "/create" : "/signup");
+    // Logged out, the destination has to survive the round trip through the
+    // auth provider, or the visitor lands on Overview with their idea still
+    // sitting unread in sessionStorage. Signing up with email already ended at
+    // /create because the server action hardcodes it; signing up with Google
+    // did not, because nothing put `next` on the URL for the callback to read.
+    // Every step of that chain already understood `next` — only this one never
+    // set it.
+    router.push(isAuthenticated ? "/create" : `/signup?next=${encodeURIComponent("/create")}`);
   }
 
   return (

@@ -134,16 +134,30 @@ export function CreateExperience({ userId, initialDraft }: CreateExperienceProps
     return next;
   }
 
-  function runTurn(content: string, point: CreationStartingPoint | null, requestId: string) {
+  /**
+   * `sessionOverride` starts this turn in a brand-new creation session.
+   *
+   * It is passed rather than read from state because the caller has only just
+   * called setSessionId: the state update has not committed, so this closure
+   * would still see the previous session and quietly continue the old project.
+   * When it is given, the captured project and conversation ids are ignored for
+   * the same reason.
+   */
+  function runTurn(
+    content: string,
+    point: CreationStartingPoint | null,
+    requestId: string,
+    sessionOverride?: string
+  ) {
     setNote(null);
     setNoteIsLimitReached(false);
     setGenerationRetry(null);
     setSelectedChoices([]);
     startSending(async () => {
       try {
-        const activeSessionId = getOrCreateSessionId();
-        let activeProjectId = projectId;
-        let activeConversationId = conversationId;
+        const activeSessionId = sessionOverride ?? getOrCreateSessionId();
+        let activeProjectId = sessionOverride ? null : projectId;
+        let activeConversationId = sessionOverride ? null : conversationId;
         if (!activeProjectId || !activeConversationId) {
           const ensured = await ensureCreationDraftAction(activeSessionId, point);
           if (ensured.error || !ensured.projectId || !ensured.conversationId) {
@@ -171,6 +185,13 @@ export function CreateExperience({ userId, initialDraft }: CreateExperienceProps
           { role: "assistant", content: result.turn.message },
         ]);
         setPendingRequestId(null);
+        // The conversation's language is settled by the message, not by the
+        // account cookie, so the surrounding chrome may now be in the wrong
+        // one. Re-rendering the server component picks up the project's locale
+        // — this is what stops Russian answers appearing between English
+        // buttons. It runs only on an actual mismatch, so the common case
+        // costs nothing.
+        if (result.locale !== locale) router.refresh();
       } catch {
         setNote(t("unavailable"));
       }
@@ -214,33 +235,47 @@ export function CreateExperience({ userId, initialDraft }: CreateExperienceProps
   }
 
   // Begin the conversation from a homepage seed — the visitor's first message,
-  // carried here through sessionStorage. Idempotent: it only starts a fresh
-  // conversation, and the draft/message actions are already deduplicated
-  // server-side by session and request id.
+  // carried here through sessionStorage. Idempotent: the draft and message
+  // actions are already deduplicated server-side by session and request id.
+  //
+  // A seed always opens its OWN session, so it becomes its own project and its
+  // own conversation. Everything derived from the session id follows: the
+  // project id is a hash of it, so a fresh id means a fresh project and any
+  // draft already in progress is left exactly as it was.
   function startFromSeed(message: string, point: CreationStartingPoint | null) {
-    if (isSending || creating || messages.length > 0) return;
+    if (isSending || creating) return;
+    const freshSession = crypto.randomUUID();
+    setSessionId(freshSession);
+    setProjectId(null);
+    setConversationId(null);
+    try {
+      window.localStorage.setItem(storageKey, freshSession);
+    } catch {
+      // Component state still carries it for this session.
+    }
     const requestId = crypto.randomUUID();
     setStartingPoint(point);
     setMessages([{ role: "user", content: message }]);
     setTurn(null);
     setPendingRequestId(requestId);
-    runTurn(message, point, requestId);
+    runTurn(message, point, requestId, freshSession);
   }
 
-  // Consume a homepage seed exactly once on mount. A fresh visit starts the
-  // conversation from it; if a draft is already in progress we only pre-fill
-  // the composer so an existing conversation is never disturbed. Deferred to a
-  // microtask so the state updates happen outside the effect body.
+  // Consume a homepage seed exactly once on mount, and always start it.
+  //
+  // This used to defer to an unfinished draft: with any draft in progress the
+  // seed was only dropped into the composer. The effect was that someone who
+  // typed an idea on the homepage and signed in landed inside an unrelated
+  // older conversation with their sentence sitting unsent in the input — the
+  // landing promise silently broken, and the more so the longer the account had
+  // been used. Starting a new session instead leaves the old draft untouched
+  // and reachable; it is not overwritten, only no longer in the way.
   const seedConsumedRef = useRef(false);
   useEffect(() => {
     if (seedConsumedRef.current) return;
     seedConsumedRef.current = true;
     const seed = takeSeed();
     if (!seed) return;
-    if (initialDraft?.messages?.length) {
-      queueMicrotask(() => setInput(seed.message));
-      return;
-    }
     queueMicrotask(() => startFromSeed(seed.message, seed.startingPoint));
     // Runs once on mount; startFromSeed and initialDraft are stable for this instance.
     // eslint-disable-next-line react-hooks/exhaustive-deps

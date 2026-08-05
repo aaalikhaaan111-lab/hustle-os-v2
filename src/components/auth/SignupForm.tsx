@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import Link from "next/link";
 import { useActionState } from "react";
+import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/Button";
 import { Card, CardContent } from "@/components/ui/Card";
@@ -16,6 +17,11 @@ const initialState: SignupActionState = { error: null, success: false, email: nu
 
 export function SignupForm() {
   const t = useTranslations("auth");
+  // Where to go once the account exists. The landing composer sets this to
+  // /create so the idea the visitor already typed is picked up on arrival;
+  // without it Google sign-in ended on Overview and the idea was never read.
+  const searchParams = useSearchParams();
+  const next = searchParams.get("next") ?? undefined;
   const tCommon = useTranslations("common");
   const [state, formAction, isPending] = useActionState(signupAction, initialState);
   const [consent, setConsent] = useState(false);
@@ -56,6 +62,7 @@ export function SignupForm() {
           <div className="flex flex-col gap-2">
             <GoogleSignInButton
               label={t("signUpWithGoogle")}
+              next={next}
               requireConsent
               consentGiven={consent}
               onConsentMissing={handleConsentMissing}
