@@ -696,7 +696,7 @@
     "voiceRequesting": "Ожидаем доступ к микрофону…",
     "voiceBlocked": "Доступ к микрофону заблокирован. Откройте разрешения сайта в браузере, разрешите микрофон и попробуйте снова.",
     "intakeTypeTitle": "Что Ventrio создаст?",
-    "intakeDesignTitle": "Какое визуальное направление?",
+    "intakeDesignTitle": "Выберите стиль",
     "intakeDeferType": "Пусть решит Ventrio",
     "intakeDeferDesign": "Удиви меня",
     "intakeTypeTimeline": "Интерактивная хронология",
