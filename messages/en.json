@@ -771,7 +771,9 @@
     "intakeDesignBrutalistHint": "Hard edges, heavy type",
     "intakeDesignWarmCraft": "Warm craft",
     "intakeDesignWarmCraftHint": "Warm paper, hand-made",
-    "intakeBack": "Back"
+    "intakeBack": "Back",
+    "voiceDismissed": "Dictation needs the microphone. Press the microphone again and choose Allow.",
+    "voiceInsecure": "Voice input needs a secure (https) connection."
   },
   "profile": {
     "title": "Profile",

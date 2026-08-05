@@ -20,7 +20,7 @@ import {
 import { takeSeed } from "@/lib/create/seed";
 import { WorkspaceComposer } from "@/components/workspace-ui/Composer";
 import { VentrioButton } from "@/components/ui/VentrioButton";
-import { useVoiceInput } from "@/lib/workspace/useVoiceInput";
+import { useVoiceInput, voiceErrorKey } from "@/lib/workspace/useVoiceInput";
 import { cn } from "@/lib/utils";
 
 const STARTING_POINTS: {
@@ -518,7 +518,10 @@ export function CreateExperience({ userId, initialDraft }: CreateExperienceProps
               state: voice.state,
               onToggle: () => (voice.listening ? voice.stop() : voice.start()),
               label: tb("voiceStart"),
-              unsupportedLabel: tb("voiceUnsupported"),
+              unsupportedLabel:
+                      voice.availability === "insecure"
+                        ? tb("voiceInsecure")
+                        : tb("voiceUnsupported"),
               requestingLabel: tb("voiceRequesting"),
               listeningLabel: tb("voiceListening"),
             }}
@@ -528,11 +531,7 @@ export function CreateExperience({ userId, initialDraft }: CreateExperienceProps
           </p>
           {voice.error && (
             <p role="alert" className="mt-1.5 px-1 text-[13px]" style={{ color: "var(--warn)" }}>
-              {voice.error === "permission"
-                ? tb("voiceBlocked")
-                : voice.error === "no-speech"
-                  ? tb("voiceNoSpeech")
-                  : tb("voiceFailed")}
+              {tb(voiceErrorKey(voice.error) as never)}
             </p>
           )}
         </div>

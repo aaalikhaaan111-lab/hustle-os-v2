@@ -21,7 +21,7 @@ import { usageLabels } from "@/components/build/AssistantChat";
 import { GenerationSteps, type GenerationStep } from "@/components/workspace-ui/GenerationSteps";
 import { GenerativeButton, IconBuild, IconEye } from "@/components/workspace-ui/parts";
 import { VentrioButton } from "@/components/ui/VentrioButton";
-import { useVoiceInput } from "@/lib/workspace/useVoiceInput";
+import { useVoiceInput, voiceErrorKey } from "@/lib/workspace/useVoiceInput";
 import { useFirstVersionJob } from "@/lib/workspace/useFirstVersionJob";
 import type { Locale } from "@/i18n/locale";
 import type { ProjectPublicationState } from "@/lib/publishing/types";
@@ -517,18 +517,17 @@ export function PreOutputWorkspace({
                     state: voice.state,
                     onToggle: () => (voice.listening ? voice.stop() : voice.start()),
                     label: tb("voiceStart"),
-                    unsupportedLabel: tb("voiceUnsupported"),
+                    unsupportedLabel:
+                      voice.availability === "insecure"
+                        ? tb("voiceInsecure")
+                        : tb("voiceUnsupported"),
                     requestingLabel: tb("voiceRequesting"),
                     listeningLabel: tb("voiceListening"),
                   }}
                 />
                 {voice.error && (
                   <p role="alert" className="mt-1.5 text-[13px]" style={{ color: "var(--warn)" }}>
-                    {voice.error === "permission"
-                      ? tb("voiceBlocked")
-                      : voice.error === "no-speech"
-                        ? tb("voiceNoSpeech")
-                        : tb("voiceFailed")}
+                    {tb(voiceErrorKey(voice.error) as never)}
                   </p>
                 )}
               </div>

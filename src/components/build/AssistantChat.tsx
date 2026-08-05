@@ -16,7 +16,7 @@ import { WorkspaceComposer } from "@/components/workspace-ui/Composer";
 import { VentrioButton } from "@/components/ui/VentrioButton";
 import { UsageMenu } from "@/components/workspace-ui/UsageMenu";
 import type { WorkspaceUsage } from "@/lib/workspace/usage";
-import { useVoiceInput } from "@/lib/workspace/useVoiceInput";
+import { useVoiceInput, voiceErrorKey } from "@/lib/workspace/useVoiceInput";
 import { cn } from "@/lib/utils";
 
 interface ChatMessage {
@@ -244,11 +244,7 @@ export function AssistantChat({
 
   const voiceError = voice.error && (
     <p role="alert" className="mt-1.5 text-[13px]" style={{ color: "var(--warn)" }}>
-      {voice.error === "permission"
-        ? t("voiceDenied")
-        : voice.error === "no-speech"
-          ? t("voiceNoSpeech")
-          : t("voiceFailed")}
+      {t(voiceErrorKey(voice.error) as never)}
     </p>
   );
 
@@ -376,7 +372,10 @@ export function AssistantChat({
                 state: voice.state,
                 onToggle: () => (voice.listening ? voice.stop() : voice.start()),
                 label: t("voiceStart"),
-                unsupportedLabel: t("voiceUnsupported"),
+                unsupportedLabel:
+                      voice.availability === "insecure"
+                        ? t("voiceInsecure")
+                        : t("voiceUnsupported"),
                 requestingLabel: t("voiceRequesting"),
                 listeningLabel: t("voiceListening"),
               }}
@@ -507,7 +506,10 @@ export function AssistantChat({
               listening: voice.listening,
               onToggle: () => (voice.listening ? voice.stop() : voice.start()),
               label: voice.listening ? t("voiceStop") : t("voiceStart"),
-              unsupportedLabel: t("voiceUnsupported"),
+              unsupportedLabel:
+                      voice.availability === "insecure"
+                        ? t("voiceInsecure")
+                        : t("voiceUnsupported"),
             }}
           />
           {/* Announced, not just coloured: a dictation failure has to reach
@@ -517,11 +519,7 @@ export function AssistantChat({
           </p>
           {voice.error && (
             <p role="alert" className="mt-1.5 px-1 text-xs text-danger">
-              {voice.error === "permission"
-                ? t("voiceBlocked")
-                : voice.error === "no-speech"
-                  ? t("voiceNoSpeech")
-                  : t("voiceFailed")}
+              {t(voiceErrorKey(voice.error) as never)}
             </p>
           )}
         </div>

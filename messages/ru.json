@@ -771,7 +771,9 @@
     "intakeDesignBrutalistHint": "Жёсткие края, тяжёлый шрифт",
     "intakeDesignWarmCraft": "Тёплое ремесло",
     "intakeDesignWarmCraftHint": "Тёплая бумага, ручная работа",
-    "intakeBack": "Назад"
+    "intakeBack": "Назад",
+    "voiceDismissed": "Для диктовки нужен микрофон. Нажмите на микрофон ещё раз и выберите «Разрешить».",
+    "voiceInsecure": "Голосовой ввод работает только по защищённому соединению (https)."
   },
   "profile": {
     "title": "Профиль",
