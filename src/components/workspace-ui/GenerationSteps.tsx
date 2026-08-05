@@ -33,7 +33,12 @@ export function GenerationSteps({ title, steps }: { title: string; steps: Genera
 
       <ul className="relative mt-4 flex flex-col gap-3">
         {steps.map((step, index) => (
-          <li key={step.label} className="flex items-center gap-3">
+          // `items-start` rather than centred: it keeps every mark a fixed
+          // distance from its row's top, which is what lets the thread below
+          // connect exactly at any row height. It also reads better when a
+          // label wraps, since the mark lines up with the label's first line
+          // instead of floating beside its middle.
+          <li key={step.label} className="relative flex items-start gap-3">
             <span className="relative grid h-[18px] w-[18px] shrink-0 place-items-center">
               {step.state === "done" && (
                 <span
@@ -70,14 +75,28 @@ export function GenerationSteps({ title, steps }: { title: string; steps: Genera
               {step.label}
             </span>
 
-            {/* The connecting thread, drawn only between rows. */}
+            {/*
+              The connecting thread, drawn only between rows.
+
+              Measured from the row rather than from a fixed pitch: it starts at
+              the mark's bottom edge (18px down, since the row is `items-start`)
+              and runs to the next row's top, where the next mark begins. The
+              12px is the list's `gap-3`. Because both ends are pinned to row
+              edges rather than to row centres, it stays connected whatever the
+              rows are — including when a label wraps to two lines.
+
+              It used to be placed at `index * 34 + 22`, which assumed every row
+              was exactly 34px tall. Rows are ~31px, so the thread drifted 3px on
+              the first gap and 9px by the third, overshooting past the mark it
+              was meant to stop at. A wrapped label detached it completely.
+            */}
             {index < steps.length - 1 && (
               <span
                 aria-hidden
                 className="absolute left-[8px] w-px"
                 style={{
-                  top: `${index * 34 + 22}px`,
-                  height: "14px",
+                  top: "18px",
+                  height: "calc(100% - 6px)",
                   background: step.state === "done" ? "var(--accent-pale)" : "var(--line-2)",
                 }}
               />

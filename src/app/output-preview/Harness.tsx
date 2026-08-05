@@ -2,10 +2,17 @@
 
 import { useState } from "react";
 import { ProjectOutputRenderer } from "@/components/build/ProjectOutputRenderer";
+import { useTranslations } from "next-intl";
 import { BuildScreen } from "@/components/workspace/BuildScreen";
+import { GenerationSteps } from "@/components/workspace-ui/GenerationSteps";
 import { ViewportFrame } from "@/components/workspace/ViewportFrame";
 import { DEVICE_WIDTHS, type DeviceMode } from "@/lib/build/deviceWidths";
 import { CHRONOVERSE_OUTPUT } from "@/lib/build/outputFixtures";
+// The workspace's design tokens are scoped to `.wsRoot` and normally come from
+// WorkspaceShell. Without both, every `var(--line)` and `var(--accent-soft)`
+// falls back to its initial value and the UI renders in stark black on white —
+// a harness artifact that looks exactly like a styling defect.
+import "@/components/workspace-ui/tokens.css";
 
 /**
  * Renders the stored artifact through the SAME mechanism the workspace uses,
@@ -23,17 +30,53 @@ export function Harness({
   inline,
   panel,
   controls,
+  screen,
 }: {
   mode: DeviceMode;
   inline: boolean;
   panel: number;
   controls: boolean;
+  screen: string;
 }) {
+  const t = useTranslations("stage3");
   const [device] = useState<DeviceMode>(mode);
   const width = DEVICE_WIDTHS[device];
   const output = (
     <ProjectOutputRenderer projectKey="fixture" output={CHRONOVERSE_OUTPUT} locale="en" mode="preview" />
   );
+
+  // What a person sees while the first version is being generated: the real
+  // workspace with no preview yet, and the real progress card in the chat
+  // column where it actually appears.
+  if (screen === "generation") {
+    return (
+      <div className="wsRoot h-screen w-full overflow-hidden" style={{ background: "var(--bg)" }}>
+      <BuildScreen
+        chat={() => (
+          <div className="min-h-0 flex-1 overflow-y-auto">
+            <div className="mx-auto flex w-full flex-col gap-7 px-5 py-8 sm:px-8" style={{ maxWidth: 820 }}>
+              <p className="whitespace-pre-wrap text-[19px] font-semibold leading-snug tracking-[-0.01em]">
+                Build me the first version
+              </p>
+              <GenerationSteps
+                title={t("genTitle")}
+                steps={[
+                  { label: t("genUnderstanding"), state: "done" },
+                  { label: t("genAudience"), state: "done" },
+                  { label: t("genDirection"), state: "done" },
+                  { label: t("genGenerating"), state: "active" },
+                ]}
+              />
+            </div>
+          </div>
+        )}
+        preview={null}
+        published={false}
+        shareUrl={null}
+      />
+      </div>
+    );
+  }
 
   // The whole workspace, with the real device switcher, the real fullscreen
   // control and the real rail — the controls a user actually clicks. The only
@@ -41,6 +84,7 @@ export function Harness({
   // session, a query or a model.
   if (controls) {
     return (
+      <div className="wsRoot h-screen w-full overflow-hidden" style={{ background: "var(--bg)" }}>
       <BuildScreen
         chat={() => (
           <div style={{ padding: 24, font: "14px system-ui" }}>chat stand-in</div>
@@ -49,6 +93,7 @@ export function Harness({
         published={false}
         shareUrl={null}
       />
+      </div>
     );
   }
 
