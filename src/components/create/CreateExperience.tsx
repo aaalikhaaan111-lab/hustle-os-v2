@@ -163,7 +163,7 @@ export function CreateExperience({ userId, initialDraft }: CreateExperienceProps
           setCreationPhase("idle");
           setSelectedDirection(null);
           if (generation.limitReached) {
-            setNote(t("firstVersionLimitReached"));
+            setNote(t("firstVersionLimitReached", { limit: generation.limitReached.limit }));
             setNoteIsLimitReached(true);
             return;
           }

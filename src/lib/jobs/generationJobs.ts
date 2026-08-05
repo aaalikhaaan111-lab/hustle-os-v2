@@ -1,7 +1,7 @@
 import "server-only";
 
 import { createServiceClient } from "@/lib/supabase/public";
-import { AI_USAGE_LIMITS, type AiUsageMetric, type UsageReservation } from "@/lib/ai/usage";
+import { AI_USAGE_LIMITS, usageKeyFor, type AiUsageMetric, type UsageReservation } from "@/lib/ai/usage";
 
 /**
  * Durable state for long-running AI generation.
@@ -272,7 +272,7 @@ export async function reserveUsage(
   const { data, error } = await service.rpc("reserve_generation_job_usage", {
     p_job_id: jobId,
     p_user_id: userId,
-    p_metric: metric,
+    p_metric: usageKeyFor(metric),
     p_limit: limit,
   });
   const row = data?.[0];
@@ -297,9 +297,24 @@ export async function reserveUsage(
  */
 export async function releaseUsage(jobId: string, metric: AiUsageMetric): Promise<boolean> {
   const service = createServiceClient();
+
+  // Refund the day the unit was actually taken from, not today's.
+  //
+  // A daily allowance lives under a per-day key, so a job that reserved before
+  // midnight and failed after it would otherwise credit the new day for a unit
+  // the old one still holds — the user would gain a generation and yesterday's
+  // counter would stay stuck. The reservation timestamp is on the job row, so
+  // the original key can be reconstructed exactly.
+  const { data: jobRow } = await service
+    .from("generation_jobs")
+    .select("usage_reserved_at")
+    .eq("id", jobId)
+    .maybeSingle();
+  const reservedAt = jobRow?.usage_reserved_at ? new Date(jobRow.usage_reserved_at) : new Date();
+
   const { data, error } = await service.rpc("release_generation_job_usage", {
     p_job_id: jobId,
-    p_metric: metric,
+    p_metric: usageKeyFor(metric, reservedAt),
   });
   if (error) {
     console.error("[ventrio-ai-usage-error]", JSON.stringify({
@@ -332,11 +347,15 @@ export async function expireStaleForUser(
 ): Promise<number> {
   const service = createServiceClient();
   const cutoff = new Date(Date.now() - STALE_AFTER_MS).toISOString();
+  // The sweep releases every dead hold in one call, so it can only name one
+  // key. Today's is the right one for all but the rare job that was abandoned
+  // across midnight; that case credits the current day instead of the previous
+  // one, which is generous by at most a single unit and never over-charges.
   const { data, error } = await service.rpc("expire_stale_generation_jobs_for_user", {
     p_user_id: userId,
     p_kind: KIND,
     p_cutoff: cutoff,
-    p_metric: metric,
+    p_metric: usageKeyFor(metric),
   });
   if (error) {
     console.error("[ventrio-ai-usage-error]", JSON.stringify({

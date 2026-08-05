@@ -1,7 +1,7 @@
 import "server-only";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { AI_USAGE_LIMITS, type AiUsageMetric } from "@/lib/ai/usage";
+import { AI_USAGE_LIMITS, usageKeyFor, type AiUsageMetric } from "@/lib/ai/usage";
 import type { Database } from "@/types/supabase";
 
 /**
@@ -72,8 +72,11 @@ export async function loadWorkspaceUsage(
   const byMetric = new Map(data.map((row) => [row.metric, row.used ?? 0]));
 
   for (const [key, metric] of Object.entries(BACKED_BY) as [keyof typeof BACKED_BY, AiUsageMetric][]) {
+    // Read the same key the enforcer writes: a daily metric lives under a
+    // per-day key, so looking up the bare name would always report zero used
+    // and the popover would contradict the limit the server is applying.
     usage[key] = {
-      used: byMetric.get(metric) ?? 0,
+      used: byMetric.get(usageKeyFor(metric)) ?? 0,
       limit: AI_USAGE_LIMITS[metric],
       available: true,
     };

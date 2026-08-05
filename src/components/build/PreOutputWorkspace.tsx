@@ -164,7 +164,9 @@ export function PreOutputWorkspace({
         const result = await generateFirstVersionAction(projectId, answers ? intakeGenerationBrief(answers) : null);
         if (result.error || !result.output) {
           if (result.limitReached) {
-            setNote(t("firstVersionLimitReached"));
+            // The number comes from the server's own reservation result, so the
+            // sentence can never disagree with the limit actually applied.
+            setNote(t("firstVersionLimitReached", { limit: result.limitReached.limit }));
             return;
           }
           // A job came back with no output and no error: this click lost the
@@ -384,7 +386,7 @@ export function PreOutputWorkspace({
                         // says what is actually true and offers no retry,
                         // because retrying would fail the same way every time.
                         const heading = outOfQuota
-                          ? t("firstVersionLimitReached")
+                          ? t("firstVersionLimitReached", { limit: usage.projectBuilds.limit })
                           : !hasFailed
                             ? t("readyTitle")
                             : job.phase === "stale"

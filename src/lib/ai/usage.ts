@@ -1,27 +1,15 @@
 import "server-only";
 
 import { createServiceClient } from "@/lib/supabase/public";
+import { AI_USAGE_LIMITS, usageKeyFor, type AiUsageMetric } from "@/lib/ai/usageLimits";
 
-// Durable, account-wide free-tier limits. Keyed by the same `metric` strings
-// used in the consume_ai_usage/release_ai_usage RPCs (see
-// supabase/migrations/20260723120000_add_user_ai_usage.sql) — never by
-// project id, so discarding/deleting a project cannot restore quota.
-export const AI_USAGE_LIMITS = {
-  discovery_turn: 12,
-  first_version_generation: 1,
-  project_edit: 5,
-} as const;
-
-export type AiUsageMetric = keyof typeof AI_USAGE_LIMITS;
-
-// The structured "you're out of free X" state every quota-enforced action
-// returns instead of a generic AI error, so the UI can render calm, specific
-// copy rather than routing it through the normal error/retry path.
-export interface LimitReachedInfo {
-  metric: AiUsageMetric;
-  used: number;
-  limit: number;
-}
+export {
+  AI_USAGE_LIMITS,
+  usageKeyFor,
+  isDailyMetric,
+  type AiUsageMetric,
+  type LimitReachedInfo,
+} from "@/lib/ai/usageLimits";
 
 export type UsageReservation =
   | { allowed: true; used: number; limit: number }
@@ -45,7 +33,7 @@ export async function consumeAiUsage(userId: string, metric: AiUsageMetric): Pro
   const service = createServiceClient();
   const { data, error } = await service.rpc("consume_ai_usage", {
     p_user_id: userId,
-    p_metric: metric,
+    p_metric: usageKeyFor(metric),
     p_limit: limit,
   });
   const row = data?.[0];
@@ -73,7 +61,10 @@ export async function consumeAiUsage(userId: string, metric: AiUsageMetric): Pro
  */
 export async function releaseAiUsage(userId: string, metric: AiUsageMetric): Promise<void> {
   const service = createServiceClient();
-  const { error } = await service.rpc("release_ai_usage", { p_user_id: userId, p_metric: metric });
+  const { error } = await service.rpc("release_ai_usage", {
+    p_user_id: userId,
+    p_metric: usageKeyFor(metric),
+  });
   if (error) {
     console.error("[ventrio-ai-usage-error]", JSON.stringify({
       operation: "release_ai_usage",
