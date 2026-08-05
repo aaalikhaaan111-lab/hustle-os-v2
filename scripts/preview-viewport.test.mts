@@ -179,6 +179,27 @@ const quadrants = new Set(
 );
 check("the four brackets cover four quadrants", quadrants.size === 4, [...quadrants].join(","));
 
+/* ── 4. the rail's toggles expose their state, not just their colour ────── */
+
+// To the start of the next declaration: RailButton's props type closes with a
+// brace in the first column, so stopping at the first one would cut the body.
+const railButton = buildScreen.match(/function RailButton[\s\S]*?(?=\n\/\*\*|\nfunction )/)?.[0] ?? "";
+check("RailButton is defined, with its body", /VentrioButton/.test(railButton));
+
+// `on` only paints the button. Without aria-pressed the selected device and the
+// fullscreen state are conveyed by colour alone.
+check(
+  "a toggle in the rail reports its pressed state",
+  /"aria-pressed":\s*active/.test(railButton),
+);
+
+// Buttons that simply act — reload, copy link — pass no `active`, and must not
+// claim a pressed state they do not have.
+check(
+  "a plain action in the rail stays a plain button",
+  /active === undefined \? \{\}/.test(railButton),
+);
+
 /* ── report ─────────────────────────────────────────────────────────────── */
 
 if (failures.length > 0) {

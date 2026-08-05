@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { ProjectOutputRenderer } from "@/components/build/ProjectOutputRenderer";
+import { BuildScreen } from "@/components/workspace/BuildScreen";
 import { ViewportFrame } from "@/components/workspace/ViewportFrame";
 import { DEVICE_WIDTHS, type DeviceMode } from "@/lib/build/deviceWidths";
 import { CHRONOVERSE_OUTPUT } from "@/lib/build/outputFixtures";
@@ -17,12 +18,39 @@ import { CHRONOVERSE_OUTPUT } from "@/lib/build/outputFixtures";
  * naive fit would silently change the frame's viewport, so it needs measuring
  * directly rather than assuming.
  */
-export function Harness({ mode, inline, panel }: { mode: DeviceMode; inline: boolean; panel: number }) {
+export function Harness({
+  mode,
+  inline,
+  panel,
+  controls,
+}: {
+  mode: DeviceMode;
+  inline: boolean;
+  panel: number;
+  controls: boolean;
+}) {
   const [device] = useState<DeviceMode>(mode);
   const width = DEVICE_WIDTHS[device];
   const output = (
     <ProjectOutputRenderer projectKey="fixture" output={CHRONOVERSE_OUTPUT} locale="en" mode="preview" />
   );
+
+  // The whole workspace, with the real device switcher, the real fullscreen
+  // control and the real rail — the controls a user actually clicks. The only
+  // substitutions are the chat body and the share link; nothing here reaches a
+  // session, a query or a model.
+  if (controls) {
+    return (
+      <BuildScreen
+        chat={() => (
+          <div style={{ padding: 24, font: "14px system-ui" }}>chat stand-in</div>
+        )}
+        preview={output}
+        published={false}
+        shareUrl={null}
+      />
+    );
+  }
 
   return (
     <div style={{ padding: 12, background: "#eef1f6", minHeight: "100vh" }}>

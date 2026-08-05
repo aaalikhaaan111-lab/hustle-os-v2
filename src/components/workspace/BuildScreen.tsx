@@ -304,7 +304,22 @@ function RailButton({
   children: ReactNode;
 }) {
   return (
-    <VentrioButton variant="icon" size="md" label={label} tipSide="left" on={active} disabled={disabled} onClick={onClick}>
+    <VentrioButton
+      variant="icon"
+      size="md"
+      label={label}
+      tipSide="left"
+      on={active}
+      // `on` only paints the button. Without aria-pressed the selected device
+      // and the fullscreen state are conveyed by colour alone, so a screen
+      // reader hears three identical "Mobile / Tablet / Desktop" buttons with
+      // no way to tell which one is in effect. Only the toggles get it: the
+      // buttons that just act, like reload, take no `active` and must stay
+      // plain buttons rather than claiming a pressed state they do not have.
+      {...(active === undefined ? {} : { "aria-pressed": active })}
+      disabled={disabled}
+      onClick={onClick}
+    >
       {children}
     </VentrioButton>
   );
