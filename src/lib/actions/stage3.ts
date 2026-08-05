@@ -5,6 +5,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { revalidatePath } from "next/cache";
 import { getTranslations } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
+import { buildFirstVersionUserContent } from "@/lib/build/firstVersionRequest";
 import {
   buildStage3OutputJsonSchema,
   mergeStage3ProjectState,
@@ -86,6 +87,16 @@ BEFORE YOU WRITE ANYTHING, think like the best designer for this exact idea woul
 6. Why would a visitor want to come back or take the next step?
 
 ${edit ? "" : `
+BUILD INTAKE
+- The input may include an "intake" object holding the two choices the person
+  made before building: "productType" (what kind of thing to build) and
+  "designDirection" (the visual treatment).
+- When present, these are explicit user decisions and outrank your own reading
+  of the brief on those two questions specifically. Build that kind of thing,
+  in that visual direction.
+- Either key may be absent. An absent key means the person deliberately left it
+  to you — choose freely, and do not ask for it or mention that it is missing.
+
 CREATIVE BRIEF
 - The selected direction includes a creativeBrief. Treat it as the authoritative personalized context for the whole site.
 - Preserve its starting material, motivation, first audience, and desired experience throughout the identity, copy, and every section.
@@ -370,7 +381,7 @@ export async function generateFirstVersionAction(
       max_tokens: 16000,
       output_config: { effort: "medium" },
       system: outputPrompt(locale),
-      messages: [{ role: "user", content: JSON.stringify({ direction: stage3.direction, projectLocale: locale, ...(intake ? { intake } : {}) }) }],
+      messages: [{ role: "user", content: buildFirstVersionUserContent(stage3.direction, locale, intake) }],
     });
     logUsage("first_version_generation", projectId, startedAt, response);
     const textBlock = response.content.find((block) => block.type === "text");

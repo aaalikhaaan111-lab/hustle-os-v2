@@ -770,7 +770,8 @@
     "intakeDesignBrutalist": "Brutalist",
     "intakeDesignBrutalistHint": "Hard edges, heavy type",
     "intakeDesignWarmCraft": "Warm craft",
-    "intakeDesignWarmCraftHint": "Warm paper, hand-made"
+    "intakeDesignWarmCraftHint": "Warm paper, hand-made",
+    "intakeBack": "Back"
   },
   "profile": {
     "title": "Profile",

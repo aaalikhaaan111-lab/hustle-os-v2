@@ -770,7 +770,8 @@
     "intakeDesignBrutalist": "Бруталистично",
     "intakeDesignBrutalistHint": "Жёсткие края, тяжёлый шрифт",
     "intakeDesignWarmCraft": "Тёплое ремесло",
-    "intakeDesignWarmCraftHint": "Тёплая бумага, ручная работа"
+    "intakeDesignWarmCraftHint": "Тёплая бумага, ручная работа",
+    "intakeBack": "Назад"
   },
   "profile": {
     "title": "Профиль",

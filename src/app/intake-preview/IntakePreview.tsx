@@ -23,6 +23,7 @@ const IDEAS = [
 
 export function IntakePreview() {
   const tb = useTranslations("build");
+  const ts = useTranslations("stage3");
   const params = useSearchParams();
 
   // Each state is addressable by URL so a capture harness can load it directly
@@ -39,6 +40,9 @@ export function IntakePreview() {
   // Width is applied to the column, which is what the panel actually responds
   // to now that it uses container queries.
   const width = Number(params.get("w")) || 0;
+  // `chrome=0` hides the fixture's own switcher so a capture shows only what a
+  // real user would see.
+  const showChrome = params.get("chrome") !== "0";
   const plan = planIntake(idea);
   const step = plan.steps.find((s) => !(s.id in answers)) ?? null;
   const stepIndex = step ? plan.steps.findIndex((s) => s.id === step.id) : -1;
@@ -63,7 +67,7 @@ export function IntakePreview() {
       className="wsRoot mx-auto flex min-h-screen flex-col px-4 py-6"
       style={{ background: "var(--bg)", width: width ? `${width}px` : "100%", maxWidth: width ? `${width}px` : 820 }}
     >
-      <div className="mb-4 flex flex-wrap gap-2">
+      {showChrome && <div className="mb-4 flex flex-wrap gap-2">
         {IDEAS.map((entry, index) => (
           <button
             key={entry.key}
@@ -79,11 +83,13 @@ export function IntakePreview() {
             {entry.key}
           </button>
         ))}
-      </div>
+      </div>}
 
-      <p className="mb-1 text-[12px]" style={{ color: "var(--ink-3)" }}>
-        idea: “{idea}” · domain: {plan.domain} · steps: {plan.steps.length}
-      </p>
+      {showChrome && (
+        <p className="mb-1 text-[12px]" style={{ color: "var(--ink-3)" }}>
+          idea: “{idea}” · domain: {plan.domain} · steps: {plan.steps.length}
+        </p>
+      )}
 
       {/* Stand-in for the conversation area above the composer. */}
       <div className="mb-3 flex-1 rounded-[14px] border p-4" style={{ borderColor: "var(--line)" }}>
@@ -111,6 +117,8 @@ export function IntakePreview() {
             preview: "preview" in option ? (option as { preview: DesignPreviewId }).preview : undefined,
           }))}
           onChoose={choose}
+          onBack={stepIndex > 0 ? () => setAnswers({}) : undefined}
+          backLabel={tb("intakeBack")}
         />
       )}
 
@@ -120,7 +128,7 @@ export function IntakePreview() {
         style={{ borderColor: "var(--line)", background: "var(--surface)" }}
       >
         <span className="text-[14px]" style={{ color: "var(--ink-3)" }}>
-          Describe what you want to change…
+          {ts("chatPlaceholder")}
         </span>
         <span
           className="grid h-8 w-8 place-items-center rounded-full text-[13px]"

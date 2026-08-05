@@ -21,10 +21,17 @@ import type { DesignPreviewId } from "@/lib/build/intake";
  * is what re-homes the keyboard cursor: resetting an index in an effect would
  * render one frame pointing at an option from the previous question.
  *
- * KEYBOARD: the row is a radiogroup. Arrow keys move and select, Home/End jump
- * to the ends, Enter/Space confirm, Escape skips. Roving tabindex keeps the
- * group a single tab stop, so someone tabbing to the composer passes the whole
- * question in one press rather than three.
+ * FOCUS IS NOT SELECTION. Nothing is chosen until the person chooses it, so no
+ * card carries the selected treatment on first paint. An earlier version used
+ * one index for both and made the first option look already-picked, which
+ * misreports the state and biases the answer. Focus shows as a ring, selection
+ * as the accent fill, and `aria-checked` follows selection alone.
+ *
+ * KEYBOARD: the row is a radiogroup. Arrow keys move focus without choosing,
+ * Home/End jump to the ends, Enter/Space confirm, Escape skips, Backspace goes
+ * back when a back handler exists. Roving tabindex keeps the group a single tab
+ * stop, so someone tabbing to the composer passes the whole question in one
+ * press rather than three.
  */
 
 export interface StructuredChoiceOption {
@@ -44,6 +51,9 @@ interface StructuredChoiceProps {
   disabled?: boolean;
   /** `null` means the user deferred this step. */
   onChoose: (optionId: string | null) => void;
+  /** Omitted on the first step; renders a compact Back when present. */
+  onBack?: () => void;
+  backLabel?: string;
   labelledById?: string;
 }
 
@@ -54,15 +64,25 @@ export function StructuredChoice({
   progress,
   disabled = false,
   onChoose,
+  onBack,
+  backLabel,
   labelledById,
 }: StructuredChoiceProps) {
-  const [active, setActive] = useState(0);
+  // Where the keyboard cursor is — NOT what is chosen.
+  const [focusIndex, setFocusIndex] = useState(0);
+  // What the person actually picked. Null until they do.
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const refs = useRef<(HTMLButtonElement | null)[]>([]);
-  const hasPreviews = options.some((option) => option.preview);
+
+  function pick(optionId: string) {
+    if (disabled) return;
+    setSelectedId(optionId);
+    onChoose(optionId);
+  }
 
   function move(next: number) {
     const index = (next + options.length) % options.length;
-    setActive(index);
+    setFocusIndex(index);
     refs.current[index]?.focus();
   }
 
@@ -72,12 +92,12 @@ export function StructuredChoice({
       case "ArrowRight":
       case "ArrowDown":
         event.preventDefault();
-        move(active + 1);
+        move(focusIndex + 1);
         break;
       case "ArrowLeft":
       case "ArrowUp":
         event.preventDefault();
-        move(active - 1);
+        move(focusIndex - 1);
         break;
       case "Home":
         event.preventDefault();
@@ -90,6 +110,12 @@ export function StructuredChoice({
       case "Escape":
         event.preventDefault();
         onChoose(null);
+        break;
+      case "Backspace":
+        if (onBack) {
+          event.preventDefault();
+          onBack();
+        }
         break;
       default:
         break;
@@ -104,9 +130,24 @@ export function StructuredChoice({
       data-testid="structured-choice"
     >
       <header className="flex items-center justify-between gap-3 px-3 pb-1.5 pt-2.5">
-        <h2 id={labelledById} className="text-[13px] font-semibold leading-tight" style={{ color: "var(--ink)" }}>
-          {title}
-        </h2>
+        <div className="flex min-w-0 items-center gap-1.5">
+          {onBack && (
+            <button
+              type="button"
+              disabled={disabled}
+              onClick={onBack}
+              data-testid="structured-choice-back"
+              aria-label={backLabel}
+              className="-ml-1 shrink-0 rounded-full px-1.5 py-1 text-[12px] font-medium transition-colors disabled:opacity-50"
+              style={{ color: "var(--ink-2)" }}
+            >
+              ← {backLabel}
+            </button>
+          )}
+          <h2 id={labelledById} className="truncate text-[13px] font-semibold leading-tight" style={{ color: "var(--ink)" }}>
+            {title}
+          </h2>
+        </div>
         <div className="flex shrink-0 items-center gap-2">
           {progress && (
             <span className="text-[11px] tabular-nums" style={{ color: "var(--ink-3)" }}>
@@ -144,25 +185,28 @@ export function StructuredChoice({
         className="flex snap-x snap-mandatory gap-2 overflow-x-auto px-3 pb-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
         {options.map((option, index) => {
-          const isActive = index === active;
+          const isSelected = option.id === selectedId;
           return (
             <button
               key={option.id}
               ref={(node) => { refs.current[index] = node; }}
               type="button"
               role="radio"
-              aria-checked={isActive}
-              tabIndex={isActive ? 0 : -1}
+              aria-checked={isSelected}
+              tabIndex={index === focusIndex ? 0 : -1}
               disabled={disabled}
               data-testid="structured-choice-option"
               data-option-id={option.id}
-              onFocus={() => setActive(index)}
-              onClick={() => onChoose(option.id)}
-              className="group flex min-w-[148px] flex-1 snap-start flex-col gap-1.5 rounded-[11px] border p-2 text-left transition-all disabled:opacity-50 @sm:min-w-0"
+              onFocus={() => setFocusIndex(index)}
+              onClick={() => pick(option.id)}
+              className="group flex min-w-[148px] flex-1 snap-start flex-col gap-1.5 rounded-[11px] border p-2 text-left outline-none transition-all focus-visible:ring-2 focus-visible:ring-offset-1 disabled:opacity-50 @sm:min-w-0"
               style={{
-                borderColor: isActive ? "var(--accent)" : "var(--line)",
-                background: isActive ? "var(--accent-soft)" : "var(--surface)",
-                boxShadow: isActive ? "0 0 0 1px var(--accent)" : "none",
+                borderColor: isSelected ? "var(--accent)" : "var(--line)",
+                background: isSelected ? "var(--accent-soft)" : "var(--surface)",
+                boxShadow: isSelected ? "0 0 0 1px var(--accent)" : "none",
+                // Focus reads as a ring in the accent, selection as the fill —
+                // two different signals rather than one doing both jobs.
+                ["--tw-ring-color" as string]: "var(--accent-pale)",
               }}
             >
               {option.preview && (
@@ -182,7 +226,6 @@ export function StructuredChoice({
           );
         })}
       </div>
-      {hasPreviews && <span className="sr-only">{/* previews are decorative; labels carry the meaning */}</span>}
     </section>
   );
 }

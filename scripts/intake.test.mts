@@ -28,6 +28,7 @@ import {
   INTAKE_DOMAINS,
   type IntakeAnswers,
 } from "../src/lib/build/intake";
+import { buildFirstVersionUserContent } from "../src/lib/build/firstVersionRequest";
 
 let passed = 0;
 const failures: string[] = [];
@@ -202,7 +203,112 @@ function runFlow(idea: string, picks: (string | null)[]) {
   check("intake labels resolve through the provider", /tb\(intake\.step\.titleKey/.test(workspace));
 }
 
-/* ── 8. the retired interview cannot return ─────────────────────────────── */
+/* ── 8. the choices reach what the MODEL receives ───────────────────────── */
+/**
+ * The point of this block is that it does not test a client object. It calls
+ * the same function the server action calls to build the request body, and
+ * reads the system prompt from source — so it fails if the value stops
+ * arriving, or if the prompt stops telling the model what to do with it.
+ */
+{
+  const direction = { name: "Chronoverse", concept: "an MCU timeline", projectType: "site" };
+
+  // Both choices.
+  const both = JSON.parse(buildFirstVersionUserContent(direction, "en", {
+    productType: "an interactive timeline",
+    designDirection: "cinematic: deep field, one dominant image, restrained warm accent",
+  }));
+  check("the model receives the product type",
+    both.intake?.productType === "an interactive timeline", JSON.stringify(both.intake));
+  check("the model receives the design direction",
+    /cinematic/.test(both.intake?.designDirection ?? ""), JSON.stringify(both.intake));
+  check("the direction still reaches the model", both.direction?.name === "Chronoverse");
+  check("the locale still reaches the model", both.projectLocale === "en");
+
+  // End to end from the option ids the UI actually stores.
+  const fromUi = JSON.parse(buildFirstVersionUserContent(
+    direction, "ru",
+    intakeGenerationBrief({ productType: "fandom.archive", designDirection: "design.missionControl" })));
+  check("a stored product-type id arrives as English design vocabulary",
+    fromUi.intake?.productType === "a fan archive", JSON.stringify(fromUi.intake));
+  check("a stored design id arrives as English design vocabulary",
+    /mission-control/.test(fromUi.intake?.designDirection ?? ""), JSON.stringify(fromUi.intake));
+  check("a Russian project still declares its locale to the model", fromUi.projectLocale === "ru");
+
+  // Half deferred: the answered half arrives, the deferred half is absent.
+  const half = JSON.parse(buildFirstVersionUserContent(
+    direction, "en", intakeGenerationBrief({ productType: "fandom.timeline", designDirection: null })));
+  check("a deferred design sends no designDirection key",
+    half.intake && !("designDirection" in half.intake), JSON.stringify(half.intake));
+  check("…while the answered product type still arrives",
+    half.intake?.productType === "an interactive timeline");
+
+  // Fully deferred: byte-identical to the pre-feature request.
+  const deferred = buildFirstVersionUserContent(direction, "en", intakeGenerationBrief({ productType: null, designDirection: null }));
+  const baseline = buildFirstVersionUserContent(direction, "en");
+  check("a fully deferred intake sends no intake key at all", !JSON.parse(deferred).intake);
+  check("…and is identical to a request with no intake", deferred === baseline);
+
+  // The prompt must actually instruct the model to honour it, or the field is
+  // decoration that happens to be present. Read from source: importing the
+  // action would pull in Supabase and the Anthropic client.
+  const prompt = readFileSync(new URL("../src/lib/actions/stage3.ts", import.meta.url), "utf8");
+  check("the system prompt documents the intake object", /BUILD INTAKE/.test(prompt));
+  check("the system prompt names productType", /"productType"/.test(prompt));
+  check("the system prompt names designDirection", /"designDirection"/.test(prompt));
+  check("the system prompt gives the choices authority", /outrank/.test(prompt));
+  check("the system prompt explains an absent key", /deliberately left it/i.test(prompt));
+
+  // The action must have no other way to build the body.
+  const action = readFileSync(new URL("../src/lib/actions/stage3.ts", import.meta.url), "utf8");
+  const firstVersionCall = action.slice(action.indexOf("generateFirstVersionAction"));
+  check("the action builds its body through the tested function",
+    /content: buildFirstVersionUserContent\(stage3\.direction, locale, intake\)/.test(firstVersionCall));
+  check("no hand-rolled payload remains beside it",
+    !/content: JSON\.stringify\(\{ direction: stage3\.direction/.test(action));
+}
+
+/* ── 9. back never generates ────────────────────────────────────────────── */
+{
+  // Back only ever removes an answer, so the plan is left with an unanswered
+  // step. It cannot complete, and completion is the only thing that dispatches.
+  const plan = planIntake("i like marvel cinematic universe");
+  const afterFirst: IntakeAnswers = { productType: "fandom.timeline" };
+  check("after step 1 the next step is design", nextStep(plan, afterFirst)?.id === "designDirection");
+
+  const afterBack: IntakeAnswers = {};
+  check("back returns to the product-type question", nextStep(plan, afterBack)?.id === "productType");
+  check("back leaves the intake incomplete", !isIntakeComplete(plan, afterBack));
+
+  // Choosing a product type advances only — it must not complete a two-step plan.
+  check("choosing a product type does not complete the intake", !isIntakeComplete(plan, afterFirst));
+
+  // Choosing the design completes it, exactly once.
+  const done: IntakeAnswers = { productType: "fandom.timeline", designDirection: "design.cinematic" };
+  check("choosing the design completes the intake", isIntakeComplete(plan, done));
+  check("a completed intake has no further step", nextStep(plan, done) === null);
+
+  // Defer on both steps still completes without a hidden default.
+  const deferredBoth: IntakeAnswers = { productType: null, designDirection: null };
+  check("deferring both completes", isIntakeComplete(plan, deferredBoth));
+  check("deferring both selects nothing", intakeGenerationBrief(deferredBoth) === null);
+}
+
+/* ── 10. no option is preselected ───────────────────────────────────────── */
+{
+  const component = readFileSync(
+    new URL("../src/components/build/StructuredChoice.tsx", import.meta.url), "utf8");
+  check("selection starts empty", /useState<string \| null>\(null\)/.test(component));
+  check("aria-checked follows selection, not focus", /aria-checked=\{isSelected\}/.test(component));
+  check("the roving tabindex is separate from selection", /tabIndex=\{index === focusIndex/.test(component));
+  check("the accent fill is applied only when selected", /background: isSelected \? "var\(--accent-soft\)"/.test(component));
+  check("focus is shown as a ring, not as the selected fill", /focus-visible:ring-2/.test(component));
+  check("arrow keys move focus without choosing",
+    /case "ArrowRight":[\s\S]{0,120}move\(focusIndex \+ 1\)/.test(component));
+  check("a back handler is supported", /onBack\?: \(\) => void/.test(component));
+}
+
+/* ── 11. the retired interview cannot return ────────────────────────────── */
 {
   const workspace = readFileSync(
     new URL("../src/components/build/PreOutputWorkspace.tsx", import.meta.url), "utf8");

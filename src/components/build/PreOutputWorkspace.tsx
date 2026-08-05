@@ -476,6 +476,8 @@ export function PreOutputWorkspace({
                       preview: "preview" in option ? (option as { preview: DesignPreviewId }).preview : undefined,
                     }))}
                     onChoose={intake.choose}
+                    onBack={intake.back ?? undefined}
+                    backLabel={tb("intakeBack")}
                   />
                 ) : null}
                 <div className="mb-2 flex flex-wrap gap-2" hidden={!!intake.step}>

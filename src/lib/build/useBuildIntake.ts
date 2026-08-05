@@ -43,6 +43,8 @@ export interface BuildIntakeState {
   /** True once generation has been dispatched for this project. */
   dispatched: boolean;
   choose: (optionId: string | null) => void;
+  /** Clears the previous answer. Null when there is nothing to go back to. */
+  back: (() => void) | null;
   /** Abandons intake without generating — used when the user types instead. */
   dismiss: () => void;
 }
@@ -138,13 +140,35 @@ export function useBuildIntake({ projectId, idea, enabled, onComplete }: Options
     [plan, state.answers, state.dispatched, ideaHash, persist, onComplete]
   );
 
+  /**
+   * Undoes the last answered step.
+   *
+   * Cannot generate: it only ever removes an answer, so the plan is left with
+   * an unanswered step and `nextStep` returns that question again. Refused
+   * once dispatched, because by then a generation exists and "back" would
+   * imply cancelling it — which this control does not do.
+   */
+  const goBack = useCallback(() => {
+    if (state.dispatched) return;
+    const answered = plan.steps.filter((s) => s.id in state.answers);
+    const last = answered[answered.length - 1];
+    if (!last) return;
+    const answers: IntakeAnswers = { ...state.answers };
+    delete answers[last.id];
+    setStored({ hash: ideaHash, answers, dispatched: false });
+    persist(answers, false);
+  }, [plan, state.answers, state.dispatched, ideaHash, persist]);
+
   const dismiss = useCallback(() => setDismissed(true), []);
 
   const step = enabled && !dismissed && !state.dispatched ? nextStep(plan, state.answers) : null;
   const stepIndex = step ? plan.steps.findIndex((s) => s.id === step.id) : -1;
 
+  const canGoBack = !!step && !state.dispatched && plan.steps.some((s) => s.id in state.answers);
+
   return {
     step,
+    back: canGoBack ? goBack : null,
     progress: step && plan.steps.length > 1 ? `${stepIndex + 1} / ${plan.steps.length}` : null,
     plan,
     answers: state.answers,
