@@ -1129,6 +1129,7 @@
     "projectsFilterAll": "Все",
     "projectsFilterDraft": "Черновики",
     "projectsFilterPublished": "Опубликованные",
-    "overviewNextLabel": "Далее:"
+    "overviewNextLabel": "Далее:",
+    "viewportTablet": "Планшет"
   }
 }

@@ -11,9 +11,12 @@ import {
   IconEye,
   IconMinimize,
   IconMobile,
+  IconTablet,
   IconRefresh,
 } from "@/components/workspace-ui/parts";
 import { VentrioButton } from "@/components/ui/VentrioButton";
+import { ViewportFrame } from "@/components/workspace/ViewportFrame";
+import { DEVICE_WIDTHS, type DeviceMode } from "@/lib/build/deviceWidths";
 
 const PREVIEW_OPEN_KEY = "ventrio:preview-open";
 
@@ -86,7 +89,7 @@ export function BuildScreen({ chat, preview, published, shareUrl = null }: Build
   );
   const [override, setOverride] = useState<boolean | null>(null);
   const [fullScreen, setFullScreen] = useState(false);
-  const [device, setDevice] = useState<"desktop" | "mobile">("desktop");
+  const [device, setDevice] = useState<DeviceMode>("desktop");
   const [reloadKey, setReloadKey] = useState(0);
   const [copied, setCopied] = useState(false);
 
@@ -176,16 +179,19 @@ export function BuildScreen({ chat, preview, published, shareUrl = null }: Build
           </div>
 
           <div className="min-h-0 flex-1 overflow-auto px-4 pb-5 lg:pb-8 lg:pl-8 lg:pr-[92px] lg:pt-2">
-            <div
-              key={reloadKey}
-              className="lift-2 mx-auto overflow-hidden rounded-[var(--r-xl)] border transition-[max-width] duration-[var(--t-layout)] ease-[var(--ease)]"
-              style={{
-                borderColor: "var(--line)",
-                background: "var(--surface)",
-                maxWidth: device === "mobile" ? 390 : 1100,
-              }}
-            >
-              {preview}
+            {/* Full-width centring container. The frame measures this to decide
+                its scale, so its width must not depend on the frame — see
+                ViewportFrame. The border therefore lives on the frame itself. */}
+            <div className="flex w-full justify-center">
+              <ViewportFrame
+                key={`${reloadKey}-${device}`}
+                width={DEVICE_WIDTHS[device]}
+                title={t("previewRegion")}
+                className="lift-2 rounded-[var(--r-xl)] border"
+                style={{ borderColor: "var(--line)", background: "var(--surface)" }}
+              >
+                {preview}
+              </ViewportFrame>
             </div>
           </div>
         </section>
@@ -225,6 +231,9 @@ export function BuildScreen({ chat, preview, published, shareUrl = null }: Build
                   onClick={() => setDevice("desktop")}
                 >
                   <IconDesktop className="h-[18px] w-[18px]" />
+                </RailButton>
+                <RailButton label={t("viewportTablet")} active={device === "tablet"} onClick={() => setDevice("tablet")}>
+                  <IconTablet className="h-[18px] w-[18px]" />
                 </RailButton>
                 <RailButton label={t("viewportMobile")} active={device === "mobile"} onClick={() => setDevice("mobile")}>
                   <IconMobile className="h-[18px] w-[18px]" />

@@ -157,6 +157,12 @@ export const IconMobile = ({ className }: IconProps) => (
     <path d="M8.2 13.2h1.6" />
   </svg>
 );
+export const IconTablet = ({ className }: IconProps) => (
+  <svg {...s} className={c(className)}>
+    <rect x="3.6" y="2.6" width="10.8" height="12.8" rx="1.8" />
+    <path d="M8.2 13.2h1.6" />
+  </svg>
+);
 export const IconPalette = ({ className }: IconProps) => (
   <svg {...s} className={c(className)}>
     <circle cx="9" cy="9" r="6.2" />
@@ -188,7 +194,11 @@ export const IconSliders = ({ className }: IconProps) => (
 );
 export const IconMinimize = ({ className }: IconProps) => (
   <svg {...s} className={c(className)}>
-    <path d="M3.6 7h3.4V3.6M14.4 7H11V3.6M11 11h3.4v3.4M7 11H3.6v3.4" />
+    {/* Four brackets, each cornering toward the centre — the mirror of
+        IconExpand. The bottom pair previously cornered outward, at (14.4,11)
+        and (3.6,11) instead of (11,11) and (7,11), which made the glyph
+        asymmetric and read as a rendering fault rather than as a control. */}
+    <path d="M3.6 7H7V3.6M14.4 7H11V3.6M14.4 11H11V14.4M3.6 11H7V14.4" />
   </svg>
 );
 

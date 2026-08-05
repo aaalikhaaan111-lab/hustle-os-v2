@@ -1129,6 +1129,7 @@
     "projectsFilterAll": "All",
     "projectsFilterDraft": "Draft",
     "projectsFilterPublished": "Published",
-    "overviewNextLabel": "Next:"
+    "overviewNextLabel": "Next:",
+    "viewportTablet": "Tablet"
   }
 }
