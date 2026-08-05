@@ -1132,6 +1132,7 @@
     "projectsFilterDraft": "Draft",
     "projectsFilterPublished": "Published",
     "overviewNextLabel": "Next:",
-    "viewportTablet": "Tablet"
+    "viewportTablet": "Tablet",
+    "previewLinkCopyFailed": "Couldn't copy the link. Open the project page and copy it from the browser."
   }
 }

@@ -1132,6 +1132,7 @@
     "projectsFilterDraft": "Черновики",
     "projectsFilterPublished": "Опубликованные",
     "overviewNextLabel": "Далее:",
-    "viewportTablet": "Планшет"
+    "viewportTablet": "Планшет",
+    "previewLinkCopyFailed": "Не удалось скопировать ссылку. Откройте страницу проекта и скопируйте её из браузера."
   }
 }

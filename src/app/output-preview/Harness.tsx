@@ -31,12 +31,15 @@ export function Harness({
   panel,
   controls,
   screen,
+  published,
 }: {
   mode: DeviceMode;
   inline: boolean;
   panel: number;
   controls: boolean;
   screen: string;
+  /** Fixture publish state, so the Live chip and copy control can be seen. */
+  published: boolean;
 }) {
   const t = useTranslations("stage3");
   const [device] = useState<DeviceMode>(mode);
@@ -90,8 +93,8 @@ export function Harness({
           <div style={{ padding: 24, font: "14px system-ui" }}>chat stand-in</div>
         )}
         preview={output}
-        published={false}
-        shareUrl={null}
+        published={published}
+        shareUrl={published ? "https://ventrio.org/p/chronoverse-fixture" : null}
       />
       </div>
     );

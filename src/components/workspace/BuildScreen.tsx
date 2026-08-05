@@ -91,7 +91,7 @@ export function BuildScreen({ chat, preview, published, shareUrl = null }: Build
   const [fullScreen, setFullScreen] = useState(false);
   const [device, setDevice] = useState<DeviceMode>("desktop");
   const [reloadKey, setReloadKey] = useState(0);
-  const [copied, setCopied] = useState(false);
+  const [copied, setCopied] = useState<"done" | "failed" | null>(null);
 
   const previewOpen = hasPreview && (override ?? storedOpen);
 
@@ -107,7 +107,9 @@ export function BuildScreen({ chat, preview, published, shareUrl = null }: Build
 
   useEffect(() => {
     if (!copied) return;
-    const timer = setTimeout(() => setCopied(false), 2200);
+    // A failure is a longer read than "copied", and it asks the person to go and
+    // do something, so it stays up long enough to finish reading.
+    const timer = setTimeout(() => setCopied(null), copied === "failed" ? 6000 : 2200);
     return () => clearTimeout(timer);
   }, [copied]);
 
@@ -115,9 +117,14 @@ export function BuildScreen({ chat, preview, published, shareUrl = null }: Build
     if (!shareUrl) return;
     try {
       await navigator.clipboard.writeText(shareUrl);
-      setCopied(true);
+      setCopied("done");
     } catch {
-      // Clipboard refused: say nothing rather than claim a copy that failed.
+      // A refused clipboard used to be swallowed entirely, on the reasoning
+      // that silence beats claiming a copy that did not happen. But silence
+      // makes the button look broken and leaves nothing to paste, so say what
+      // went wrong and where the link still is. The publish dock already
+      // answers this way; this is the same answer in the rail.
+      setCopied("failed");
     }
   }
 
@@ -264,11 +271,13 @@ export function BuildScreen({ chat, preview, published, shareUrl = null }: Build
 
       {copied && (
         <div
-          className="pop lift-3 pointer-events-none absolute bottom-5 left-1/2 z-30 -translate-x-1/2 rounded-full px-3.5 py-2 text-[13px] font-medium text-white"
-          role="status"
-          style={{ background: "var(--ink)" }}
+          className="pop lift-3 pointer-events-none absolute bottom-5 left-1/2 z-30 max-w-[min(92%,420px)] -translate-x-1/2 rounded-[var(--r-md)] px-3.5 py-2 text-center text-[13px] font-medium text-white"
+          // A failure is not a status update, and a screen reader should not
+          // have to wait its turn to hear that nothing was copied.
+          role={copied === "failed" ? "alert" : "status"}
+          style={{ background: copied === "failed" ? "var(--warn)" : "var(--ink)" }}
         >
-          {t("previewLinkCopied")}
+          {copied === "failed" ? t("previewLinkCopyFailed") : t("previewLinkCopied")}
         </div>
       )}
     </div>

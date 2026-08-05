@@ -13,13 +13,13 @@ export const dynamic = "force-dynamic";
 export default async function OutputPreviewPage({
   searchParams,
 }: {
-  searchParams: Promise<{ mode?: string; inline?: string; panel?: string; controls?: string; screen?: string }>;
+  searchParams: Promise<{ mode?: string; inline?: string; panel?: string; controls?: string; screen?: string; pub?: string }>;
 }) {
   const allowed =
     process.env.NODE_ENV !== "production" || process.env.VERCEL_ENV === "preview";
   if (!allowed) notFound();
 
-  const { mode, inline, panel, controls, screen } = await searchParams;
+  const { mode, inline, panel, controls, screen, pub } = await searchParams;
   const device: DeviceMode =
     mode === "mobile" || mode === "tablet" || mode === "desktop" ? mode : "mobile";
 
@@ -34,6 +34,7 @@ export default async function OutputPreviewPage({
         panel={Number(panel) || 0}
         controls={controls === "1"}
         screen={screen ?? ""}
+        published={pub === "1"}
       />
     </NextIntlClientProvider>
   );

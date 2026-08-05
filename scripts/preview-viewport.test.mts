@@ -33,6 +33,9 @@ const read = (path: string) => readFileSync(new URL(`../${path}`, import.meta.ur
 const buildScreen = read("src/components/workspace/BuildScreen.tsx");
 const viewportFrame = read("src/components/workspace/ViewportFrame.tsx");
 const parts = read("src/components/workspace-ui/parts.tsx");
+type Messages = { workspace?: Record<string, string> };
+const enMessages = JSON.parse(read("messages/en.json")) as Messages;
+const ruMessages = JSON.parse(read("messages/ru.json")) as Messages;
 
 /* ── 1. the device widths are real device widths ────────────────────────── */
 
@@ -199,6 +202,36 @@ check(
   "a plain action in the rail stays a plain button",
   /active === undefined \? \{\}/.test(railButton),
 );
+
+/* ── 5. copying the share link says what happened ───────────────────────── */
+
+// A refused clipboard used to be swallowed, which left the button looking
+// broken and nothing on the clipboard to paste. It is not a rare path: an
+// unfocused document makes the Clipboard API reject outright.
+const copyLink = buildScreen.match(/async function copyLink\(\)[\s\S]*?\n  \}/)?.[0] ?? "";
+check("copyLink is defined", /clipboard\.writeText/.test(copyLink));
+check(
+  "a refused copy is reported rather than swallowed",
+  /catch\s*\{[\s\S]*?setCopied\("failed"\)/.test(copyLink),
+);
+check("a successful copy is still confirmed", /setCopied\("done"\)/.test(copyLink));
+
+// The two outcomes must not share one announcement: "copied" is a status,
+// failing to copy is an alert, and they must not claim the same thing.
+check(
+  "the failure is announced as an alert",
+  /role=\{copied === "failed" \? "alert" : "status"\}/.test(buildScreen),
+);
+check(
+  "the two outcomes render different messages",
+  /copied === "failed" \? t\("previewLinkCopyFailed"\) : t\("previewLinkCopied"\)/.test(buildScreen),
+);
+
+for (const key of ["previewLinkCopyFailed", "previewLinkCopied"]) {
+  for (const [name, messages] of [["en", enMessages], ["ru", ruMessages]] as const) {
+    check(`workspace.${key} exists in ${name}`, typeof messages.workspace?.[key] === "string");
+  }
+}
 
 /* ── report ─────────────────────────────────────────────────────────────── */
 
