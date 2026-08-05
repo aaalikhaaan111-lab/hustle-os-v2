@@ -308,7 +308,52 @@ function runFlow(idea: string, picks: (string | null)[]) {
   check("a back handler is supported", /onBack\?: \(\) => void/.test(component));
 }
 
-/* ── 11. the retired interview cannot return ────────────────────────────── */
+/* ── 11. the preview route is fixture-only and never in Production ──────── */
+/**
+ * The route was widened to render on Vercel Preview so a reviewer can open it
+ * on a real deployment. Widening WHERE something renders is only safe if it
+ * carries nothing — so both halves are pinned here: the gate, and the absence
+ * of any capability worth reaching.
+ */
+{
+  const page = readFileSync(
+    new URL("../src/app/intake-preview/page.tsx", import.meta.url), "utf8");
+  const view = readFileSync(
+    new URL("../src/app/intake-preview/IntakePreview.tsx", import.meta.url), "utf8");
+  const route = page + view;
+
+  // The gate, expressed exactly.
+  check("the gate allows non-production", /process\.env\.NODE_ENV !== "production"/.test(page));
+  check("the gate allows Vercel Preview", /process\.env\.VERCEL_ENV === "preview"/.test(page));
+  check("anything else falls through to notFound", /if \(!allowed\) notFound\(\)/.test(page));
+
+  // Evaluate the condition the way each environment will.
+  const allowed = (nodeEnv: string, vercelEnv?: string) =>
+    nodeEnv !== "production" || vercelEnv === "preview";
+  check("local development renders it", allowed("development"));
+  check("a test run renders it", allowed("test"));
+  check("Vercel Preview renders it", allowed("production", "preview"));
+  check("Vercel Production does NOT render it", !allowed("production", "production"));
+  check("a bare production build does NOT render it", !allowed("production", undefined));
+  check("an unknown VERCEL_ENV does NOT render it", !allowed("production", "staging"));
+
+  // Fixture-only: nothing to reach even where it does render.
+  for (const forbidden of [
+    "supabase", "createClient", "getCurrentUser", "cookies(", "headers(",
+    "ANTHROPIC", "GEMINI", "Anthropic", "fetch(", "generateFirstVersionAction",
+    "SUPABASE", "SERVICE_ROLE", "API_KEY",
+  ]) {
+    check(`the route never references ${forbidden}`, !route.includes(forbidden));
+  }
+  // The only environment access is the gate itself.
+  const envReads = route.match(/process\.env\.[A-Z_]+/g) ?? [];
+  check("the route reads only NODE_ENV and VERCEL_ENV",
+    envReads.every((r) => r === "process.env.NODE_ENV" || r === "process.env.VERCEL_ENV"),
+    envReads.join(", "));
+  check("the preview dispatches no real generation", !/generateFirstVersion/.test(view));
+}
+
+/* ── 12. the retired interview cannot return ────────────────────────────── */
 {
   const workspace = readFileSync(
     new URL("../src/components/build/PreOutputWorkspace.tsx", import.meta.url), "utf8");
