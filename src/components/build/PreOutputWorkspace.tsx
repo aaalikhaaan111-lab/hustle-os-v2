@@ -264,6 +264,16 @@ export function PreOutputWorkspace({
 
   return (
     <BuildScreen
+      // The panel is reachable from the start, so it has to say which phase the
+      // first version is in rather than sitting empty.
+      previewStatus={
+        job.phase === "failed" || job.phase === "stale"
+          ? "failed"
+          : job.phase === "idle" || job.phase === "succeeded"
+            ? "empty"
+            : "generating"
+      }
+      onPreviewRetry={job.canRetry ? () => createFirstVersion(true) : null}
       published={Boolean(publication?.isPublished)}
       shareUrl={
         // Draft previews are real but unaddressable; only a publication has a URL.

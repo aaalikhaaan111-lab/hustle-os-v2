@@ -999,8 +999,8 @@
     "viewportDesktop": "Desktop",
     "viewportMobile": "Mobile",
     "reload": "Reload preview",
-    "previewEmptyTitle": "Nothing to preview yet",
-    "previewEmptyBody": "Describe what visitors should be able to receive or accomplish. Ventrio will turn it into a useful first version.",
+    "previewEmptyTitle": "Your project preview will appear here",
+    "previewEmptyBody": "Describe what you want in the conversation. The first version shows up in this panel as soon as it is built.",
     "changesEmptyTitle": "No unpublished changes yet.",
     "changesEmptyBody": "Changes made through Ventrio will appear here before publication.",
     "versionsEmptyTitle": "No version history yet.",
@@ -1133,6 +1133,11 @@
     "projectsFilterPublished": "Published",
     "overviewNextLabel": "Next:",
     "viewportTablet": "Tablet",
-    "previewLinkCopyFailed": "Couldn't copy the link. Open the project page and copy it from the browser."
+    "previewLinkCopyFailed": "Couldn't copy the link. Open the project page and copy it from the browser.",
+    "previewGeneratingTitle": "Building your first version",
+    "previewGeneratingBody": "This panel fills in as soon as there is something to show.",
+    "previewFailedTitle": "The first version could not be built",
+    "previewFailedBody": "Nothing was saved, so trying again starts cleanly.",
+    "previewRetry": "Try again"
   }
 }

@@ -15,6 +15,7 @@ import {
   IconRefresh,
 } from "@/components/workspace-ui/parts";
 import { VentrioButton } from "@/components/ui/VentrioButton";
+import { cn } from "@/lib/utils";
 import { ViewportFrame } from "@/components/workspace/ViewportFrame";
 import { DEVICE_WIDTHS, type DeviceMode } from "@/lib/build/deviceWidths";
 
@@ -45,6 +46,17 @@ export interface BuildScreenProps {
   chat: (context: BuildChatContext) => ReactNode;
   /** Real rendered output, or null when nothing has been generated yet. */
   preview: ReactNode | null;
+  /**
+   * What the preview panel should say when there is no output to show.
+   *
+   * The panel used to not exist at all before the first generation — the whole
+   * rail was hidden — so there was no way to look at the surface the product is
+   * about, and nothing to explain that it was coming. The panel is now always
+   * reachable and answers for itself in each phase.
+   */
+  previewStatus?: "empty" | "generating" | "failed";
+  /** Offered in the failed state; omit when a retry is not possible. */
+  onPreviewRetry?: (() => void) | null;
   published: boolean;
   /**
    * A genuinely shareable URL for this project, or null. Only a published
@@ -64,9 +76,18 @@ export interface BuildScreenProps {
  * work rather than sitting in a toolbar above it, so the panel stays a clean
  * surface showing the thing the person actually made.
  */
-export function BuildScreen({ chat, preview, published, shareUrl = null }: BuildScreenProps) {
+export function BuildScreen({
+  chat,
+  preview,
+  previewStatus = "empty",
+  onPreviewRetry = null,
+  published,
+  shareUrl = null,
+}: BuildScreenProps) {
   const t = useTranslations("workspace");
-  const hasPreview = preview !== null;
+  // Whether real output exists — which decides only whether the panel opens by
+  // itself, never whether it can be opened at all.
+  const hasOutput = preview !== null;
 
   const narrow = useSyncExternalStore(
     subscribeToNarrow,
@@ -93,7 +114,10 @@ export function BuildScreen({ chat, preview, published, shareUrl = null }: Build
   const [reloadKey, setReloadKey] = useState(0);
   const [copied, setCopied] = useState<"done" | "failed" | null>(null);
 
-  const previewOpen = hasPreview && (override ?? storedOpen);
+  // An explicit choice always wins. Without one, the panel opens by itself only
+  // when there is something in it: the conversation keeps the screen while the
+  // first version is still an idea, but the control to look is always there.
+  const previewOpen = override ?? (hasOutput && storedOpen);
 
   const changePreviewOpen = useCallback((next: boolean) => {
     setOverride(next);
@@ -141,7 +165,7 @@ export function BuildScreen({ chat, preview, published, shareUrl = null }: Build
         >
           {chat({
             previewOpen,
-            canOpenPreview: hasPreview && !previewOpen,
+            canOpenPreview: !previewOpen,
             openPreview: () => changePreviewOpen(true),
           })}
         </div>
@@ -189,26 +213,37 @@ export function BuildScreen({ chat, preview, published, shareUrl = null }: Build
             {/* Full-width centring container. The frame measures this to decide
                 its scale, so its width must not depend on the frame — see
                 ViewportFrame. The border therefore lives on the frame itself. */}
-            <div className="flex w-full justify-center">
-              <ViewportFrame
-                key={`${reloadKey}-${device}`}
-                width={DEVICE_WIDTHS[device]}
-                title={t("previewRegion")}
-                className="lift-2 rounded-[var(--r-xl)] border"
-                style={{ borderColor: "var(--line)", background: "var(--surface)" }}
-              >
-                {preview}
-              </ViewportFrame>
-            </div>
+            {hasOutput ? (
+              <div className="flex w-full justify-center">
+                <ViewportFrame
+                  key={`${reloadKey}-${device}`}
+                  width={DEVICE_WIDTHS[device]}
+                  title={t("previewRegion")}
+                  className="lift-2 rounded-[var(--r-xl)] border"
+                  style={{ borderColor: "var(--line)", background: "var(--surface)" }}
+                >
+                  {preview}
+                </ViewportFrame>
+              </div>
+            ) : (
+              <PreviewPlaceholder
+                status={previewStatus}
+                onRetry={onPreviewRetry}
+                t={t}
+              />
+            )}
           </div>
         </section>
       )}
 
       {/* ── The floating utility rail ────────────────────────────────────────
-          Desktop only, and only once there is real output to control. Every
-          button here changes something real; nothing was added to fill it. */}
-      {hasPreview && (
-        <div className="pointer-events-none absolute inset-y-0 right-4 z-20 hidden items-center lg:flex">
+          Desktop only. Every button here changes something real; nothing was
+          added to fill it. The rail is present from the start, because the
+          control that opens the preview is one of the things it carries — and
+          hiding that until after the first generation is what made the preview
+          look like it did not exist yet. Controls that act on output are still
+          only shown when there is output. */}
+      <div className="pointer-events-none absolute inset-y-0 right-4 z-20 hidden items-center lg:flex">
           <div
             className="lift-3 pointer-events-auto flex flex-col gap-1 rounded-[var(--r-md)] border p-1.5"
             style={{ borderColor: "var(--line)", background: "var(--surface)" }}
@@ -267,7 +302,6 @@ export function BuildScreen({ chat, preview, published, shareUrl = null }: Build
             )}
           </div>
         </div>
-      )}
 
       {copied && (
         <div
@@ -279,6 +313,71 @@ export function BuildScreen({ chat, preview, published, shareUrl = null }: Build
         >
           {copied === "failed" ? t("previewLinkCopyFailed") : t("previewLinkCopied")}
         </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * What the preview panel shows before there is a preview.
+ *
+ * The panel is reachable from the moment the workspace opens, so it has to
+ * account for itself in every phase rather than being empty or absent. Each
+ * state says only what is true: nothing built yet, building now, or a build
+ * that failed and can be retried. No skeleton of fake content — a placeholder
+ * shaped like a page would be a claim about a page that does not exist.
+ */
+function PreviewPlaceholder({
+  status,
+  onRetry,
+  t,
+}: {
+  status: "empty" | "generating" | "failed";
+  onRetry: (() => void) | null;
+  t: ReturnType<typeof useTranslations<"workspace">>;
+}) {
+  const titleKey =
+    status === "generating"
+      ? "previewGeneratingTitle"
+      : status === "failed"
+        ? "previewFailedTitle"
+        : "previewEmptyTitle";
+  const bodyKey =
+    status === "generating"
+      ? "previewGeneratingBody"
+      : status === "failed"
+        ? "previewFailedBody"
+        : "previewEmptyBody";
+
+  return (
+    <div
+      className="mx-auto flex h-full max-w-[420px] flex-col items-center justify-center gap-2 px-6 text-center"
+      // Announced, because this is how the panel reports that a build finished
+      // or failed to someone who is not watching it.
+      role="status"
+      aria-live="polite"
+    >
+      <span
+        aria-hidden
+        className={cn(
+          "mb-1 h-9 w-9 rounded-full border-2",
+          status === "generating" && "ai-pending"
+        )}
+        style={{
+          borderColor: status === "failed" ? "var(--warn)" : "var(--line-2)",
+          borderStyle: status === "empty" ? "dashed" : "solid",
+        }}
+      />
+      <p className="text-[15px] font-semibold" style={{ color: "var(--ink)" }}>
+        {t(titleKey)}
+      </p>
+      <p className="text-[13px] leading-relaxed" style={{ color: "var(--ink-3)" }}>
+        {t(bodyKey)}
+      </p>
+      {status === "failed" && onRetry && (
+        <VentrioButton variant="primary" size="sm" className="mt-2" onClick={onRetry}>
+          {t("previewRetry")}
+        </VentrioButton>
       )}
     </div>
   );
