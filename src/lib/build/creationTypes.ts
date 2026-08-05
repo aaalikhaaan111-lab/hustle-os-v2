@@ -215,7 +215,15 @@ export function sanitizeCreationTurn(value: unknown): CreationTurn | null {
     .slice(0, 3);
 
   if (candidate.phase === "propose") {
-    if (directions.length < 2) return null;
+    // One direction is a complete proposal.
+    //
+    // This used to demand two, which was reasonable when the guide always
+    // offered a choice. It stopped being reasonable once the guide was told to
+    // build on an explicit instruction: asked to "реши сам и начинай", the
+    // model commits to a single direction — the right answer — and the turn was
+    // then rejected as malformed and surfaced as "the creation assistant is
+    // briefly unavailable". Zero directions is still not a proposal.
+    if (directions.length < 1) return null;
     return { phase: "propose", message, choices: [], choiceMode: "single", directions, transition: "reveal" };
   }
 

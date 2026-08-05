@@ -399,7 +399,22 @@ export async function generateCreationTurnAction(
     .limit(20);
   const history: CreationMessage[] = (recentRows ?? []).reverse().map((row) => ({ role: asChatRole(row.role), content: row.content }));
 
-  async function releaseAndFail(unavailable: boolean): Promise<CreationTurnResult> {
+  /**
+   * Give the reserved turn back, and say why on the way out.
+   *
+   * Every one of these branches used to return silently. A turn that the model
+   * answered successfully but that failed validation looked identical, in the
+   * logs, to one that was never attempted — the only evidence was "the creation
+   * assistant is briefly unavailable" on the screen. That is the silent failure
+   * this pass exists to remove: the reason is short, has no user content in it,
+   * and no secrets.
+   */
+  async function releaseAndFail(unavailable: boolean, reason: string): Promise<CreationTurnResult> {
+    console.error("[ventrio-ai-error]", JSON.stringify({
+      operation: "creation_discovery",
+      projectId,
+      reason,
+    }));
     await releaseAiUsage(user!.id, "discovery_turn");
     return { ok: false, unavailable };
   }
@@ -416,9 +431,9 @@ export async function generateCreationTurnAction(
     });
     logAiUsage("creation_discovery", startedAt, response);
     const textBlock = response.content.find((block) => block.type === "text");
-    if (!textBlock || textBlock.type !== "text") return releaseAndFail(true);
+    if (!textBlock || textBlock.type !== "text") return releaseAndFail(true, "no_text_block");
     const turn = sanitizeCreationTurn(JSON.parse(textBlock.text));
-    if (!turn) return releaseAndFail(true);
+    if (!turn) return releaseAndFail(true, "turn_failed_validation");
     const nextState: Stage3ProjectState = {
       ...stage3,
       status: turn.phase === "propose" ? "proposed" : "shaping",
@@ -429,7 +444,7 @@ export async function generateCreationTurnAction(
     const { error: updateError } = await supabase.from("projects").update({
       snapshot_fields: toJson(snapshot),
     }).eq("id", projectId).eq("user_id", user.id);
-    if (updateError) return releaseAndFail(true);
+    if (updateError) return releaseAndFail(true, "snapshot_save_failed");
     const { error: assistantError } = await supabase.from("project_ai_messages").insert({
       id: assistantMessageId,
       conversation_id: conversationId,
@@ -438,13 +453,12 @@ export async function generateCreationTurnAction(
       role: "assistant",
       content: turn.message,
     });
-    if (assistantError && assistantError.code !== "23505") return releaseAndFail(true);
+    if (assistantError && assistantError.code !== "23505") return releaseAndFail(true, "assistant_message_save_failed");
     await supabase.from("project_ai_conversations").update({ title: message.slice(0, 60) }).eq("id", conversationId).eq("user_id", user.id);
     revalidatePath("/projects");
     return { ok: true, turn, projectName: project.name || draftName(locale), locale };
   } catch (error) {
-    console.error("[ventrio-ai-error]", JSON.stringify({ operation: "creation_discovery", projectId, message: error instanceof Error ? error.message : "unknown" }));
-    return releaseAndFail(true);
+    return releaseAndFail(true, error instanceof Error ? `threw:${error.message}` : "threw:unknown");
   }
 }
 

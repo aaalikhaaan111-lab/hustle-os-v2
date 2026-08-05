@@ -221,6 +221,48 @@ check(
   /never offer one on a turn where they asked you to build/.test(buildAi),
 );
 
+/* ── 8b. a single proposed direction is a valid proposal ────────────────── */
+
+// Found by running "Реши сам и начинай.": the guide committed to one direction
+// — the right answer to a handover — and sanitizeCreationTurn rejected the turn
+// for having fewer than two, which surfaced as "the creation assistant is
+// briefly unavailable" and did not recover on retry. Zero is still not a
+// proposal.
+const { sanitizeCreationTurn } = await import("../src/lib/build/creationTypes");
+const direction = {
+  name: "Зелёный справочник",
+  concept: "Карточки комнатных растений с уходом",
+  forWho: "Начинающие владельцы растений",
+  creates: "Страница с карточками 18 растений",
+  whyFits: "Самый прямой первый шаг",
+  projectType: "content_media",
+  problem: "Непонятно, как ухаживать",
+  audience: "Начинающие",
+  niche: "растения",
+  creativeBrief: {
+    startingMaterial: "интерес к растениям",
+    motivation: "помочь разобраться",
+    firstAudience: "новички",
+    desiredExperience: "найти свой цветок и понять уход",
+    personalIngredients: [],
+    constraints: [],
+    assumptions: [],
+  },
+};
+const oneDirection = sanitizeCreationTurn({
+  phase: "propose", message: "Беру инициативу на себя.", choices: [],
+  choiceMode: "single", transition: "reveal", directions: [direction],
+});
+check("a proposal with one direction is accepted", oneDirection !== null);
+check("and it keeps that direction", oneDirection?.directions.length === 1);
+check(
+  "a proposal with no directions is still rejected",
+  sanitizeCreationTurn({
+    phase: "propose", message: "…", choices: [], choiceMode: "single",
+    transition: "reveal", directions: [],
+  }) === null,
+);
+
 /* ── 9. an explicit locale actually reaches the messages ────────────────── */
 
 // Server-side copy written in a project's language depends on
