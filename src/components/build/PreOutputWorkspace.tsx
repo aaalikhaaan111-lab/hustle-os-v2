@@ -6,7 +6,7 @@ import type { AssistantMessage } from "@/lib/actions/assistant";
 import { sendAssistantMessage } from "@/lib/actions/assistant";
 import { editProjectOutputAction, generateFirstVersionAction } from "@/lib/actions/stage3";
 import type { CreationDirection } from "@/lib/build/creationTypes";
-import { isProjectOutputEditRequest } from "@/lib/build/editIntent";
+import { isFirstVersionRequest, isProjectOutputEditRequest } from "@/lib/build/editIntent";
 import type { Stage3ProjectOutput, Stage3Status } from "@/lib/build/stage3Types";
 import { ProjectOutputRenderer } from "@/components/build/ProjectOutputRenderer";
 import { PublicationControls } from "@/components/publishing/PublicationControls";
@@ -75,7 +75,13 @@ export function PreOutputWorkspace({
   const t = useTranslations("stage3");
   const tb = useTranslations("build");
   const tw = useTranslations("workspace");
-  const locale = useLocale();
+  // The assistant answers in the project's language (see assistant.ts, which
+  // passes project.locale to the model), so the chips beside it must use the
+  // same one. Reading the UI locale here is what produced Russian replies next
+  // to English chips for anyone whose interface cookie disagreed with their
+  // project.
+  const uiLocale = useLocale();
+  const locale = projectLocale || uiLocale;
 
   const [output, setOutput] = useState(initialOutput);
   const [messages, setMessages] = useState<ChatMessage[]>(
@@ -161,6 +167,13 @@ export function PreOutputWorkspace({
     setInput("");
     setNote(null);
     append("user", content);
+    // An explicit "build the site" before any output exists is a request for
+    // generation, not for conversation. Routing it to the chat is what let the
+    // assistant answer a build request with a refusal.
+    if (!output && !job.active && direction && isFirstVersionRequest(content)) {
+      createFirstVersion();
+      return;
+    }
     const shouldEditOutput = !!output && isProjectOutputEditRequest(content);
     startSending(async () => {
       setIsEditingOutput(shouldEditOutput);
