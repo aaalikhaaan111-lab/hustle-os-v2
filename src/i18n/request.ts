@@ -24,8 +24,23 @@ async function resolveLocale(): Promise<Locale> {
   return localeFromAcceptLanguage(headerList.get("accept-language"));
 }
 
-export default getRequestConfig(async () => {
-  const locale = await resolveLocale().catch(() => DEFAULT_LOCALE);
+export default getRequestConfig(async ({ requestLocale }) => {
+  // An explicitly requested locale wins.
+  //
+  // This callback used to ignore its argument and always resolve from the
+  // cookie, which quietly broke every server-side attempt to render in a
+  // project's own language: `getTranslations({ locale: "ru" })` returned
+  // English messages, because the config handed back the request's locale
+  // regardless of what was asked for. Persisted copy — the "first version is
+  // ready" message — was written in the account's language and stayed wrong.
+  //
+  // next-intl passes the locale through `requestLocale` for exactly this. The
+  // cookie/Accept-Language resolution below remains the answer when nothing
+  // specific was asked for, which is every ordinary page render.
+  const requested = await requestLocale;
+  const locale = isLocale(requested)
+    ? requested
+    : await resolveLocale().catch(() => DEFAULT_LOCALE);
 
   return {
     locale,
