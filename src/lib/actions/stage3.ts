@@ -4,6 +4,9 @@ import { createHash } from "node:crypto";
 import Anthropic from "@anthropic-ai/sdk";
 import { revalidatePath } from "next/cache";
 import { getTranslations } from "next-intl/server";
+import { DEFAULT_LOCALE, isLocale } from "@/i18n/locale";
+import { inferDirection } from "@/lib/build/inferredDirection";
+import { parseSnapshotFields } from "@/lib/build/snapshot";
 import { createClient } from "@/lib/supabase/server";
 import { buildFirstVersionUserContent } from "@/lib/build/firstVersionRequest";
 import {
@@ -240,6 +243,35 @@ type Stage3Result = {
   jobId?: string | null;
 };
 
+/**
+ * The conversation the generated version's message belongs to.
+ *
+ * A project created outside /create has no stage3 conversation recorded, and
+ * the message still has to land somewhere the workspace will show it. The most
+ * recent conversation is that place; if there is none, one is created.
+ */
+async function conversationIdFor(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  projectId: string,
+  userId: string
+): Promise<string> {
+  const { data: existing } = await supabase
+    .from("project_ai_conversations")
+    .select("id")
+    .eq("project_id", projectId)
+    .eq("user_id", userId)
+    .order("updated_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (existing?.id) return existing.id;
+  const { data: created } = await supabase
+    .from("project_ai_conversations")
+    .insert({ project_id: projectId, user_id: userId })
+    .select("id")
+    .single();
+  return created?.id ?? projectId;
+}
+
 async function ownedProject(projectId: string) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -304,11 +336,65 @@ export async function generateFirstVersionAction(
   if (!UUID_PATTERN.test(projectId)) return { error: t("errorInvalid"), output: null, reply: null };
   const { supabase, user, project, stage3 } = await ownedProject(projectId);
   if (!user) return { error: t("errorSession"), output: null, reply: null };
-  if (!project || !stage3 || !stage3.direction) return { error: t("errorDirection"), output: null, reply: null };
-  const locale = project.locale;
+  if (!project) return { error: t("errorInvalid"), output: null, reply: null };
+  const locale = isLocale(project.locale) ? project.locale : DEFAULT_LOCALE;
+
+  /**
+   * A direction is no longer a precondition for building.
+   *
+   * This used to return errorDirection unless someone had clicked one of the
+   * cards in /create, so a project that arrived in the workspace any other way
+   * could never generate at all — whatever its owner typed. That is the hard
+   * stage gate behind "I need your confirmation on the problem before
+   * building": the assistant was not being cautious, it had no path to build.
+   *
+   * Everything a direction carries can be assumed from what the project already
+   * holds, and each assumption is recorded so the generator treats it as
+   * provisional rather than as confirmed research. An assumption the person can
+   * see and change is better than a refusal.
+   */
+  const savedFields = parseSnapshotFields(project.snapshot_fields);
+  let direction = stage3?.direction ?? null;
+  let inferredDirection = false;
+  if (!direction) {
+    const { data: recent } = await supabase
+      .from("project_ai_messages")
+      .select("content, role, created_at")
+      .eq("project_id", projectId)
+      .eq("user_id", user.id)
+      .eq("role", "user")
+      .order("created_at", { ascending: false })
+      .limit(8);
+    direction = inferDirection({
+      projectName: project.name ?? null,
+      niche: project.niche ?? null,
+      problem: savedFields.problem ?? null,
+      audience: savedFields.audience ?? project.target_audience ?? null,
+      solution: savedFields.solution ?? null,
+      recentUserMessages: (recent ?? []).map((row) => String(row.content ?? "")),
+      locale,
+    });
+    inferredDirection = true;
+  }
+
+  // A project that never went through /create has no stage3 state at all. It
+  // still gets one here rather than being turned away, so the generated version
+  // has somewhere to be stored.
+  const baseState: Stage3ProjectState = stage3 ?? {
+    version: 1,
+    kind: "stage3",
+    sessionId: projectId,
+    status: "ready",
+    startingPoint: null,
+    conversationId: await conversationIdFor(supabase, projectId, user.id),
+    lastRequestId: null,
+    turn: null,
+    direction,
+    output: null,
+  };
 
   // A finished first version is final. Nothing below may run again for it.
-  if (stage3.output) return { error: null, output: stage3.output, reply: t("alreadyReady"), durationMs: 0 };
+  if (baseState.output) return { error: null, output: baseState.output, reply: t("alreadyReady"), durationMs: 0 };
 
   // Clear abandoned attempts across the whole account, not just this project.
   // Quota is user-wide, so a dead hold left by a crash somewhere else would
@@ -381,20 +467,23 @@ export async function generateFirstVersionAction(
       max_tokens: 16000,
       output_config: { effort: "medium" },
       system: outputPrompt(locale),
-      messages: [{ role: "user", content: buildFirstVersionUserContent(stage3.direction, locale, intake) }],
+      messages: [{ role: "user", content: buildFirstVersionUserContent(direction, locale, intake, inferredDirection) }],
     });
     logUsage("first_version_generation", projectId, startedAt, response);
     const textBlock = response.content.find((block) => block.type === "text");
     if (!textBlock || textBlock.type !== "text") {
       return releaseAndFail(t("unavailable"), "provider_unavailable", "No text block in provider response.");
     }
-    const output = sanitizeStage3Output(parseJsonRelaxed(textBlock.text), stage3.direction.projectType);
+    const output = sanitizeStage3Output(parseJsonRelaxed(textBlock.text), direction.projectType);
     if (!output) {
       return releaseAndFail(t("unavailable"), "invalid_output", "Provider output failed validation.");
     }
 
     await beat(job.id, "saving");
-    const nextState: Stage3ProjectState = { ...stage3, status: "first_version_ready", output };
+    // The inferred direction is persisted with the version it produced, so the
+    // project keeps a record of what it was built from and the assumptions stay
+    // visible and editable rather than disappearing after the run.
+    const nextState: Stage3ProjectState = { ...baseState, direction, status: "first_version_ready", output };
     const snapshot = mergeStage3ProjectState(project.snapshot_fields, nextState);
     snapshot.solution = output.identity.description;
     snapshot.audience = output.targetUser;
@@ -412,14 +501,14 @@ export async function generateFirstVersionAction(
     const tProject = await getTranslations({ locale, namespace: "stage3" });
     const reply = tProject("generationReply", { name: output.identity.name });
     await supabase.from("project_ai_messages").insert({
-      id: stableUuid(`${stage3.conversationId}:first-version-ready`),
-      conversation_id: stage3.conversationId,
+      id: stableUuid(`${baseState.conversationId}:first-version-ready`),
+      conversation_id: baseState.conversationId,
       project_id: projectId,
       user_id: user.id,
       role: "assistant",
       content: reply,
     });
-    await supabase.from("project_ai_conversations").update({ title: output.identity.name.slice(0, 60) }).eq("id", stage3.conversationId).eq("user_id", user.id);
+    await supabase.from("project_ai_conversations").update({ title: output.identity.name.slice(0, 60) }).eq("id", baseState.conversationId).eq("user_id", user.id);
     await finishSucceeded(job.id);
     revalidatePath("/projects");
     revalidatePath(`/projects/${projectId}`);

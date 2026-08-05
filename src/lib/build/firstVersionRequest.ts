@@ -17,6 +17,13 @@ export function buildFirstVersionUserContent(
   direction: unknown,
   locale: string,
   intake?: FirstVersionIntake | null,
+  /**
+   * True when nobody chose this direction — it was assembled from what the
+   * project already knew because the person asked to build. The generator is
+   * told so it treats the direction as a provisional reading to work from
+   * rather than as decisions the user made and confirmed.
+   */
+  directionInferred = false,
 ): string {
   // A fully-deferred intake omits the key entirely rather than sending nulls,
   // so the model sees exactly the input it would have seen before this feature
@@ -26,6 +33,7 @@ export function buildFirstVersionUserContent(
   return JSON.stringify({
     direction,
     projectLocale: locale,
+    ...(directionInferred ? { directionInferred: true } : {}),
     ...(hasIntake ? { intake } : {}),
   });
 }
