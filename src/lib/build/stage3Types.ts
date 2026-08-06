@@ -165,6 +165,16 @@ export interface Stage3ProjectOutput {
   launchCopy: { headline: string; body: string; shortPost: string };
 }
 
+/**
+ * How many previous versions are kept for rollback.
+ *
+ * The history lives inside the project's existing snapshot JSON rather than a
+ * new table, which is why it is bounded: the row has to stay a reasonable size,
+ * and in practice "undo" is used to step back from the last change or two, not
+ * to browse a month of history.
+ */
+export const MAX_OUTPUT_HISTORY = 8;
+
 export interface Stage3ProjectState {
   version: 1;
   kind: "stage3";
@@ -176,6 +186,14 @@ export interface Stage3ProjectState {
   turn: CreationTurn | null;
   direction: CreationDirection | null;
   output: Stage3ProjectOutput | null;
+  /**
+   * Previous versions, newest first. Every successful edit pushes the artifact
+   * it replaced, so the current one is never in here.
+   *
+   * Before this existed an edit overwrote `output` and the version it replaced
+   * was gone — "верни предыдущую версию" had nothing to restore.
+   */
+  history: Stage3ProjectOutput[];
 }
 
 const COMPATIBLE_ACTIONS: Record<V1Preset, readonly OutputCtaAction[]> = {
@@ -831,7 +849,43 @@ export function parseStage3ProjectState(snapshotFields: unknown): Stage3ProjectS
     turn: sanitizeCreationTurn(raw.turn),
     direction,
     output,
+    // Sanitized one by one and silently dropped when unreadable: a corrupt
+    // entry in the history must never stop the current version loading.
+    history: Array.isArray(raw.history)
+      ? raw.history
+          .slice(0, MAX_OUTPUT_HISTORY)
+          .map((entry) => sanitizeStage3Output(entry, direction?.projectType))
+          .filter((entry): entry is Stage3ProjectOutput => entry !== null)
+      : [],
   };
+}
+
+/**
+ * The state that results from replacing the current version with a new one.
+ *
+ * Keeps the replaced artifact at the head of the history so it can be restored,
+ * and drops the oldest once the cap is reached.
+ */
+export function withNewOutput(
+  state: Stage3ProjectState,
+  next: Stage3ProjectOutput
+): Stage3ProjectState {
+  const previous = state.output ? [state.output, ...state.history] : state.history;
+  return { ...state, output: next, history: previous.slice(0, MAX_OUTPUT_HISTORY) };
+}
+
+/**
+ * The state that results from stepping back one version.
+ *
+ * Returns null when there is nothing to go back to, so the caller can say so
+ * rather than silently doing nothing. The version being undone is discarded
+ * rather than kept as a redo — one clear direction is enough here, and keeping
+ * both would make "verify the preview changed" ambiguous.
+ */
+export function withPreviousOutput(state: Stage3ProjectState): Stage3ProjectState | null {
+  const [previous, ...rest] = state.history;
+  if (!previous) return null;
+  return { ...state, output: previous, history: rest };
 }
 
 export function mergeStage3ProjectState(snapshotFields: unknown, stage3: Stage3ProjectState): Record<string, unknown> {

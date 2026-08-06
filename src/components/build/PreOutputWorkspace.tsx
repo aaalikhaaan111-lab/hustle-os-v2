@@ -4,9 +4,9 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import type { AssistantMessage } from "@/lib/actions/assistant";
 import { sendAssistantMessage } from "@/lib/actions/assistant";
-import { editProjectOutputAction, generateFirstVersionAction } from "@/lib/actions/stage3";
+import { editProjectOutputAction, generateFirstVersionAction, undoProjectOutputAction } from "@/lib/actions/stage3";
 import type { CreationDirection } from "@/lib/build/creationTypes";
-import { isProjectOutputEditRequest } from "@/lib/build/editIntent";
+import { classifySiteIntent, isSiteMutation } from "@/lib/build/siteEditIntent";
 import { classifyBuildIntent } from "@/lib/build/buildIntent";
 import { StructuredChoice } from "./StructuredChoice";
 import { useBuildIntake } from "@/lib/build/useBuildIntake";
@@ -207,17 +207,42 @@ export function PreOutputWorkspace({
       createFirstVersion();
       return;
     }
-    const shouldEditOutput = !!output && isProjectOutputEditRequest(content);
+    // What the person wants done to the site, decided here rather than by the
+    // model. The old test matched a fixed verb list anchored to the start of
+    // the message, so "поменяй шрифт и цвет фона" was not recognised as an edit
+    // and the assistant answered that it had to be done in a design interface
+    // Ventrio does not have.
+    const intent = classifySiteIntent(content, { hasOutput: !!output });
+    const shouldEditOutput = isSiteMutation(intent);
     startSending(async () => {
       setIsEditingOutput(shouldEditOutput);
       try {
+        if (intent === "UNDO") {
+          if (!conversationId) {
+            setNote(t("unavailable"));
+            setInput(content);
+            return;
+          }
+          const result = await undoProjectOutputAction(projectId, conversationId);
+          if (result.error) {
+            setNote(result.error);
+            setInput(content);
+            return;
+          }
+          if (result.output) {
+            setOutput(result.output);
+            setRevealKey((value) => value + 1);
+          }
+          if (result.reply) append("assistant", result.reply);
+          return;
+        }
         if (shouldEditOutput) {
           if (!conversationId) {
             setNote(t("unavailable"));
             setInput(content);
             return;
           }
-          const result = await editProjectOutputAction(projectId, conversationId, crypto.randomUUID(), content);
+          const result = await editProjectOutputAction(projectId, conversationId, crypto.randomUUID(), content, intent);
           if (result.error || !result.output) {
             if (result.limitReached) {
               setNote(t("editLimitReached", { limit: result.limitReached.limit }));

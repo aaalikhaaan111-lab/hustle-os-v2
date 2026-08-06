@@ -170,6 +170,7 @@ function newStage3State(sessionId: string, conversationId: string, point: Creati
     turn: null,
     direction: null,
     output: null,
+    history: [],
   };
 }
 
