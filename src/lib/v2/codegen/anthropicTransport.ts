@@ -40,15 +40,32 @@ export class AnthropicCodegenTransport implements GeminiTransport {
 
     try {
       const client = new Anthropic();
-      const response = await client.messages.create(
-        {
-          model: this.model,
-          max_tokens: request.maxOutputTokens,
-          system: request.system,
-          messages: [{ role: "user", content: request.user }],
-        },
-        { signal },
-      );
+      /**
+       * Streamed, because a bundle request is not a small one.
+       *
+       * The codegen budget is 32k output tokens, and the SDK refuses a
+       * non-streaming request whose `max_tokens` implies it could run past ten
+       * minutes — it throws synchronously, before any network call. The first
+       * canary found this the only way it could be found: three runs, three
+       * failures, 0 ms latency each, no request ever reaching the provider.
+       *
+       * `finalMessage()` reassembles the stream into the same shape the
+       * non-streaming call returned, so nothing downstream changes. The stream
+       * is not surfaced to callers: there is no partial-bundle rendering to do,
+       * because a bundle is only meaningful once the gate has accepted all of
+       * it.
+       */
+      const response = await client.messages
+        .stream(
+          {
+            model: this.model,
+            max_tokens: request.maxOutputTokens,
+            system: request.system,
+            messages: [{ role: "user", content: request.user }],
+          },
+          { signal },
+        )
+        .finalMessage();
 
       const text = response.content
         .filter((block): block is Extract<typeof block, { type: "text" }> => block.type === "text")

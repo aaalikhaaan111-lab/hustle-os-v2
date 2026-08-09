@@ -15,7 +15,7 @@
  * hand-written output would be measuring the wrong thing.
  */
 
-import { GENERATION_LIMITS } from "../gemini/config";
+import { GENERATION_LIMITS, deadlineFor } from "../gemini/config";
 import { BudgetedTransport, type GeminiResponse, type GeminiTransport, type GeminiUsage } from "../gemini/transport";
 import { compileCodegenBundle, type CodegenReport, type CodegenStage, type CompiledRoute } from "./compile";
 import type { ContentPack } from "./content";
@@ -117,7 +117,19 @@ export async function generateCodegenBundle(
   });
 
   const controller = new AbortController();
-  const deadline = setTimeout(() => controller.abort(), GENERATION_LIMITS.totalTimeoutMs);
+  /**
+   * The deadline covers the stages this run may actually attempt.
+   *
+   * Previously a flat pipeline-wide timeout, which meant the repair inherited
+   * whatever the generation had not used. Three paid canary runs each spent a
+   * repair request into 7.9-86.9 s of remaining budget and each timed out. The
+   * deadline is now the sum of the stages plus slack, so the repair has the
+   * budget it was promised rather than the remainder.
+   */
+  const deadline = setTimeout(
+    () => controller.abort(),
+    deadlineFor(maxRequests >= 2 ? ["generate", "repair"] : ["generate"]),
+  );
 
   const assets = input.assets ?? TRUSTED_ASSETS;
   const system = codegenSystemPrompt(assets.size > 0);
@@ -164,7 +176,7 @@ export async function generateCodegenBundle(
         model: input.model,
         system,
         user: repairPrompt(user, attempt.issues),
-        timeoutMs: GENERATION_LIMITS.stageBTimeoutMs,
+        timeoutMs: GENERATION_LIMITS.repairTimeoutMs,
         maxOutputTokens: GENERATION_LIMITS.maxOutputTokensRepair,
         label: "repair",
       },
@@ -206,10 +218,30 @@ type Attempt =
   | { ok: true; routes: CompiledRoute[]; report: CodegenReport; bundle: CodegenBundleV1 }
   | { ok: false; code: "unparseable" | "refused"; message: string; stage?: CodegenStage; issues: string[] };
 
+/**
+ * Parses the response, tolerating a markdown fence around it.
+ *
+ * The prompt asks for a bare JSON object and the model wraps it in ```json
+ * anyway — all three canary runs did, every time, and a bare `JSON.parse`
+ * threw away three complete and otherwise valid bundles and spent a repair
+ * request on each. The artifact path has had exactly this for the same reason
+ * (see `parseJsonRelaxed` in actions/stage3.ts); codegen simply never got it.
+ *
+ * This is not a relaxed gate. A fence is transport encoding, not content: the
+ * envelope check, the reject pass, the budgets, the substitution rules and the
+ * shell all still run, unchanged, on whatever is inside it. Nothing that was
+ * refused before is accepted now except the wrapper itself.
+ */
+function parseBundleJson(text: string): unknown {
+  const trimmed = text.trim();
+  const fenced = /^```(?:json)?\s*([\s\S]*?)\s*```$/.exec(trimmed);
+  return JSON.parse(fenced ? fenced[1] : trimmed);
+}
+
 function accept(text: string, content: ContentPack, assets: AssetRegistry): Attempt {
   let parsed: unknown;
   try {
-    parsed = JSON.parse(text) as unknown;
+    parsed = parseBundleJson(text) as unknown;
   } catch {
     return {
       ok: false,
