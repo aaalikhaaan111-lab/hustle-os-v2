@@ -37,6 +37,8 @@ import { MAX_FIRST_VERSION_ATTEMPTS, type FirstVersionJobView } from "@/lib/jobs
 import { withNewOutput, withPreviousOutput } from "@/lib/build/stage3Types";
 import { editScopeFor, type SiteIntent } from "@/lib/build/siteEditIntent";
 import { toJson } from "@/lib/supabase/json";
+import { codegenRenderingEnabled, renderProjectWithCodegen } from "@/lib/v2/codegen/renderProject";
+import { mergeCodegenState, type CodegenProjectState } from "@/lib/v2/codegen/projectState";
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const TOKEN_PATTERN = /^[a-zA-Z0-9_-]{8,80}$/;
@@ -502,12 +504,46 @@ export async function generateFirstVersionAction(
       return releaseAndFail(t("unavailable"), "invalid_output", "Provider output failed validation.");
     }
 
+    /**
+     * The design pass, when codegen is the renderer for this deploy.
+     *
+     * It runs inside this job on purpose. Codegen is a second provider request,
+     * but from the person's side exactly one generation happened, so it shares
+     * this job's row and this job's reserved unit: one quota unit, one refund
+     * path, one retry count. A separate action would have meant a second unit
+     * for the same button, and a retry that charged twice.
+     *
+     * There is no fallback to the fixed renderer. Falling back would make the
+     * canary meaningless — a codegen failure would be invisible, recorded as a
+     * success, and the comparison would measure the old renderer either way.
+     * A failure here refunds and surfaces, like any other generation failure.
+     */
+    let codegenState: CodegenProjectState | null = null;
+    if (codegenRenderingEnabled()) {
+      await beat(job.id, "generating");
+      const rendered = await renderProjectWithCodegen({ output, intake, locale });
+      if (!rendered.ok) {
+        console.error("[ventrio-ai-error]", JSON.stringify({
+          operation: "codegen_render",
+          projectId,
+          code: rendered.code,
+          requestCount: rendered.requestCount,
+          issues: rendered.issues?.slice(0, 5) ?? [],
+        }));
+        return releaseAndFail(t("unavailable"), "invalid_output", `Codegen render failed: ${rendered.code}.`);
+      }
+      codegenState = rendered.state;
+    }
+
     await beat(job.id, "saving");
     // The inferred direction is persisted with the version it produced, so the
     // project keeps a record of what it was built from and the assumptions stay
     // visible and editable rather than disappearing after the run.
     const nextState: Stage3ProjectState = { ...baseState, direction, status: "first_version_ready", output };
-    const snapshot = mergeStage3ProjectState(project.snapshot_fields, nextState);
+    const snapshot = mergeCodegenState(
+      mergeStage3ProjectState(project.snapshot_fields, nextState),
+      codegenState,
+    );
     snapshot.solution = output.identity.description;
     snapshot.audience = output.targetUser;
     snapshot.first_version = output.primaryValue;

@@ -8,6 +8,9 @@ import { parseStage3ProjectState } from "@/lib/build/stage3Types";
 import { isLocale, DEFAULT_LOCALE } from "@/i18n/locale";
 import { loadProjectPublicationState } from "@/lib/publishing/queries";
 import { getSiteUrl } from "@/lib/site";
+import { compileCodegenBundle } from "@/lib/v2/codegen/compile";
+import { readCodegenState } from "@/lib/v2/codegen/projectState";
+import type { WorkspaceCodegenView } from "@/components/build/WorkspaceView";
 
 type Client = SupabaseClient<Database>;
 type ProjectRow = Database["public"]["Tables"]["projects"]["Row"];
@@ -93,5 +96,44 @@ export async function buildWorkspaceViewProps(
       direction: stage3?.direction ?? null,
       output: stage3?.output ?? null,
     },
+    codegen: compileStoredCodegen(project.snapshot_fields),
+  };
+}
+
+/**
+ * The stored bundle, recompiled here rather than read as finished HTML.
+ *
+ * Recompiling on read is what keeps the gate live: a bundle accepted by an
+ * older, weaker gate stops rendering the moment the gate is tightened, instead
+ * of being grandfathered in by virtue of already being in the database. It
+ * fails closed — the workspace shows no codegen preview and falls back to
+ * whatever else it has, which is the honest outcome for a page that would not
+ * be approved today.
+ *
+ * The cost is a parse of a few kilobytes per workspace load. The alternative
+ * was storing a few hundred kilobytes of base64 image bytes per project and
+ * freezing every past safety decision permanently.
+ */
+function compileStoredCodegen(snapshotFields: unknown): WorkspaceCodegenView | null {
+  const state = readCodegenState(snapshotFields);
+  if (!state) return null;
+
+  const result = compileCodegenBundle(state.bundle, { content: state.content });
+  if (!result.ok) {
+    console.error("[ventrio-codegen]", JSON.stringify({
+      operation: "recompile_stored",
+      stage: result.stage,
+      issues: result.issues.slice(0, 5).map((issue) => `${issue.path}: ${issue.code}`),
+    }));
+    return null;
+  }
+
+  return {
+    generatedAt: state.generatedAt,
+    routes: result.routes.map((route) => ({
+      path: route.path,
+      title: route.title,
+      srcDoc: route.srcDoc,
+    })),
   };
 }

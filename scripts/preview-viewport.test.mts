@@ -52,7 +52,16 @@ check("tablet width clears the 640px breakpoint", DEVICE_WIDTHS.tablet >= 640);
 
 check(
   "BuildScreen renders the preview through ViewportFrame",
-  /<ViewportFrame[\s\S]{0,400}\{preview\}/.test(buildScreen),
+  /<ViewportFrame[\s\S]{0,500}\bpreview\b/.test(buildScreen),
+);
+
+// The function form exists so the sandboxed codegen preview can be told which
+// viewport it was given — it renders an opaque-origin document whose height and
+// breakpoints it cannot measure from outside. Both forms must still go through
+// the frame; a preview rendered beside it would be the original bug again.
+check(
+  "the device is passed to a function-form preview",
+  /typeof preview === "function" \? preview\(device\)/.test(buildScreen),
 );
 
 // The exact shape of the bug: a width derived from `device` applied as a CSS

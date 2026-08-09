@@ -22,6 +22,7 @@ import type { ContentPack } from "./content";
 import { TRUSTED_ASSETS, type AssetRegistry } from "./assets";
 import { codegenSystemPrompt, codegenUserPrompt } from "./prompt";
 import type { RejectIssue } from "./reject";
+import { validateCodegenEnvelope, type CodegenBundleV1 } from "./envelope";
 
 /** Two: one generation, one repair. Never more. */
 export const CODEGEN_MAX_REQUESTS = 2;
@@ -73,6 +74,8 @@ export type CodegenGenerationResult =
       ok: true;
       routes: CompiledRoute[];
       report: CodegenReport;
+      /** The accepted bundle, for callers that store it and recompile on read. */
+      bundle: CodegenBundleV1;
       telemetry: CodegenTelemetry;
       /**
        * The model's raw response text.
@@ -139,7 +142,7 @@ export async function generateCodegenBundle(
 
     const attempt = accept(first.text, input.content, assets);
     if (attempt.ok) {
-      return { ok: true, routes: attempt.routes, report: attempt.report, telemetry: telemetry(), raw: first.text };
+      return { ok: true, routes: attempt.routes, report: attempt.report, bundle: attempt.bundle, telemetry: telemetry(), raw: first.text };
     }
 
     if (maxRequests < 2) {
@@ -182,7 +185,7 @@ export async function generateCodegenBundle(
 
     const second = accept(repair.text, input.content, assets);
     if (second.ok) {
-      return { ok: true, routes: second.routes, report: second.report, telemetry: telemetry(true), raw: repair.text };
+      return { ok: true, routes: second.routes, report: second.report, bundle: second.bundle, telemetry: telemetry(true), raw: repair.text };
     }
 
     return {
@@ -200,7 +203,7 @@ export async function generateCodegenBundle(
 }
 
 type Attempt =
-  | { ok: true; routes: CompiledRoute[]; report: CodegenReport }
+  | { ok: true; routes: CompiledRoute[]; report: CodegenReport; bundle: CodegenBundleV1 }
   | { ok: false; code: "unparseable" | "refused"; message: string; stage?: CodegenStage; issues: string[] };
 
 function accept(text: string, content: ContentPack, assets: AssetRegistry): Attempt {
@@ -217,15 +220,36 @@ function accept(text: string, content: ContentPack, assets: AssetRegistry): Atte
   }
 
   const compiled = compileCodegenBundle(parsed, { content, assets });
-  if (compiled.ok) return { ok: true, routes: compiled.routes, report: compiled.report };
+  if (!compiled.ok) {
+    return {
+      ok: false,
+      code: "refused",
+      message: `The bundle was refused at the "${compiled.stage}" stage (${compiled.issues.length} problem(s)).`,
+      stage: compiled.stage,
+      issues: compiled.issues.map(describe),
+    };
+  }
 
-  return {
-    ok: false,
-    code: "refused",
-    message: `The bundle was refused at the "${compiled.stage}" stage (${compiled.issues.length} problem(s)).`,
-    stage: compiled.stage,
-    issues: compiled.issues.map(describe),
-  };
+  // The typed bundle, recovered so a caller can persist what the gate accepted
+  // rather than the compiled pages. Re-running the envelope check is pure and
+  // cheap, and it cannot disagree — the compile that just passed begins with
+  // the same call. Deriving it here rather than widening the compiler's result
+  // keeps the storage concern out of the gate chain.
+  const envelope = validateCodegenEnvelope(parsed);
+  if (!envelope.ok) {
+    // Unreachable unless the two checks have drifted apart, which is a bug in
+    // this file rather than in the model's output. Reported rather than
+    // asserted, because the alternative is throwing inside a paid request.
+    return {
+      ok: false,
+      code: "refused",
+      message: "The bundle compiled but failed envelope validation.",
+      stage: "envelope",
+      issues: envelope.issues.map((issue) => `${issue.path}: ${issue.code} — ${issue.detail}`),
+    };
+  }
+
+  return { ok: true, routes: compiled.routes, report: compiled.report, bundle: envelope.bundle };
 }
 
 function describe(issue: RejectIssue): string {

@@ -8,6 +8,7 @@ import type { StructuredField } from "@/lib/build/snapshot";
 import { AssistantChat } from "@/components/build/AssistantChat";
 import { PreOutputWorkspace } from "@/components/build/PreOutputWorkspace";
 import { ProjectOutputRenderer } from "@/components/build/ProjectOutputRenderer";
+import { CodegenPreview } from "@/components/workspace/CodegenPreview";
 import { BuildScreen, OpenPreviewButton } from "@/components/workspace/BuildScreen";
 import { IconEye } from "@/components/workspace-ui/parts";
 import { VentrioLinkButton } from "@/components/ui/VentrioButton";
@@ -43,6 +44,14 @@ export interface WorkspaceViewProps {
     direction: CreationDirection | null;
     output: Stage3ProjectOutput | null;
   };
+  /** The generated site, when this project was built by the codegen renderer. */
+  codegen: WorkspaceCodegenView | null;
+}
+
+/** A recompiled codegen bundle, ready to hand to a sandboxed frame. */
+export interface WorkspaceCodegenView {
+  generatedAt: string;
+  routes: Array<{ path: string; title: string; srcDoc: string }>;
 }
 
 // The Build canvas: the AI conversation as the dominant surface, with the
@@ -78,7 +87,9 @@ export function WorkspaceView(props: WorkspaceViewProps) {
     );
   }
 
-  const hasOutput = Boolean(props.stage3.output);
+  // Either renderer counts. A codegen project has a site even though the old
+  // artifact-shaped output is what the rest of the workspace still reads.
+  const hasOutput = Boolean(props.stage3.output) || Boolean(props.codegen);
   // A draft has a preview but no address. Only a published project can be
   // linked to, so that is the only case the copy control is offered.
   const shareUrl =
@@ -90,15 +101,36 @@ export function WorkspaceView(props: WorkspaceViewProps) {
     <BuildScreen
       published={Boolean(props.publication?.isPublished)}
       shareUrl={shareUrl}
+      /**
+       * Codegen wins when a project has one, and there is no falling back to
+       * the fixed renderer for a project it built.
+       *
+       * A silent fallback would make the canary meaningless — a codegen page
+       * that failed to recompile would be replaced by the old renderer's
+       * output, and whoever was comparing them would be shown the old one while
+       * believing they were looking at the new. `compileStoredCodegen` returns
+       * null only when the gate now refuses the stored bundle, and in that case
+       * the honest thing is the empty state, not a substitute page.
+       */
       preview={
-        props.stage3.output ? (
-          <ProjectOutputRenderer
-            projectKey={props.projectId}
-            output={props.stage3.output}
-            locale={props.projectLocale}
-            mode="preview"
-          />
-        ) : null
+        props.codegen && props.codegen.routes.length > 0
+          ? (device) => (
+              <CodegenPreview
+                srcDoc={props.codegen!.routes[0].srcDoc}
+                device={device}
+                title={props.codegen!.routes[0].title}
+              />
+            )
+          : props.stage3.output
+            ? (
+                <ProjectOutputRenderer
+                  projectKey={props.projectId}
+                  output={props.stage3.output}
+                  locale={props.projectLocale}
+                  mode="preview"
+                />
+              )
+            : null
       }
       chat={({ previewOpen, canOpenPreview, openPreview }) => (
         <AssistantChat

@@ -172,8 +172,11 @@ export function ViewportFrame({ width, children, className, style, title }: View
         }}
         // No sandbox: this is Ventrio's own React tree portalled into a
         // same-origin frame, and an opaque origin would break both the portal
-        // and the style adoption above. It would also break this transform —
-        // Chrome will not rasterise an out-of-process frame under `scale()`.
+        // and the style adoption above. Nothing untrusted is rendered here.
+        //
+        // The transform is not a reason. A sandboxed frame does rasterise under
+        // `scale()`, including nested inside this one — checked in Chrome
+        // rather than assumed, because the codegen preview depends on it.
       >
         {body ? createPortal(children, body) : null}
       </iframe>

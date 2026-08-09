@@ -44,8 +44,15 @@ export interface BuildScreenProps {
    * version ready" card can live inside the conversation where it belongs.
    */
   chat: (context: BuildChatContext) => ReactNode;
-  /** Real rendered output, or null when nothing has been generated yet. */
-  preview: ReactNode | null;
+  /**
+   * Real rendered output, or null when nothing has been generated yet.
+   *
+   * A function form is accepted for previews that need the selected device.
+   * The React preview does not — it is portalled into a frame that already has
+   * the right viewport — but the sandboxed codegen preview renders a document
+   * it cannot measure, so it has to be told the viewport it is being given.
+   */
+  preview: ReactNode | ((device: DeviceMode) => ReactNode) | null;
   /**
    * What the preview panel should say when there is no output to show.
    *
@@ -222,7 +229,7 @@ export function BuildScreen({
                   className="lift-2 rounded-[var(--r-xl)] border"
                   style={{ borderColor: "var(--line)", background: "var(--surface)" }}
                 >
-                  {preview}
+                  {typeof preview === "function" ? preview(device) : preview}
                 </ViewportFrame>
               </div>
             ) : (

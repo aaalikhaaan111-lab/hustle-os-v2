@@ -15,3 +15,20 @@
 export const DEVICE_WIDTHS = { mobile: 390, tablet: 768, desktop: 1280 } as const;
 
 export type DeviceMode = keyof typeof DEVICE_WIDTHS;
+
+/**
+ * Viewport heights, used only by the sandboxed codegen preview.
+ *
+ * The React preview does not need these: it is portalled into a same-origin
+ * frame whose height can be measured from its content, so it grows and the
+ * workspace scrolls. A codegen page cannot be measured that way — it renders in
+ * an opaque-origin frame, and a parent cannot read the scroll height of a
+ * document it is not allowed to touch. Reading it would need script inside the
+ * generated page reporting its own size, and the inner policy is
+ * `script-src 'none'` precisely so nothing in there runs.
+ *
+ * So that preview gets a real viewport of a real device and scrolls inside it,
+ * which is what a device frame does anyway. The numbers are the usual portrait
+ * heights; desktop is a common laptop viewport rather than a full screen.
+ */
+export const DEVICE_HEIGHTS = { mobile: 844, tablet: 1024, desktop: 800 } as const;
