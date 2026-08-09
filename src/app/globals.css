@@ -1901,3 +1901,223 @@ body {
     scroll-behavior: auto !important;
   }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   PER-PROJECT DESIGN STRATEGY
+
+   Everything above describes one page: a hero with the headline left and a
+   visual right, an identity grid, sections, a form, a launch block. Every
+   project ever generated got that page. The model chose a theme, three colours
+   and which section kinds to include, so a plant-swap service and a finance
+   course came out as the same site with different words — and no prompt wording
+   could change it, because the composition was in the markup, not the model's
+   hands.
+
+   The rules below read the decisions the model now makes per project
+   (see Stage3DesignStrategy) off data attributes on the root. They compose:
+   density, type scale, corners, grid and hero composition are independent, so
+   the combinations are many rather than a handful of fixed skins.
+
+   Nothing here is a security boundary. The model still cannot emit markup,
+   scripts, URLs or CSS — it picks from closed enumerations that are validated
+   server-side, and these rules turn those choices into layout.
+   ═════════════════════════════════════════════════════════════════════════ */
+
+/* ── Spacing density ─────────────────────────────────────────────────────── */
+.project-output[data-density="tight"]   { --output-rhythm: 0.62; }
+.project-output[data-density="regular"] { --output-rhythm: 1; }
+.project-output[data-density="airy"]    { --output-rhythm: 1.5; }
+
+.project-output[data-density="tight"] .project-output-hero   { min-height: min(520px, 70vh); }
+.project-output[data-density="airy"] .project-output-hero    { min-height: min(820px, 94vh); }
+.project-output[data-density="tight"] .project-output-section,
+.project-output[data-density="tight"] .project-output-intro,
+.project-output[data-density="tight"] .project-output-action { padding-block: clamp(1.5rem, 3vw, 2.5rem); }
+.project-output[data-density="airy"] .project-output-section,
+.project-output[data-density="airy"] .project-output-intro,
+.project-output[data-density="airy"] .project-output-action  { padding-block: clamp(4rem, 9vw, 8rem); }
+
+/* ── Type scale ──────────────────────────────────────────────────────────── */
+.project-output[data-type-scale="compact"] .project-output-title {
+  font-size: clamp(2rem, 4.2vw, 3.4rem);
+  line-height: 1.06;
+  max-width: 26ch;
+}
+.project-output[data-type-scale="dramatic"] .project-output-title {
+  font-size: clamp(3rem, 9.5vw, 8.5rem);
+  line-height: 0.88;
+  max-width: 13ch;
+  letter-spacing: -0.03em;
+}
+.project-output[data-type-scale="compact"] .project-output-subtitle { font-size: 1rem; }
+.project-output[data-type-scale="dramatic"] .project-output-subtitle {
+  font-size: clamp(1.05rem, 1.6vw, 1.35rem);
+  max-width: 30rem;
+}
+
+/* ── Corner language ─────────────────────────────────────────────────────── */
+.project-output[data-corners="sharp"]   { --output-radius: 0; }
+.project-output[data-corners="soft"]    { --output-radius: 0.4rem; }
+.project-output[data-corners="rounded"] { --output-radius: 1.1rem; }
+.project-output[data-corners="pill"]    { --output-radius: 2rem; }
+.project-output[data-corners="pill"] .project-output-cta,
+.project-output[data-corners="pill"] .project-output-form button { border-radius: 999px; }
+
+/* ── Card treatment ──────────────────────────────────────────────────────── */
+.project-output[data-cards="flat"] .project-output-card {
+  border-color: transparent;
+  background: transparent;
+  padding-inline: 0;
+}
+.project-output[data-cards="outlined"] .project-output-card {
+  border: 1px solid var(--output-border-strong);
+  background: transparent;
+}
+.project-output[data-cards="raised"] .project-output-card {
+  border-color: transparent;
+  background: var(--output-surface);
+  box-shadow: 0 18px 40px -28px rgb(0 0 0 / 0.5);
+}
+.project-output[data-cards="inset"] .project-output-card {
+  border-color: transparent;
+  background: color-mix(in srgb, var(--output-ink) 6%, transparent);
+  box-shadow: inset 0 1px 0 var(--output-border);
+}
+
+/* ── Grid system ─────────────────────────────────────────────────────────── */
+@media (min-width: 860px) {
+  .project-output[data-grid="single"] .project-output-hero-layout { grid-template-columns: minmax(0, 1fr); }
+  .project-output[data-grid="single"] .project-output-intro       { grid-template-columns: minmax(0, 1fr); }
+  .project-output[data-grid="two_col"] .project-output-hero-layout { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .project-output[data-grid="asymmetric"] .project-output-hero-layout { grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); }
+  .project-output[data-grid="asymmetric"] .project-output-intro   { grid-template-columns: minmax(0, 0.7fr) minmax(0, 1.3fr); }
+  .project-output[data-grid="wide_gutter"] .project-output-hero-layout {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 0.8fr);
+    gap: clamp(3rem, 8vw, 7rem);
+  }
+  .project-output[data-grid="wide_gutter"] .project-output-section,
+  .project-output[data-grid="wide_gutter"] .project-output-intro { padding-inline: clamp(2rem, 8vw, 7rem); }
+}
+
+/* ── Hero composition — the strongest signature ──────────────────────────── */
+.project-output[data-hero="stacked_center"] .project-output-hero-layout {
+  grid-template-columns: minmax(0, 1fr);
+  justify-items: center;
+  text-align: center;
+}
+.project-output[data-hero="stacked_center"] .project-output-title,
+.project-output[data-hero="stacked_center"] .project-output-subtitle { max-width: 22ch; margin-inline: auto; }
+.project-output[data-hero="stacked_center"] .project-output-subtitle { max-width: 44ch; }
+
+.project-output[data-hero="editorial_lede"] .project-output-hero-layout {
+  grid-template-columns: minmax(0, 1fr);
+}
+.project-output[data-hero="editorial_lede"] .project-output-title {
+  max-width: 18ch;
+  font-size: clamp(2.6rem, 8vw, 7rem);
+}
+.project-output[data-hero="editorial_lede"] .project-output-subtitle {
+  max-width: 46ch;
+  font-size: clamp(1.1rem, 1.8vw, 1.5rem);
+  border-left: 2px solid var(--output-border-strong);
+  padding-left: 1.25rem;
+}
+
+.project-output[data-hero="stat_led"] .project-output-hero-layout {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1.5rem;
+}
+.project-output[data-hero="stat_led"] .project-output-hero-visual-stat {
+  order: -1;
+  border: 0;
+  padding: 0;
+  background: transparent;
+}
+.project-output[data-hero="stat_led"] .project-output-stat-value { font-size: clamp(4rem, 14vw, 11rem); line-height: 0.86; }
+.project-output[data-hero="stat_led"] .project-output-title { font-size: clamp(1.6rem, 3.4vw, 2.8rem); max-width: 28ch; }
+
+.project-output[data-hero="panel"] .project-output-hero {
+  min-height: auto;
+  padding: clamp(1rem, 3vw, 2rem);
+}
+.project-output[data-hero="panel"] .project-output-hero-layout {
+  border: 1px solid var(--output-border-strong);
+  border-radius: var(--output-radius);
+  padding: clamp(1.5rem, 4vw, 3rem);
+  background: var(--output-surface);
+  align-items: start;
+}
+.project-output[data-hero="panel"] .project-output-title { font-size: clamp(1.9rem, 4vw, 3.2rem); max-width: 24ch; }
+
+.project-output[data-hero="full_bleed_type"] .project-output-hero-layout { grid-template-columns: minmax(0, 1fr); }
+.project-output[data-hero="full_bleed_type"] .project-output-title {
+  max-width: none;
+  font-size: clamp(3rem, 13vw, 11rem);
+  line-height: 0.84;
+  letter-spacing: -0.04em;
+}
+.project-output[data-hero="full_bleed_type"] .project-output-subtitle { max-width: 34rem; }
+
+/* ── Imagery ─────────────────────────────────────────────────────────────
+   The old renderer always drew something beside the headline, and when there
+   was nothing to draw it drew a bordered box with a diamond and the word
+   "image" — a placeholder shown as finished content, on every project. */
+.project-output-hero-visual-type {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+.project-output-hero-visual-line {
+  font-family: var(--output-heading-font);
+  font-size: clamp(1.1rem, 2.2vw, 1.9rem);
+  line-height: 1.28;
+  color: var(--output-ink-muted);
+  border-left: 2px solid var(--output-border-strong);
+  padding-left: clamp(0.9rem, 2vw, 1.5rem);
+  text-wrap: pretty;
+}
+.project-output[data-imagery="none"] .project-output-hero-layout { grid-template-columns: minmax(0, 1fr); }
+
+/* ── Colour logic ────────────────────────────────────────────────────────── */
+.project-output[data-color-logic="mono_accent"]   { --output-accent-reach: 1; }
+.project-output[data-color-logic="duotone"] .project-output-eyebrow,
+.project-output[data-color-logic="duotone"] .project-output-kicker {
+  color: color-mix(in srgb, var(--output-primary) 70%, var(--output-ink));
+}
+.project-output[data-color-logic="high_contrast"] .project-output-cta {
+  background: var(--output-ink);
+  color: var(--output-bg, #fff);
+  border-color: var(--output-ink);
+}
+.project-output[data-color-logic="tinted_surface"] .project-output-section:nth-child(even) {
+  background: color-mix(in srgb, var(--output-primary) 7%, transparent);
+}
+.project-output[data-color-logic="warm_neutral"] .project-output-surface,
+.project-output[data-color-logic="warm_neutral"] .project-output-card {
+  background: color-mix(in srgb, #d8bfa0 12%, transparent);
+}
+
+/* ── Motion ──────────────────────────────────────────────────────────────── */
+.project-output[data-motion="still"] .stage3-reveal-block,
+.project-output[data-motion="still"] .project-output-ambient { animation: none; transform: none; }
+.project-output[data-motion="lively"] .project-output-card { transition: transform 220ms var(--ease, ease), box-shadow 220ms ease; }
+.project-output[data-motion="lively"] .project-output-card:hover { transform: translateY(-3px); }
+
+/* ── Navigation ──────────────────────────────────────────────────────────── */
+.project-output-nav { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+.project-output-anchors a {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  border-bottom: 1px solid var(--output-border-strong);
+  padding-bottom: 2px;
+}
+
+/* Mobile keeps every composition single-column: the viewport fix earlier in
+   this file is what stops long words shredding, and none of the rules above
+   may reintroduce a multi-column grid below the breakpoint. */
+@media (max-width: 859px) {
+  .project-output .project-output-hero-layout,
+  .project-output .project-output-intro { grid-template-columns: minmax(0, 1fr); }
+}

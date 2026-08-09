@@ -31,6 +31,22 @@ export const CHRONOVERSE_OUTPUT: Stage3ProjectOutput = {
     styleNotes: "Dark field, thin rules, monospace labels against a heavy display face",
     theme: "atmospheric",
   },
+  design: {
+    archetype: "warm_archive",
+    heroComposition: "editorial_lede",
+    typeScale: "dramatic",
+    density: "airy",
+    grid: "asymmetric",
+    cardTreatment: "flat",
+    cornerStyle: "sharp",
+    colorLogic: "duotone",
+    imageryStrategy: "typographic",
+    motionLevel: "subtle",
+    ctaPattern: "section_end",
+    navModel: "anchors",
+    showIdentityBlock: true,
+    showLaunchBlock: false,
+  },
   hero: {
     eyebrow: "The MCU, reordered",
     headline: "Not release order. The order it actually happened.",
@@ -110,5 +126,68 @@ export const CHRONOVERSE_OUTPUT: Stage3ProjectOutput = {
     headline: "The MCU, finally in the order it actually happened",
     body: "Chronoverse rebuilds the universe by story chronology and marks every continuity link where it first appears.",
     shortPost: "Rebuilt the MCU by when things actually happen, not when they came out.",
+  },
+};
+
+
+/**
+ * The same content under three different design strategies.
+ *
+ * Diversity has to be judged on composition, not colour, and judging it from
+ * real generations costs a paid call each. These hold the copy constant and
+ * vary only the decisions, so any visible difference is the design system
+ * doing its job rather than the model writing different words.
+ */
+export const DESIGN_VARIANTS: Record<string, Stage3ProjectOutput["design"]> = {
+  // A service for swapping plants: warm, communal, photographic.
+  swap: {
+    archetype: "playful_community",
+    heroComposition: "stacked_center",
+    typeScale: "balanced",
+    density: "airy",
+    grid: "single",
+    cardTreatment: "raised",
+    cornerStyle: "rounded",
+    colorLogic: "warm_neutral",
+    imageryStrategy: "photographic",
+    motionLevel: "lively",
+    ctaPattern: "sticky_footer",
+    navModel: "anchors",
+    showIdentityBlock: false,
+    showLaunchBlock: true,
+  },
+  // A premium advisor: restrained, typographic, no decorative imagery.
+  advisor: {
+    archetype: "premium_minimal",
+    heroComposition: "editorial_lede",
+    typeScale: "dramatic",
+    density: "airy",
+    grid: "wide_gutter",
+    cardTreatment: "flat",
+    cornerStyle: "sharp",
+    colorLogic: "high_contrast",
+    imageryStrategy: "none",
+    motionLevel: "still",
+    ctaPattern: "section_end",
+    navModel: "wordmark_only",
+    showIdentityBlock: true,
+    showLaunchBlock: false,
+  },
+  // Short finance lessons for teenagers: dense, utilitarian, stat-led.
+  lessons: {
+    archetype: "learning_product",
+    heroComposition: "stat_led",
+    typeScale: "compact",
+    density: "tight",
+    grid: "two_col",
+    cardTreatment: "outlined",
+    cornerStyle: "pill",
+    colorLogic: "tinted_surface",
+    imageryStrategy: "typographic",
+    motionLevel: "subtle",
+    ctaPattern: "inline",
+    navModel: "anchors",
+    showIdentityBlock: false,
+    showLaunchBlock: false,
   },
 };

@@ -151,6 +151,102 @@ export type Stage3Section =
   | Stage3InteractiveSection
   | Stage3CompareSection;
 
+
+/**
+ * The design decisions taken for THIS project, before anything is rendered.
+ *
+ * Why this exists: the page used to be a fixed JSX sequence — hero with the
+ * text left and a visual right, then an identity/audience/value grid, then the
+ * sections, then the form, then a launch block, then the footer — for every
+ * project ever generated. The model chose a theme, three colours and which
+ * section kinds to include. Everything a designer would actually decide was
+ * already decided, in code, identically for a plant-swap service and a finance
+ * course. That is why different ideas came out looking like the same site with
+ * different words, and no amount of prompt wording could change it.
+ *
+ * These are design primitives and constraints, not templates: they compose, and
+ * the renderer honours each one. Every field has a safe default so an artifact
+ * generated before this existed still renders.
+ */
+export const OUTPUT_ARCHETYPES = [
+  "editorial", "utility_tool", "premium_minimal", "playful_community", "marketplace",
+  "warm_archive", "data_forward", "creator_portfolio", "learning_product", "local_service",
+] as const;
+export type OutputArchetype = (typeof OUTPUT_ARCHETYPES)[number];
+
+/** How the first screen is composed. The single strongest visual signature. */
+export const HERO_COMPOSITIONS = [
+  "split",           // headline left, visual right — the old universal default
+  "stacked_center",  // centred headline, visual below or absent
+  "editorial_lede",  // oversized headline with a lede paragraph, no visual
+  "stat_led",        // a number leads, headline supports it
+  "panel",           // headline inside a bordered panel, dense and utilitarian
+  "full_bleed_type", // typography fills the screen, no visual at all
+] as const;
+export type HeroComposition = (typeof HERO_COMPOSITIONS)[number];
+
+export const TYPE_SCALES = ["compact", "balanced", "dramatic"] as const;
+export type TypeScale = (typeof TYPE_SCALES)[number];
+export const DENSITIES = ["tight", "regular", "airy"] as const;
+export type Density = (typeof DENSITIES)[number];
+export const GRID_SYSTEMS = ["single", "two_col", "asymmetric", "wide_gutter"] as const;
+export type GridSystem = (typeof GRID_SYSTEMS)[number];
+export const CARD_TREATMENTS = ["flat", "outlined", "raised", "inset"] as const;
+export type CardTreatment = (typeof CARD_TREATMENTS)[number];
+export const CORNER_STYLES = ["sharp", "soft", "rounded", "pill"] as const;
+export type CornerStyle = (typeof CORNER_STYLES)[number];
+export const COLOR_LOGICS = ["mono_accent", "duotone", "warm_neutral", "high_contrast", "tinted_surface"] as const;
+export type ColorLogic = (typeof COLOR_LOGICS)[number];
+/** "none" is a first-class answer — a strong type-only page beats a placeholder box. */
+export const IMAGERY_STRATEGIES = ["none", "abstract", "typographic", "photographic"] as const;
+export type ImageryStrategy = (typeof IMAGERY_STRATEGIES)[number];
+export const MOTION_LEVELS = ["still", "subtle", "lively"] as const;
+export type MotionLevel = (typeof MOTION_LEVELS)[number];
+export const CTA_PATTERNS = ["hero_only", "inline", "section_end", "sticky_footer"] as const;
+export type CtaPattern = (typeof CTA_PATTERNS)[number];
+export const NAV_MODELS = ["wordmark_only", "anchors", "none"] as const;
+export type NavModel = (typeof NAV_MODELS)[number];
+
+export interface Stage3DesignStrategy {
+  archetype: OutputArchetype;
+  heroComposition: HeroComposition;
+  typeScale: TypeScale;
+  density: Density;
+  grid: GridSystem;
+  cardTreatment: CardTreatment;
+  cornerStyle: CornerStyle;
+  colorLogic: ColorLogic;
+  imageryStrategy: ImageryStrategy;
+  motionLevel: MotionLevel;
+  ctaPattern: CtaPattern;
+  navModel: NavModel;
+  /**
+   * Whether the identity/audience/value grid appears at all. It used to be
+   * unconditional, which is the "three-column information section" that showed
+   * up on every project regardless of whether it earned its place.
+   */
+  showIdentityBlock: boolean;
+  /** The launch-copy block, likewise no longer automatic. */
+  showLaunchBlock: boolean;
+}
+
+export const DEFAULT_DESIGN_STRATEGY: Stage3DesignStrategy = {
+  archetype: "premium_minimal",
+  heroComposition: "split",
+  typeScale: "balanced",
+  density: "regular",
+  grid: "two_col",
+  cardTreatment: "outlined",
+  cornerStyle: "soft",
+  colorLogic: "mono_accent",
+  imageryStrategy: "abstract",
+  motionLevel: "subtle",
+  ctaPattern: "hero_only",
+  navModel: "wordmark_only",
+  showIdentityBlock: true,
+  showLaunchBlock: true,
+};
+
 export interface Stage3ProjectOutput {
   version: 1;
   preset: V1Preset;
@@ -158,6 +254,8 @@ export interface Stage3ProjectOutput {
   targetUser: string;
   primaryValue: string;
   visual: { mood: string; palette: [string, string, string]; styleNotes: string; theme: OutputTheme };
+  /** Decided per project, before rendering; see Stage3DesignStrategy. */
+  design: Stage3DesignStrategy;
   hero: { eyebrow: string; headline: string; subheadline: string; visualKind: HeroVisualKind; visualPrompt: string };
   sections: Stage3Section[];
   cta: { label: string; action: OutputCtaAction; supportingText: string };
@@ -429,6 +527,34 @@ export function buildStage3OutputJsonSchema() {
         },
         required: ["mood", "palette", "styleNotes", "theme"], additionalProperties: false,
       },
+      // The design decisions, alongside the content. Closed enumerations only:
+      // the model composes the page by choosing from validated vocabularies,
+      // never by emitting markup, CSS, URLs or script.
+      design: {
+        type: "object",
+        properties: {
+          archetype: { type: "string", enum: [...OUTPUT_ARCHETYPES] },
+          heroComposition: { type: "string", enum: [...HERO_COMPOSITIONS] },
+          typeScale: { type: "string", enum: [...TYPE_SCALES] },
+          density: { type: "string", enum: [...DENSITIES] },
+          grid: { type: "string", enum: [...GRID_SYSTEMS] },
+          cardTreatment: { type: "string", enum: [...CARD_TREATMENTS] },
+          cornerStyle: { type: "string", enum: [...CORNER_STYLES] },
+          colorLogic: { type: "string", enum: [...COLOR_LOGICS] },
+          imageryStrategy: { type: "string", enum: [...IMAGERY_STRATEGIES] },
+          motionLevel: { type: "string", enum: [...MOTION_LEVELS] },
+          ctaPattern: { type: "string", enum: [...CTA_PATTERNS] },
+          navModel: { type: "string", enum: [...NAV_MODELS] },
+          showIdentityBlock: { type: "boolean" },
+          showLaunchBlock: { type: "boolean" },
+        },
+        required: [
+          "archetype", "heroComposition", "typeScale", "density", "grid", "cardTreatment",
+          "cornerStyle", "colorLogic", "imageryStrategy", "motionLevel", "ctaPattern",
+          "navModel", "showIdentityBlock", "showLaunchBlock",
+        ],
+        additionalProperties: false,
+      },
       hero: {
         type: "object",
         properties: {
@@ -471,7 +597,7 @@ export function buildStage3OutputJsonSchema() {
       },
     },
     required: [
-      "version", "preset", "identity", "targetUser", "primaryValue",
+      "version", "preset", "identity", "targetUser", "primaryValue", "design",
       "visual", "hero", "sections", "cta", "form", "launchCopy",
     ],
     additionalProperties: false,
@@ -732,6 +858,78 @@ function sanitizeSections(value: unknown): Stage3Section[] {
   return sections;
 }
 
+
+/**
+ * Reads one design decision, falling back to the default when the value is
+ * missing or not one we know.
+ *
+ * Every field degrades independently: an artifact generated before the strategy
+ * existed, or one where the model returned a value we do not recognise, still
+ * renders with a coherent design rather than failing to load.
+ */
+function pick<T extends string>(value: unknown, allowed: readonly T[], fallback: T): T {
+  return (allowed as readonly string[]).includes(value as string) ? (value as T) : fallback;
+}
+
+
+/**
+ * Makes the design decisions and the content agree.
+ *
+ * `heroComposition` and `hero.visualKind` are chosen independently, so the
+ * model can ask for a stat-led hero on content that has no stat. Left alone
+ * that either falls back to the ordinary framed hero — quietly undoing the
+ * chosen composition, which is how sameness creeps back — or, worse, renders a
+ * whole sentence at stat size. Both were observed.
+ *
+ * Coercion happens here rather than in the renderer so the stored artifact is
+ * internally consistent everywhere it is used: preview, public page and any
+ * later edit all see the same resolved decisions.
+ */
+function coherentDesign(
+  design: Stage3DesignStrategy,
+  hero: Stage3ProjectOutput["hero"],
+): Stage3DesignStrategy {
+  let heroComposition = design.heroComposition;
+
+  // A stat-led hero needs something stat-shaped to lead with: short, and
+  // carrying a number. "1943" or "36 → titles placed" qualify; a sentence
+  // describing an illustration does not.
+  if (heroComposition === "stat_led") {
+    const lead = hero.visualPrompt.split("→")[0].trim();
+    const statShaped = hero.visualKind === "stat" || (lead.length <= 14 && /\d/.test(lead));
+    if (!statShaped) heroComposition = "panel";
+  }
+
+  // Compositions that are typographic by definition render no visual, so an
+  // imagery strategy would be a decision with nothing to apply to.
+  const typographicOnly = heroComposition === "editorial_lede" || heroComposition === "full_bleed_type";
+  const imageryStrategy = typographicOnly ? "none" : design.imageryStrategy;
+
+  return { ...design, heroComposition, imageryStrategy };
+}
+
+export function sanitizeDesignStrategy(value: unknown): Stage3DesignStrategy {
+  const raw = record(value);
+  if (!raw) return DEFAULT_DESIGN_STRATEGY;
+  const d = DEFAULT_DESIGN_STRATEGY;
+  return {
+    archetype: pick(raw.archetype, OUTPUT_ARCHETYPES, d.archetype),
+    heroComposition: pick(raw.heroComposition, HERO_COMPOSITIONS, d.heroComposition),
+    typeScale: pick(raw.typeScale, TYPE_SCALES, d.typeScale),
+    density: pick(raw.density, DENSITIES, d.density),
+    grid: pick(raw.grid, GRID_SYSTEMS, d.grid),
+    cardTreatment: pick(raw.cardTreatment, CARD_TREATMENTS, d.cardTreatment),
+    cornerStyle: pick(raw.cornerStyle, CORNER_STYLES, d.cornerStyle),
+    colorLogic: pick(raw.colorLogic, COLOR_LOGICS, d.colorLogic),
+    imageryStrategy: pick(raw.imageryStrategy, IMAGERY_STRATEGIES, d.imageryStrategy),
+    motionLevel: pick(raw.motionLevel, MOTION_LEVELS, d.motionLevel),
+    ctaPattern: pick(raw.ctaPattern, CTA_PATTERNS, d.ctaPattern),
+    navModel: pick(raw.navModel, NAV_MODELS, d.navModel),
+    showIdentityBlock: typeof raw.showIdentityBlock === "boolean" ? raw.showIdentityBlock : d.showIdentityBlock,
+    showLaunchBlock: typeof raw.showLaunchBlock === "boolean" ? raw.showLaunchBlock : d.showLaunchBlock,
+  };
+}
+
 export function sanitizeStage3Output(value: unknown, expectedPreset?: V1Preset): Stage3ProjectOutput | null {
   const raw = record(value);
   if (!raw || !isV1Preset(raw.preset)) return null;
@@ -821,6 +1019,7 @@ export function sanitizeStage3Output(value: unknown, expectedPreset?: V1Preset):
     targetUser,
     primaryValue,
     visual: { mood, palette, styleNotes, theme },
+    design: coherentDesign(sanitizeDesignStrategy(raw.design), heroClean),
     hero: heroClean,
     sections,
     cta: ctaClean,

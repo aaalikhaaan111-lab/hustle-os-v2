@@ -15,18 +15,41 @@ interface ProjectOutputRendererProps {
   revealKey?: number;
 }
 
+/**
+ * The described visual, set as type rather than framed as a fake image.
+ *
+ * This used to draw a bordered box with a diamond glyph and the word "image" —
+ * a placeholder presented as finished content, on every showcase card of every
+ * project. Until real image generation exists, describing the subject honestly
+ * beats a slot that looks like a picture failed to load.
+ */
 function VisualPlaceholder({ prompt, label }: { prompt: string; label: string }) {
   if (!prompt) return null;
   return (
     <div className="project-output-visual-placeholder">
-      <span className="project-output-visual-placeholder-icon" aria-hidden>◆</span>
       <span className="project-output-visual-placeholder-tag">{label}</span>
       <p>{prompt}</p>
     </div>
   );
 }
 
-function HeroVisual({ hero, copy }: { hero: Stage3ProjectOutput["hero"]; copy: Record<string, string> }) {
+function HeroVisual({
+  hero,
+  copy,
+  design,
+}: {
+  hero: Stage3ProjectOutput["hero"];
+  copy: Record<string, string>;
+  design: Stage3ProjectOutput["design"];
+}) {
+  // "No image" is a real answer, not a missing one. The old renderer always
+  // drew something on the right of the headline, and when there was nothing to
+  // draw it drew a bordered box with a diamond glyph and the word "image" —
+  // a placeholder presented as if it were finished content, identically on
+  // every project. A page with no image at all is better than that.
+  if (design.imageryStrategy === "none") return null;
+
+
   if (hero.visualKind === "stat") {
     const [value, ...rest] = hero.visualPrompt.split("→").map((part) => part.trim());
     const label = rest.join("→") || hero.visualPrompt;
@@ -50,11 +73,22 @@ function HeroVisual({ hero, copy }: { hero: Stage3ProjectOutput["hero"]; copy: R
       </div>
     );
   }
+  // Typographic: the described subject is *set*, not framed. No border, no
+  // icon, nothing pretending to be a photograph that has not been made.
+  if (design.imageryStrategy === "typographic" || !hero.visualPrompt) {
+    return (
+      <div className="project-output-hero-visual project-output-hero-visual-type">
+        <p className="project-output-hero-visual-line">{hero.visualPrompt || hero.eyebrow || hero.subheadline}</p>
+      </div>
+    );
+  }
+  // Abstract or photographic: a composed field that reads as deliberate art
+  // direction rather than a slot waiting for an upload. It still carries the
+  // description, so nothing about the intent is lost.
   return (
     <div className="project-output-hero-visual project-output-hero-visual-image">
-      <span className="project-output-visual-placeholder-icon" aria-hidden>◆</span>
       <span className="project-output-visual-placeholder-tag">{copy.imageLabel}</span>
-      {hero.visualPrompt && <p>{hero.visualPrompt}</p>}
+      <p>{hero.visualPrompt}</p>
     </div>
   );
 }
@@ -185,6 +219,9 @@ export function ProjectOutputRenderer({
   revealKey = 0,
 }: ProjectOutputRendererProps) {
   const copy = OUTPUT_COPY[locale];
+  // The design decisions taken for this project. Sanitized on read, so an
+  // artifact generated before the strategy existed still renders.
+  const design = output.design;
   const formId = `project-action-${projectKey}`;
   const style = {
     "--output-primary": output.visual.palette[0],
@@ -196,29 +233,58 @@ export function ProjectOutputRenderer({
     <article
       key={revealKey}
       className={`project-output output-${output.preset} output-theme-${output.visual.theme}`}
+      // Every design decision reaches the stylesheet as an attribute, so the
+      // same components compose into materially different pages instead of one
+      // template wearing different colours.
+      data-archetype={design.archetype}
+      data-hero={design.heroComposition}
+      data-type-scale={design.typeScale}
+      data-density={design.density}
+      data-grid={design.grid}
+      data-cards={design.cardTreatment}
+      data-corners={design.cornerStyle}
+      data-color-logic={design.colorLogic}
+      data-imagery={design.imageryStrategy}
+      data-motion={design.motionLevel}
+      data-cta={design.ctaPattern}
+      data-nav={design.navModel}
       style={style}
       lang={locale}
     >
-      <ParallaxAmbient />
+      {design.motionLevel !== "still" && <ParallaxAmbient />}
 
       <header className="project-output-hero stage3-reveal-block">
-        <div className="flex items-center justify-between gap-4">
-          <span className="project-output-wordmark">{output.identity.name}</span>
-          <span className="project-output-mood">{output.visual.mood}</span>
-        </div>
+        {design.navModel !== "none" && (
+          <div className="project-output-nav">
+            <span className="project-output-wordmark">{output.identity.name}</span>
+            {design.navModel === "anchors" && (
+              <nav className="project-output-anchors" aria-label={output.identity.name}>
+                <a href={`#${formId}`}>{output.cta.label}</a>
+              </nav>
+            )}
+          </div>
+        )}
         <div className="project-output-hero-layout">
           <div className="project-output-hero-text">
             {output.hero.eyebrow && <p className="project-output-eyebrow">{output.hero.eyebrow}</p>}
             <h1 className="project-output-title">{output.hero.headline}</h1>
             <p className="project-output-subtitle">{output.hero.subheadline}</p>
-            <a href={`#${formId}`} className="project-output-cta">
-              {output.cta.label} <span aria-hidden>→</span>
-            </a>
+            {design.ctaPattern !== "section_end" && (
+              <a href={`#${formId}`} className="project-output-cta">
+                {output.cta.label} <span aria-hidden>→</span>
+              </a>
+            )}
           </div>
-          <HeroVisual hero={output.hero} copy={copy} />
+          {/* Compositions that are typographic by definition carry no visual
+              beside the headline; rendering one anyway is what produced the
+              same split-screen hero on every project. */}
+          {design.heroComposition !== "editorial_lede" && design.heroComposition !== "full_bleed_type" && (
+            <HeroVisual hero={output.hero} copy={copy} design={design} />
+          )}
         </div>
       </header>
 
+      {design.showIdentityBlock && (
       <section className="stage3-reveal-block project-output-intro">
         <div>
           <p className="project-output-kicker">{copy.identityLabel}</p>
@@ -235,6 +301,7 @@ export function ProjectOutputRenderer({
           </div>
         </div>
       </section>
+      )}
 
       <div className="project-output-sections">
         {output.sections.map((section, index) => (
@@ -276,19 +343,21 @@ export function ProjectOutputRenderer({
         )}
       </section>
 
+      {design.showLaunchBlock && (
       <section className="stage3-reveal-block project-output-launch">
         <p className="project-output-kicker">{copy.launchCopyLabel}</p>
         <h2>{output.launchCopy.headline}</h2>
         <p>{output.launchCopy.body}</p>
         <blockquote>{output.launchCopy.shortPost}</blockquote>
       </section>
+      )}
 
       <footer className="project-output-footer">
         <span>{output.identity.name}</span>
         {mode === "public" ? (
           <a href="https://ventrio.org" target="_blank" rel="noreferrer">{copy.madeWith}</a>
         ) : (
-          <span>{output.visual.styleNotes}</span>
+          <span>{output.identity.tagline}</span>
         )}
       </footer>
     </article>

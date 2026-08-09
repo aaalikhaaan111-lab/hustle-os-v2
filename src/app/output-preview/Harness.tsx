@@ -7,7 +7,8 @@ import { BuildScreen } from "@/components/workspace/BuildScreen";
 import { GenerationSteps } from "@/components/workspace-ui/GenerationSteps";
 import { ViewportFrame } from "@/components/workspace/ViewportFrame";
 import { DEVICE_WIDTHS, type DeviceMode } from "@/lib/build/deviceWidths";
-import { CHRONOVERSE_OUTPUT } from "@/lib/build/outputFixtures";
+import { CHRONOVERSE_OUTPUT, DESIGN_VARIANTS } from "@/lib/build/outputFixtures";
+import { sanitizeStage3Output } from "@/lib/build/stage3Types";
 // The workspace's design tokens are scoped to `.wsRoot` and normally come from
 // WorkspaceShell. Without both, every `var(--line)` and `var(--accent-soft)`
 // falls back to its initial value and the UI renders in stark black on white —
@@ -32,6 +33,7 @@ export function Harness({
   controls,
   screen,
   published,
+  variant,
 }: {
   mode: DeviceMode;
   inline: boolean;
@@ -40,12 +42,23 @@ export function Harness({
   screen: string;
   /** Fixture publish state, so the Live chip and copy control can be seen. */
   published: boolean;
+  /** Named design strategy from DESIGN_VARIANTS, for the diversity check. */
+  variant: string;
 }) {
   const t = useTranslations("stage3");
   const [device] = useState<DeviceMode>(mode);
   const width = DEVICE_WIDTHS[device];
+  // `variant` swaps only the design strategy, so the three test pages differ by
+  // composition rather than by copy.
+  // Through the real sanitizer, exactly as a stored artifact arrives in
+  // production. Building the object literally skipped the coherence pass, so
+  // the harness showed combinations the product would never actually render.
+  const artifact =
+    (variant && DESIGN_VARIANTS[variant]
+      ? sanitizeStage3Output({ ...CHRONOVERSE_OUTPUT, design: DESIGN_VARIANTS[variant] })
+      : CHRONOVERSE_OUTPUT) ?? CHRONOVERSE_OUTPUT;
   const output = (
-    <ProjectOutputRenderer projectKey="fixture" output={CHRONOVERSE_OUTPUT} locale="en" mode="preview" />
+    <ProjectOutputRenderer projectKey={`fixture-${variant || "base"}`} output={artifact} locale="en" mode="preview" />
   );
 
   // What a person sees while the first version is being generated: the real
