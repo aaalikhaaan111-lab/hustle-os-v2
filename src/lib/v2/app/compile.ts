@@ -45,6 +45,15 @@ export type AppCompileResult =
       ok: true;
       /** The bundled ES module. Ventrio serves this; it is never written to disk. */
       code: string;
+      /**
+       * The bundled stylesheet, when the project imported one.
+       *
+       * esbuild emits CSS as a *separate* output file rather than inlining it,
+       * so an app doing `import "./styles.css"` produces two outputs and the
+       * compile has to carry both. Missing this is not subtle in the result —
+       * the app mounts and renders completely unstyled.
+       */
+      css: string;
       bytes: number;
       durationMs: number;
       warnings: CompileDiagnostic[];
@@ -219,8 +228,12 @@ export async function compileGeneratedApp(app: GeneratedAppV1): Promise<AppCompi
         sourcemap: false,
         // Kept so a runtime error can be attributed to a generated file.
         logLevel: "silent",
-        // No absolute paths from this machine end up in the output.
+        // Multiple outputs (JS plus a stylesheet) need a nominal outdir even
+        // with `write: false`; nothing is created, esbuild just needs somewhere
+        // to name them. Absolute so no path from this machine leaks into the
+        // output either way.
         absWorkingDir: "/",
+        outdir: "/out",
         plugins: [virtualFiles(files, entry)],
         // Belt and braces: even if a resolve slipped through, these never
         // become part of the bundle.
@@ -235,13 +248,16 @@ export async function compileGeneratedApp(app: GeneratedAppV1): Promise<AppCompi
       return { ok: false, code: "timeout", errors: [{ text: `The build exceeded ${APP_BUDGETS.maxCompileMs} ms.` }], durationMs: elapsed() };
     }
 
-    const output = result.outputFiles?.[0];
-    if (!output) {
+    const outputs = result.outputFiles ?? [];
+    const jsFile = outputs.find((output) => output.path.endsWith(".js"));
+    const cssFile = outputs.find((output) => output.path.endsWith(".css"));
+    if (!jsFile) {
       return { ok: false, code: "internal", errors: [{ text: "The build produced no output." }], durationMs: elapsed() };
     }
 
-    const code = output.text;
-    const bytes = Buffer.byteLength(code, "utf8");
+    const code = jsFile.text;
+    const css = cssFile?.text ?? "";
+    const bytes = Buffer.byteLength(code, "utf8") + Buffer.byteLength(css, "utf8");
     if (bytes > APP_BUDGETS.maxCompiledBytes) {
       return {
         ok: false,
@@ -251,7 +267,7 @@ export async function compileGeneratedApp(app: GeneratedAppV1): Promise<AppCompi
       };
     }
 
-    return { ok: true, code, bytes, durationMs: elapsed(), warnings: result.warnings.map(toDiagnostic) };
+    return { ok: true, code, css, bytes, durationMs: elapsed(), warnings: result.warnings.map(toDiagnostic) };
   } catch (error) {
     // esbuild throws a structured failure; anything else is ours.
     const errors = (error as { errors?: unknown }).errors;

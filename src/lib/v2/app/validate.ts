@@ -108,7 +108,26 @@ function specifiersIn(source: string): string[] {
 const FORBIDDEN_SOURCE: Array<{ code: string; pattern: RegExp; detail: string }> = [
   { code: "eval", pattern: /\beval\s*\(/, detail: "eval() is not allowed." },
   { code: "new_function", pattern: /\bnew\s+Function\s*\(/, detail: "new Function() is not allowed." },
-  { code: "frame_escape", pattern: /\b(?:window\.)?(?:parent|top|opener)\b/, detail: "Reaching the embedding page is not allowed." },
+  /**
+   * Reaching the embedder.
+   *
+   * Narrower than it looks, and deliberately so. The first version of this rule
+   * was `\b(?:window\.)?(?:parent|top|opener)\b`, which refused
+   * `margin: { top: 8 }`, `style={{ top: 0 }}` and `href="#top"` — it made the
+   * runtime unusable and would have read to a model as an inexplicable
+   * rejection. A rule that fires on ordinary CSS is not a security control, it
+   * is a bug with a security-sounding name.
+   *
+   * What is actually dangerous is *using* one of these as an object: either
+   * `window.parent...` or a bare `parent.` / `top.` / `opener.` member access.
+   * A preceding `.` or word character excludes `node.parent.x`, which is a
+   * perfectly normal tree walk over the app's own data.
+   */
+  {
+    code: "frame_escape",
+    pattern: /(?:\bwindow\s*\.\s*(?:parent|top|opener)\b|(?:^|[^.\w$])(?:parent|top|opener)\s*\.)/,
+    detail: "Reaching the embedding page is not allowed.",
+  },
   { code: "network", pattern: /\b(?:fetch|XMLHttpRequest|WebSocket|EventSource)\s*\(/, detail: "Network access is not available to a generated app." },
   { code: "network", pattern: /navigator\.sendBeacon/, detail: "Network access is not available to a generated app." },
   { code: "storage", pattern: /\b(?:localStorage|sessionStorage|indexedDB)\b/, detail: "Persistent storage is not available; use React state." },

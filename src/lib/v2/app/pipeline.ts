@@ -84,6 +84,7 @@ export async function buildGeneratedApp(
 
   const document = buildSandboxDocument({
     code: compiled.code,
+    css: compiled.css,
     runtimeCore: runtime.core,
     runtimeNames: runtime.names,
     lang: app.metadata.locale,

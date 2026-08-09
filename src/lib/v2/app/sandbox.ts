@@ -85,6 +85,8 @@ export function innerCsp(): string {
 export interface SandboxInput {
   /** The compiled ES module for the generated app. */
   code: string;
+  /** The compiled stylesheet, if the project imported one. */
+  css?: string;
   /** The single runtime graph, exporting `__libs`. Ventrio-owned. */
   runtimeCore: string;
   /** Specifier → its named exports, used to build the facades. */
@@ -109,6 +111,17 @@ const escapeHtml = (value: string): string =>
  */
 export function escapeForScript(code: string): string {
   return code.replace(/<\/(script)/gi, "<\\/$1");
+}
+
+/**
+ * The same rule for the stylesheet.
+ *
+ * A `</style>` inside generated CSS — in a content property, say — would close
+ * the element and turn the rest of the sheet into markup. Escaped rather than
+ * refused because the sequence has a legitimate, if rare, use.
+ */
+export function escapeForStyle(css: string): string {
+  return css.replace(/<\/(style)/gi, "<\\/$1");
 }
 
 /**
@@ -165,6 +178,10 @@ document.head.appendChild(im);`;
     + `<style>*,*::before,*::after{box-sizing:border-box}html,body{margin:0;padding:0}`
     + `body{min-height:100vh;overflow-x:hidden;-webkit-text-size-adjust:100%}`
     + `img{max-width:100%;height:auto;display:block}#root{min-height:100vh}</style>`
+    // The generated app's own stylesheet, after the reset so it wins, and
+    // inside a <style> element whose contents cannot close it — the same rule
+    // the script payload follows.
+    + (input.css ? `<style>${escapeForStyle(input.css)}</style>` : "")
     + `</head><body><div id="root"></div>`
     + assets
     + `<script>${escapeForScript(shim)}</script>`
