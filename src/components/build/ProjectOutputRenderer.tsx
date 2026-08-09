@@ -236,6 +236,11 @@ export function ProjectOutputRenderer({
       // Every design decision reaches the stylesheet as an attribute, so the
       // same components compose into materially different pages instead of one
       // template wearing different colours.
+      data-art-direction={design.artDirection}
+      data-type-system={design.typeSystem}
+      data-surface={design.surface}
+      data-graphic={design.graphic}
+      data-motion-vocab={design.motion}
       data-archetype={design.archetype}
       data-hero={design.heroComposition}
       data-type-scale={design.typeScale}

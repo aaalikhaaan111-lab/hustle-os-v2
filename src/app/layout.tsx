@@ -1,5 +1,15 @@
 import type { Metadata, Viewport } from "next";
-import { Geist, Geist_Mono, Lora } from "next/font/google";
+import {
+  Geist,
+  Geist_Mono,
+  Lora,
+  Playfair_Display,
+  Unbounded,
+  Oswald,
+  Cormorant_Garamond,
+  JetBrains_Mono,
+  Manrope,
+} from "next/font/google";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages, getTranslations } from "next-intl/server";
 import { headers } from "next/headers";
@@ -23,6 +33,59 @@ const lora = Lora({
   variable: "--font-editorial",
   subsets: ["latin", "cyrillic"],
   style: ["normal", "italic"],
+});
+
+/**
+ * The type registry generated projects choose from.
+ *
+ * Before this there were three faces in the whole product — Geist, Geist Mono
+ * and Lora — so every generated site was set in the same type whatever its
+ * "design strategy" said. Different sizes of the same typeface is not different
+ * typography, which is the single biggest reason the outputs read as one
+ * template family.
+ *
+ * Each of these is a genuinely different voice, not a near-neighbour: a
+ * high-contrast editorial serif, an expressive geometric display, a condensed
+ * poster face, a luxury old-style serif, a technical monospace, and a soft
+ * geometric sans.
+ *
+ * Every one declares the Cyrillic subset. Russian is a first-class output
+ * language here, and a display face that silently falls back to a system font
+ * for Cyrillic would undo the art direction exactly where it matters most.
+ * next/font self-hosts these at build time, so there is no runtime request to
+ * a third party and no new dependency — next/font is already part of Next.
+ */
+const playfair = Playfair_Display({
+  variable: "--font-display-editorial",
+  subsets: ["latin", "cyrillic"],
+  style: ["normal", "italic"],
+});
+
+const unbounded = Unbounded({
+  variable: "--font-display-expressive",
+  subsets: ["latin", "cyrillic"],
+});
+
+const oswald = Oswald({
+  variable: "--font-display-condensed",
+  subsets: ["latin", "cyrillic"],
+});
+
+const cormorant = Cormorant_Garamond({
+  variable: "--font-display-luxury",
+  subsets: ["latin", "cyrillic"],
+  weight: ["300", "400", "500", "600", "700"],
+  style: ["normal", "italic"],
+});
+
+const jetbrains = JetBrains_Mono({
+  variable: "--font-display-technical",
+  subsets: ["latin", "cyrillic"],
+});
+
+const manrope = Manrope({
+  variable: "--font-body-geometric",
+  subsets: ["latin", "cyrillic"],
 });
 
 // viewport-fit=cover is what makes the env(safe-area-inset-*) padding used
@@ -51,7 +114,7 @@ export default async function RootLayout({
   const requestHeaders = await headers();
   if (requestHeaders.get("x-ventrio-public-route") === "1") {
     return (
-      <html lang="en" className={`${geistSans.variable} ${geistMono.variable} ${lora.variable} h-full antialiased`}>
+      <html lang="en" className={`${geistSans.variable} ${geistMono.variable} ${lora.variable} ${playfair.variable} ${unbounded.variable} ${oswald.variable} ${cormorant.variable} ${jetbrains.variable} ${manrope.variable} h-full antialiased`}>
         <body className="min-h-full">{children}</body>
       </html>
     );
@@ -66,7 +129,7 @@ export default async function RootLayout({
   return (
     <html
       lang={locale}
-      className={`${geistSans.variable} ${geistMono.variable} ${lora.variable} h-full antialiased`}
+      className={`${geistSans.variable} ${geistMono.variable} ${lora.variable} ${playfair.variable} ${unbounded.variable} ${oswald.variable} ${cormorant.variable} ${jetbrains.variable} ${manrope.variable} h-full antialiased`}
     >
       <body className="min-h-full">
         <NextIntlClientProvider locale={locale} messages={messages}>

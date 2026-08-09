@@ -1,4 +1,14 @@
 import {
+  ART_DIRECTIONS,
+  isArtDirection,
+  resolveArtDirection,
+  type ArtDirection,
+  type TypeSystem,
+  type Surface,
+  type GraphicTreatment,
+  type MotionVocabulary,
+} from "@/lib/build/artDirection";
+import {
   isStartingPoint,
   isV1Preset,
   sanitizeCreationDirection,
@@ -208,6 +218,16 @@ export const NAV_MODELS = ["wordmark_only", "anchors", "none"] as const;
 export type NavModel = (typeof NAV_MODELS)[number];
 
 export interface Stage3DesignStrategy {
+  /**
+   * The art direction, chosen as one system. Everything below is implied by it.
+   * Kept optional in the type only so artifacts stored before it existed still
+   * satisfy the shape; the sanitizer always fills it.
+   */
+  artDirection: ArtDirection;
+  typeSystem: TypeSystem;
+  surface: Surface;
+  graphic: GraphicTreatment;
+  motion: MotionVocabulary;
   archetype: OutputArchetype;
   heroComposition: HeroComposition;
   typeScale: TypeScale;
@@ -231,6 +251,11 @@ export interface Stage3DesignStrategy {
 }
 
 export const DEFAULT_DESIGN_STRATEGY: Stage3DesignStrategy = {
+  artDirection: "editorial_magazine",
+  typeSystem: "editorial_serif",
+  surface: "editorial_paper",
+  graphic: "rules_and_frames",
+  motion: "staggered_reveal",
   archetype: "premium_minimal",
   heroComposition: "split",
   typeScale: "balanced",
@@ -530,29 +555,15 @@ export function buildStage3OutputJsonSchema() {
       // The design decisions, alongside the content. Closed enumerations only:
       // the model composes the page by choosing from validated vocabularies,
       // never by emitting markup, CSS, URLs or script.
+      // One choice, not fourteen. The direction resolves server-side into the
+      // whole system, which is what makes the combination coherent by
+      // construction rather than by asking the model to be careful.
       design: {
         type: "object",
         properties: {
-          archetype: { type: "string", enum: [...OUTPUT_ARCHETYPES] },
-          heroComposition: { type: "string", enum: [...HERO_COMPOSITIONS] },
-          typeScale: { type: "string", enum: [...TYPE_SCALES] },
-          density: { type: "string", enum: [...DENSITIES] },
-          grid: { type: "string", enum: [...GRID_SYSTEMS] },
-          cardTreatment: { type: "string", enum: [...CARD_TREATMENTS] },
-          cornerStyle: { type: "string", enum: [...CORNER_STYLES] },
-          colorLogic: { type: "string", enum: [...COLOR_LOGICS] },
-          imageryStrategy: { type: "string", enum: [...IMAGERY_STRATEGIES] },
-          motionLevel: { type: "string", enum: [...MOTION_LEVELS] },
-          ctaPattern: { type: "string", enum: [...CTA_PATTERNS] },
-          navModel: { type: "string", enum: [...NAV_MODELS] },
-          showIdentityBlock: { type: "boolean" },
-          showLaunchBlock: { type: "boolean" },
+          artDirection: { type: "string", enum: [...ART_DIRECTIONS] },
         },
-        required: [
-          "archetype", "heroComposition", "typeScale", "density", "grid", "cardTreatment",
-          "cornerStyle", "colorLogic", "imageryStrategy", "motionLevel", "ctaPattern",
-          "navModel", "showIdentityBlock", "showLaunchBlock",
-        ],
+        required: ["artDirection"],
         additionalProperties: false,
       },
       hero: {
@@ -911,8 +922,24 @@ function coherentDesign(
 export function sanitizeDesignStrategy(value: unknown): Stage3DesignStrategy {
   const raw = record(value);
   if (!raw) return DEFAULT_DESIGN_STRATEGY;
+
+  // The direction decides the system. Layout is resolved from it rather than
+  // read field by field, so an incoherent combination cannot be assembled —
+  // there is no way to ask for luxury serif type on a dashboard grid when
+  // neither is chosen independently.
+  if (isArtDirection(raw.artDirection)) {
+    return resolveArtDirection(raw.artDirection);
+  }
+
+  // No direction: an artifact from before this existed. Read the individual
+  // fields as before so it still renders.
   const d = DEFAULT_DESIGN_STRATEGY;
   return {
+    artDirection: d.artDirection,
+    typeSystem: d.typeSystem,
+    surface: d.surface,
+    graphic: d.graphic,
+    motion: d.motion,
     archetype: pick(raw.archetype, OUTPUT_ARCHETYPES, d.archetype),
     heroComposition: pick(raw.heroComposition, HERO_COMPOSITIONS, d.heroComposition),
     typeScale: pick(raw.typeScale, TYPE_SCALES, d.typeScale),

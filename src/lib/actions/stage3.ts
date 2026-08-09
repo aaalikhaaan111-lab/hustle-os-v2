@@ -90,18 +90,18 @@ Always return the COMPLETE output object, including every field you did not chan
 
 ` : ""}The output is a real product website — the kind of thing you'd expect from a well-funded startup's launch, not a generic SaaS template and not a mini-game. The visitor should feel "AI actually understood my idea and built something real for it" — not "this is another AI landing page template." Write finished, launch-ready copy in ${language}. Never mention that the user should research, validate, design, or build something later — this already exists.
 
-DESIGN THE PAGE, DO NOT FILL A TEMPLATE. The "design" object is not decoration — it decides how the page is actually composed, and the renderer obeys it. Choose every field for THIS product. A page whose decisions could be swapped onto any other idea is a failure of this step.
+CHOOSE THE ART DIRECTION. "design.artDirection" is one decision that settles the whole visual system — typeface pairing, surface, composition, graphic language, motion, component style. Choose it for THIS product, the way a designer would decide what kind of thing they are making before drawing anything.
 
-- archetype: what kind of thing this is. editorial, utility_tool, premium_minimal, playful_community, marketplace, warm_archive, data_forward, creator_portfolio, learning_product, local_service. A tool for tracking something is not "premium_minimal" just because minimal looks safe.
-- heroComposition: split (headline left, visual right), stacked_center, editorial_lede (big headline + lede, no visual), stat_led (a number leads), panel (bordered, dense, utilitarian), full_bleed_type (typography fills the screen). "split" is the old default for everything — pick it only when this product genuinely wants a visual beside the words.
-- typeScale compact | balanced | dramatic; density tight | regular | airy. A dense utility and a spacious editorial piece must not share these.
-- grid single | two_col | asymmetric | wide_gutter; cardTreatment flat | outlined | raised | inset; cornerStyle sharp | soft | rounded | pill.
-- colorLogic mono_accent | duotone | warm_neutral | high_contrast | tinted_surface.
-- imageryStrategy none | abstract | typographic | photographic. "none" and "typographic" are strong answers — a page carried by type beats a decorative frame with nothing real in it. Never choose an image strategy just to fill space beside the headline.
-- motionLevel still | subtle | lively. ctaPattern hero_only | inline | section_end | sticky_footer. navModel wordmark_only | anchors | none.
-- showIdentityBlock, showLaunchBlock: whether those blocks appear at all. They used to be unconditional; include them only when this product benefits.
+- cinematic — deep canvas, condensed display type set very large, few words, one confident full-bleed moment. For products that trade on atmosphere.
+- editorial_magazine — paper, high-contrast serif, asymmetric columns, a real lede paragraph, rules between sections. For reading and for ideas.
+- luxury_minimal — light old-style serif, wide gutters, enormous whitespace, almost nothing on screen. Space is the luxury. For premium and considered products.
+- technical_data — monospace, ruled grid, dense rows, numbers doing the talking. For tools, dashboards and anything measured.
+- playful_community — expressive geometric display, colour fields, round raised cards, movement on hover. For things people join.
+- utilitarian_tool — plain geometric sans, high contrast, tight panel hero, no ornament. For getting a job done.
+- warm_archive — grain, warm serif, chronology, a number leading the hero. For collections and history.
+- brutalist_poster — type as the entire graphic, oversized condensed caps, flat monochrome, no navigation. For statements.
 
-Pick decisions that fit together and that a person would notice. Two projects with different purposes must not arrive at the same heroComposition, density and typeScale by default.
+Pick the one that a strong designer would pick for this idea. Do not default to the same direction repeatedly, and do not pick a decorative one for a functional product or a severe one for something warm and social. You do not choose the individual typefaces, spacing or layout — the direction settles those, so they always agree.
 
 BEFORE YOU WRITE ANYTHING, think like the best designer for this exact idea would — a real design director deciding what THIS idea needs, never a template picker matching it to an existing pattern (never output this reasoning, just let it steer the design):
 1. What kind of real product/site does this idea actually need (a brand showcase, an education product, an impact/mission site, a tool, a community hub)?

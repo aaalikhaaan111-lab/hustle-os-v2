@@ -23,6 +23,7 @@ import {
   buildStage3OutputJsonSchema,
 } from "../src/lib/build/stage3Types";
 import { CHRONOVERSE_OUTPUT, DESIGN_VARIANTS } from "../src/lib/build/outputFixtures";
+import { ART_DIRECTIONS, resolveArtDirection } from "../src/lib/build/artDirection";
 
 let passed = 0;
 const failures: string[] = [];
@@ -43,33 +44,37 @@ const schema = buildStage3OutputJsonSchema() as unknown as {
   properties: { design: { properties: Record<string, unknown>; required: string[] } };
 };
 check("design is part of the model's schema", schema.required.includes("design"));
-check("all 14 decisions are required of the model", schema.properties.design.required.length === 14);
+check("the model chooses one direction, not fourteen knobs", schema.properties.design.required.length === 1 && schema.properties.design.required[0] === "artDirection");
 
 // Every field is a closed enumeration — the model never writes CSS or markup.
-const enumerated = Object.values(schema.properties.design.properties).filter(
-  (field) => typeof field === "object" && field !== null && ("enum" in field || (field as { type?: string }).type === "boolean"),
-);
-check("every decision is an enum or boolean, never free text", enumerated.length === 14, String(enumerated.length));
+const directionField = schema.properties.design.properties.artDirection as { enum?: string[] };
+check("the direction is a closed enumeration, never free text", Array.isArray(directionField.enum) && directionField.enum.length === 8);
 
 // An artifact from before the strategy existed still renders.
 check("a missing strategy falls back to a coherent default", sanitizeDesignStrategy(undefined).archetype === DEFAULT_DESIGN_STRATEGY.archetype);
-check("an unknown value falls back per field", sanitizeDesignStrategy({ density: "cosmic" }).density === DEFAULT_DESIGN_STRATEGY.density);
+// Layout is no longer assembled field by field, so a stray value cannot
+// produce an incoherent page: the direction supplies the whole system.
 check(
-  "a known value is kept",
-  sanitizeDesignStrategy({ density: "tight", cornerStyle: "pill" }).density === "tight",
+  "a direction supplies the whole system",
+  sanitizeDesignStrategy({ artDirection: "technical_data" }).typeSystem === "technical_mono",
+);
+check(
+  "a legacy per-field artifact still renders",
+  sanitizeDesignStrategy({ density: "tight" }).artDirection === DEFAULT_DESIGN_STRATEGY.artDirection,
 );
 
 /* ── 2. the artifact is internally coherent ─────────────────────────────── */
 
-// Observed while testing: a "stat_led" strategy arrived on content with no
-// stat. Rendered literally it set a whole sentence at stat size; ignored, it
-// silently fell back to the default hero, which is how sameness returns.
+// Observed while testing: warm_archive is the stat-led direction, and it can
+// land on content with no stat. Rendered literally that set a whole sentence at
+// stat size; ignored, it silently fell back to the default hero, which is how
+// sameness returns. The coherence pass runs after the direction resolves.
 const statLedNoStat = sanitizeStage3Output({
   ...CHRONOVERSE_OUTPUT,
-  design: { ...DEFAULT_DESIGN_STRATEGY, heroComposition: "stat_led" },
+  design: { artDirection: "warm_archive" },
 });
 check(
-  "a stat-led hero without a stat is downgraded, not faked",
+  "a stat-led direction without a stat is downgraded, not faked",
   statLedNoStat?.design.heroComposition === "panel",
   statLedNoStat?.design.heroComposition,
 );
@@ -77,15 +82,15 @@ check(
 const statLedWithStat = sanitizeStage3Output({
   ...CHRONOVERSE_OUTPUT,
   hero: { ...CHRONOVERSE_OUTPUT.hero, visualKind: "stat", visualPrompt: "1943 → earliest year" },
-  design: { ...DEFAULT_DESIGN_STRATEGY, heroComposition: "stat_led" },
+  design: { artDirection: "warm_archive" },
 });
-check("a stat-led hero with a real stat is kept", statLedWithStat?.design.heroComposition === "stat_led");
+check("a stat-led direction with a real stat is kept", statLedWithStat?.design.heroComposition === "stat_led");
 
 // A typographic composition renders no visual, so an imagery decision would
 // have nothing to apply to.
 const lede = sanitizeStage3Output({
   ...CHRONOVERSE_OUTPUT,
-  design: { ...DEFAULT_DESIGN_STRATEGY, heroComposition: "editorial_lede", imageryStrategy: "photographic" },
+  design: { artDirection: "editorial_magazine" },
 });
 check("a typographic hero carries no imagery", lede?.design.imageryStrategy === "none");
 
@@ -117,33 +122,69 @@ check(
 
 /* ── 5. the model is told to decide, not to fill a template ─────────────── */
 
-check("the prompt names the decision step", /DESIGN THE PAGE, DO NOT FILL A TEMPLATE/.test(prompt));
+check("the prompt asks for an art direction", /CHOOSE THE ART DIRECTION/.test(prompt));
+check("all eight directions are described to the model", ART_DIRECTIONS.every((d) => prompt.includes(d)));
 check(
-  "and warns against the old universal default",
-  /"split" is the old default for everything/.test(prompt),
-);
-check(
-  'and treats "no image" as a strong answer',
-  /"none" and "typographic" are strong answers/.test(prompt),
+  "and it is told not to keep picking the same one",
+  /Do not default to the same direction repeatedly/.test(prompt),
 );
 
-/* ── 6. the three test strategies really are different ──────────────────── */
+/* ── 7. typography and surface actually differ in the stylesheet ────────── */
 
-const variants = Object.keys(DESIGN_VARIANTS);
-check("three strategies are defined for comparison", variants.length === 3);
-const dimensions = ["heroComposition", "typeScale", "density", "grid", "cardTreatment", "cornerStyle", "colorLogic", "imageryStrategy", "motionLevel", "ctaPattern"] as const;
-const distinct = dimensions.filter(
-  (d) => new Set(variants.map((v) => DESIGN_VARIANTS[v][d])).size === variants.length,
-);
-// Recolouring is not diversity: the composition dimensions must differ.
+for (const sys of ["editorial_serif", "expressive_display", "condensed_poster", "luxury_oldstyle", "technical_mono", "geometric_sans"]) {
+  check(`css defines the ${sys} type system`, css.includes(`[data-type-system="${sys}"]`));
+}
+for (const surf of ["editorial_paper", "deep_canvas", "atmospheric_gradient", "geometric_grid", "grain_field", "radial_glow", "colour_fields", "mono_contrast"]) {
+  check(`css defines the ${surf} surface`, css.includes(`[data-surface="${surf}"]`));
+}
+// Six distinct display faces, not six sizes of one.
+const faceVars = ["--font-display-editorial", "--font-display-expressive", "--font-display-condensed", "--font-display-luxury", "--font-display-technical", "--font-body-geometric"];
+for (const v of faceVars) check(`${v} is wired to a real face`, css.includes(v));
+const layout = read("src/app/layout.tsx");
+for (const v of faceVars) check(`${v} is loaded by the app`, layout.includes(v));
+check("every loaded face declares Cyrillic", (layout.match(/subsets: \["latin", "cyrillic"\]/g) ?? []).length >= 9);
+// Long copy is never set in a display-only face.
 check(
-  "all three differ on most design dimensions",
-  distinct.length >= 8,
-  `${distinct.length}/${dimensions.length} fully distinct: ${distinct.join(", ")}`,
+  "condensed and mono do not set body copy",
+  /\[data-type-system="condensed_poster"\] \.project-output-subtitle[\s\S]{0,160}--font-body-geometric/.test(css),
+);
+check("reduced motion is honoured", /prefers-reduced-motion: reduce[\s\S]{0,200}animation: none/.test(css));
+
+/* ── 6. the art directions really are different systems ────────────────── */
+
+const variants = ART_DIRECTIONS;
+check("eight art directions are defined", variants.length === 8);
+
+// Diversity is judged on the whole system, not on colour. Typography and
+// surface are the two the previous attempt did not vary at all, which is why
+// the outputs still read as one template family.
+const systems = ["typeSystem", "surface", "graphic", "motion"] as const;
+for (const s of systems) {
+  const distinct = new Set(variants.map((v) => DESIGN_VARIANTS[v][s])).size;
+  check(`${s} varies across directions`, distinct >= 4, `${distinct} distinct values`);
+}
+
+const layoutDims = ["heroComposition", "typeScale", "density", "grid", "cardTreatment", "cornerStyle", "colorLogic"] as const;
+for (const d of layoutDims) {
+  const distinct = new Set(variants.map((v) => DESIGN_VARIANTS[v][d])).size;
+  check(`${d} varies across directions`, distinct >= 3, `${distinct} distinct values`);
+}
+
+// No two directions may be the same system wearing a different name.
+const fingerprints = variants.map((v) =>
+  [...systems, ...layoutDims].map((k) => DESIGN_VARIANTS[v][k]).join("|"),
+);
+check("no two directions resolve to the same system", new Set(fingerprints).size === variants.length);
+
+// Coherence is by construction: the layout is not assembled field by field.
+check(
+  "a direction resolves the whole strategy",
+  resolveArtDirection("luxury_minimal").typeSystem === "luxury_oldstyle"
+    && resolveArtDirection("luxury_minimal").grid === "wide_gutter",
 );
 check(
-  "they do not share a hero composition",
-  new Set(variants.map((v) => DESIGN_VARIANTS[v].heroComposition)).size === 3,
+  "an unknown direction cannot be smuggled in",
+  sanitizeDesignStrategy({ artDirection: "gamer_rgb" }).artDirection === DEFAULT_DESIGN_STRATEGY.artDirection,
 );
 
 /* ── report ─────────────────────────────────────────────────────────────── */

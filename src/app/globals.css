@@ -2121,3 +2121,277 @@ body {
   .project-output .project-output-hero-layout,
   .project-output .project-output-intro { grid-template-columns: minmax(0, 1fr); }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ART DIRECTION: TYPE SYSTEMS, SURFACES, GRAPHICS, MOTION
+
+   The layout rules above moved blocks around; every output still used the same
+   two typefaces on the same dark canvas, which is why they read as one template
+   family however the blocks were arranged. Typography and surface are the two
+   things a person notices first, and neither varied at all.
+
+   Each direction below is a whole system. The model picks the direction; it
+   never picks these values individually, so a luxury serif cannot end up on a
+   dashboard grid.
+   ═════════════════════════════════════════════════════════════════════════ */
+
+/* ── Type systems ────────────────────────────────────────────────────────── */
+.project-output[data-type-system="editorial_serif"] {
+  --output-heading-font: var(--font-display-editorial), Georgia, serif;
+  --output-body-font: var(--font-editorial), Georgia, serif;
+  --output-heading-weight: 600;
+  --output-heading-tracking: -0.02em;
+  --output-heading-leading: 0.98;
+  --output-eyebrow-case: uppercase;
+  --output-eyebrow-tracking: 0.2em;
+}
+.project-output[data-type-system="expressive_display"] {
+  --output-heading-font: var(--font-display-expressive), system-ui, sans-serif;
+  --output-body-font: var(--font-body-geometric), system-ui, sans-serif;
+  --output-heading-weight: 700;
+  --output-heading-tracking: -0.035em;
+  --output-heading-leading: 0.95;
+  --output-eyebrow-case: none;
+  --output-eyebrow-tracking: 0.02em;
+}
+.project-output[data-type-system="condensed_poster"] {
+  --output-heading-font: var(--font-display-condensed), Impact, sans-serif;
+  --output-body-font: var(--font-body-geometric), system-ui, sans-serif;
+  --output-heading-weight: 600;
+  --output-heading-tracking: -0.01em;
+  /* Not tighter: Oswald's ascenders and descenders collide below this at
+     display sizes, and a three-line headline overlapped itself. */
+  --output-heading-leading: 0.95;
+  --output-eyebrow-case: uppercase;
+  --output-eyebrow-tracking: 0.28em;
+}
+.project-output[data-type-system="luxury_oldstyle"] {
+  --output-heading-font: var(--font-display-luxury), Garamond, serif;
+  --output-body-font: var(--font-body-geometric), system-ui, sans-serif;
+  --output-heading-weight: 300;
+  --output-heading-tracking: 0.01em;
+  --output-heading-leading: 1.04;
+  --output-eyebrow-case: uppercase;
+  --output-eyebrow-tracking: 0.36em;
+}
+.project-output[data-type-system="technical_mono"] {
+  --output-heading-font: var(--font-display-technical), ui-monospace, monospace;
+  --output-body-font: var(--font-display-technical), ui-monospace, monospace;
+  --output-heading-weight: 700;
+  --output-heading-tracking: -0.045em;
+  --output-heading-leading: 1;
+  --output-eyebrow-case: uppercase;
+  --output-eyebrow-tracking: 0.12em;
+}
+.project-output[data-type-system="geometric_sans"] {
+  --output-heading-font: var(--font-body-geometric), system-ui, sans-serif;
+  --output-body-font: var(--font-body-geometric), system-ui, sans-serif;
+  --output-heading-weight: 800;
+  --output-heading-tracking: -0.03em;
+  --output-heading-leading: 1.02;
+  --output-eyebrow-case: uppercase;
+  --output-eyebrow-tracking: 0.1em;
+}
+
+/* The body face and the heading rhythm actually apply — before this the vars
+   existed but only the heading font was ever read. */
+.project-output { font-family: var(--output-body-font, var(--font-geist-sans), system-ui, sans-serif); }
+.project-output .project-output-title,
+.project-output .project-output-intro h2,
+.project-output .project-output-section h2,
+.project-output .project-output-action h2,
+.project-output .project-output-launch h2 {
+  font-family: var(--output-heading-font);
+  font-weight: var(--output-heading-weight);
+  letter-spacing: var(--output-heading-tracking);
+  line-height: var(--output-heading-leading, 0.94);
+}
+.project-output .project-output-eyebrow,
+.project-output .project-output-kicker {
+  text-transform: var(--output-eyebrow-case, uppercase);
+  letter-spacing: var(--output-eyebrow-tracking, 0.18em);
+}
+/* Condensed and mono display faces are unreadable as long body copy. */
+.project-output[data-type-system="condensed_poster"] .project-output-subtitle,
+.project-output[data-type-system="technical_mono"] .project-output-subtitle {
+  font-family: var(--font-body-geometric), system-ui, sans-serif;
+}
+
+/* ── Surfaces: the whole canvas, not a rectangle behind the page ─────────── */
+.project-output[data-surface="editorial_paper"] {
+  --output-ink: #1c1917; --output-ink-soft: rgb(28 25 23 / 0.74); --output-ink-muted: rgb(28 25 23 / 0.56);
+  --output-border: rgb(28 25 23 / 0.14); --output-border-strong: rgb(28 25 23 / 0.34);
+  --output-surface: rgb(28 25 23 / 0.03);
+  background: #faf7f2;
+}
+.project-output[data-surface="deep_canvas"] {
+  --output-ink: #f4f1ea; --output-ink-soft: rgb(244 241 234 / 0.72); --output-ink-muted: rgb(244 241 234 / 0.5);
+  --output-border: rgb(244 241 234 / 0.14); --output-border-strong: rgb(244 241 234 / 0.3);
+  --output-surface: rgb(244 241 234 / 0.05);
+  background: radial-gradient(120% 90% at 50% 0%, #14161c 0%, #0a0b0e 60%, #060709 100%);
+}
+.project-output[data-surface="atmospheric_gradient"] {
+  --output-ink: #221d26; --output-ink-soft: rgb(34 29 38 / 0.7); --output-ink-muted: rgb(34 29 38 / 0.5);
+  --output-border: rgb(34 29 38 / 0.12); --output-border-strong: rgb(34 29 38 / 0.26);
+  --output-surface: rgb(255 255 255 / 0.5);
+  background:
+    radial-gradient(80% 60% at 15% 0%, color-mix(in srgb, var(--output-primary) 22%, transparent), transparent 70%),
+    radial-gradient(70% 60% at 95% 20%, color-mix(in srgb, var(--output-secondary) 20%, transparent), transparent 70%),
+    linear-gradient(180deg, #fdfbfa, #f4eef2);
+}
+.project-output[data-surface="geometric_grid"] {
+  --output-ink: #101418; --output-ink-soft: rgb(16 20 24 / 0.72); --output-ink-muted: rgb(16 20 24 / 0.52);
+  --output-border: rgb(16 20 24 / 0.16); --output-border-strong: rgb(16 20 24 / 0.42);
+  --output-surface: rgb(16 20 24 / 0.035);
+  background-color: #f7f8f9;
+  background-image:
+    linear-gradient(rgb(16 20 24 / 0.07) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(16 20 24 / 0.07) 1px, transparent 1px);
+  background-size: 28px 28px;
+}
+.project-output[data-surface="grain_field"] {
+  --output-ink: #2b2118; --output-ink-soft: rgb(43 33 24 / 0.74); --output-ink-muted: rgb(43 33 24 / 0.54);
+  --output-border: rgb(43 33 24 / 0.16); --output-border-strong: rgb(43 33 24 / 0.32);
+  --output-surface: rgb(43 33 24 / 0.05);
+  background-color: #f3ead9;
+  /* Grain as an inline SVG data URI: Ventrio-authored, no network request. */
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)' opacity='0.16'/%3E%3C/svg%3E");
+}
+.project-output[data-surface="radial_glow"] {
+  --output-ink: #eef2f6; --output-ink-soft: rgb(238 242 246 / 0.7); --output-ink-muted: rgb(238 242 246 / 0.48);
+  --output-border: rgb(238 242 246 / 0.14); --output-border-strong: rgb(238 242 246 / 0.3);
+  --output-surface: rgb(238 242 246 / 0.05);
+  background:
+    radial-gradient(60% 45% at 50% 8%, color-mix(in srgb, var(--output-primary) 40%, transparent), transparent 70%),
+    #07090d;
+}
+.project-output[data-surface="colour_fields"] {
+  --output-ink: #171422; --output-ink-soft: rgb(23 20 34 / 0.72); --output-ink-muted: rgb(23 20 34 / 0.52);
+  --output-border: rgb(23 20 34 / 0.12); --output-border-strong: rgb(23 20 34 / 0.28);
+  --output-surface: color-mix(in srgb, var(--output-secondary) 16%, #fff);
+  /* Banded hard, not tinted. A low mix left this reading as flat grey whenever
+     the project's palette was dark, which is exactly the "flat or empty
+     background" problem — the direction has to assert its own colour
+     character rather than inheriting whatever the palette happens to be. */
+  background:
+    linear-gradient(180deg,
+      color-mix(in srgb, var(--output-secondary) 55%, #fff) 0%,
+      color-mix(in srgb, var(--output-secondary) 55%, #fff) 38%,
+      #fffdf8 38%,
+      #fffdf8 72%,
+      color-mix(in srgb, var(--output-primary) 22%, #fff) 72%,
+      color-mix(in srgb, var(--output-primary) 22%, #fff) 100%);
+}
+.project-output[data-surface="mono_contrast"] {
+  --output-ink: #0b0b0b; --output-ink-soft: rgb(11 11 11 / 0.78); --output-ink-muted: rgb(11 11 11 / 0.55);
+  --output-border: rgb(11 11 11 / 0.2); --output-border-strong: #0b0b0b;
+  --output-surface: #fff;
+  background: #fff;
+}
+.project-output[data-surface="mono_contrast"] .project-output-hero { border-bottom: 2px solid #0b0b0b; }
+.project-output[data-surface="mono_contrast"] .project-output-section { border-top: 1px solid #0b0b0b; }
+
+/* The old fixed ambient grid belongs to one direction only. */
+.project-output:not([data-surface="geometric_grid"]) .project-output-ambient { display: none; }
+
+/* ── Graphic treatments (Ventrio-owned, never fake media) ────────────────── */
+.project-output[data-graphic="rules_and_frames"] .project-output-section { border-top: 1px solid var(--output-border-strong); }
+.project-output[data-graphic="type_composition"] .project-output-title { text-transform: uppercase; }
+.project-output[data-graphic="timeline"] .project-output-section { position: relative; padding-left: clamp(1rem, 4vw, 3rem); }
+.project-output[data-graphic="timeline"] .project-output-section::before {
+  content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 1px; background: var(--output-border-strong);
+}
+.project-output[data-graphic="data_marks"] .project-output-stat-value { font-variant-numeric: tabular-nums; }
+.project-output[data-graphic="shape_field"] .project-output-hero { overflow: hidden; }
+.project-output[data-graphic="shape_field"] .project-output-hero::after {
+  content: ""; position: absolute; right: -12%; top: -18%; width: 58%; aspect-ratio: 1;
+  border-radius: 50%; pointer-events: none;
+  background: radial-gradient(circle, color-mix(in srgb, var(--output-primary) 34%, transparent), transparent 68%);
+}
+.project-output[data-graphic="diagram"] .project-output-card { border-left: 3px solid var(--output-primary); }
+
+/* ── Motion vocabulary, with a reduced-motion fallback ───────────────────── */
+@keyframes output-rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+@keyframes output-mask { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0 0 0); } }
+
+.project-output[data-motion-vocab="staggered_reveal"] .stage3-reveal-block { animation: output-rise 620ms var(--ease, ease) both; }
+.project-output[data-motion-vocab="staggered_reveal"] .project-output-section:nth-child(2) { animation-delay: 90ms; }
+.project-output[data-motion-vocab="staggered_reveal"] .project-output-section:nth-child(3) { animation-delay: 180ms; }
+.project-output[data-motion-vocab="masked_heading"] .project-output-title { animation: output-mask 900ms var(--ease, ease) both; }
+.project-output[data-motion-vocab="section_fade"] .stage3-reveal-block { animation: output-rise 800ms ease both; }
+.project-output[data-motion-vocab="hover_lift"] .project-output-card { transition: transform 200ms ease, box-shadow 200ms ease; }
+.project-output[data-motion-vocab="hover_lift"] .project-output-card:hover { transform: translateY(-4px); }
+.project-output[data-motion-vocab="timeline_progress"] .project-output-section::before { transform-origin: top; animation: output-rise 700ms ease both; }
+.project-output[data-motion-vocab="none"] * { animation: none !important; }
+
+@media (prefers-reduced-motion: reduce) {
+  .project-output *,
+  .project-output *::before,
+  .project-output *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+/* A full-bleed type hero is sized by its type, not by a fixed minimum — the
+   reserved height left a large empty band under the subtitle on every
+   direction that used it. */
+.project-output[data-hero="full_bleed_type"] .project-output-hero,
+.project-output[data-hero="editorial_lede"] .project-output-hero {
+  min-height: auto;
+  padding-block: clamp(2rem, 6vw, 5rem);
+}
+/* Display faces need room for descenders at these sizes. */
+.project-output .project-output-title { padding-bottom: 0.08em; }
+
+/* ── The CTA belongs to the direction, not to Ventrio ─────────────────────
+   Every direction rendered the same rounded grey pill, which was the clearest
+   remaining tell that six "different" pages came from one template. A button
+   is the most looked-at component on the page; it has to speak the same
+   language as the type around it. */
+.project-output .project-output-cta {
+  border-radius: var(--output-radius);
+  background: var(--output-cta-bg, var(--output-ink));
+  color: var(--output-cta-ink, var(--output-bg, #fff));
+  font-family: var(--output-body-font);
+  border: var(--output-cta-border, 0);
+  padding: var(--output-cta-pad, 0.85rem 1.4rem);
+  font-weight: var(--output-cta-weight, 700);
+  letter-spacing: var(--output-cta-tracking, 0);
+  text-transform: var(--output-cta-case, none);
+  transition: background 180ms ease, color 180ms ease, transform 180ms ease;
+}
+.project-output .project-output-cta:hover { transform: none; filter: none; }
+
+.project-output[data-art-direction="editorial_magazine"] {
+  --output-cta-bg: transparent; --output-cta-ink: var(--output-ink);
+  --output-cta-border: 1px solid var(--output-ink); --output-cta-case: uppercase;
+  --output-cta-tracking: 0.14em; --output-cta-pad: 0.7rem 1.4rem;
+}
+.project-output[data-art-direction="editorial_magazine"] .project-output-cta:hover {
+  --output-cta-bg: var(--output-ink); --output-cta-ink: #faf7f2;
+}
+.project-output[data-art-direction="luxury_minimal"] {
+  --output-cta-bg: transparent; --output-cta-ink: var(--output-ink);
+  --output-cta-border: 1px solid var(--output-border-strong);
+  --output-cta-case: uppercase; --output-cta-tracking: 0.3em;
+  --output-cta-pad: 1rem 2.4rem; --output-cta-weight: 400;
+}
+.project-output[data-art-direction="technical_data"] {
+  --output-cta-bg: var(--output-ink); --output-cta-ink: #f7f8f9;
+  --output-cta-pad: 0.6rem 1rem; --output-cta-weight: 700; --output-cta-tracking: -0.02em;
+}
+.project-output[data-art-direction="brutalist_poster"] {
+  --output-cta-bg: #0b0b0b; --output-cta-ink: #fff;
+  --output-cta-case: uppercase; --output-cta-tracking: 0.06em;
+  --output-cta-pad: 1rem 2rem; --output-cta-weight: 700;
+}
+.project-output[data-art-direction="playful_community"] {
+  --output-cta-bg: var(--output-primary); --output-cta-ink: #fff;
+  --output-cta-pad: 1rem 2rem; --output-cta-weight: 800;
+}
+.project-output[data-art-direction="cinematic"] {
+  --output-cta-bg: transparent; --output-cta-ink: var(--output-ink);
+  --output-cta-border: 1px solid var(--output-ink); --output-cta-case: uppercase;
+  --output-cta-tracking: 0.22em; --output-cta-pad: 0.9rem 2rem; --output-cta-weight: 500;
+}

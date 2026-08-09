@@ -7,7 +7,8 @@ import { BuildScreen } from "@/components/workspace/BuildScreen";
 import { GenerationSteps } from "@/components/workspace-ui/GenerationSteps";
 import { ViewportFrame } from "@/components/workspace/ViewportFrame";
 import { DEVICE_WIDTHS, type DeviceMode } from "@/lib/build/deviceWidths";
-import { CHRONOVERSE_OUTPUT, DESIGN_VARIANTS } from "@/lib/build/outputFixtures";
+import { CHRONOVERSE_OUTPUT } from "@/lib/build/outputFixtures";
+import { isArtDirection } from "@/lib/build/artDirection";
 import { sanitizeStage3Output } from "@/lib/build/stage3Types";
 // The workspace's design tokens are scoped to `.wsRoot` and normally come from
 // WorkspaceShell. Without both, every `var(--line)` and `var(--accent-soft)`
@@ -54,8 +55,8 @@ export function Harness({
   // production. Building the object literally skipped the coherence pass, so
   // the harness showed combinations the product would never actually render.
   const artifact =
-    (variant && DESIGN_VARIANTS[variant]
-      ? sanitizeStage3Output({ ...CHRONOVERSE_OUTPUT, design: DESIGN_VARIANTS[variant] })
+    (isArtDirection(variant)
+      ? sanitizeStage3Output({ ...CHRONOVERSE_OUTPUT, design: { artDirection: variant } })
       : CHRONOVERSE_OUTPUT) ?? CHRONOVERSE_OUTPUT;
   const output = (
     <ProjectOutputRenderer projectKey={`fixture-${variant || "base"}`} output={artifact} locale="en" mode="preview" />
