@@ -1,0 +1,245 @@
+/**
+ * Editing a generated project without regenerating it.
+ *
+ * THE PROPERTY THAT MATTERS. "Make the header darker" must change the header
+ * and leave the other twelve files byte-identical. The page renderer could not
+ * do this at all — an edit re-ran generation and produced a different site —
+ * and it is the single biggest reason a generated app felt disposable rather
+ * than owned.
+ *
+ * So an edit is a patch against a known base, not a new bundle. The model
+ * returns only the files it is changing, plus an explicit list of files to
+ * delete. Everything it does not mention is carried forward untouched, which is
+ * both the useful behaviour and the safe one: a model that forgets a file
+ * cannot silently drop it.
+ *
+ * A patch is validated as a patch, then the *result* is validated as a whole
+ * project and compiled. Both are necessary. Patch-level checks catch a write to
+ * a path that may not exist; whole-project checks catch a patch that is
+ * individually legal and leaves the project broken — a deleted component that
+ * three files still import, say.
+ *
+ * Nothing is applied in place. `applyPatch` returns a new project and the
+ * caller decides whether to keep it, so a failed edit leaves the previous
+ * version exactly as it was.
+ */
+
+import { APP_BUDGETS, validatePath, type GeneratedAppV1 } from "./contract";
+import { RUNTIME_TEMPLATES, isRuntimeTemplate } from "./runtime";
+import type { AppIssue } from "./validate";
+
+export const PATCH_SCHEMA_VERSION = "app-patch-1" as const;
+
+export interface AppPatchV1 {
+  schemaVersion: typeof PATCH_SCHEMA_VERSION;
+  /** One line, for the version history. Not shown to the model as guidance. */
+  summary: string;
+  /** Files to create or replace, whole. Absent files are left alone. */
+  write?: Record<string, string>;
+  /** Files to remove. */
+  remove?: string[];
+  /** Optional metadata changes; anything omitted is unchanged. */
+  metadata?: Partial<Pick<GeneratedAppV1["metadata"], "name" | "description">>;
+  /**
+   * Optional dependency changes, replacing the whole list.
+   *
+   * Whole-list rather than additive because an edit that stops using recharts
+   * should stop shipping recharts, and an additive patch has no way to say so.
+   */
+  dependencies?: string[];
+}
+
+export type PatchResult =
+  | { ok: true; app: GeneratedAppV1; changed: string[]; removed: string[] }
+  | { ok: false; issues: AppIssue[] };
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+/**
+ * Applies a patch to a base project.
+ *
+ * The base is assumed already valid — it is a stored version that passed the
+ * full gate when it was created. The patch is not assumed anything.
+ */
+export function applyPatch(base: GeneratedAppV1, value: unknown): PatchResult {
+  const issues: AppIssue[] = [];
+  const add = (path: string, code: string, detail: string) => {
+    if (issues.length < 40) issues.push({ path, code, detail });
+  };
+
+  if (!isRecord(value)) {
+    return { ok: false, issues: [{ path: "$", code: "not_an_object", detail: "The patch must be a JSON object." }] };
+  }
+  if (value.schemaVersion !== PATCH_SCHEMA_VERSION) {
+    return { ok: false, issues: [{ path: "$.schemaVersion", code: "bad_version", detail: `Expected "${PATCH_SCHEMA_VERSION}".` }] };
+  }
+
+  const KNOWN = new Set(["schemaVersion", "summary", "write", "remove", "metadata", "dependencies"]);
+  for (const key of Object.keys(value)) {
+    if (!KNOWN.has(key)) add(`$.${key}`, "unknown_key", `"${key}" is not part of the patch contract.`);
+  }
+
+  const summary = typeof value.summary === "string" && value.summary.trim().length > 0
+    ? value.summary.trim().slice(0, 200)
+    : null;
+  if (!summary) add("$.summary", "bad_value", "A one-line summary is required.");
+
+  /* ── writes ────────────────────────────────────────────────────────────── */
+  const files: Record<string, string> = { ...base.files };
+  const changed: string[] = [];
+
+  if (value.write !== undefined) {
+    if (!isRecord(value.write)) {
+      add("$.write", "bad_value", "write must be an object of path → contents.");
+    } else {
+      const entry = isRuntimeTemplate(base.runtime.template)
+        ? RUNTIME_TEMPLATES[base.runtime.template].entry
+        : null;
+
+      for (const [path, contents] of Object.entries(value.write)) {
+        const pathIssue = validatePath(path);
+        if (pathIssue) { add(`$.write["${path}"]`, pathIssue.code, pathIssue.detail); continue; }
+        // The entry module is Ventrio's — it decides what mounts and installs
+        // the error reporting the repair loop depends on. Refused here as well
+        // as in whole-project validation so an edit fails at the layer that
+        // can name the offending patch field.
+        if (entry && path === entry) {
+          add(`$.write["${path}"]`, "entry_reserved", `${entry} is generated by Ventrio.`);
+          continue;
+        }
+        if (typeof contents !== "string") {
+          add(`$.write["${path}"]`, "bad_value", "File contents must be a string.");
+          continue;
+        }
+        if (Buffer.byteLength(contents, "utf8") > APP_BUDGETS.maxFileBytes) {
+          add(`$.write["${path}"]`, "budget_file_bytes", `Over ${APP_BUDGETS.maxFileBytes} B.`);
+          continue;
+        }
+        files[path] = contents;
+        changed.push(path);
+      }
+    }
+  }
+
+  /* ── removals ──────────────────────────────────────────────────────────── */
+  const removed: string[] = [];
+  if (value.remove !== undefined) {
+    if (!Array.isArray(value.remove)) {
+      add("$.remove", "bad_value", "remove must be an array of paths.");
+    } else {
+      for (const path of value.remove) {
+        if (typeof path !== "string") { add("$.remove", "bad_value", "Paths must be strings."); continue; }
+        // Removing something that is not there is a disagreement about the base,
+        // not a no-op. Silently ignoring it would let a patch built against a
+        // different version appear to succeed.
+        if (!Object.prototype.hasOwnProperty.call(files, path)) {
+          add(`$.remove["${path}"]`, "remove_missing", "That file is not in this project.");
+          continue;
+        }
+        if (Object.prototype.hasOwnProperty.call(value.write ?? {}, path)) {
+          add(`$.remove["${path}"]`, "remove_conflict", "The same path is also being written.");
+          continue;
+        }
+        delete files[path];
+        removed.push(path);
+      }
+    }
+  }
+
+  if (changed.length === 0 && removed.length === 0
+    && value.metadata === undefined && value.dependencies === undefined) {
+    add("$", "empty_patch", "The patch changes nothing.");
+  }
+
+  /* ── the template's root must survive ──────────────────────────────────── */
+  if (isRuntimeTemplate(base.runtime.template)) {
+    const root = RUNTIME_TEMPLATES[base.runtime.template].root;
+    if (!Object.prototype.hasOwnProperty.call(files, root)) {
+      add("$.remove", "root_missing", `${root} is what the app mounts and cannot be removed.`);
+    }
+  }
+
+  /* ── metadata and dependencies ─────────────────────────────────────────── */
+  const metadata = { ...base.metadata };
+  if (value.metadata !== undefined) {
+    if (!isRecord(value.metadata)) {
+      add("$.metadata", "bad_value", "metadata must be an object.");
+    } else {
+      const name = value.metadata.name;
+      const description = value.metadata.description;
+      if (name !== undefined) {
+        if (typeof name === "string" && name.length > 0 && name.length <= APP_BUDGETS.maxNameChars) metadata.name = name;
+        else add("$.metadata.name", "bad_value", "Invalid name.");
+      }
+      if (description !== undefined) {
+        if (typeof description === "string" && description.length > 0
+          && description.length <= APP_BUDGETS.maxDescriptionChars) metadata.description = description;
+        else add("$.metadata.description", "bad_value", "Invalid description.");
+      }
+    }
+  }
+
+  let dependencies = base.runtime.dependencies;
+  if (value.dependencies !== undefined) {
+    if (!Array.isArray(value.dependencies) || value.dependencies.some((d) => typeof d !== "string")) {
+      add("$.dependencies", "bad_value", "dependencies must be an array of strings.");
+    } else {
+      // Not filtered against the allowlist here: the whole-project validation
+      // that follows does that, and doing it in one place means one error
+      // message rather than two that could disagree.
+      dependencies = value.dependencies as string[];
+    }
+  }
+
+  if (issues.length > 0) return { ok: false, issues };
+
+  return {
+    ok: true,
+    changed,
+    removed,
+    app: {
+      ...base,
+      metadata,
+      runtime: { ...base.runtime, dependencies },
+      files,
+    },
+  };
+}
+
+/**
+ * A stored version of a project.
+ *
+ * The source bundle is kept, not the compiled output, for the same reason the
+ * codegen path keeps its bundle: the gate re-runs on every read, so a version
+ * accepted by an older, weaker gate stops rendering when the gate is tightened
+ * rather than being grandfathered in.
+ */
+export interface AppVersion {
+  /** Monotonic within a project, starting at 1. */
+  version: number;
+  /** What this version changed. Empty for the first. */
+  summary: string;
+  app: GeneratedAppV1;
+  createdAt: string;
+  /** Paths touched, for the history view. */
+  changed: string[];
+  removed: string[];
+}
+
+/** How many versions are kept. Bounded because they live in a JSON column. */
+export const MAX_APP_VERSIONS = 10;
+
+/**
+ * Appends a version, dropping the oldest beyond the limit.
+ *
+ * The first version is always kept regardless of the limit: it is the only one
+ * that can be returned to when every later edit turned out to be wrong.
+ */
+export function appendVersion(history: AppVersion[], next: AppVersion): AppVersion[] {
+  const combined = [...history, next];
+  if (combined.length <= MAX_APP_VERSIONS) return combined;
+  const [first, ...rest] = combined;
+  return [first, ...rest.slice(rest.length - (MAX_APP_VERSIONS - 1))];
+}
