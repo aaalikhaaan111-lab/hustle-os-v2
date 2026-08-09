@@ -1,4 +1,5 @@
 import type { Stage3DesignStrategy } from "@/lib/build/stage3Types";
+import type { MediaAssetId, MediaTreatment } from "@/lib/build/mediaAssets";
 
 /**
  * One art-directed system per project, chosen as a whole.
@@ -99,6 +100,11 @@ export interface ArtDirectionPreset {
   surface: Surface;
   graphic: GraphicTreatment;
   motion: MotionVocabulary;
+  /** How this direction uses imagery, and which owned asset suits it. */
+  mediaTreatment: MediaTreatment;
+  mediaAsset: MediaAssetId | null;
+  /** The page grammar: which sections appear, in what shape and order. */
+  rhythm: SectionRhythm;
   /** The layout half, reusing the vocabulary the renderer already honours. */
   layout: Pick<
     Stage3DesignStrategy,
@@ -108,6 +114,24 @@ export interface ArtDirectionPreset {
   >;
 }
 
+/**
+ * The page grammar of a direction.
+ *
+ * Every direction previously stacked the same title → body → cards blocks below
+ * the hero, which is what still made six different-looking pages read as one
+ * template once you scrolled. The rhythm decides section width, alignment,
+ * silhouette and spacing, not just their order.
+ */
+export const SECTION_RHYTHMS = [
+  "cinematic_bleed",   // alternating full-bleed bands, big media moments
+  "magazine_columns",  // asymmetric measure, pull quotes, rules
+  "dense_rows",        // compact ruled rows, tabular feel
+  "irregular_cards",   // offset cards of unequal size
+  "sparse_centred",    // one idea per screen, enormous whitespace
+  "hard_stack",        // edge-to-edge blocks that collide, no gutters
+] as const;
+export type SectionRhythm = (typeof SECTION_RHYTHMS)[number];
+
 export const ART_DIRECTION_PRESETS: Record<ArtDirection, ArtDirectionPreset> = {
   // Wide, dark, few words, one confident image-scale moment.
   cinematic: {
@@ -115,6 +139,9 @@ export const ART_DIRECTION_PRESETS: Record<ArtDirection, ArtDirectionPreset> = {
     surface: "deep_canvas",
     graphic: "shape_field",
     motion: "masked_heading",
+    mediaTreatment: "full_bleed",
+    mediaAsset: "cinematic-dusk",
+    rhythm: "cinematic_bleed",
     layout: {
       heroComposition: "full_bleed_type", typeScale: "dramatic", density: "airy",
       grid: "single", cardTreatment: "flat", cornerStyle: "sharp",
@@ -129,6 +156,9 @@ export const ART_DIRECTION_PRESETS: Record<ArtDirection, ArtDirectionPreset> = {
     surface: "editorial_paper",
     graphic: "rules_and_frames",
     motion: "staggered_reveal",
+    mediaTreatment: "editorial_crop",
+    mediaAsset: "editorial-still",
+    rhythm: "magazine_columns",
     layout: {
       heroComposition: "editorial_lede", typeScale: "dramatic", density: "regular",
       grid: "asymmetric", cardTreatment: "flat", cornerStyle: "sharp",
@@ -143,6 +173,9 @@ export const ART_DIRECTION_PRESETS: Record<ArtDirection, ArtDirectionPreset> = {
     surface: "atmospheric_gradient",
     graphic: "none",
     motion: "section_fade",
+    mediaTreatment: "framed",
+    mediaAsset: "luxury-stone",
+    rhythm: "sparse_centred",
     layout: {
       heroComposition: "stacked_center", typeScale: "dramatic", density: "airy",
       grid: "wide_gutter", cardTreatment: "flat", cornerStyle: "sharp",
@@ -157,6 +190,9 @@ export const ART_DIRECTION_PRESETS: Record<ArtDirection, ArtDirectionPreset> = {
     surface: "geometric_grid",
     graphic: "data_marks",
     motion: "none",
+    mediaTreatment: "none",
+    mediaAsset: null,
+    rhythm: "dense_rows",
     layout: {
       heroComposition: "panel", typeScale: "compact", density: "tight",
       grid: "two_col", cardTreatment: "outlined", cornerStyle: "sharp",
@@ -171,6 +207,9 @@ export const ART_DIRECTION_PRESETS: Record<ArtDirection, ArtDirectionPreset> = {
     surface: "colour_fields",
     graphic: "shape_field",
     motion: "hover_lift",
+    mediaTreatment: "collage",
+    mediaAsset: "playful-blocks",
+    rhythm: "irregular_cards",
     layout: {
       heroComposition: "stacked_center", typeScale: "balanced", density: "regular",
       grid: "single", cardTreatment: "raised", cornerStyle: "rounded",
@@ -185,6 +224,9 @@ export const ART_DIRECTION_PRESETS: Record<ArtDirection, ArtDirectionPreset> = {
     surface: "mono_contrast",
     graphic: "diagram",
     motion: "none",
+    mediaTreatment: "none",
+    mediaAsset: null,
+    rhythm: "dense_rows",
     layout: {
       heroComposition: "panel", typeScale: "compact", density: "tight",
       grid: "two_col", cardTreatment: "outlined", cornerStyle: "soft",
@@ -199,6 +241,9 @@ export const ART_DIRECTION_PRESETS: Record<ArtDirection, ArtDirectionPreset> = {
     surface: "grain_field",
     graphic: "timeline",
     motion: "timeline_progress",
+    mediaTreatment: "split",
+    mediaAsset: "editorial-still",
+    rhythm: "magazine_columns",
     layout: {
       heroComposition: "stat_led", typeScale: "balanced", density: "airy",
       grid: "asymmetric", cardTreatment: "inset", cornerStyle: "soft",
@@ -213,6 +258,9 @@ export const ART_DIRECTION_PRESETS: Record<ArtDirection, ArtDirectionPreset> = {
     surface: "mono_contrast",
     graphic: "type_composition",
     motion: "staggered_reveal",
+    mediaTreatment: "background",
+    mediaAsset: "brutalist-forms",
+    rhythm: "hard_stack",
     layout: {
       heroComposition: "full_bleed_type", typeScale: "dramatic", density: "tight",
       grid: "single", cardTreatment: "outlined", cornerStyle: "sharp",
@@ -240,6 +288,9 @@ export function resolveArtDirection(direction: ArtDirection): Stage3DesignStrate
   surface: Surface;
   graphic: GraphicTreatment;
   motion: MotionVocabulary;
+  mediaTreatment: MediaTreatment;
+  mediaAsset: MediaAssetId | null;
+  rhythm: SectionRhythm;
 } {
   const preset = ART_DIRECTION_PRESETS[direction];
   return {
@@ -252,5 +303,8 @@ export function resolveArtDirection(direction: ArtDirection): Stage3DesignStrate
     surface: preset.surface,
     graphic: preset.graphic,
     motion: preset.motion,
+    mediaTreatment: preset.mediaTreatment,
+    mediaAsset: preset.mediaAsset,
+    rhythm: preset.rhythm,
   };
 }

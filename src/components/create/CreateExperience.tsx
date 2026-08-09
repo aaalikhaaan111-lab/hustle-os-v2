@@ -593,11 +593,8 @@ export function CreateExperience({ userId, initialDraft }: CreateExperienceProps
         </div>
       </div>
 
-      {creating && selectedDirection !== null && turn?.phase === "propose" && (
-        <CreationTransition
-          direction={turn.directions[selectedDirection]}
-          phase={creationPhase}
-        />
+      {creating && (
+        <BuildActivity phase={creationPhase} />
       )}
     </div>
   );
@@ -711,30 +708,62 @@ function DirectionDetail({ label, value }: { label: string; value: string }) {
   );
 }
 
-function CreationTransition({ direction, phase }: { direction: CreationDirection; phase: CreationPhase }) {
-  const t = useTranslations("create");
-  return (
-    <div className="creation-transition fixed inset-0 z-[90] flex items-center justify-center px-5" role="status" aria-live="polite">
-      <div className="creation-transition-field" aria-hidden />
-      <div className="relative flex w-full max-w-lg flex-col items-center text-center">
-        <span className="creation-orbit" aria-hidden><span /></span>
-        <p className="mt-8 text-xs font-semibold uppercase tracking-[0.2em] text-accent/80">{direction.name}</p>
-        <h2 className="ventrio-display mt-3 text-[clamp(2.4rem,10vw,4.6rem)] leading-[0.98] text-ink">{t("makeReal")}</h2>
-        <div className="mt-9 grid w-full max-w-sm gap-3 text-left">
-          <TransitionStep label={t("step1")} state="done" />
-          <TransitionStep label={t("step2")} state={phase === "persisting" || phase === "generating" ? "active" : "done"} />
-          <TransitionStep label={t("step3")} state={phase === "handoff" ? "active" : "waiting"} />
-        </div>
-      </div>
-    </div>
-  );
-}
+/**
+ * What is happening, inside the workspace.
+ *
+ * This replaces a full-screen overlay that covered the app with an orbiting
+ * graphic and three invented steps. It hid the conversation the person had just
+ * had, said the same thing regardless of what was happening, and made a 60–120
+ * second wait feel like the product had gone somewhere.
+ *
+ * The steps here are coarse but honest: each maps to a real boundary in the
+ * pipeline, and the last one only appears when there is genuinely something to
+ * show. Nothing advances on a timer and there is no percentage, because a
+ * percentage would have to be invented.
+ */
+const ACTIVITY_STEPS = [
+  { key: "actThinking", phases: ["resetting", "persisting"] },
+  { key: "actDirection", phases: ["persisting"] },
+  { key: "actStructure", phases: ["generating"] },
+  { key: "actStyling", phases: ["generating"] },
+  { key: "actMobile", phases: ["generating"] },
+  { key: "actReady", phases: ["handoff"] },
+] as const;
 
-function TransitionStep({ label, state }: { label: string; state: "done" | "active" | "waiting" }) {
+function BuildActivity({ phase }: { phase: CreationPhase }) {
+  const t = useTranslations("create");
+  // Which step is live is derived from the phase, never from elapsed time.
+  const activeIndex = phase === "handoff"
+    ? ACTIVITY_STEPS.length - 1
+    : ACTIVITY_STEPS.findIndex((step) => (step.phases as readonly string[]).includes(phase));
+
   return (
-    <div className={cn("transition-step", `is-${state}`)}>
-      <span className="transition-step-mark" aria-hidden>{state === "done" ? "✓" : ""}</span>
-      <span>{label}</span>
+    <div
+      className="mt-4 rounded-[14px] border px-4 py-3"
+      style={{ borderColor: "var(--line)", background: "var(--surface)" }}
+      role="status"
+      aria-live="polite"
+    >
+      <ul className="flex flex-wrap items-center gap-x-4 gap-y-2">
+        {ACTIVITY_STEPS.map((step, index) => {
+          const done = activeIndex > index;
+          const active = activeIndex === index;
+          return (
+            <li key={step.key} className="flex items-center gap-2 text-[13px]">
+              <span
+                aria-hidden
+                className={cn("h-1.5 w-1.5 rounded-full", active && "ai-pending")}
+                style={{
+                  background: done || active ? "var(--accent)" : "var(--line-2)",
+                }}
+              />
+              <span style={{ color: active ? "var(--ink)" : "var(--ink-3)", fontWeight: active ? 600 : 400 }}>
+                {t(step.key as never)}
+              </span>
+            </li>
+          );
+        })}
+      </ul>
     </div>
   );
 }

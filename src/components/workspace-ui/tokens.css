@@ -132,10 +132,12 @@
    The active item is *lit*, not painted: a raised white chip with a hairline,
    a soft violet bloom underneath, and the icon carrying the accent. It reads as
    the one row standing slightly above the others. */
+/* Solid, not glass. A blurred translucent wash reads as a decorative pane
+   rather than a surface controls live on, and it shifted with whatever was
+   scrolling behind it. */
 .wsRoot .ws-rail {
-  background: var(--glass-wash);
-  -webkit-backdrop-filter: saturate(180%) blur(20px);
-  backdrop-filter: saturate(180%) blur(20px);
+  background: var(--surface);
+  border-right: 1px solid var(--line);
 }
 
 .wsRoot .ws-nav {
@@ -328,13 +330,8 @@
   isolation: isolate;
   border: 1px solid var(--line-2);
   border-radius: var(--r-lg);
-  background: rgb(255 255 255 / 0.86);
-  -webkit-backdrop-filter: saturate(180%) blur(20px);
-  backdrop-filter: saturate(180%) blur(20px);
-  box-shadow:
-    inset 0 1px 0 rgb(255 255 255 / 0.95),
-    0 1px 2px rgb(14 16 22 / 0.04),
-    0 12px 30px -22px rgb(14 16 22 / 0.26);
+  background: var(--surface);
+  box-shadow: 0 1px 2px rgb(14 16 22 / 0.04);
   transition:
     border-color var(--t-ctl) var(--ease),
     box-shadow var(--t-ctl) var(--ease),
@@ -686,7 +683,6 @@
 }
 .wsRoot .creation-signal-dot {
   background: var(--accent);
-  box-shadow: 0 0 14px rgb(107 100 242 / 0.5);
 }
 
 @media (prefers-reduced-motion: reduce) {

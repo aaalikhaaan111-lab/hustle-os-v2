@@ -128,4 +128,4 @@ export const CHRONOVERSE_OUTPUT: Stage3ProjectOutput = {
 export const DESIGN_VARIANTS: Record<ArtDirection, Stage3ProjectOutput["design"]> =
   Object.fromEntries(
     ART_DIRECTIONS.map((direction) => [direction, resolveArtDirection(direction)]),
-  ) as Record<ArtDirection, Stage3ProjectOutput["design"]>;
+  ) as unknown as Record<ArtDirection, Stage3ProjectOutput["design"]>;

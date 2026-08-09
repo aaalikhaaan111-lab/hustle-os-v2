@@ -7,7 +7,9 @@ import {
   type Surface,
   type GraphicTreatment,
   type MotionVocabulary,
+  type SectionRhythm,
 } from "@/lib/build/artDirection";
+import type { MediaAssetId, MediaTreatment } from "@/lib/build/mediaAssets";
 import {
   isStartingPoint,
   isV1Preset,
@@ -228,6 +230,9 @@ export interface Stage3DesignStrategy {
   surface: Surface;
   graphic: GraphicTreatment;
   motion: MotionVocabulary;
+  mediaTreatment: MediaTreatment;
+  mediaAsset: MediaAssetId | null;
+  rhythm: SectionRhythm;
   archetype: OutputArchetype;
   heroComposition: HeroComposition;
   typeScale: TypeScale;
@@ -256,6 +261,9 @@ export const DEFAULT_DESIGN_STRATEGY: Stage3DesignStrategy = {
   surface: "editorial_paper",
   graphic: "rules_and_frames",
   motion: "staggered_reveal",
+  mediaTreatment: "editorial_crop",
+  mediaAsset: "editorial-still",
+  rhythm: "magazine_columns",
   archetype: "premium_minimal",
   heroComposition: "split",
   typeScale: "balanced",
@@ -940,6 +948,9 @@ export function sanitizeDesignStrategy(value: unknown): Stage3DesignStrategy {
     surface: d.surface,
     graphic: d.graphic,
     motion: d.motion,
+    mediaTreatment: d.mediaTreatment,
+    mediaAsset: d.mediaAsset,
+    rhythm: d.rhythm,
     archetype: pick(raw.archetype, OUTPUT_ARCHETYPES, d.archetype),
     heroComposition: pick(raw.heroComposition, HERO_COMPOSITIONS, d.heroComposition),
     typeScale: pick(raw.typeScale, TYPE_SCALES, d.typeScale),

@@ -2,6 +2,7 @@ import type { CSSProperties } from "react";
 import type { Locale } from "@/i18n/locale";
 import type { Stage3ProjectOutput, Stage3Section } from "@/lib/build/stage3Types";
 import { OUTPUT_COPY } from "@/lib/publishing/copy";
+import { resolveMedia } from "@/lib/build/mediaAssets";
 import { PublicResponseForm } from "@/components/publishing/PublicResponseForm";
 import { ExperienceRenderer } from "@/components/build/ExperienceRenderer";
 import { ParallaxAmbient, ScrollReveal } from "@/components/build/ScrollReveal";
@@ -23,6 +24,24 @@ interface ProjectOutputRendererProps {
  * project. Until real image generation exists, describing the subject honestly
  * beats a slot that looks like a picture failed to load.
  */
+/**
+ * The project's image, in the treatment its direction calls for.
+ *
+ * The id is resolved against a registry Ventrio owns — a model-authored string
+ * can only ever be a key, never a URL — and when there is no asset this renders
+ * nothing at all rather than reserving an empty column.
+ */
+function ProjectMedia({ design }: { design: Stage3ProjectOutput["design"] }) {
+  const asset = resolveMedia(design.mediaAsset);
+  if (!asset || design.mediaTreatment === "none") return null;
+  return (
+    <figure className={`project-output-media project-output-media-${design.mediaTreatment}`}>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src={asset.src} alt={asset.alt} loading="lazy" decoding="async" />
+    </figure>
+  );
+}
+
 function VisualPlaceholder({ prompt, label }: { prompt: string; label: string }) {
   if (!prompt) return null;
   return (
@@ -240,6 +259,8 @@ export function ProjectOutputRenderer({
       data-type-system={design.typeSystem}
       data-surface={design.surface}
       data-graphic={design.graphic}
+      data-rhythm={design.rhythm}
+      data-media={design.mediaTreatment}
       data-motion-vocab={design.motion}
       data-archetype={design.archetype}
       data-hero={design.heroComposition}
@@ -257,6 +278,9 @@ export function ProjectOutputRenderer({
       lang={locale}
     >
       {design.motionLevel !== "still" && <ParallaxAmbient />}
+      {(design.mediaTreatment === "background" || design.mediaTreatment === "full_bleed") && (
+        <ProjectMedia design={design} />
+      )}
 
       <header className="project-output-hero stage3-reveal-block">
         {design.navModel !== "none" && (
@@ -283,8 +307,16 @@ export function ProjectOutputRenderer({
           {/* Compositions that are typographic by definition carry no visual
               beside the headline; rendering one anyway is what produced the
               same split-screen hero on every project. */}
-          {design.heroComposition !== "editorial_lede" && design.heroComposition !== "full_bleed_type" && (
-            <HeroVisual hero={output.hero} copy={copy} design={design} />
+          {/* A real asset takes the place beside the headline when the
+              direction splits or frames it; the typographic fallback is only
+              for directions with no media at all. */}
+          {(design.mediaTreatment === "split" || design.mediaTreatment === "framed"
+            || design.mediaTreatment === "editorial_crop" || design.mediaTreatment === "collage") ? (
+            <ProjectMedia design={design} />
+          ) : (
+            design.heroComposition !== "editorial_lede" && design.heroComposition !== "full_bleed_type" && (
+              <HeroVisual hero={output.hero} copy={copy} design={design} />
+            )
           )}
         </div>
       </header>

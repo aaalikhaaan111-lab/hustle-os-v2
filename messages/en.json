@@ -103,7 +103,13 @@
     "makeReal": "Let's make this real.",
     "step1": "Direction understood",
     "step2": "Building the first version",
-    "step3": "Revealing your project"
+    "step3": "Revealing your project",
+    "actThinking": "Thinking",
+    "actDirection": "Choosing direction",
+    "actStructure": "Building structure",
+    "actStyling": "Styling",
+    "actMobile": "Checking mobile",
+    "actReady": "Ready"
   },
   "stage3": {
     "errorInvalid": "That project request was invalid. Please try again.",
