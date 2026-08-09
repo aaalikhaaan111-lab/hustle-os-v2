@@ -11,7 +11,10 @@ export async function proxy(request: NextRequest) {
 
   const response = await updateSession(request);
   const isProd = process.env.NODE_ENV === "production";
-  response.headers.set("Content-Security-Policy", buildCspHeader(nonce, isProd));
+  response.headers.set(
+    "Content-Security-Policy",
+    buildCspHeader(nonce, isProd, request.nextUrl.pathname),
+  );
   return response;
 }
 
