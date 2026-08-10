@@ -25,7 +25,6 @@
 import {
   generateApp,
   repairApp,
-  REPAIR_ECHO_FILES,
   REPAIR_WHOLE_PROJECT_BYTES,
 } from "../../src/lib/v2/app/generate";
 import { PATCH_SCHEMA_VERSION } from "../../src/lib/v2/app/edit";
@@ -355,9 +354,13 @@ check("a rewrite gets the generation's output budget, not the patch's",
   /plan\.mode === "patch"\s*\?\s*GENERATION_LIMITS\.maxOutputTokensRepair\s*:\s*GENERATION_LIMITS\.maxOutputTokensArtifact/.test(source));
 check("and the two budgets are actually different",
   GENERATION_LIMITS.maxOutputTokensArtifact > GENERATION_LIMITS.maxOutputTokensRepair);
-check("the echo is bounded by files and by bytes",
-  /slice\(0, REPAIR_ECHO_FILES\)/.test(source) && /REPAIR_ECHO_BYTES/.test(source));
-check("the echo limit is small enough to be a limit", REPAIR_ECHO_FILES <= 10);
+check("the echo is bounded by bytes", /REPAIR_ECHO_BYTES/.test(source));
+// The count cap is gone on purpose: it decided which real diagnostics were
+// fixable. Size is the only bound, and an over-budget required set rewrites
+// explicitly rather than showing a subset.
+check("no arbitrary file-count cap remains", !/REPAIR_ECHO_FILES/.test(source));
+check("an over-budget required set is reported, not truncated",
+  /over the \$\{REPAIR_ECHO_BYTES\} B patch-context budget/.test(source));
 check("nothing is applied in place", /applyPatch\(base, framed\.value\)/.test(source));
 
 /* ── report ─────────────────────────────────────────────────────────────── */

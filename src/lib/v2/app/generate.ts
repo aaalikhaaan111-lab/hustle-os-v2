@@ -57,13 +57,17 @@ export const APP_MAX_REQUESTS = 2;
 /**
  * How much of the project a patch request may carry back.
  *
- * Bounded because the alternative is a request whose size is chosen by the
- * model that just failed: a project at the 600 kB source budget would otherwise
- * become a 600 kB repair prompt. Six files covers every compile failure the
- * fixtures produce, and a failure spread wider than that is not a local defect
- * anyway — it becomes a rewrite.
+ * Bounded by size, and only by size. There was a six-file cap next to this and
+ * it made the repair structurally incapable of its job: a landing-page
+ * generation put undersized type in eight components, the first six were shown,
+ * the model fixed all six, and the run failed on the two it never saw. A cap
+ * chosen for the fixtures decided which real diagnostics were fixable.
+ *
+ * Every file a diagnostic names is required and none of them may be dropped to
+ * satisfy a count. If the required set does not fit this budget the run says so
+ * and rewrites instead — see `planRepair`. What is never allowed is showing
+ * some of them and reporting success.
  */
-export const REPAIR_ECHO_FILES = 6;
 export const REPAIR_ECHO_BYTES = 48_000;
 
 /**
@@ -103,6 +107,8 @@ export interface AppTelemetry {
   repaired: boolean;
   /** Which shape the repair took, when one was attempted. */
   repairMode?: AppRepairMode;
+  /** Why that shape was chosen, when it was not the preferred patch. */
+  repairReason?: string;
 }
 
 export type AppFailureCode =
@@ -177,6 +183,7 @@ export async function generateApp(
   const stages: AppStageRecord[] = [];
   const startedAt = Date.now();
   let repairMode: AppRepairMode | undefined;
+  let repairReason: string | undefined;
 
   const telemetry = (repaired = false): AppTelemetry => ({
     model: input.model,
@@ -185,6 +192,7 @@ export async function generateApp(
     stages,
     repaired,
     repairMode,
+    repairReason,
   });
 
   const controller = new AbortController();
@@ -235,6 +243,7 @@ export async function generateApp(
 
     const plan = planRepair(attempt);
     repairMode = plan.mode;
+    repairReason = plan.mode === "rewrite" ? plan.reason : undefined;
 
     const repair = await budgeted.send(
       {
@@ -500,7 +509,7 @@ function refusal(build: Extract<AppBuildResult, { ok: false }>): Attempt {
 
 type RepairPlan =
   | { mode: "patch"; base: GeneratedAppV1; context: AppRepairContext }
-  | { mode: "rewrite" };
+  | { mode: "rewrite"; reason: string };
 
 /**
  * Decides between patching and rewriting, from what the failure left behind.
@@ -511,9 +520,24 @@ type RepairPlan =
  * paid request is worse than an expensive one.
  */
 function planRepair(attempt: Extract<Attempt, { ok: false }>): RepairPlan {
-  if (!attempt.base) return { mode: "rewrite" };
-  const context = echoContext(attempt.base, attempt.implicated);
-  if (!context) return { mode: "rewrite" };
+  if (!attempt.base) return { mode: "rewrite", reason: "no validated project to patch against" };
+
+  const required = [...new Set(attempt.implicated ?? [])].filter((path) => path in attempt.base!.files);
+  if (required.length > 0) {
+    const bytes = required.reduce((sum, path) => sum + Buffer.byteLength(attempt.base!.files[path], "utf8"), 0);
+    if (bytes > REPAIR_ECHO_BYTES) {
+      // Explicit, not silent. Dropping required files to fit would produce a
+      // patch that cannot address the diagnostics it was sent to fix, and a
+      // run that then fails for reasons the model was never shown.
+      return {
+        mode: "rewrite",
+        reason: `the ${required.length} files named by the diagnostics are ${bytes} B, over the ${REPAIR_ECHO_BYTES} B patch-context budget`,
+      };
+    }
+  }
+
+  const context = echoContext(attempt.base, required);
+  if (!context) return { mode: "rewrite", reason: "the project is too large to reproduce and no file was named" };
   return { mode: "patch", base: attempt.base, context };
 }
 
@@ -535,15 +559,24 @@ function echoContext(app: GeneratedAppV1, focus?: string[]): AppRepairContext | 
     return { manifest, files, partial: false };
   }
 
+  /**
+   * Every named file, or none of them.
+   *
+   * No count cap and no partial fill: the caller has already checked that the
+   * required set fits, and a "best effort" subset here would recreate exactly
+   * the failure this replaced. Supporting files are not added — the manifest
+   * below already lists every path in the project, which is what a patch needs
+   * to avoid re-inventing a file, and echoing more source would spend the
+   * budget on files no diagnostic implicated.
+   */
   const files: Record<string, string> = {};
   let bytes = 0;
-  for (const path of wanted.slice(0, REPAIR_ECHO_FILES)) {
+  for (const path of wanted) {
     const size = Buffer.byteLength(app.files[path], "utf8");
-    if (bytes + size > REPAIR_ECHO_BYTES) break;
+    if (bytes + size > REPAIR_ECHO_BYTES) return null;
     files[path] = app.files[path];
     bytes += size;
   }
-  // Every named file was individually over the ceiling. Nothing to show.
   if (Object.keys(files).length === 0) return null;
 
   return {

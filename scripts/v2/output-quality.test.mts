@@ -215,6 +215,127 @@ for (const [name, snippet] of ALLOWED) {
     !/FILE src\/styles\.css/.test(repair));
 }
 
+/* ── 2d. eight offending files must all reach the repair ─────────────────── */
+
+/**
+ * THE SECOND REGRESSION. A landing generation put undersized type in eight
+ * components. A six-file echo cap showed the first six, the model fixed all
+ * six, and the run failed on the two it never saw — SubscribeModal and Footer,
+ * exactly the two the cap excluded. A constant chosen for the fixtures decided
+ * which real diagnostics were fixable.
+ */
+{
+  const names = ["BookCover", "Navbar", "Subscriptions", "Reviews",
+    "CurrentSeason", "ArchiveSeasons", "SubscribeModal", "Footer"];
+
+  const files: Record<string, string> = {
+    "src/App.tsx":
+      'import "./styles.css";\n' +
+      names.map((n) => `import ${n} from "./components/${n}";`).join("\n") +
+      `\nexport default function App(){ return <div>${names.map((n) => `<${n} />`).join("")}</div>; }`,
+    "src/styles.css": "@tailwind base;\n@tailwind components;\n@tailwind utilities;\n",
+  };
+  for (const n of names) {
+    files[`src/components/${n}.tsx`] =
+      `export default function ${n}(){ return <p className="text-[10px]">${n} label</p>; }`;
+  }
+
+  const built = await compileGeneratedApp(project(files) as never);
+  check("eight offending files all fail the build", !built.ok);
+  if (!built.ok) {
+    const named = new Set(built.errors.map((e) => e.file));
+    for (const n of names) {
+      check(`  diagnostic names src/components/${n}.tsx`, named.has(`src/components/${n}.tsx`));
+    }
+    check("  all eight are surfaced, not six",
+      names.every((n) => named.has(`src/components/${n}.tsx`)), `${named.size} named`);
+  }
+
+  // End to end: every implicated file must reach the repair prompt.
+  const framed = encodeFramedProject(
+    {
+      schemaVersion: APP_SCHEMA_VERSION,
+      metadata: { name: "Quality", description: "Output quality gates.", locale: "en" },
+      runtime: { template: "react-spa", dependencies: ["react"] },
+      routes: [{ path: "/", module: "src/App.tsx", title: "Quality" }],
+    },
+    { "src/App.tsx": files["src/App.tsx"], ...Object.fromEntries(
+      names.map((n) => [`src/components/${n}.tsx`, files[`src/components/${n}.tsx`]])), 
+      "src/styles.css": files["src/styles.css"] },
+  );
+
+  const requests: Array<{ user: string }> = [];
+  const transport = {
+    async send(request: { user: string }) {
+      requests.push(request);
+      return requests.length === 1
+        ? { ok: true as const, text: framed, latencyMs: 1 }
+        : { ok: false as const, code: "transport_error" as const, message: "stop", latencyMs: 1 };
+    },
+  };
+  const result = await generateApp({ model: "fake", brief: "b", maxRequests: 2 }, transport as never);
+  const repair = requests[1]?.user ?? "";
+
+  check("the repair is a patch, not a rewrite", result.telemetry.repairMode === "patch",
+    `${result.telemetry.repairMode} — ${result.telemetry.repairReason ?? ""}`);
+  for (const n of names) {
+    check(`  repair context reproduces ${n}.tsx`,
+      repair.includes(`FILE src/components/${n}.tsx>>>`));
+  }
+  check("  the seventh and eighth files are not displaced by position",
+    repair.includes("FILE src/components/SubscribeModal.tsx>>>") &&
+    repair.includes("FILE src/components/Footer.tsx>>>"));
+  // Files no diagnostic implicated stay out: implicated files come first and
+  // supporting source does not consume the budget.
+  check("  a file no diagnostic named is not echoed",
+    !repair.includes("FILE src/App.tsx>>>\nimport"), "");
+  check("  but the manifest still lists every path", repair.includes("- src/App.tsx"));
+}
+
+/* ── 2e. an over-budget required set is explicit, never truncated ─────────── */
+
+{
+  // Ten implicated files of 8 kB each: 80 kB against a 48 kB patch budget.
+  // The run must say so and rewrite, not show six and claim a patch.
+  const bulk = "x".repeat(8_000);
+  const names = Array.from({ length: 10 }, (_, i) => `Big${i}`);
+  const files: Record<string, string> = {
+    "src/App.tsx":
+      'import "./styles.css";\n' +
+      names.map((n) => `import ${n} from "./components/${n}";`).join("\n") +
+      `\nexport default function App(){ return <div>${names.map((n) => `<${n} />`).join("")}</div>; }`,
+    "src/styles.css": "@tailwind base;\n@tailwind components;\n@tailwind utilities;\n",
+  };
+  for (const n of names) {
+    files[`src/components/${n}.tsx`] =
+      `// ${bulk}\nexport default function ${n}(){ return <p className="text-[10px]">${n}</p>; }`;
+  }
+  const framed = encodeFramedProject(
+    {
+      schemaVersion: APP_SCHEMA_VERSION,
+      metadata: { name: "Quality", description: "Output quality gates.", locale: "en" },
+      runtime: { template: "react-spa", dependencies: ["react"] },
+      routes: [{ path: "/", module: "src/App.tsx", title: "Quality" }],
+    },
+    files,
+  );
+  const requests: Array<{ user: string }> = [];
+  const transport = {
+    async send(request: { user: string }) {
+      requests.push(request);
+      return requests.length === 1
+        ? { ok: true as const, text: framed, latencyMs: 1 }
+        : { ok: false as const, code: "transport_error" as const, message: "stop", latencyMs: 1 };
+    },
+  };
+  const result = await generateApp({ model: "fake", brief: "b", maxRequests: 2 }, transport as never);
+  check("an over-budget required set rewrites instead", result.telemetry.repairMode === "rewrite");
+  check("  and says why, with the sizes", /over the 48000 B patch-context budget/.test(result.telemetry.repairReason ?? ""),
+    result.telemetry.repairReason ?? "");
+  check("  it does not send a partial patch",
+    !(requests[1]?.user ?? "").includes("FILE src/components/Big0.tsx>>>"));
+}
+
 /* ── 3. the prompt says all of it ────────────────────────────────────────── */
 
 {
