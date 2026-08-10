@@ -9,8 +9,24 @@
  * contacts a provider — the only inputs are files on disk.
  *
  * Every response goes through the same functions a live generation uses:
- * `parseModelJsonSafe`, `validateGeneratedApp`, `compileGeneratedApp` and
+ * `parseFramedProject`, `validateGeneratedApp`, `compileGeneratedApp` and
  * `buildGeneratedApp`. No shortcuts, no relaxed gate, no substitutions.
+ *
+ * TWO VERDICTS, NEVER ONE. A replay answers two questions that this tool used
+ * to collapse into a single ✗:
+ *
+ *   REPLAY  — did the harness understand the saved bytes? This is a statement
+ *             about our tooling. Only a framing failure can fail it.
+ *   GATE    — would that output be accepted by the rules as they stand today?
+ *             This is a statement about the artifact, and a refusal here is
+ *             often the correct and desirable answer: the saved Canary 1
+ *             response carries remote media that the gate did not refuse when
+ *             it was generated and does refuse now. That is the tightening
+ *             working, not the replay breaking.
+ *
+ * Reporting them together made a working replay of a correctly-refused
+ * artifact look like a broken replay. Nothing here grandfathers anything: the
+ * archived bytes are read and never written, and the gate is the live one.
  */
 
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
@@ -67,11 +83,14 @@ for (const input of inputs) {
    * than no tool.
    */
   const parsed = parseFramedProject(raw);
+  row.replay = parsed.ok ? "understood" : "not-understood";
   row.parse = parsed.ok ? "framed" : "failed";
   if (!parsed.ok) {
     row.parseIssues = parsed.issues.map((i) => `${i.path}: ${i.code} — ${i.detail}`);
+    row.gate = "not-reached";
     rows.push(row);
-    console.log(`✗ ${label}  framing FAILED`);
+    console.log(`  ${label}`);
+    console.log(`    REPLAY  FAILED — the framed parser could not read these bytes`);
     for (const issue of (row.parseIssues as string[]).slice(0, 4)) console.log(`      ${issue}`);
     continue;
   }
@@ -81,8 +100,11 @@ for (const input of inputs) {
   row.validate = validation.ok ? "passed" : "refused";
   if (!validation.ok) {
     row.validateIssues = validation.issues.map((i) => `${i.path}: ${i.code} — ${i.detail}`);
+    row.gate = "refused:validate";
     rows.push(row);
-    console.log(`✗ ${label}  parse ${row.parse}, validation REFUSED`);
+    console.log(`  ${label}`);
+    console.log(`    REPLAY  OK — framed, ${Object.keys((parsed.value as { files: Record<string, string> }).files).length} files read`);
+    console.log(`    GATE    REFUSED by today's validation:`);
     for (const issue of (row.validateIssues as string[]).slice(0, 4)) console.log(`      ${issue}`);
     continue;
   }
@@ -98,8 +120,11 @@ for (const input of inputs) {
   row.compile = build.ok ? "passed" : `failed:${build.stage}`;
   if (!build.ok) {
     row.compileIssues = describeFailure(build);
+    row.gate = `refused:${build.stage}`;
     rows.push(row);
-    console.log(`✗ ${label}  compile FAILED`);
+    console.log(`  ${label}`);
+    console.log(`    REPLAY  OK — framed and validated`);
+    console.log(`    GATE    REFUSED at compile:`);
     for (const issue of (row.compileIssues as string[]).slice(0, 4)) console.log(`      ${issue}`);
     continue;
   }
@@ -117,13 +142,25 @@ for (const input of inputs) {
   writeFileSync(join(dir, "app.json"), JSON.stringify(build.app, null, 2), "utf8");
   row.documentPath = join(dir, "document.html");
 
+  row.gate = "accepted";
   rows.push(row);
+  console.log(`  ${label}`);
+  console.log(`    REPLAY  OK — framed, ${(row.app as { files: number }).files} files read`);
   console.log(
-    `✓ ${label}  parse ${row.parse}  files ${(row.app as { files: number }).files}  ` +
-    `css ${(row.css as { bytes: number }).bytes}B/${(row.css as { rules: number }).rules} rules  ` +
-    `doc ${(build.documentBytes / 1000).toFixed(0)}kB`,
+    `    GATE    ACCEPTED — css ${(row.css as { bytes: number }).bytes}B/` +
+    `${(row.css as { rules: number }).rules} rules, doc ${(build.documentBytes / 1000).toFixed(0)}kB`,
   );
 }
 
 writeFileSync(join(OUT, "replay.json"), JSON.stringify(rows, null, 2), "utf8");
-console.log(`\nreplayed ${rows.length} response(s) → ${join(OUT, "replay.json")}`);
+
+const understood = rows.filter((r) => r.replay === "understood").length;
+const accepted = rows.filter((r) => r.gate === "accepted").length;
+console.log(`\nREPLAY  ${understood}/${rows.length} understood by the framed parser`);
+console.log(`GATE    ${accepted}/${rows.length} accepted by today's rules`);
+console.log(`        (a refusal here is the gate working on old output, not the replay failing)`);
+console.log(`\n→ ${join(OUT, "replay.json")}`);
+
+// Only a replay failure is a tool failure. An artifact the current gate
+// refuses is data, and the exit code must not confuse the two.
+if (understood < rows.length) process.exit(1);
