@@ -136,6 +136,36 @@ const FORBIDDEN_SOURCE: Array<{ code: string; pattern: RegExp; detail: string }>
   { code: "service_worker", pattern: /navigator\.serviceWorker/, detail: "Service workers are not allowed." },
   { code: "dynamic_code", pattern: COMPUTED_IMPORT, detail: "Dynamic import() must use a literal specifier." },
   { code: "require", pattern: REQUIRE_CALL, detail: "require() is not available; use ES imports." },
+  /**
+   * Remote media, refused at the gate rather than at the browser.
+   *
+   * A live generation hardcoded nine Unsplash avatar URLs. CSP blocked every
+   * one — no bytes left the machine, the boundary did exactly its job — and
+   * the app rendered nine broken-image icons. The security control worked and
+   * the product still looked broken, which is the argument for catching it
+   * here: a URL nobody approved is not something to render half of.
+   *
+   * Scoped to media positions on purpose. An earlier draft refused every
+   * `https://` in source and would have rejected a footer link to the
+   * company's own Instagram, which is not a fetch and not a defect. What is
+   * refused is a remote URL in a position the browser will *load*: an image or
+   * media element's source, or a CSS url().
+   */
+  {
+    code: "remote_media",
+    pattern: /(?:src|srcSet|srcset|poster)\s*=\s*["'`{\s]*["'`]?https?:\/\//,
+    detail: "External media URLs are not available. Use a Ventrio asset id, or compose without an image.",
+  },
+  {
+    code: "remote_media",
+    pattern: /url\(\s*["']?https?:\/\//,
+    detail: "External media URLs are not available. Use a Ventrio asset id, or compose without an image.",
+  },
+  {
+    code: "remote_media",
+    pattern: /\b(?:backgroundImage|background)\s*:\s*[`"'][^`"']*https?:\/\//,
+    detail: "External media URLs are not available. Use a Ventrio asset id, or compose without an image.",
+  },
 ];
 
 /**
@@ -239,6 +269,16 @@ export function validateGeneratedApp(value: unknown): AppValidation {
     const known = new Set(paths);
     for (const path of paths) {
       const source = files[path] as string;
+      // Stylesheets are scanned for remote media only: the JavaScript rules
+      // below do not apply to CSS, but `url(https://…)` very much does.
+      if (/\.css$/.test(path)) {
+        for (const rule of FORBIDDEN_SOURCE) {
+          if (rule.code === "remote_media" && rule.pattern.test(source)) {
+            issues.add(`$.files["${path}"]`, rule.code, rule.detail);
+          }
+        }
+        continue;
+      }
       if (!/\.(tsx|ts|jsx|js)$/.test(path)) continue;
 
       for (const rule of FORBIDDEN_SOURCE) {

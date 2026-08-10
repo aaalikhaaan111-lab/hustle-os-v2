@@ -290,11 +290,11 @@ h1,h2{margin:0}
 .tab-on{background:var(--ink);border-color:var(--ink);color:#fff}
 
 table{width:100%;border-collapse:collapse;font-size:13.5px}
-th{text-align:left;font-size:11px;letter-spacing:.08em;text-transform:uppercase;
+th{text-align:left;font-size:12px;letter-spacing:.08em;text-transform:uppercase;
   color:var(--dim);padding:0 10px 8px;border-bottom:1px solid var(--line)}
 td{padding:11px 10px;border-bottom:1px solid var(--line)}
 .num{text-align:right;font-variant-numeric:tabular-nums}
-.pill{display:inline-block;padding:2px 9px;border-radius:999px;font-size:11.5px;font-weight:600}
+.pill{display:inline-block;padding:2px 9px;border-radius:999px;font-size:12px;font-weight:600}
 .pill-cleared{background:#e3f5ee;color:var(--ok)}
 .pill-pending{background:#fdf0dc;color:var(--warn)}
 .pill-held{background:#fdeae8;color:var(--bad)}

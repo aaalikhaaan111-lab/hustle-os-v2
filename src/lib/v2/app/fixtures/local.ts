@@ -293,7 +293,7 @@ h2{font-size:clamp(1.5rem,3.2vw,2.1rem)}
   border-radius:18px;padding:22px 20px}
 .tier-featured{border-color:var(--crust);box-shadow:0 12px 30px rgba(184,112,58,.13)}
 .tag{position:absolute;top:-11px;left:20px;background:var(--crust);color:var(--paper);
-  font-family:ui-sans-serif,system-ui,sans-serif;font-size:11px;letter-spacing:.08em;
+  font-family:ui-sans-serif,system-ui,sans-serif;font-size:12px;letter-spacing:.08em;
   text-transform:uppercase;padding:3px 10px;border-radius:999px}
 .tier h3{font-size:19px}
 .price{margin:10px 0 4px;display:flex;align-items:baseline;gap:4px}

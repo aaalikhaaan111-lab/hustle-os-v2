@@ -32,6 +32,7 @@ import { build, type Plugin } from "esbuild";
 import { APP_BUDGETS, type GeneratedAppV1 } from "./contract";
 import { isAllowedImport, RUNTIME_TEMPLATES, type RuntimeTemplateId } from "./runtime";
 import { compileProjectCss, type TailwindOutcome } from "./tailwind";
+import { describeUndersized, findUndersizedText } from "./typography";
 
 export interface CompileDiagnostic {
   /** Project-relative file, when esbuild could attribute it to one. */
@@ -296,6 +297,25 @@ export async function compileGeneratedApp(app: GeneratedAppV1): Promise<AppCompi
         ok: false,
         code: "build_failed",
         errors: [{ file: "src/styles.css", text: error instanceof Error ? error.message : "The stylesheet could not be compiled." }],
+        durationMs: elapsed(),
+      };
+    }
+
+    /**
+     * Text nobody can read is a build failure, not a matter of taste.
+     *
+     * Checked here because this is the first point at which the actual number
+     * exists: the source says `text-[10px]`, the compiled stylesheet says
+     * 10px. A live generation shipped six labels at that size and every gate
+     * passed it. The diagnostic names the selector, so the repair is a
+     * one-file patch rather than a regeneration.
+     */
+    const undersized = findUndersizedText(css);
+    if (undersized.length > 0) {
+      return {
+        ok: false,
+        code: "build_failed",
+        errors: describeUndersized(undersized).map((text) => ({ file: "src/styles.css", text })),
         durationMs: elapsed(),
       };
     }

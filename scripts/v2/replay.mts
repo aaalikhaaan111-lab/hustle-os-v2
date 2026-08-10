@@ -15,7 +15,7 @@
 
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { basename, dirname, join } from "node:path";
-import { parseModelJsonSafe } from "../../src/lib/v2/json/modelJson";
+import { parseFramedProject } from "../../src/lib/v2/app/framing";
 import { validateGeneratedApp } from "../../src/lib/v2/app/validate";
 import { buildGeneratedApp, describeFailure } from "../../src/lib/v2/app/pipeline";
 import { SANDBOX_ATTRIBUTE } from "../../src/lib/v2/app/sandbox";
@@ -58,14 +58,21 @@ for (const input of inputs) {
   const raw = readFileSync(input, "utf8");
   const row: Record<string, unknown> = { label, rawBytes: Buffer.byteLength(raw, "utf8") };
 
-  /* 1. transport parse */
-  const parsed = parseModelJsonSafe(raw);
-  row.parse = parsed.ok ? (parsed.repaired ? "repaired" : "clean") : "failed";
-  row.parseRepairs = parsed.report;
+  /**
+   * 1. framing — the same parser production uses.
+   *
+   * This used to be a local `JSON.parse`, which called a perfectly good framed
+   * response "invalid JSON" and made the replay record actively misleading.
+   * A verification tool that disagrees with the pipeline it verifies is worse
+   * than no tool.
+   */
+  const parsed = parseFramedProject(raw);
+  row.parse = parsed.ok ? "framed" : "failed";
   if (!parsed.ok) {
-    row.parseError = parsed.error;
+    row.parseIssues = parsed.issues.map((i) => `${i.path}: ${i.code} — ${i.detail}`);
     rows.push(row);
-    console.log(`✗ ${label}  parse FAILED — ${parsed.error}`);
+    console.log(`✗ ${label}  framing FAILED`);
+    for (const issue of (row.parseIssues as string[]).slice(0, 4)) console.log(`      ${issue}`);
     continue;
   }
 

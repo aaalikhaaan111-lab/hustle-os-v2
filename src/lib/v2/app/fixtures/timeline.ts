@@ -225,11 +225,11 @@ h1,h2,h3,h4{margin:0}
 .rail-head{display:flex;align-items:center;gap:7px;font-size:12px;
   letter-spacing:.14em;text-transform:uppercase;color:var(--dim)}
 .clear{margin-left:auto;display:inline-flex;align-items:center;gap:4px;
-  color:var(--accent);font-size:11px;letter-spacing:.06em}
+  color:var(--accent);font-size:12px;letter-spacing:.06em}
 .count{margin:14px 0 20px;font-size:13px;color:var(--dim)}
 .count strong{color:var(--ink);font-size:19px;font-weight:700}
 .group{margin-bottom:20px}
-.group h3{font-size:11px;letter-spacing:.16em;text-transform:uppercase;
+.group h3{font-size:12px;letter-spacing:.16em;text-transform:uppercase;
   color:var(--dim);margin-bottom:8px}
 .chips{display:flex;flex-wrap:wrap;gap:6px}
 .chip{border:1px solid var(--line);border-radius:999px;padding:5px 11px;
@@ -265,7 +265,7 @@ h1,h2,h3,h4{margin:0}
 .detail-medium{display:flex;align-items:center;gap:6px;color:var(--dim);
   font-size:12.5px;text-transform:capitalize;margin:8px 0 0}
 .detail-blurb{line-height:1.65;color:#c9cfda;margin:16px 0 22px;font-size:14.5px}
-.detail h4{font-size:11px;letter-spacing:.16em;text-transform:uppercase;
+.detail h4{font-size:12px;letter-spacing:.16em;text-transform:uppercase;
   color:var(--dim);margin:18px 0 6px}
 .detail-era{margin:0;font-size:14px}
 .detail-none{margin:0;color:var(--dim);font-size:14px}
