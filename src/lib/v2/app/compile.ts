@@ -31,6 +31,7 @@ import "server-only";
 import { build, type Plugin } from "esbuild";
 import { APP_BUDGETS, type GeneratedAppV1 } from "./contract";
 import { isAllowedImport, RUNTIME_TEMPLATES, type RuntimeTemplateId } from "./runtime";
+import { compileProjectCss, type TailwindOutcome } from "./tailwind";
 
 export interface CompileDiagnostic {
   /** Project-relative file, when esbuild could attribute it to one. */
@@ -57,6 +58,8 @@ export type AppCompileResult =
       bytes: number;
       durationMs: number;
       warnings: CompileDiagnostic[];
+      /** What the Tailwind stage did, for the build report. */
+      tailwind: TailwindOutcome;
     }
   | {
       ok: false;
@@ -122,6 +125,23 @@ function virtualFiles(files: Record<string, string>, entry: string): Plugin {
     setup(pluginBuild) {
       pluginBuild.onResolve({ filter: /.*/ }, (args) => {
         if (args.path === entry) return { path: entry, namespace: VIRTUAL };
+
+        /**
+         * Tailwind's own stylesheets, left for the Tailwind stage to resolve.
+         *
+         * Models write `@import "tailwindcss/base"` as often as they write the
+         * `@tailwind` directives — two of three paid generations did — and
+         * esbuild refused the whole build before the CSS stage could run,
+         * naming a library that was never a library. Marked external here so
+         * the import survives into the bundled CSS, where Tailwind resolves it
+         * from the installed package.
+         *
+         * Restricted to `import-rule`, which is the CSS `@import` kind: this
+         * does not make `import "tailwindcss"` legal from a component.
+         */
+        if (args.kind === "import-rule" && /^tailwindcss(\/|$)/.test(args.path)) {
+          return { path: args.path, external: true };
+        }
 
         // Bare specifiers: allowed libraries only, and left external so the
         // build neither reads node_modules nor emits their source.
@@ -256,7 +276,30 @@ export async function compileGeneratedApp(app: GeneratedAppV1): Promise<AppCompi
     }
 
     const code = jsFile.text;
-    const css = cssFile?.text ?? "";
+
+    /**
+     * The stylesheet, with Tailwind resolved if the project uses it.
+     *
+     * esbuild has already bundled whatever CSS the project imported; what it
+     * cannot do is turn `@tailwind utilities` into utilities, and it passes
+     * the directive through without a warning. Three paid generations shipped
+     * hundreds of dead classes that way. Failure here is terminal: an
+     * un-compiled stylesheet is the silent defect, not a degraded mode.
+     */
+    let css: string;
+    let tailwind: TailwindOutcome;
+    try {
+      tailwind = await compileProjectCss(files, cssFile?.text ?? "");
+      css = tailwind.css;
+    } catch (error) {
+      return {
+        ok: false,
+        code: "build_failed",
+        errors: [{ file: "src/styles.css", text: error instanceof Error ? error.message : "The stylesheet could not be compiled." }],
+        durationMs: elapsed(),
+      };
+    }
+
     const bytes = Buffer.byteLength(code, "utf8") + Buffer.byteLength(css, "utf8");
     if (bytes > APP_BUDGETS.maxCompiledBytes) {
       return {
@@ -267,7 +310,7 @@ export async function compileGeneratedApp(app: GeneratedAppV1): Promise<AppCompi
       };
     }
 
-    return { ok: true, code, css, bytes, durationMs: elapsed(), warnings: result.warnings.map(toDiagnostic) };
+    return { ok: true, code, css, bytes, durationMs: elapsed(), warnings: result.warnings.map(toDiagnostic), tailwind };
   } catch (error) {
     // esbuild throws a structured failure; anything else is ours.
     const errors = (error as { errors?: unknown }).errors;

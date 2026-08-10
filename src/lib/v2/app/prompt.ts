@@ -57,13 +57,36 @@ anything: there is no package manager, no CDN and no network.
 
 THE ENVIRONMENT IS SEALED
 The app runs in a sandboxed frame with no network and no storage. These are
-not discouraged, they are unavailable, and using them fails the build:
+not discouraged, they are unavailable, and using even one of them fails the
+build outright — the project is refused, not degraded:
 fetch, XMLHttpRequest, WebSocket, EventSource, sendBeacon, localStorage,
 sessionStorage, indexedDB, document.cookie, eval, new Function, import.meta,
 window.parent / top / opener, service workers, require().
 
-Hold everything in React state. Put any data the app needs in a source file
-and import it.
+That includes a "persistence" or "storage" helper module. A generated project
+was refused for one src/utils/storage.ts wrapping localStorage; everything
+else about it was fine. There is no persistence layer to write.
+
+Hold everything in React state — useState, useReducer, context. Seed it from
+a source file you import. State resets when the preview reloads, and that is
+the expected behaviour, not a bug to work around.
+
+WHAT TO BUILD, AND WHEN
+Build what was asked for. If the brief describes an application, build the
+working application. If it asks for a landing page or a marketing page, build
+that page. If it is ambiguous but describes something people use, build the
+application.
+
+Never substitute a marketing page, a waitlist, a signup mock or an
+explanation of what the product could become for the functionality that was
+requested. A page describing the tool is not the tool.
+
+FORMS
+Every form validates before it submits. Required fields are enforced, invalid
+values are refused with a message next to the field that caused it, and a
+successful submission visibly confirms itself — the new item appears, or the
+form reports what it did. A form that accepts an empty submit silently is a
+defect, and a generated app shipped with exactly that.
 
 BUDGETS
 Up to ${APP_BUDGETS.maxFiles} files, ${Math.round(APP_BUDGETS.maxFileBytes / 1000)} kB per file,
@@ -138,7 +161,11 @@ Return a patch, not a whole project:
 }
 
 Include the complete contents of each file you change. Files you do not
-mention are kept as they are.`;
+mention are kept as they are.
+
+The environment has not changed: no localStorage, sessionStorage, indexedDB,
+cookies, service workers, fetch or eval. Hold state in React. Do not fix a
+problem by replacing working functionality with a simpler page.`;
 }
 
 /**
@@ -159,5 +186,9 @@ export function appRewritePrompt(brief: string, diagnostics: string[]): string {
 YOUR PREVIOUS PROJECT WAS REFUSED. Fix every point below and return the whole
 project again as a single JSON object.
 
-${diagnostics.slice(0, 25).map((line) => `- ${line}`).join("\n")}`;
+${diagnostics.slice(0, 25).map((line) => `- ${line}`).join("\n")}
+
+Build the same product the brief asked for. Fixing a refusal by shipping less
+than was requested — a marketing page instead of the application, a form
+without validation — is not a fix.`;
 }

@@ -46,6 +46,7 @@ import {
 } from "../gemini/transport";
 import type { GeneratedAppV1 } from "./contract";
 import { applyPatch } from "./edit";
+import { parseModelJson } from "../json/modelJson";
 import { buildGeneratedApp, describeFailure, type AppBuildResult, type BuildOptions } from "./pipeline";
 import { appRepairPrompt, appRewritePrompt, appSystemPrompt, appUserPrompt, type AppRepairContext } from "./prompt";
 import type { RuntimeTemplateId } from "./runtime";
@@ -570,23 +571,17 @@ function fail(attempt: Extract<Attempt, { ok: false }>) {
 }
 
 /**
- * Parses the response, tolerating a markdown fence around it.
+ * The response parser. Centralised, because the app path had a weaker one.
  *
- * The prompt asks for a bare JSON object and models wrap it in ```json anyway —
- * all three codegen canary runs did, every time, and a bare `JSON.parse` threw
- * away three complete and otherwise valid bundles and spent a repair request on
- * each. This is the same tolerance, deliberately re-stated for the app path
- * rather than shared: it is four lines, and the codegen copy is pinned by a
- * source-level regression test that a move would quietly defeat.
+ * Five of six paid Gemini responses were discarded as unparseable — each a
+ * complete project — for illegal escapes and raw control characters inside
+ * the strings carrying source files. `parseModelJson` repairs exactly those
+ * two transport defects with a state machine and nothing else. Strict parsing
+ * is still tried first, so a well-formed response is untouched.
  *
- * Not a relaxed gate. A fence is transport encoding, not content: validation,
- * the budgets and the compile all still run, unchanged, on whatever is inside.
+ * Not a relaxed gate: validation, the source scanner, the budgets and the
+ * compile all still run, unchanged, on whatever comes out.
  */
-function parseModelJson(text: string): unknown {
-  const trimmed = text.trim();
-  const fenced = /^```(?:json)?\s*([\s\S]*?)\s*```$/.exec(trimmed);
-  return JSON.parse(fenced ? fenced[1] : trimmed);
-}
 
 function templateOf(app: GeneratedAppV1): RuntimeTemplateId {
   // The stored template is a string by contract; the prompt needs a known one.
