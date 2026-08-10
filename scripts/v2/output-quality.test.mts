@@ -13,7 +13,9 @@
 
 import { validateGeneratedApp } from "../../src/lib/v2/app/validate";
 import { compileGeneratedApp } from "../../src/lib/v2/app/compile";
-import { findUndersizedText, MIN_FONT_PX } from "../../src/lib/v2/app/typography";
+import { attributeUndersized, classTokenFrom, findUndersizedText, MIN_FONT_PX } from "../../src/lib/v2/app/typography";
+import { encodeFramedProject } from "../../src/lib/v2/app/framing";
+import { generateApp } from "../../src/lib/v2/app/generate";
 import { appSystemPrompt } from "../../src/lib/v2/app/prompt";
 import { APP_SCHEMA_VERSION } from "../../src/lib/v2/app/contract";
 
@@ -106,7 +108,7 @@ for (const [name, snippet] of ALLOWED) {
   check("as a build failure", !tiny.ok && tiny.code === "build_failed");
   check("with a diagnostic naming the size",
     !tiny.ok && tiny.errors.some((e) => /10px/.test(e.text)), !tiny.ok ? tiny.errors[0]?.text : "");
-  check("and the minimum", !tiny.ok && tiny.errors.some((e) => e.text.includes("minimum is 12px")));
+  check("and the minimum", !tiny.ok && tiny.errors.some((e) => /12px minimum/.test(e.text)));
 
   const fine = await compileGeneratedApp(project({
     "src/App.tsx": 'import "./styles.css";\nexport default function A(){ return <span className="text-sm">Readable</span>; }',
@@ -114,6 +116,103 @@ for (const [name, snippet] of ALLOWED) {
   }) as never);
   check("a project with 14px text compiles", fine.ok,
     fine.ok ? "" : JSON.stringify(fine.errors?.slice(0, 2)));
+}
+
+/* ── 2b. the diagnostic must name the file that actually did it ──────────── */
+
+/**
+ * THE REGRESSION. The final landing canary put `text-[10px]` in two components
+ * and none in the stylesheet. Every diagnostic said `src/styles.css` because
+ * the file was hardcoded, so the one allowed repair rewrote the stylesheet —
+ * which cannot remove a utility class emitted from a component — and the
+ * rebuild failed with the identical error. The fixture below is that failure.
+ */
+{
+  const offending = {
+    "src/App.tsx":
+      'import "./styles.css";\nimport Modal from "./components/SubscribeModal";\n' +
+      'export default function App(){ return <div><span className="text-[10px]">SEASON 04</span><Modal /></div>; }',
+    "src/components/SubscribeModal.tsx":
+      'export default function SubscribeModal(){ return <p className="text-[10px] uppercase">Terms apply</p>; }',
+    "src/styles.css": "@tailwind base;\n@tailwind components;\n@tailwind utilities;\n",
+  };
+
+  const built = await compileGeneratedApp(project(offending) as never);
+  check("undersized text still fails the build", !built.ok);
+
+  if (!built.ok) {
+    const files = built.errors.map((e) => e.file);
+    check("the diagnostic names src/App.tsx", files.includes("src/App.tsx"), JSON.stringify(files));
+    check("and src/components/SubscribeModal.tsx",
+      files.includes("src/components/SubscribeModal.tsx"), JSON.stringify(files));
+    check("it does NOT blame src/styles.css, which has no such utility",
+      !files.includes("src/styles.css"), JSON.stringify(files));
+    check("every offending file is surfaced, not just the first",
+      new Set(files.filter(Boolean)).size === 2, JSON.stringify(files));
+    check("the message quotes the offending token",
+      built.errors.some((e) => e.text.includes("text-[10px]")), built.errors[0]?.text);
+    check("and still states the floor", built.errors.every((e) => /12px minimum/.test(e.text)));
+  }
+
+  // A rule genuinely written in CSS still belongs to the stylesheet.
+  const authored = await compileGeneratedApp(project({
+    "src/App.tsx": 'import "./styles.css";\nexport default function A(){ return <span className="chip">x</span>; }',
+    "src/styles.css": ".chip { font-size: 10px }",
+  }) as never);
+  check("a CSS-authored undersized rule is attributed to the stylesheet",
+    !authored.ok && authored.errors.some((e) => e.file === "src/styles.css"),
+    !authored.ok ? JSON.stringify(authored.errors.map((e) => e.file)) : "");
+
+  // The selector→token unescaping, in isolation.
+  check("a compiled selector unescapes to the authored class",
+    classTokenFrom(String.raw`.text-\[10px\]`) === "text-[10px]",
+    classTokenFrom(String.raw`.text-\[10px\]`));
+  check("attribution finds nothing rather than guessing",
+    attributeUndersized([{ selector: ".nowhere", px: 9, declaration: "font-size: 9px" }],
+      { "src/App.tsx": "export default () => null;" })[0].files.length === 0);
+}
+
+/* ── 2c. the repair context reaches the real files ───────────────────────── */
+
+// The end of the failure that mattered: the repair must be shown the files it
+// has to change. Driven through the real `generateApp` with a fake provider.
+{
+  const offending = {
+    "src/App.tsx":
+      'import "./styles.css";\nimport Modal from "./components/SubscribeModal";\n' +
+      'export default function App(){ return <div><span className="text-[10px]">SEASON 04</span><Modal /></div>; }',
+    "src/components/SubscribeModal.tsx":
+      'export default function SubscribeModal(){ return <p className="text-[10px] uppercase">Terms apply</p>; }',
+    "src/styles.css": "@tailwind base;\n@tailwind components;\n@tailwind utilities;\n",
+  };
+  const framed = encodeFramedProject(
+    {
+      schemaVersion: APP_SCHEMA_VERSION,
+      metadata: { name: "Quality", description: "Output quality gates.", locale: "en" },
+      runtime: { template: "react-spa", dependencies: ["react"] },
+      routes: [{ path: "/", module: "src/App.tsx", title: "Quality" }],
+    },
+    offending,
+  );
+
+  const requests: Array<{ user: string }> = [];
+  const transport = {
+    async send(request: { user: string }) {
+      requests.push(request);
+      return requests.length === 1
+        ? { ok: true as const, text: framed, latencyMs: 1 }
+        : { ok: false as const, code: "transport_error" as const, message: "stop", latencyMs: 1 };
+    },
+  };
+
+  await generateApp({ model: "fake", brief: "b", maxRequests: 2 }, transport as never);
+  const repair = requests[1]?.user ?? "";
+  check("a repair was requested", requests.length === 2);
+  check("the repair context includes src/App.tsx", repair.includes("src/App.tsx"), "");
+  check("and src/components/SubscribeModal.tsx", repair.includes("src/components/SubscribeModal.tsx"), "");
+  check("and reproduces the offending line", repair.includes('className="text-[10px]"'));
+  check("and does not point the model at the stylesheet",
+    !/FILE src\/styles\.css/.test(repair));
 }
 
 /* ── 3. the prompt says all of it ────────────────────────────────────────── */

@@ -32,7 +32,7 @@ import { build, type Plugin } from "esbuild";
 import { APP_BUDGETS, type GeneratedAppV1 } from "./contract";
 import { isAllowedImport, RUNTIME_TEMPLATES, type RuntimeTemplateId } from "./runtime";
 import { compileProjectCss, type TailwindOutcome } from "./tailwind";
-import { describeUndersized, findUndersizedText } from "./typography";
+import { findUndersizedText, undersizedDiagnostics } from "./typography";
 
 export interface CompileDiagnostic {
   /** Project-relative file, when esbuild could attribute it to one. */
@@ -315,7 +315,10 @@ export async function compileGeneratedApp(app: GeneratedAppV1): Promise<AppCompi
       return {
         ok: false,
         code: "build_failed",
-        errors: describeUndersized(undersized).map((text) => ({ file: "src/styles.css", text })),
+        // Attributed to the files that actually contain the offending class.
+        // `files` here is the validated project plus Ventrio's entry module,
+        // which is what the repair loop will be asked to patch.
+        errors: undersizedDiagnostics(undersized, files),
         durationMs: elapsed(),
       };
     }

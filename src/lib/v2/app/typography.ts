@@ -99,3 +99,95 @@ export function describeUndersized(rules: UndersizedRule[]): string[] {
       `The minimum is ${MIN_FONT_PX}px; use 14–16px for anything read as copy.`,
   );
 }
+
+/* ── attributing a compiled rule back to the file that caused it ─────────── */
+
+/** Files whose text can legitimately contain a class name. */
+const SOURCE = /\.(tsx|ts|jsx|js)$/;
+const STYLESHEET = /\.css$/;
+
+/**
+ * Turns a compiled selector back into the token a developer wrote.
+ *
+ * `.text-\[10px\]` is how CSS escapes the class `text-[10px]`. Unescaping is a
+ * single character-level rule and is the whole of the "parsing" here — there is
+ * no Tailwind grammar involved, and there does not need to be.
+ */
+export function classTokenFrom(selector: string): string {
+  return selector.replace(/^\./, "").replace(/\\(.)/g, "$1");
+}
+
+export interface AttributedRule extends UndersizedRule {
+  /** Every project file that contains the offending declaration or class. */
+  files: string[];
+}
+
+/**
+ * Finds which generated files are responsible for an undersized rule.
+ *
+ * THE BUG THIS FIXES. Every undersized diagnostic was reported against
+ * `src/styles.css`, hardcoded. A live landing-page generation put
+ * `text-[10px]` in `src/App.tsx` and `src/components/SubscribeModal.tsx` and
+ * nowhere in the stylesheet, so the one allowed repair was handed a file that
+ * could not contain the fix; the model dutifully wrote a CSS override, which
+ * cannot remove a utility class emitted from a component, and the rebuild
+ * failed with the identical error.
+ *
+ * A stylesheet is checked first because a rule literally written in CSS
+ * belongs to that CSS. Only when no stylesheet declares the selector is it
+ * treated as a utility class and looked for in source. When neither matches,
+ * the rule carries no file rather than a wrong one — an unattributed
+ * diagnostic is honest, and a misattributed one costs a repair.
+ */
+export function attributeUndersized(
+  rules: UndersizedRule[],
+  files: Record<string, string>,
+): AttributedRule[] {
+  const entries = Object.entries(files);
+  return rules.map((rule) => {
+    const declaring = entries
+      .filter(([path, source]) => STYLESHEET.test(path) && source.includes(rule.selector))
+      .map(([path]) => path);
+    if (declaring.length > 0) return { ...rule, files: declaring };
+
+    const token = classTokenFrom(rule.selector);
+    const using = token
+      ? entries.filter(([path, source]) => SOURCE.test(path) && source.includes(token)).map(([path]) => path)
+      : [];
+    return { ...rule, files: using };
+  });
+}
+
+/**
+ * The diagnostics, one per offending file.
+ *
+ * Split per file on purpose: the repair loop collects the files its
+ * diagnostics name and reproduces them for the model, so a violation in three
+ * components has to produce three attributions or two of them are invisible to
+ * the repair.
+ */
+export function undersizedDiagnostics(
+  rules: UndersizedRule[],
+  files: Record<string, string>,
+): Array<{ file?: string; text: string }> {
+  const out: Array<{ file?: string; text: string }> = [];
+  for (const rule of attributeUndersized(rules, files)) {
+    const token = classTokenFrom(rule.selector);
+    const detail =
+      `${rule.declaration} (${rule.px}px) is below the ${MIN_FONT_PX}px minimum; ` +
+      `use 14–16px for anything read as copy.`;
+    if (rule.files.length === 0) {
+      out.push({ text: `${rule.selector}: ${detail}` });
+      continue;
+    }
+    for (const file of rule.files) {
+      out.push({
+        file,
+        text: STYLESHEET.test(file)
+          ? `${rule.selector}: ${detail}`
+          : `"${token}" is used here and ${detail}`,
+      });
+    }
+  }
+  return out;
+}
