@@ -37,6 +37,7 @@ import { RuntimeErrorLog } from "../../src/lib/v2/app/protocol";
 import { TIMELINE_APP } from "../../src/lib/v2/app/fixtures/timeline";
 import type { GeminiRequest, GeminiResponse, GeminiTransport } from "../../src/lib/v2/gemini/transport";
 import { readFileSync } from "node:fs";
+import { GENERATION_LIMITS } from "../../src/lib/v2/gemini/config";
 
 let passed = 0;
 const failures: string[] = [];
@@ -347,6 +348,13 @@ check("the ceiling is two", /APP_MAX_REQUESTS = 2/.test(source));
 check("and is also enforced by the transport", /new BudgetedTransport\(/.test(source));
 check("the deadline is derived from the stages it may run", /deadlineFor\(maxRequests >= 2/.test(source));
 check("the repair uses the repair budget", /timeoutMs: GENERATION_LIMITS\.repairTimeoutMs/.test(source));
+// A rewrite IS a generation and needs a generation's room. A live canary lost
+// a recoverable project because the rewrite was given the patch budget: 32,000
+// tokens to reproduce what the model had just written in 34,490.
+check("a rewrite gets the generation's output budget, not the patch's",
+  /plan\.mode === "patch"\s*\?\s*GENERATION_LIMITS\.maxOutputTokensRepair\s*:\s*GENERATION_LIMITS\.maxOutputTokensArtifact/.test(source));
+check("and the two budgets are actually different",
+  GENERATION_LIMITS.maxOutputTokensArtifact > GENERATION_LIMITS.maxOutputTokensRepair);
 check("the echo is bounded by files and by bytes",
   /slice\(0, REPAIR_ECHO_FILES\)/.test(source) && /REPAIR_ECHO_BYTES/.test(source));
 check("the echo limit is small enough to be a limit", REPAIR_ECHO_FILES <= 10);

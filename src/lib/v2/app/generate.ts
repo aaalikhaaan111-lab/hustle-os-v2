@@ -244,7 +244,24 @@ export async function generateApp(
           ? appRepairPrompt(attempt.issues, plan.context)
           : appRewritePrompt(user, attempt.issues),
         timeoutMs: GENERATION_LIMITS.repairTimeoutMs,
-        maxOutputTokens: GENERATION_LIMITS.maxOutputTokensRepair,
+        /**
+         * A rewrite needs a generation's budget, because it *is* a generation.
+         *
+         * Both repair shapes shared the repair budget, which is sized for a
+         * patch — a handful of files. A rewrite returns the whole project, and
+         * a live canary proved the consequence: a landing site was refused for
+         * one `require()` in one file, the rewrite that would have fixed it was
+         * given 32,000 tokens to reproduce a project the model had just written
+         * in 34,490, and it was cut off at 29,944. The generation was
+         * recoverable and the repair could not physically fit.
+         *
+         * A patch keeps the smaller budget on purpose: if a patch needs a full
+         * generation's room, the patch prompt is wrong and that is worth
+         * finding out rather than papering over.
+         */
+        maxOutputTokens: plan.mode === "patch"
+          ? GENERATION_LIMITS.maxOutputTokensRepair
+          : GENERATION_LIMITS.maxOutputTokensArtifact,
         label: "repair",
       },
       controller.signal,
