@@ -46,7 +46,7 @@ import {
 } from "../gemini/transport";
 import type { GeneratedAppV1 } from "./contract";
 import { applyPatch } from "./edit";
-import { parseModelJson } from "../json/modelJson";
+import { parseFramedPatch, parseFramedProject, type FramingIssue } from "./framing";
 import { buildGeneratedApp, describeFailure, type AppBuildResult, type BuildOptions } from "./pipeline";
 import { appRepairPrompt, appRewritePrompt, appSystemPrompt, appUserPrompt, type AppRepairContext } from "./prompt";
 import type { RuntimeTemplateId } from "./runtime";
@@ -399,20 +399,20 @@ type Attempt =
  * Parses a response as a whole project and runs it through the gate.
  */
 async function accept(text: string, options: BuildOptions): Promise<Attempt> {
-  let parsed: unknown;
-  try {
-    parsed = parseModelJson(text);
-  } catch {
+  const framed = parseFramedProject(text);
+  if (!framed.ok) {
     return {
       ok: false,
       code: "unparseable",
-      message: "The model's response was not valid JSON.",
-      issues: ["The response was not valid JSON. Return only the JSON object — no prose, no code fence."],
+      message: `The response was not a valid framed project (${framed.issues.length} problem(s)).`,
+      issues: framed.issues.map(describeFraming),
+      // Worth a second request: the model can be told exactly which marker was
+      // wrong, which is a far more actionable instruction than "invalid JSON".
       repairable: true,
     };
   }
 
-  const build = await buildGeneratedApp(parsed, options);
+  const build = await buildGeneratedApp(framed.value, options);
   if (build.ok) return { ok: true, build };
   return refusal(build);
 }
@@ -426,20 +426,18 @@ async function accept(text: string, options: BuildOptions): Promise<Attempt> {
  * Nothing is applied in place, so a repair that fails leaves the base as it was.
  */
 async function acceptPatch(text: string, base: GeneratedAppV1, options: BuildOptions): Promise<Attempt> {
-  let parsed: unknown;
-  try {
-    parsed = parseModelJson(text);
-  } catch {
+  const framed = parseFramedPatch(text);
+  if (!framed.ok) {
     return {
       ok: false,
       code: "unparseable",
-      message: "The repair was not valid JSON.",
-      issues: ["The response was not valid JSON. Return only the patch object — no prose, no code fence."],
+      message: `The repair was not a valid framed patch (${framed.issues.length} problem(s)).`,
+      issues: framed.issues.map(describeFraming),
       repairable: false,
     };
   }
 
-  const patched = applyPatch(base, parsed);
+  const patched = applyPatch(base, framed.value);
   if (!patched.ok) {
     return {
       ok: false,
@@ -570,14 +568,17 @@ function fail(attempt: Extract<Attempt, { ok: false }>) {
   };
 }
 
+/** A framing problem, phrased the way every other diagnostic here is. */
+function describeFraming(issue: FramingIssue): string {
+  return `${issue.path}: ${issue.code} — ${issue.detail}`;
+}
+
 /**
- * The response parser. Centralised, because the app path had a weaker one.
+ * The response format. Framed, because JSON-escaped file bodies did not survive.
  *
- * Five of six paid Gemini responses were discarded as unparseable — each a
- * complete project — for illegal escapes and raw control characters inside
- * the strings carrying source files. `parseModelJson` repairs exactly those
- * two transport defects with a state machine and nothing else. Strict parsing
- * is still tried first, so a well-formed response is untouched.
+ * Six of eight live responses were lost to hand-escaping source into JSON
+ * strings. File bodies now travel raw between markers and nothing inside them
+ * is escaped at all; see `framing.ts` for what that refuses.
  *
  * Not a relaxed gate: validation, the source scanner, the budgets and the
  * compile all still run, unchanged, on whatever comes out.

@@ -14,20 +14,48 @@
 
 import { ALLOWED_EXTENSIONS, ALLOWED_PATH_ROOTS, APP_BUDGETS, APP_SCHEMA_VERSION, RESERVED_PATHS } from "./contract";
 import { PATCH_SCHEMA_VERSION } from "./edit";
+import {
+  MARKER_PREFIX, PATCH_CLOSE, PATCH_OPEN, PROJECT_CLOSE, PROJECT_OPEN,
+  encodeFramedFiles, fileClose, fileOpen,
+} from "./framing";
 import { describeRuntime, RUNTIME_TEMPLATES, type RuntimeTemplateId } from "./runtime";
 
 export function appSystemPrompt(template: RuntimeTemplateId = "react-spa"): string {
   const scaffold = RUNTIME_TEMPLATES[template];
-  return `You write complete React applications. Return one JSON object and nothing else — no prose, no markdown fence.
+  return `You write complete React applications. Return one framed document and nothing else — no prose, no markdown fence around the whole response.
 
-SHAPE
+FORMAT
+A small JSON header, then every file as raw text between markers. File
+contents are NOT JSON strings: do not escape quotes, newlines, backslashes or
+anything else inside them. Write the file exactly as it should appear on disk.
+
+${PROJECT_OPEN}
 {
   "schemaVersion": "${APP_SCHEMA_VERSION}",
   "metadata": { "name": string, "description": string, "locale": string },
   "runtime": { "template": "${template}", "dependencies": string[] },
-  "routes": [{ "path": "/", "module": "src/App.tsx", "title": string }],
-  "files": { "<path>": "<file contents>" }
+  "routes": [{ "path": "/", "module": "${scaffold.root}", "title": string }],
+  "manifest": ["${scaffold.root}", "src/styles.css"]
 }
+${PROJECT_CLOSE}
+${fileOpen(scaffold.root)}
+import "./styles.css";
+
+export default function App() {
+  return <div className="p-6">It can contain "quotes", \`backticks\`, \\ and 日本語.</div>;
+}
+${fileClose(scaffold.root)}
+${fileOpen("src/styles.css")}
+.example { color: #111; }
+${fileClose("src/styles.css")}
+
+RULES FOR THE FRAME
+- Every marker sits alone on its own line, exactly as written above.
+- Every file in "manifest" gets exactly one block, and every block's path is
+  in "manifest". No extras, no omissions, no duplicates.
+- The closing marker repeats the same path as the opening one.
+- File contents may never contain the text "${MARKER_PREFIX}".
+- Only the header is JSON. Escaping anything inside a file block is a bug.
 
 WHAT YOU OWN
 The component tree, the file structure, the state, the interactions, the
@@ -103,7 +131,7 @@ QUALITY
 }
 
 export function appUserPrompt(brief: string): string {
-  return `${brief}\n\nReturn the JSON object now.`;
+  return `${brief}\n\nReturn the framed document now.`;
 }
 
 /**
@@ -137,9 +165,9 @@ export interface AppRepairContext {
  * whole-project regeneration this path exists to avoid.
  */
 export function appRepairPrompt(diagnostics: string[], context: AppRepairContext): string {
-  const shown = Object.entries(context.files)
-    .map(([path, contents]) => `--- ${path} ---\n${contents}\n--- end ${path} ---`)
-    .join("\n\n");
+  // Shown in the same frame the answer must use, so the format is demonstrated
+  // rather than only described.
+  const shown = encodeFramedFiles(context.files);
 
   return `The project you returned was refused. Fix exactly these problems and change nothing else.
 
@@ -152,16 +180,24 @@ ${context.partial
     : ""}
 ${shown}
 
-Return a patch, not a whole project:
+Return a patch, not a whole project, in the same framed format:
+
+${PATCH_OPEN}
 {
   "schemaVersion": "${PATCH_SCHEMA_VERSION}",
   "summary": "<one line>",
-  "write": { "<path>": "<complete new contents of that file>" },
-  "remove": ["<path>"]
+  "write": ["<path you are changing>"],
+  "remove": ["<path to delete>"]
 }
+${PATCH_CLOSE}
+${fileOpen("<path you are changing>")}
+<the complete new contents of that file, raw and unescaped>
+${fileClose("<path you are changing>")}
 
-Include the complete contents of each file you change. Files you do not
-mention are kept as they are.
+"write" lists the paths whose blocks follow; every listed path needs a block
+and every block needs to be listed. Include the complete contents of each file
+you change. Files you do not mention are kept as they are. File contents are
+never JSON strings and may never contain "${MARKER_PREFIX}".
 
 The environment has not changed: no localStorage, sessionStorage, indexedDB,
 cookies, service workers, fetch or eval. Hold state in React. Do not fix a
@@ -184,7 +220,9 @@ export function appRewritePrompt(brief: string, diagnostics: string[]): string {
   return `${brief}
 
 YOUR PREVIOUS PROJECT WAS REFUSED. Fix every point below and return the whole
-project again as a single JSON object.
+project again in the framed format: the JSON header between ${PROJECT_OPEN}
+and ${PROJECT_CLOSE}, then one raw block per file. File contents are not JSON
+strings — do not escape anything inside them.
 
 ${diagnostics.slice(0, 25).map((line) => `- ${line}`).join("\n")}
 

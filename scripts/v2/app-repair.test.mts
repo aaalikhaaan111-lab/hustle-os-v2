@@ -29,6 +29,10 @@ import {
   REPAIR_WHOLE_PROJECT_BYTES,
 } from "../../src/lib/v2/app/generate";
 import { PATCH_SCHEMA_VERSION } from "../../src/lib/v2/app/edit";
+import {
+  PATCH_CLOSE, PATCH_OPEN,
+  encodeFramedProject, fileClose, fileOpen,
+} from "../../src/lib/v2/app/framing";
 import { RuntimeErrorLog } from "../../src/lib/v2/app/protocol";
 import { TIMELINE_APP } from "../../src/lib/v2/app/fixtures/timeline";
 import type { GeminiRequest, GeminiResponse, GeminiTransport } from "../../src/lib/v2/gemini/transport";
@@ -68,7 +72,18 @@ class FakeTransport implements GeminiTransport {
 const BRIEF = "A timeline of every MCU film and series by in-universe date.";
 const input = (over: Record<string, unknown> = {}) => ({ model: "fake-model", brief: BRIEF, ...over });
 
-const GOOD = JSON.stringify(TIMELINE_APP);
+/** The framed equivalents of what the model now returns. */
+const { files: TIMELINE_FILES, ...TIMELINE_HEADER } = TIMELINE_APP;
+const GOOD = encodeFramedProject(TIMELINE_HEADER, TIMELINE_FILES);
+
+/** A framed patch: a JSON header naming the files, then their raw bodies. */
+const framedPatch = (header: Record<string, unknown>, files: Record<string, string>) =>
+  [
+    PATCH_OPEN,
+    JSON.stringify({ ...header, write: Object.keys(files) }),
+    PATCH_CLOSE,
+    ...Object.entries(files).flatMap(([path, body]) => [fileOpen(path), body, fileClose(path)]),
+  ].join("\n");
 
 /** Validates cleanly, does not compile: a syntax error inside a real component. */
 const BROKEN_FILE = "src/App.tsx";
@@ -79,13 +94,13 @@ const BROKEN_APP = {
     [BROKEN_FILE]: `${TIMELINE_APP.files[BROKEN_FILE]}\nconst unterminated = ;\n`,
   },
 };
-const BROKEN = JSON.stringify(BROKEN_APP);
+const { files: BROKEN_FILES, ...BROKEN_HEADER } = BROKEN_APP;
+const BROKEN = encodeFramedProject(BROKEN_HEADER, BROKEN_FILES);
 
-const FIX_PATCH = JSON.stringify({
-  schemaVersion: PATCH_SCHEMA_VERSION,
-  summary: "Remove the unterminated declaration",
-  write: { [BROKEN_FILE]: TIMELINE_APP.files[BROKEN_FILE] },
-});
+const FIX_PATCH = framedPatch(
+  { schemaVersion: PATCH_SCHEMA_VERSION, summary: "Remove the unterminated declaration" },
+  { [BROKEN_FILE]: TIMELINE_APP.files[BROKEN_FILE] },
+);
 
 /* ── 1. a clean generation costs one request ─────────────────────────────── */
 
@@ -111,7 +126,7 @@ const FIX_PATCH = JSON.stringify({
 // ```json fence despite the prompt forbidding it, and a bare JSON.parse spent a
 // repair request on each. The app path inherits the tolerance, not the defect.
 {
-  const transport = new FakeTransport([{ text: "```json\n" + GOOD + "\n```" }]);
+  const transport = new FakeTransport([{ text: "```\n" + GOOD + "\n```" }]);
   const result = await generateApp(input(), transport);
   check("a fenced project is accepted", result.ok, result.ok ? "" : result.message);
   check("without spending a repair", result.telemetry.requestCount === 1);
@@ -178,15 +193,18 @@ const FIX_PATCH = JSON.stringify({
 {
   // A validation failure also has no base: the project never passed the gate,
   // so `applyPatch` has nothing legal to apply a patch to.
-  const refused = JSON.stringify({
-    ...TIMELINE_APP,
-    files: { ...TIMELINE_APP.files, "../../etc/passwd.ts": "export const x = 1;" },
+  // A path the *validator* refuses, delivered through a well-formed frame:
+  // framing checks paths too, so this uses one that only validation rejects —
+  // a legal path importing a library that is not on the allowlist.
+  const refused = encodeFramedProject(TIMELINE_HEADER, {
+    ...TIMELINE_FILES,
+    "src/App.tsx": 'import x from "jquery";\n' + TIMELINE_FILES["src/App.tsx"],
   });
   const transport = new FakeTransport([{ text: refused }, { text: GOOD }]);
   const result = await generateApp(input(), transport);
   check("a refused project is repaired by rewriting", result.telemetry.repairMode === "rewrite");
   check("and the rewrite carries the validator's own words",
-    /path_/.test(transport.requests[1]?.user ?? ""));
+    /import_/.test(transport.requests[1]?.user ?? ""));
   check("and it succeeds", result.ok, result.ok ? "" : result.message);
 }
 
@@ -232,21 +250,23 @@ const FIX_PATCH = JSON.stringify({
 }
 
 {
-  const nonsense = JSON.stringify({ schemaVersion: PATCH_SCHEMA_VERSION, summary: "x", write: { "package.json": "{}" } });
+  const nonsense = framedPatch({ schemaVersion: PATCH_SCHEMA_VERSION, summary: "x" }, { "package.json": "{}" });
   const transport = new FakeTransport([{ text: BROKEN }, { text: nonsense }]);
   const result = await generateApp(input(), transport);
   check("a patch that breaks a rule is refused", !result.ok);
-  check("reported at the patch stage", !result.ok && result.stage === "patch");
+  // Framing now rejects a reserved path before applyPatch ever sees it, so the
+  // refusal arrives one layer earlier than it used to. Earlier is better: the
+  // bytes are never attributed to a path Ventrio owns.
+  check("refused before the patch is applied", !result.ok && result.code === "unparseable");
   check("naming the reserved path", !result.ok && (result.issues ?? []).some((i) => i.includes("package.json")));
   check("and the run stops there", transport.requests.length === 2);
 }
 
 {
-  const stillBroken = JSON.stringify({
-    schemaVersion: PATCH_SCHEMA_VERSION,
-    summary: "Not actually a fix",
-    write: { [BROKEN_FILE]: `${TIMELINE_APP.files[BROKEN_FILE]}\nconst also = ;\n` },
-  });
+  const stillBroken = framedPatch(
+    { schemaVersion: PATCH_SCHEMA_VERSION, summary: "Not actually a fix" },
+    { [BROKEN_FILE]: `${TIMELINE_APP.files[BROKEN_FILE]}\nconst also = ;\n` },
+  );
   const transport = new FakeTransport([{ text: BROKEN }, { text: stillBroken }]);
   const result = await generateApp(input(), transport);
   check("a patch that does not fix it is not accepted", !result.ok);
@@ -265,11 +285,10 @@ const FIX_PATCH = JSON.stringify({
   log.add({ kind: "TypeError", message: "Cannot read properties of undefined (reading 'map')", stack: "at App" });
   log.add({ kind: "TypeError", message: "Cannot read properties of undefined (reading 'map')", stack: "at App" });
 
-  const patch = JSON.stringify({
-    schemaVersion: PATCH_SCHEMA_VERSION,
-    summary: "Guard the empty case",
-    write: { "src/styles.css": TIMELINE_APP.files["src/styles.css"].replace("--bg:#0b0c0f", "--bg:#050506") },
-  });
+  const patch = framedPatch(
+    { schemaVersion: PATCH_SCHEMA_VERSION, summary: "Guard the empty case" },
+    { "src/styles.css": TIMELINE_APP.files["src/styles.css"].replace("--bg:#0b0c0f", "--bg:#050506") },
+  );
   const transport = new FakeTransport([{ text: patch }]);
   const result = await repairApp(
     { model: "fake-model", base: TIMELINE_APP, diagnostics: log.describe(), focus: [BROKEN_FILE] },
@@ -290,7 +309,7 @@ const FIX_PATCH = JSON.stringify({
 }
 
 {
-  const transport = new FakeTransport([{ text: "{}" }]);
+  const transport = new FakeTransport([{ text: PATCH_OPEN }]);
   const result = await repairApp(
     { model: "fake-model", base: TIMELINE_APP, diagnostics: [] },
     transport,
@@ -307,7 +326,7 @@ const FIX_PATCH = JSON.stringify({
     ...TIMELINE_APP,
     files: { ...TIMELINE_APP.files, "src/huge.ts": "//" + "x".repeat(REPAIR_WHOLE_PROJECT_BYTES + 1) },
   };
-  const transport = new FakeTransport([{ text: "{}" }]);
+  const transport = new FakeTransport([{ text: PATCH_OPEN }]);
   const result = await repairApp(
     { model: "fake-model", base: huge, diagnostics: ["something went wrong"] },
     transport,
@@ -331,7 +350,7 @@ check("the repair uses the repair budget", /timeoutMs: GENERATION_LIMITS\.repair
 check("the echo is bounded by files and by bytes",
   /slice\(0, REPAIR_ECHO_FILES\)/.test(source) && /REPAIR_ECHO_BYTES/.test(source));
 check("the echo limit is small enough to be a limit", REPAIR_ECHO_FILES <= 10);
-check("nothing is applied in place", /applyPatch\(base, parsed\)/.test(source));
+check("nothing is applied in place", /applyPatch\(base, framed\.value\)/.test(source));
 
 /* ── report ─────────────────────────────────────────────────────────────── */
 

@@ -98,7 +98,16 @@ export const GENERATION_LIMITS = {
    */
   totalTimeoutMs: deadlineFor(["brief", "generate", "repair"]),
   maxOutputTokensBrief: 4_000,
-  maxOutputTokensArtifact: 32_000,
+  /**
+   * The documented output ceiling for gemini-3.6-flash.
+   *
+   * Was 32,000, sized for the old page-schema artifact. A live canary asked
+   * for a project-management app, wrote 30,436 tokens of a multi-file project
+   * and was cut off mid-string with `MAX_TOKENS`. The budget was the limit,
+   * not the model. Truncation is still reported as truncation and still buys
+   * no repair — a bigger budget makes the failure rarer, not survivable.
+   */
+  maxOutputTokensArtifact: 65_536,
   maxOutputTokensRepair: 32_000,
   /** Refuse absurd payloads before parsing rather than after. */
   maxResponseBytes: 400_000,
