@@ -191,6 +191,19 @@ export class AnthropicCodegenTransport implements GeminiTransport {
      * default is the only thing production ever passes.
      */
     private readonly clientFactory: () => AnthropicClientLike = () => new Anthropic() as unknown as AnthropicClientLike,
+    /**
+     * Per-caller request options. Empty by default, which is the request this
+     * transport has always sent.
+     *
+     * `thinking: "disabled"` exists for exactly one measured reason. Two paid
+     * app canaries on the same prompt returned `stop_reason: max_tokens` with
+     * all 32,000 output tokens spent, one content block of type `thinking`, and
+     * no text block ever started — reasoning consumed the entire budget before
+     * a single character of the project was written. Codegen has never shown
+     * this, so nothing here changes for it: the option is opt-in and the
+     * default request is byte-for-byte what it was.
+     */
+    private readonly options: { thinking?: "disabled" } = {},
   ) {}
 
   async send(request: GeminiRequest, signal: AbortSignal): Promise<GeminiResponse> {
@@ -252,6 +265,9 @@ export class AnthropicCodegenTransport implements GeminiTransport {
           max_tokens: request.maxOutputTokens,
           system: request.system,
           messages: [{ role: "user", content: request.user }],
+          // Absent unless a caller asked for it, so the default request is
+          // unchanged. See the constructor for what asked and why.
+          ...(this.options.thinking === "disabled" ? { thinking: { type: "disabled" as const } } : {}),
         },
         { signal: effective },
       );

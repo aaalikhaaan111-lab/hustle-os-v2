@@ -53,6 +53,9 @@ const request = (over: Partial<GeminiRequest> = {}): GeminiRequest => ({
   ...over,
 });
 
+/** Every parameter object handed to the SDK, in order, for inspection. */
+const sent: Array<Record<string, unknown>> = [];
+
 function client(behaviour: {
   message?: FinalMessageLike;
   throws?: unknown;
@@ -62,6 +65,7 @@ function client(behaviour: {
   return {
     messages: {
       stream(_params, options) {
+        sent.push(_params);
         const listeners: Array<(event: { type?: string }) => void> = [];
         return {
           on(_event, listener) { listeners.push(listener); return this; },
@@ -258,6 +262,84 @@ const THINKING_ONLY: FinalMessageLike = {
   );
   check("a non-text block is typed and sized", tool.blocks[0].type === "tool_use" && tool.blocks[0].chars > 0);
   check("without its input being persisted", !JSON.stringify(tool).includes("passwd"));
+}
+
+/* ── 8. thinking, disabled for the app-runtime request only ─────────────── */
+
+// WHY THIS OPTION EXISTS, in one sentence that cost two paid requests: on this
+// prompt the model spent all 32,000 output tokens inside a single thinking
+// block and never started a text block, twice.
+{
+  const TEXT_MESSAGE: FinalMessageLike = {
+    id: "msg_text",
+    model: "claude-sonnet-5-20260101",
+    stop_reason: "end_turn",
+    usage: { input_tokens: 1_484, output_tokens: 9_000 },
+    content: [{ type: "text", text: '{"schemaVersion":"app-1"}' }],
+  };
+
+  sent.length = 0;
+  const appTransport = new AnthropicCodegenTransport(
+    "claude-sonnet-5",
+    () => client({ message: TEXT_MESSAGE }),
+    { thinking: "disabled" },
+  );
+  const appResult = await appTransport.send(request({ timeoutMs: 300_000 }), new AbortController().signal);
+  const appParams = sent[0];
+
+  check("the app-runtime request disables thinking",
+    JSON.stringify(appParams.thinking) === JSON.stringify({ type: "disabled" }),
+    JSON.stringify(appParams.thinking));
+
+  // Byte-for-byte on everything else. The whole point of the smallest possible
+  // fix is that nothing else moved, so nothing else can explain a change in
+  // the result.
+  check("the model is unchanged", appParams.model === "claude-sonnet-5");
+  check("the output budget is unchanged", appParams.max_tokens === 32_000);
+  check("the system prompt is passed through untouched", appParams.system === "You write applications.");
+  check("the user prompt is passed through untouched",
+    JSON.stringify(appParams.messages) === JSON.stringify([{ role: "user", content: "Build a setlist tool." }]));
+  check("no other parameter is introduced",
+    Object.keys(appParams).sort().join(",") === "max_tokens,messages,model,system,thinking",
+    Object.keys(appParams).sort().join(","));
+  check("and the response still parses as text", appResult.ok && appResult.text === '{"schemaVersion":"app-1"}');
+
+  /* the default request — codegen's — must be exactly what it always was */
+  sent.length = 0;
+  const defaultTransport = new AnthropicCodegenTransport("claude-sonnet-5", () => client({ message: TEXT_MESSAGE }));
+  const defaultResult = await defaultTransport.send(request({ timeoutMs: 300_000 }), new AbortController().signal);
+  const defaultParams = sent[0];
+
+  check("the default request carries no thinking key at all", !("thinking" in defaultParams));
+  check("its shape is unchanged",
+    Object.keys(defaultParams).sort().join(",") === "max_tokens,messages,model,system",
+    Object.keys(defaultParams).sort().join(","));
+  check("the normal text path still succeeds", defaultResult.ok);
+  check("with usage mapped as before",
+    defaultResult.ok && defaultResult.usage?.promptTokenCount === 1_484 && defaultResult.usage?.candidatesTokenCount === 9_000);
+  check("and the resolved model reported", defaultResult.ok && defaultResult.modelVersion === "claude-sonnet-5-20260101");
+
+  /* nothing the transport builds may carry credentials */
+  const everythingSent = JSON.stringify(sent) + JSON.stringify(appParams);
+  check("no request object carries the key", !everythingSent.includes(FAKE_KEY) && !everythingSent.includes("sk-ant"));
+  check("nor an authorization or header field",
+    !/authorization|api[_-]?key|x-api/i.test(Object.keys(appParams).join(" ") + Object.keys(defaultParams).join(" ")));
+
+  /* and a disabled-thinking run that still comes back empty stays sanitised */
+  sent.length = 0;
+  const emptyAgain = new AnthropicCodegenTransport(
+    "claude-sonnet-5",
+    () => client({ message: THINKING_ONLY }),
+    { thinking: "disabled" },
+  );
+  const emptyResult = await emptyAgain.send(request({ timeoutMs: 300_000 }), new AbortController().signal);
+  const serialised = JSON.stringify(!emptyResult.ok ? emptyResult.diagnostics : {});
+  check("an empty response is still diagnosable with thinking off", !emptyResult.ok && emptyResult.code === "empty");
+  check("and still leaks no reasoning", !serialised.includes("TOP-SECRET-REASONING-CANARY-STRING"));
+  check("and still leaks no key", !serialised.includes(FAKE_KEY) && !serialised.includes("sk-ant"));
+  check("and still leaks no prompt", !serialised.includes("Build a setlist tool"));
+  check("and the surfaced message carries neither",
+    !emptyResult.ok && !emptyResult.message.includes("sk-ant") && !emptyResult.message.includes("TOP-SECRET"));
 }
 
 /* ── report ─────────────────────────────────────────────────────────────── */
