@@ -307,8 +307,22 @@ function toDiagnostic(message: unknown): CompileDiagnostic {
   const location = m.location ?? null;
   return {
     text: typeof m.text === "string" ? m.text : "Unknown build problem.",
-    file: typeof location?.file === "string" ? location.file : undefined,
+    file: typeof location?.file === "string" ? projectPath(location.file) : undefined,
     line: typeof location?.line === "number" ? location.line : undefined,
     column: typeof location?.column === "number" ? location.column : undefined,
   };
+}
+
+/**
+ * Strips the virtual namespace esbuild prefixes onto every path it reports.
+ *
+ * `file` is documented as project-relative and every consumer reads it that
+ * way: the repair loop looks the path up in `app.files` to decide which files
+ * to reproduce for the model, and "ventrio-app:src/App.tsx" matches nothing.
+ * The result was a patch request that silently degraded to a whole-project one.
+ * It is also what the model reads, and a namespace it has never heard of is
+ * noise in the one line that has to be precise.
+ */
+function projectPath(file: string): string {
+  return file.startsWith(`${VIRTUAL}:`) ? file.slice(VIRTUAL.length + 1) : file;
 }

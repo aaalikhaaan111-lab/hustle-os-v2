@@ -34,7 +34,22 @@ export type AppBuildResult =
       warnings: CompileDiagnostic[];
     }
   | { ok: false; stage: "validate"; issues: AppIssue[] }
-  | { ok: false; stage: "compile"; code: string; errors: CompileDiagnostic[] };
+  | {
+      ok: false;
+      stage: "compile";
+      code: string;
+      errors: CompileDiagnostic[];
+      /**
+       * The project that validated but did not compile.
+       *
+       * Carried out of the failure because it is exactly the base a repair
+       * patches against: it passed every rule Ventrio enforces and is broken
+       * only in ways the compiler can name. A validation failure has no
+       * equivalent — there is no project there to patch — and that asymmetry is
+       * what decides which of the two repair shapes a run gets.
+       */
+      app: GeneratedAppV1;
+    };
 
 export interface BuildOptions {
   /** Ventrio-owned asset id → data URI, exposed to the app as a lookup table. */
@@ -51,7 +66,7 @@ export async function buildGeneratedApp(
 
   const compiled = await compileGeneratedApp(app);
   if (!compiled.ok) {
-    return { ok: false, stage: "compile", code: compiled.code, errors: compiled.errors };
+    return { ok: false, stage: "compile", code: compiled.code, errors: compiled.errors, app };
   }
 
   // Only the assets the project actually declared are exposed. A project that

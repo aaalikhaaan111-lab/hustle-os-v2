@@ -84,16 +84,50 @@ export function appUserPrompt(brief: string): string {
 }
 
 /**
+ * What the model is shown of the project it is being asked to repair.
+ *
+ * A patch is a diff against a base, and the request that carries it is a fresh
+ * single-turn call: the model has no memory of what it returned a minute ago.
+ * Asking for a patch without stating the base is asking it to edit a file it
+ * cannot see, so the context is a required argument rather than an optional
+ * one — the type is the check.
+ */
+export interface AppRepairContext {
+  /** Every path in the project, so a patch never re-invents a file that exists. */
+  manifest: string[];
+  /** Complete current contents of the files the patch is expected to touch. */
+  files: Record<string, string>;
+  /** True when `files` is a subset — the prompt then says so explicitly. */
+  partial: boolean;
+}
+
+/**
  * The repair prompt.
  *
  * It carries the exact diagnostics and asks for a patch rather than a rewrite.
  * A repair that returns a whole new project throws away everything that was
  * already right, and the failure list is usually three lines long.
+ *
+ * When only some files are shown, the prompt says so in as many words. A model
+ * shown four of eleven files and not told the rest exist rewrites them from
+ * memory, and a patch that "restores" nine files it never saw is exactly the
+ * whole-project regeneration this path exists to avoid.
  */
-export function appRepairPrompt(diagnostics: string[]): string {
+export function appRepairPrompt(diagnostics: string[], context: AppRepairContext): string {
+  const shown = Object.entries(context.files)
+    .map(([path, contents]) => `--- ${path} ---\n${contents}\n--- end ${path} ---`)
+    .join("\n\n");
+
   return `The project you returned was refused. Fix exactly these problems and change nothing else.
 
 ${diagnostics.map((line) => `- ${line}`).join("\n")}
+
+THE PROJECT AS IT STANDS
+${context.manifest.map((path) => `- ${path}`).join("\n")}
+${context.partial
+    ? "\nOnly the files below are reproduced. Every other file above is unchanged\nand will be kept — do not rewrite one from memory.\n"
+    : ""}
+${shown}
 
 Return a patch, not a whole project:
 {
@@ -105,4 +139,25 @@ Return a patch, not a whole project:
 
 Include the complete contents of each file you change. Files you do not
 mention are kept as they are.`;
+}
+
+/**
+ * The other repair: start again, with the failures attached.
+ *
+ * Used when there is no base to patch — the response was not JSON, or it was
+ * refused by validation, and in neither case does a project exist that
+ * `applyPatch` could be applied to. The brief is restated because this is a
+ * fresh single-turn request and the model has not seen it since.
+ *
+ * The refused project is not echoed back. It can be 300 kB, the failure list
+ * already says what was wrong with it, and returning a refused document invites
+ * a patch around the rule rather than compliance with it.
+ */
+export function appRewritePrompt(brief: string, diagnostics: string[]): string {
+  return `${brief}
+
+YOUR PREVIOUS PROJECT WAS REFUSED. Fix every point below and return the whole
+project again as a single JSON object.
+
+${diagnostics.slice(0, 25).map((line) => `- ${line}`).join("\n")}`;
 }

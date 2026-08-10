@@ -89,6 +89,45 @@ whole-project catches a patch that is individually legal and leaves the project
 broken. Nothing is applied in place, so a failed edit leaves the previous
 version untouched.
 
+## Repairing
+
+One generation, at most one repair, and the second request is spent only on
+failures a model can act on. Never a transport error — a timeout says nothing
+about the project. Never a compile timeout or an internal compiler error
+either: those are ours, and asking a model to fix our compiler spends the
+user's money on a guess.
+
+The repair takes one of two shapes, decided by what the failure left behind:
+
+| | when | request |
+| --- | --- | --- |
+| **Patch** | validation passed, compilation did not | change the three lines, keep the other ten files |
+| **Rewrite** | the response was not JSON, or validation refused it | the whole project again, with the failures attached |
+
+There are two because `applyPatch` needs a base that passed the gate, and a
+refused project is not one. So the compile-failure branch now carries the
+validated project out with it — that project is precisely the patch base.
+
+A patch request reproduces the files the diagnostics implicate, bounded to 6
+files and 48 kB, plus the full manifest so nothing unshown is reinvented. The
+provider call is single-turn: the model has no memory of what it returned, and
+a patch against a base it cannot see is a rewrite with extra steps. When
+nothing can be shown, the run rewrites rather than sending an unanswerable paid
+request.
+
+`repairApp` is reachable on its own, because the second half of the loop has a
+second source. A build failure is caught before the app renders; a runtime
+error arrives from the preview minutes later, from a project that compiled
+cleanly, with no generation in flight. Both arrive as the same thing — a list
+of concrete file-and-rule sentences, from `describeFailure` or from
+`RuntimeErrorLog.describe()`.
+
+Writing the tests found a defect that no existing check could see: esbuild
+reports paths under its virtual namespace, so a diagnostic's `file` arrived as
+`ventrio-app:src/App.tsx`, matched no key in `files`, and silently downgraded
+every patch request to a whole-project echo. It worked, it cost more, and it
+would have been discovered on a paid run.
+
 ## Offline proof
 
 Three applications written to the contract, compiled through the real pipeline,
@@ -104,8 +143,10 @@ No horizontal overflow, no unreadably narrow text, zero external requests, every
 app mounts. A targeted edit changed 2 of 6 files and left the other 4
 byte-identical while unrelated interactions kept working.
 
-1,786 offline checks across 17 suites; typecheck, lint and production build
-clean.
+1,896 offline checks across 18 suites; typecheck, lint and production build
+clean. The repair loop is proved against a fake provider and the real gate: the
+responses are canned, everything between a response and the verdict — the
+validator, the esbuild compile, the patch application — is the production path.
 
 ## What is NOT done
 
@@ -113,18 +154,19 @@ clean.
    express three genuinely different applications and that the runtime compiles,
    isolates and runs them. They prove nothing about model output. This is the
    remaining canary and the largest open risk.
-2. **Not wired to generation.** `renderProjectWithCodegen`'s equivalent for apps
-   does not exist yet: no server action, no quota reservation, no job row, no
-   persistence. The pattern is established by the codegen integration — one job,
-   one reserved unit, one refund path — but it is not written.
+2. **Not wired to generation.** `generateApp` takes a transport and returns a
+   document; nothing calls it from the product. No server action, no quota
+   reservation, no job row, no persistence. The pattern is established by the
+   codegen integration — one job, one reserved unit, one refund path — but it is
+   not written.
 3. **No workspace preview component.** `CodegenPreview` renders a static
    document; an app preview additionally needs the `postMessage` listener wired
-   to `parsePreviewMessage` and the error log surfaced.
-4. **The repair loop is not closed.** `appRepairPrompt` and `applyPatch` exist;
-   nothing yet feeds build diagnostics into a bounded second request.
-5. **Imagery.** Unchanged and unsolved. Generated apps have no pictures beyond
+   to `parsePreviewMessage` and the error log surfaced. Until it is, `repairApp`
+   has no caller for runtime errors — the loop is closed, but only one of its
+   two mouths is connected.
+4. **Imagery.** Unchanged and unsolved. Generated apps have no pictures beyond
    the placeholder registry.
-6. **Document size.** 1.1–1.7 MB per preview, dominated by the runtime graph.
+5. **Document size.** 1.1–1.7 MB per preview, dominated by the runtime graph.
    Acceptable for a preview, wrong for publishing.
-7. **Where a build runs.** A generation is minutes and a compile is seconds of
+6. **Where a build runs.** A generation is minutes and a compile is seconds of
    CPU. Serverless function limits are a deployment decision this does not make.
