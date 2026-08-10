@@ -9,6 +9,7 @@ import { AssistantChat } from "@/components/build/AssistantChat";
 import { PreOutputWorkspace } from "@/components/build/PreOutputWorkspace";
 import { ProjectOutputRenderer } from "@/components/build/ProjectOutputRenderer";
 import { CodegenPreview } from "@/components/workspace/CodegenPreview";
+import { AppPreview } from "@/components/workspace/AppPreview";
 import { BuildScreen, OpenPreviewButton } from "@/components/workspace/BuildScreen";
 import { IconEye } from "@/components/workspace-ui/parts";
 import { VentrioLinkButton } from "@/components/ui/VentrioButton";
@@ -46,6 +47,16 @@ export interface WorkspaceViewProps {
   };
   /** The generated site, when this project was built by the codegen renderer. */
   codegen: WorkspaceCodegenView | null;
+  /** The generated application, when this project was built by app-runtime. */
+  app: WorkspaceAppView | null;
+}
+
+/** A recompiled generated application, ready for a scripted sandbox frame. */
+export interface WorkspaceAppView {
+  generatedAt: string;
+  title: string;
+  /** The complete sandbox document, rebuilt from stored source on read. */
+  document: string;
 }
 
 /** A recompiled codegen bundle, ready to hand to a sandboxed frame. */
@@ -89,7 +100,7 @@ export function WorkspaceView(props: WorkspaceViewProps) {
 
   // Either renderer counts. A codegen project has a site even though the old
   // artifact-shaped output is what the rest of the workspace still reads.
-  const hasOutput = Boolean(props.stage3.output) || Boolean(props.codegen);
+  const hasOutput = Boolean(props.stage3.output) || Boolean(props.codegen) || Boolean(props.app);
   // A draft has a preview but no address. Only a published project can be
   // linked to, so that is the only case the copy control is offered.
   const shareUrl =
@@ -113,7 +124,11 @@ export function WorkspaceView(props: WorkspaceViewProps) {
        * the honest thing is the empty state, not a substitute page.
        */
       preview={
-        props.codegen && props.codegen.routes.length > 0
+        props.app
+          ? (device) => (
+              <AppPreview document={props.app!.document} device={device} title={props.app!.title} />
+            )
+          : props.codegen && props.codegen.routes.length > 0
           ? (device) => (
               <CodegenPreview
                 srcDoc={props.codegen!.routes[0].srcDoc}

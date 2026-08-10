@@ -10,7 +10,9 @@ import { loadProjectPublicationState } from "@/lib/publishing/queries";
 import { getSiteUrl } from "@/lib/site";
 import { compileCodegenBundle } from "@/lib/v2/codegen/compile";
 import { readCodegenState } from "@/lib/v2/codegen/projectState";
-import type { WorkspaceCodegenView } from "@/components/build/WorkspaceView";
+import { readAppState } from "@/lib/v2/app/projectState";
+import { buildGeneratedApp } from "@/lib/v2/app/pipeline";
+import type { WorkspaceAppView, WorkspaceCodegenView } from "@/components/build/WorkspaceView";
 
 type Client = SupabaseClient<Database>;
 type ProjectRow = Database["public"]["Tables"]["projects"]["Row"];
@@ -97,6 +99,7 @@ export async function buildWorkspaceViewProps(
       output: stage3?.output ?? null,
     },
     codegen: compileStoredCodegen(project.snapshot_fields),
+    app: await compileStoredApp(project.snapshot_fields),
   };
 }
 
@@ -114,6 +117,37 @@ export async function buildWorkspaceViewProps(
  * was storing a few hundred kilobytes of base64 image bytes per project and
  * freezing every past safety decision permanently.
  */
+/**
+ * Rebuilds the stored application, or shows nothing.
+ *
+ * Same contract as the codegen recompile below and for the same reason: the
+ * gate runs on read, so an application accepted by a weaker gate stops
+ * rendering once the gate is tightened rather than being grandfathered in.
+ * Reopening a project therefore costs a compile and never a provider request.
+ */
+async function compileStoredApp(snapshotFields: unknown): Promise<WorkspaceAppView | null> {
+  const state = readAppState(snapshotFields);
+  if (!state) return null;
+
+  const built = await buildGeneratedApp(state.app);
+  if (!built.ok) {
+    console.error("[ventrio-app-runtime]", JSON.stringify({
+      operation: "recompile_stored",
+      stage: built.stage,
+      issues: built.stage === "compile"
+        ? built.errors.slice(0, 5).map((e) => `${e.file ?? "build"}: ${e.text}`)
+        : built.issues.slice(0, 5).map((i) => `${i.path}: ${i.code}`),
+    }));
+    return null;
+  }
+
+  return {
+    generatedAt: state.generatedAt,
+    title: state.app.metadata.name,
+    document: built.document,
+  };
+}
+
 function compileStoredCodegen(snapshotFields: unknown): WorkspaceCodegenView | null {
   const state = readCodegenState(snapshotFields);
   if (!state) return null;

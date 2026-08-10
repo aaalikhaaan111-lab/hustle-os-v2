@@ -39,6 +39,8 @@ import { editScopeFor, type SiteIntent } from "@/lib/build/siteEditIntent";
 import { toJson } from "@/lib/supabase/json";
 import { codegenRenderingEnabled, renderProjectWithCodegen } from "@/lib/v2/codegen/renderProject";
 import { mergeCodegenState, type CodegenProjectState } from "@/lib/v2/codegen/projectState";
+import { appRuntimeEnabled, composeAppBrief, renderProjectWithAppRuntime } from "@/lib/v2/app/renderProject";
+import { mergeAppState, readAppState } from "@/lib/v2/app/projectState";
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const TOKEN_PATTERN = /^[a-zA-Z0-9_-]{8,80}$/;
@@ -421,6 +423,19 @@ export async function generateFirstVersionAction(
   // A finished first version is final. Nothing below may run again for it.
   if (baseState.output) return { error: null, output: baseState.output, reply: t("alreadyReady"), durationMs: 0 };
 
+  /**
+   * The same finality, for a project the app runtime built.
+   *
+   * An app-runtime project has no `output` — it has an application — so the
+   * guard above does not see it, and without this a second submission would
+   * claim a new job and reserve a second unit for a project that already has a
+   * version. Checked against the stored state rather than a flag, because that
+   * state is the thing the workspace actually renders.
+   */
+  if (readAppState(project.snapshot_fields)) {
+    return { error: null, output: null, reply: t("alreadyReady"), durationMs: 0 };
+  }
+
   // Clear abandoned attempts across the whole account, not just this project.
   // Quota is user-wide, so a dead hold left by a crash somewhere else would
   // otherwise read as "you've used your free generation" here. This must
@@ -438,7 +453,12 @@ export async function generateFirstVersionAction(
     return { error: t("errorRetriesExhausted"), output: null, reply: null };
   }
 
-  if (!process.env.ANTHROPIC_API_KEY) return { error: t("unavailable"), output: null, reply: null };
+  // Which key matters depends on which renderer this deploy uses. The app
+  // runtime generates on Gemini and needs no Anthropic key at all; guarding on
+  // the wrong one would refuse every generation on a correctly configured
+  // Gemini deploy.
+  const providerKey = appRuntimeEnabled() ? process.env.GEMINI_API_KEY : process.env.ANTHROPIC_API_KEY;
+  if (!providerKey) return { error: t("unavailable"), output: null, reply: null };
 
   // The request id is derived, not random: a replayed submission of the same
   // attempt collides on the idempotency constraint instead of starting a
@@ -485,6 +505,71 @@ export async function generateFirstVersionAction(
 
   try {
     const startedAt = Date.now();
+
+    /**
+     * The app runtime: a multi-file application instead of a page artifact.
+     *
+     * Placed inside the same try, the same job and the same reservation as the
+     * old path, so failure lands in `releaseAndFail` and refunds exactly as it
+     * always did. The old renderer is not consulted and not used as a fallback.
+     */
+    if (appRuntimeEnabled()) {
+      await beat(job.id, "generating");
+      const brief = composeAppBrief({
+        idea: buildFirstVersionUserContent(direction, locale, intake, inferredDirection),
+        productType: intake?.productType ?? null,
+        designDirection: intake?.designDirection ?? null,
+        locale,
+      });
+      const rendered = await renderProjectWithAppRuntime({ brief, locale });
+      if (!rendered.ok) {
+        console.error("[ventrio-ai-error]", JSON.stringify({
+          operation: "app_runtime_render",
+          projectId,
+          code: rendered.code,
+          requestCount: rendered.telemetry?.requestCount ?? 0,
+          repaired: rendered.telemetry?.repaired ?? false,
+          issues: rendered.issues?.slice(0, 5) ?? [],
+        }));
+        return releaseAndFail(t("unavailable"), "invalid_output", `App runtime failed: ${rendered.code}.`);
+      }
+
+      await beat(job.id, "saving");
+      const appState = rendered.state;
+      // The generated project is stored beside whatever else the snapshot
+      // holds; nothing existing is removed. `output` stays null — this project
+      // has an application, not a page artifact, and the workspace already
+      // treats either as "has something to show".
+      const snapshot = mergeAppState(
+        mergeStage3ProjectState(project.snapshot_fields, { ...baseState, direction, status: "first_version_ready" }),
+        appState,
+      );
+      snapshot.solution = appState.app.metadata.description;
+      const { error: saveError } = await supabase.from("projects").update({
+        name: appState.app.metadata.name,
+        snapshot_fields: toJson(snapshot),
+      }).eq("id", projectId).eq("user_id", user.id);
+      if (saveError) return releaseAndFail(t("errorSave"), "save_failed", "Saving the generated application failed.");
+
+      const tApp = await getTranslations({ locale, namespace: "stage3" });
+      const appReply = tApp("generationReply", { name: appState.app.metadata.name });
+      await supabase.from("project_ai_messages").insert({
+        id: stableUuid(`${baseState.conversationId}:first-version-ready`),
+        conversation_id: baseState.conversationId,
+        project_id: projectId,
+        user_id: user.id,
+        role: "assistant",
+        content: appReply,
+      });
+      await supabase.from("project_ai_conversations")
+        .update({ title: appState.app.metadata.name.slice(0, 60) })
+        .eq("id", baseState.conversationId).eq("user_id", user.id);
+      await finishSucceeded(job.id);
+      revalidatePath("/projects");
+      revalidatePath(`/projects/${projectId}`);
+      return { error: null, output: null, reply: appReply, durationMs: Date.now() - startedAt, jobId: job.id };
+    }
+
     await beat(job.id, "generating");
     const client = new Anthropic();
     const response = await client.messages.create({
@@ -636,7 +721,12 @@ export async function editProjectOutputAction(
     });
     if (userMessageError && userMessageError.code !== "23505") return { error: t("errorSave"), output: null, reply: null };
   }
-  if (!process.env.ANTHROPIC_API_KEY) return { error: t("unavailable"), output: null, reply: null };
+  // Which key matters depends on which renderer this deploy uses. The app
+  // runtime generates on Gemini and needs no Anthropic key at all; guarding on
+  // the wrong one would refuse every generation on a correctly configured
+  // Gemini deploy.
+  const providerKey = appRuntimeEnabled() ? process.env.GEMINI_API_KEY : process.env.ANTHROPIC_API_KEY;
+  if (!providerKey) return { error: t("unavailable"), output: null, reply: null };
 
   // Reserved after the lastRequestId cache check and the user-message-save
   // above, so a retried request (same requestId) never reaches this a second
