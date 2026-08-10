@@ -592,6 +592,19 @@ function templateOf(app: GeneratedAppV1): RuntimeTemplateId {
 
 function transportCode(response: Extract<GeminiResponse, { ok: false }>): AppFailureCode {
   if (response.code === "timeout") return "timeout";
+  /**
+   * A truncated response is its own outcome, and never a repair.
+   *
+   * Matched on the code rather than the message: the transport's wording for
+   * this case contains the word "limit" next to a token count, and the
+   * substring test below was written for the *request* budget — a run that
+   * overran its output would otherwise be reported as having exhausted its
+   * request allowance, which is a different problem with a different fix.
+   *
+   * No second request is spent on it. The model did not fail; it was cut off,
+   * and asking it again with the same budget buys the same truncation.
+   */
+  if (response.code === "too_large") return "too_large";
   if (response.message.includes("budget")) return "budget_exhausted";
   return "transport";
 }

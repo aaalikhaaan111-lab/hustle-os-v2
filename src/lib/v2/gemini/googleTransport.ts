@@ -215,6 +215,32 @@ export class GoogleGeminiTransport implements GeminiTransport {
         };
       }
 
+      /**
+       * A response that ran out of output budget is not a successful one.
+       *
+       * THE DEFECT THIS FIXES. A live canary asked for a project-management
+       * app, the model wrote 30,436 tokens against a 32,000 budget and was cut
+       * off mid-string, and this transport returned `ok: true` with the
+       * truncated body. The pipeline then reported "the model's response was
+       * not valid JSON" — true, and useless: the model wrote valid JSON and we
+       * stopped it halfway. The operator needed to know the budget was too
+       * small, and was told the model was at fault.
+       *
+       * Reported before the text is looked at, because a truncated body is
+       * usually non-empty and would otherwise sail through as a success.
+       */
+      if (candidate?.finishReason === "MAX_TOKENS") {
+        return {
+          ok: false,
+          code: "too_large",
+          message:
+            `Gemini stopped at the ${request.maxOutputTokens}-token output limit ` +
+            `(${usage.candidatesTokenCount ?? "?"} used). The response is truncated, not malformed.`,
+          latencyMs: latency(),
+          diagnostics,
+        };
+      }
+
       const text = parts
         .filter((part) => typeof part.text === "string" && part.thought !== true)
         .map((part) => part.text as string)

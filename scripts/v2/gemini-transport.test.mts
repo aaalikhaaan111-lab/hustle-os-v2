@@ -106,7 +106,9 @@ const GOOD = {
 
 {
   const transport = new GoogleGeminiTransport(DEFAULT_GEMINI_MODEL, fetchReturning(200, {
-    candidates: [{ content: { parts: [{ thought: true, text: "internal reasoning SECRET-GEMINI-CANARY" }] }, finishReason: "MAX_TOKENS" }],
+    // STOP, not MAX_TOKENS: a run that finished and still produced no text.
+    // Truncation is a separate, more precise outcome, asserted in section 8.
+    candidates: [{ content: { parts: [{ thought: true, text: "internal reasoning SECRET-GEMINI-CANARY" }] }, finishReason: "STOP" }],
     usageMetadata: { promptTokenCount: 1_484, candidatesTokenCount: 32_000, thoughtsTokenCount: 31_000, cachedContentTokenCount: 0 },
     modelVersion: "gemini-3.6-flash-001",
   }));
@@ -114,13 +116,13 @@ const GOOD = {
   const d = (!result.ok ? result.diagnostics : undefined) as GeminiEmptyDiagnostics | undefined;
 
   check("a text-free response fails as empty", !result.ok && result.code === "empty");
-  check("the finish reason is kept", d?.finishReason === "MAX_TOKENS");
+  check("the finish reason is kept", d?.finishReason === "STOP");
   check("the output tokens are kept", d?.usage.outputTokens === 32_000);
   // The Anthropic canaries lost 2 paid requests to reasoning eating the budget.
   // On this provider the same fingerprint has a field, and it is captured.
   check("reasoning tokens are captured", d?.usage.thoughtsTokens === 31_000);
   check("part kinds are recorded", d?.parts?.[0]?.type === "thought");
-  check("the message names the finish reason", !result.ok && result.message.includes("MAX_TOKENS"));
+  check("the message names the finish reason", !result.ok && result.message.includes("STOP"));
   check("and the reasoning size", !result.ok && result.message.includes("31000"));
 
   const serialised = JSON.stringify(d);
@@ -198,6 +200,40 @@ for (const [status, code] of [[429, "rate_limited"], [500, "server_error"], [503
   check("without making a request", calls.length === 0);
   check("and says so safely", !result.ok && result.message === "Gemini is not configured on this server.");
   process.env.GEMINI_API_KEY = saved;
+}
+
+
+/* ── 8. a truncated response is not a success ───────────────────────────── */
+
+// THE DEFECT: a live canary wrote 30,436 tokens against a 32,000 budget, was
+// cut off mid-string, and this transport returned ok:true with the fragment.
+// The pipeline then blamed the model for invalid JSON.
+{
+  const transport = new GoogleGeminiTransport(DEFAULT_GEMINI_MODEL, fetchReturning(200, {
+    candidates: [{ content: { parts: [{ text: '{"schemaVersion":"app-1","files":{"src/App.tsx":"const a = ' }] }, finishReason: "MAX_TOKENS" }],
+    usageMetadata: { promptTokenCount: 1_127, candidatesTokenCount: 30_436 },
+    modelVersion: "gemini-3.6-flash-001",
+  }));
+  const result = await transport.send(request({ timeoutMs: 300_000 }), new AbortController().signal);
+
+  check("a truncated response is a failure", !result.ok);
+  check("reported as too_large, not as a parse problem", !result.ok && result.code === "too_large");
+  check("the message names the output limit", !result.ok && result.message.includes("32000"));
+  check("and says it is truncated rather than malformed",
+    !result.ok && /truncated, not malformed/.test(result.message));
+  const d = (!result.ok ? result.diagnostics : undefined) as GeminiEmptyDiagnostics | undefined;
+  check("the finish reason is kept", d?.finishReason === "MAX_TOKENS");
+  check("with the tokens actually spent", d?.usage.outputTokens === 30_436);
+
+  // The partial text must NOT be handed on as if it were a whole response.
+  check("the truncated body is not returned as text", !result.ok);
+}
+
+{
+  // A normal completion with the same shape must still succeed.
+  const transport = new GoogleGeminiTransport(DEFAULT_GEMINI_MODEL, fetchReturning(200, GOOD));
+  const result = await transport.send(request(), new AbortController().signal);
+  check("a STOP response is unaffected", result.ok && result.text === '{"schemaVersion":"app-1"}');
 }
 
 /* ── 7. app-runtime resolves only to Gemini ──────────────────────────────── */
