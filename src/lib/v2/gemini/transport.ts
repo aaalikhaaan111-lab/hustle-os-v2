@@ -63,6 +63,17 @@ export type GeminiResponse =
       message: string;
       status?: number;
       latencyMs: number;
+      /**
+       * Structured, secret-free evidence about the failure. Optional: a
+       * transport that has nothing to add omits it.
+       *
+       * Exists because a paid request that fails without saying why has to be
+       * paid for twice. Whatever a transport puts here is written to disk and
+       * read by a human, so it carries scalars, enums and type names only —
+       * never response text, reasoning, headers, or anything derived from the
+       * key. See `EmptyResponseDiagnostics` in the Anthropic transport.
+       */
+      diagnostics?: Record<string, unknown>;
     };
 
 export interface GeminiTransport {
