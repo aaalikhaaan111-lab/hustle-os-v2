@@ -1,5 +1,5 @@
 /**
- * The durable steps of first-version generation.
+ * The stages of first-version generation, as the queue consumer runs them.
  *
  * WHY THIS FILE EXISTS. The whole pipeline used to run inside the server action
  * that started it: one Gemini generation, a parse, the gate, one bounded
@@ -12,24 +12,27 @@
  * fit in one function, and no configuration makes them.
  *
  * So the pipeline is the same pipeline, cut at the boundaries it already had.
- * Each provider call is its own step and gets a whole function to itself; the
- * run as a whole has no duration limit. Nothing about how generation works
- * changed — same prompts, same framed transport, same validator, same one-repair
- * ceiling, same compile, same persistence format.
+ * Each provider call is its own queue message and gets a whole function to
+ * itself. Nothing about how generation works changed — same prompts, same
+ * framed transport, same validator, same one-repair ceiling, same compile, same
+ * persistence format.
  *
- * TWO RULES THAT ARE NOT NEGOTIABLE HERE.
+ * WHAT A QUEUE CHANGES. Delivery is at least once. A redelivered message
+ * re-enters this code with the same arguments and no memory of the first
+ * attempt, so every rule that used to be enforced by "there is only one
+ * execution" has to be enforced by state instead:
  *
- * 1. Provider steps never retry. The SDK retries a throwing step three times by
- *    default, and a retry here is a second paid generation the person did not
- *    ask for. `maxRetries = 0` on both, and the run's ceiling of two requests
- *    is then structural — one generate step, at most one repair step — rather
- *    than a counter that a replay could reset.
- * 2. Everything else is idempotent. A retried persist must not write a second
- *    version, and a retried release must not refund twice; both check state
- *    they do not own before acting, so replay is safe by construction.
+ * 1. The ceiling of two provider requests is a counter on the job row, moved by
+ *    a compare-and-swap under a row lock — see `claimProviderRequest`. A second
+ *    delivery finds the counter already past its expected value and returns
+ *    without calling the provider. The consumer also disables the queue's own
+ *    retries, so a throwing handler is not re-run either.
+ * 2. Everything else is idempotent. A repeated persist must not write a second
+ *    version, and a repeated release must not refund twice; both check state
+ *    they do not own before acting.
  *
  * The job row remains the only product/accounting state. This introduces no
- * second job model: the workflow reads and advances the same row the action
+ * second job model: the consumer reads and advances the same row the action
  * claimed, and the same quota reservation it made.
  */
 
@@ -39,8 +42,8 @@ import { createServiceClient } from "@/lib/supabase/public";
 import { toJson } from "@/lib/supabase/json";
 import { parseStage3ProjectState, mergeStage3ProjectState, type Stage3ProjectState } from "@/lib/build/stage3Types";
 import { beat, finishFailed, finishSucceeded, releaseUsage, type JobErrorCode } from "@/lib/jobs/generationJobs";
-import { WORKFLOW_STEP_BUDGETS, GENERATION_LIMITS } from "@/lib/v2/gemini/config";
-import { createAppTransport } from "@/lib/v2/app/provider";
+import { CONSUMER_BUDGETS, GENERATION_LIMITS } from "../gemini/config";
+import { createAppTransport } from "./provider";
 import {
   accept,
   acceptPatch,
@@ -48,16 +51,16 @@ import {
   transportCode,
   type Attempt,
   type RepairPlan,
-} from "@/lib/v2/app/generate";
-import { appRepairPrompt, appRewritePrompt, appSystemPrompt, appUserPrompt } from "@/lib/v2/app/prompt";
-import { APP_STATE_VERSION, mergeAppState, readAppState, type AppProjectState } from "@/lib/v2/app/projectState";
-import type { GeneratedAppV1 } from "@/lib/v2/app/contract";
-import enMessages from "../../../messages/en.json";
-import ruMessages from "../../../messages/ru.json";
+} from "./generate";
+import { appRepairPrompt, appRewritePrompt, appSystemPrompt, appUserPrompt } from "./prompt";
+import { APP_STATE_VERSION, mergeAppState, readAppState, type AppProjectState } from "./projectState";
+import type { GeneratedAppV1 } from "./contract";
+import enMessages from "../../../../messages/en.json";
+import ruMessages from "../../../../messages/ru.json";
 
-/* ── what crosses a step boundary ────────────────────────────────────────── */
+/* ── what crosses a message boundary ─────────────────────────────────────── */
 
-/** One provider call's outcome. Plain JSON: it is persisted as a run event. */
+/** One provider call's outcome. Plain JSON: it may travel in a message. */
 export type ProviderOutcome =
   | { ok: true; text: string; latencyMs: number }
   | { ok: false; code: string; message: string; latencyMs: number };
@@ -78,14 +81,15 @@ export type Verdict =
  * A repair plan, flattened for transport.
  *
  * `planRepair` returns the base and the echo context as live objects; both are
- * plain data, so they survive the round trip unchanged and the repair step does
- * not have to re-derive a decision that was already made.
+ * plain data, so they survive the round trip through the queue unchanged and the
+ * repair consumer does not have to re-derive a decision that was already made.
  */
 export type SerialPlan =
   | { mode: "patch"; base: GeneratedAppV1; manifest: string[]; files: Record<string, string>; partial: boolean }
   | { mode: "rewrite"; reason: string };
 
-export interface StepJobRef {
+/** The three ids every stage is scoped by. Carried in every message. */
+export interface JobRef {
   jobId: string;
   projectId: string;
   userId: string;
@@ -94,10 +98,10 @@ export interface StepJobRef {
 /* ── heartbeats ──────────────────────────────────────────────────────────── */
 
 /**
- * How often a long step reports that it is still alive.
+ * How often a long stage reports that it is still alive.
  *
  * A job with no heartbeat for `STALE_AFTER_MS` is presumed dead and swept, and
- * the generate step can legitimately spend four minutes inside one `await`. A
+ * generation can legitimately spend four minutes inside one `await`. A
  * beat at the boundaries alone would leave the run one slow request away from
  * having its own quota refunded out from under it, so the beat runs *during*
  * the call. It is also the honest signal: the row says "still working" because
@@ -105,7 +109,7 @@ export interface StepJobRef {
  */
 const HEARTBEAT_MS = 30_000;
 
-async function withHeartbeat<T>(jobId: string, stage: "generating" | "saving", run: () => Promise<T>): Promise<T> {
+export async function withHeartbeat<T>(jobId: string, stage: "generating" | "saving", run: () => Promise<T>): Promise<T> {
   await beat(jobId, stage);
   const timer = setInterval(() => {
     void beat(jobId, stage).catch(() => {});
@@ -117,18 +121,17 @@ async function withHeartbeat<T>(jobId: string, stage: "generating" | "saving", r
   }
 }
 
-/* ── 1. the guard ────────────────────────────────────────────────────────── */
+/* ── the guard ───────────────────────────────────────────────────────────── */
 
 /**
  * Decides whether this run should do anything at all.
  *
- * Replay safety starts here. A workflow that is retried, or started twice for
- * the same job by some future caller, must not generate again — so the job has
- * to still be in flight and the project must not already hold an application.
- * Both are read from the database rather than from anything the run carries.
+ * Redelivery safety starts here. A message that arrives twice, or after a stale
+ * sweep already ended the job, must not generate again — so the job has to still
+ * be in flight and the project must not already hold an application. Both are
+ * read from the database rather than from anything the message carries.
  */
-export async function beginGeneration(ref: StepJobRef): Promise<{ proceed: boolean; reason?: string }> {
-  "use step";
+export async function beginGeneration(ref: JobRef): Promise<{ proceed: boolean; reason?: string }> {
   const service = createServiceClient();
 
   const { data: job } = await service
@@ -156,21 +159,23 @@ export async function beginGeneration(ref: StepJobRef): Promise<{ proceed: boole
   return { proceed: true };
 }
 
-/* ── 2. the generation request ───────────────────────────────────────────── */
+/* ── the generation request ──────────────────────────────────────────────── */
 
 /**
  * One Gemini generation. Exactly one, ever.
  *
- * The timeout is the step-safe budget rather than `STAGE_BUDGETS.generate`,
+ * The timeout is the consumer-safe budget rather than `STAGE_BUDGETS.generate`,
  * which is 300 s and therefore exactly the function ceiling — a request allowed
- * to spend the whole ceiling leaves nothing for the return and gets the step
- * killed instead of timing out cleanly. See `WORKFLOW_STEP_BUDGETS`.
+ * to spend the whole ceiling leaves nothing for the return and gets the
+ * invocation killed instead of timing out cleanly. See `CONSUMER_BUDGETS`.
+ *
+ * Callers must have won `claimProviderRequest` before reaching here. That is
+ * what makes "exactly one" true across a redelivered message, not this comment.
  */
 export async function requestGeneration(
-  ref: StepJobRef,
+  ref: JobRef,
   input: { brief: string },
 ): Promise<ProviderOutcome> {
-  "use step";
   const provider = createAppTransport();
   if (!provider.ok) {
     return { ok: false, code: "not_configured", message: provider.message, latencyMs: 0 };
@@ -178,14 +183,14 @@ export async function requestGeneration(
 
   return withHeartbeat(ref.jobId, "generating", async () => {
     const controller = new AbortController();
-    const deadline = setTimeout(() => controller.abort(), WORKFLOW_STEP_BUDGETS.generate);
+    const deadline = setTimeout(() => controller.abort(), CONSUMER_BUDGETS.generate);
     try {
       const response = await provider.transport.send(
         {
           model: provider.model,
           system: appSystemPrompt("react-spa"),
           user: appUserPrompt(input.brief),
-          timeoutMs: WORKFLOW_STEP_BUDGETS.generate,
+          timeoutMs: CONSUMER_BUDGETS.generate,
           maxOutputTokens: GENERATION_LIMITS.maxOutputTokensArtifact,
           label: "artifact",
         },
@@ -204,28 +209,23 @@ export async function requestGeneration(
     }
   });
 }
-// A retry is a second paid generation nobody asked for. The run's two-request
-// ceiling is the shape of this workflow, and only holds if steps run once.
-requestGeneration.maxRetries = 0;
 
-/* ── 3. the gate ─────────────────────────────────────────────────────────── */
+/* ── the gate ────────────────────────────────────────────────────────────── */
 
 /** Parse, validate and compile — the deterministic half, unchanged. */
-export async function evaluateGeneration(ref: StepJobRef, text: string): Promise<Verdict> {
-  "use step";
+export async function evaluateGeneration(ref: JobRef, text: string): Promise<Verdict> {
   return withHeartbeat(ref.jobId, "generating", async () => {
     const attempt = await accept(text, {});
     return verdictOf(attempt);
   });
 }
 
-/* ── 4. the one repair ───────────────────────────────────────────────────── */
+/* ── the one repair ──────────────────────────────────────────────────────── */
 
 export async function requestRepair(
-  ref: StepJobRef,
+  ref: JobRef,
   input: { brief: string; issues: string[]; plan: SerialPlan },
 ): Promise<ProviderOutcome> {
-  "use step";
   const provider = createAppTransport();
   if (!provider.ok) {
     return { ok: false, code: "not_configured", message: provider.message, latencyMs: 0 };
@@ -233,7 +233,7 @@ export async function requestRepair(
 
   return withHeartbeat(ref.jobId, "generating", async () => {
     const controller = new AbortController();
-    const deadline = setTimeout(() => controller.abort(), WORKFLOW_STEP_BUDGETS.repair);
+    const deadline = setTimeout(() => controller.abort(), CONSUMER_BUDGETS.repair);
     try {
       const response = await provider.transport.send(
         {
@@ -247,7 +247,7 @@ export async function requestRepair(
                   partial: input.plan.partial,
                 })
               : appRewritePrompt(appUserPrompt(input.brief), input.issues),
-          timeoutMs: WORKFLOW_STEP_BUDGETS.repair,
+          timeoutMs: CONSUMER_BUDGETS.repair,
           // A rewrite is a generation and needs a generation's room; a patch
           // keeps the smaller budget. Unchanged from the inline pipeline.
           maxOutputTokens:
@@ -271,13 +271,11 @@ export async function requestRepair(
     }
   });
 }
-requestRepair.maxRetries = 0;
 
 export async function evaluateRepair(
-  ref: StepJobRef,
+  ref: JobRef,
   input: { text: string; plan: SerialPlan },
 ): Promise<Verdict> {
-  "use step";
   return withHeartbeat(ref.jobId, "generating", async () => {
     const attempt =
       input.plan.mode === "patch"
@@ -287,25 +285,24 @@ export async function evaluateRepair(
   });
 }
 
-/* ── 5. persistence ──────────────────────────────────────────────────────── */
+/* ── persistence ─────────────────────────────────────────────────────────── */
 
 /**
  * Stores the application and marks the job succeeded.
  *
- * Idempotent on purpose, because this step may retry: a project that already
- * holds an application is left exactly as it is and the job is simply marked
- * succeeded again. That makes a replay a no-op rather than a second version,
- * which is the property the whole design turns on.
+ * Idempotent on purpose, because a message may arrive twice: a project that
+ * already holds an application is left exactly as it is and the job is simply
+ * marked succeeded again. That makes a duplicate a no-op rather than a second
+ * version, which is the property the whole design turns on.
  *
  * Writes go through the service client. There is no request and no session here
- * — the run outlives both — so every statement is scoped by `user_id`
+ * — the consumer outlives both — so every statement is scoped by `user_id`
  * explicitly rather than relying on RLS to do it.
  */
 export async function persistGeneratedApp(
-  ref: StepJobRef,
+  ref: JobRef,
   input: { app: GeneratedAppV1; model: string; locale: string },
 ): Promise<{ ok: boolean; message?: string }> {
-  "use step";
   return withHeartbeat(ref.jobId, "saving", async () => {
     const service = createServiceClient();
 
@@ -317,7 +314,7 @@ export async function persistGeneratedApp(
       .maybeSingle();
     if (!project) return { ok: false, message: "The project is gone." };
 
-    // Already written by an earlier attempt of this step. Finish the job and
+    // Already written by an earlier delivery. Finish the job and
     // touch nothing else — re-saving would replace a version the person may
     // already be looking at.
     if (readAppState(project.snapshot_fields)) {
@@ -371,11 +368,11 @@ export async function persistGeneratedApp(
  * Best-effort and deliberately after the save: a project with a version and no
  * chat message is a cosmetic gap, while a message promising a version that was
  * never stored is a lie. The message id is derived from the conversation, so a
- * retry of this step updates one row rather than adding a second message.
+ * repeated delivery updates one row rather than adding a second message.
  */
 async function announce(
   service: ReturnType<typeof createServiceClient>,
-  ref: StepJobRef,
+  ref: JobRef,
   conversationId: string,
   name: string,
   locale: string,
@@ -406,10 +403,10 @@ async function announce(
  * A stable UUID for the readiness message.
  *
  * The same derivation the inline path used, reimplemented without `node:crypto`
- * so this module carries no Node core import — the workflow compiler rejects
- * those, and a step that is only reachable through a workflow is not worth a
- * conditional import. FNV-1a over the seed, laid out as a v4-shaped UUID; it
- * only has to be deterministic and collision-free within one conversation.
+ * so the id is a pure function of the conversation and nothing else. FNV-1a over
+ * the seed, laid out as a v4-shaped UUID; it only has to be deterministic and
+ * collision-free within one conversation, which is what makes a repeated
+ * delivery update one row instead of adding a second message.
  */
 function derivedMessageId(conversationId: string): string {
   const seed = `${conversationId}:first-version-ready`;
@@ -432,27 +429,26 @@ function derivedMessageId(conversationId: string): string {
   ].join("-");
 }
 
-/* ── 6. failure ──────────────────────────────────────────────────────────── */
+/* ── failure ─────────────────────────────────────────────────────────────── */
 
 /**
  * Ends the job and gives back its unit of quota.
  *
  * Both halves are idempotent in the database — `release_generation_job_usage`
  * refuses a second refund and refuses to refund a job that succeeded — so a
- * retry of this step, or a stale sweep racing it, cannot double-credit.
+ * duplicate delivery, or a stale sweep racing it, cannot double-credit.
  */
 export async function failGeneration(
-  ref: StepJobRef,
+  ref: JobRef,
   input: { code: JobErrorCode; message: string },
 ): Promise<void> {
-  "use step";
   await finishFailed(ref.jobId, input.code, input.message);
   await releaseUsage(ref.jobId, "first_version_generation");
 }
 
 /* ── shared ──────────────────────────────────────────────────────────────── */
 
-/** Flattens the gate's own `Attempt` into something a run event can hold. */
+/** Flattens the gate's own `Attempt` into something a message can hold. */
 function verdictOf(attempt: Attempt): Verdict {
   if (attempt.ok) return { ok: true, app: attempt.build.app };
 

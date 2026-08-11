@@ -226,6 +226,41 @@ export async function beat(jobId: string, stage: JobStage): Promise<void> {
     .eq("id", jobId);
 }
 
+/**
+ * Claims the right to make one provider request, at most once per phase.
+ *
+ * THE PROBLEM THIS SOLVES. Generation runs from a queue now, and a queue
+ * delivers at least once. A redelivered message re-enters the consumer with the
+ * same arguments and no memory of the first attempt, so "one generation, at
+ * most one repair" cannot be a counter in the handler — it has to be state.
+ *
+ * `expected` is the counter's value this phase requires: 0 for the generation,
+ * 1 for the repair. The database checks and increments under one row lock, so a
+ * second delivery finds the counter already moved and is refused, and two
+ * deliveries racing cannot both proceed. Ordering falls out of the same rule —
+ * a repair cannot claim before a generation has.
+ *
+ * Returns false rather than throwing. A refusal is the normal outcome for a
+ * duplicate and the caller's job is simply to stop, not to treat it as an error.
+ */
+export async function claimProviderRequest(jobId: string, expected: number): Promise<boolean> {
+  const service = createServiceClient();
+  const { data, error } = await service.rpc("claim_generation_provider_request", {
+    p_job_id: jobId,
+    p_expected: expected,
+  });
+  if (error) {
+    console.error("[ventrio-generation-job-error]", JSON.stringify({
+      operation: "claim_generation_provider_request",
+      expected,
+      message: error.message,
+    }));
+    // Fail closed. An unreachable guard must never let a paid request through.
+    return false;
+  }
+  return data === true;
+}
+
 export async function finishSucceeded(jobId: string): Promise<void> {
   const service = createServiceClient();
   const now = new Date().toISOString();

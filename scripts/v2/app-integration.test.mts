@@ -139,20 +139,20 @@ const action = readFileSync(new URL("../../src/lib/actions/stage3.ts", import.me
     (generateBody.match(/await claimJob\(/g) ?? []).length === 1);
   check("and reserves usage exactly once",
     (generateBody.match(/await reserveUsage\(/g) ?? []).length === 1);
-  // Generation is a durable run now, but it is still *this* job's run: the
-  // handoff happens after the claim and after the reservation, so the workflow
-  // can only ever exist for a job that was claimed and a unit that was spent.
-  check("the run is started inside that job, not beside it",
-    generateBody.indexOf("startFirstVersionWorkflow") > generateBody.indexOf("await reserveUsage("));
-  check("a handoff that fails takes the shared refund path",
-    /startFirstVersionWorkflow[\s\S]{0,900}?releaseAndFail\(/.test(generateBody));
+  // Generation is queued now, but it is still *this* job's work: the enqueue
+  // happens after the claim and after the reservation, so a message can only
+  // ever exist for a job that was claimed and a unit that was spent.
+  check("the work is queued inside that job, not beside it",
+    generateBody.indexOf("enqueueGeneration") > generateBody.indexOf("await reserveUsage("));
+  check("an enqueue that fails takes the shared refund path",
+    /enqueueGeneration[\s\S]{0,900}?releaseAndFail\(/.test(generateBody));
   check("the refund releases the reserved unit",
     /async function releaseAndFail[\s\S]{0,400}?releaseUsage\(/.test(action));
   check("and marks the job failed first",
     /async function releaseAndFail[\s\S]{0,400}?finishFailed\([\s\S]{0,200}?releaseUsage\(/.test(action));
-  // Success is no longer the action's to report — the run outlives the request
-  // that started it, so the workflow's own persist step ends the job.
-  const steps = readFileSync(new URL("../../src/workflows/firstVersion/steps.ts", import.meta.url), "utf8");
+  // Success is no longer the action's to report — the work outlives the request
+  // that started it, so the queue consumer's own persist stage ends the job.
+  const steps = readFileSync(new URL("../../src/lib/v2/app/stages.ts", import.meta.url), "utf8");
   check("success marks the job succeeded, from the step that saved it",
     /finishSucceeded\(ref\.jobId\)/.test(steps));
   // Scoped to the app-runtime branch: the older inline renderers still finish

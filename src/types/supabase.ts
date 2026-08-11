@@ -160,6 +160,7 @@ export type Database = {
           kind: string
           progress_stage: string | null
           project_id: string
+          provider_requests: number
           request_id: string
           started_at: string | null
           status: string
@@ -179,6 +180,7 @@ export type Database = {
           kind?: string
           progress_stage?: string | null
           project_id: string
+          provider_requests?: number
           request_id: string
           started_at?: string | null
           status?: string
@@ -198,6 +200,7 @@ export type Database = {
           kind?: string
           progress_stage?: string | null
           project_id?: string
+          provider_requests?: number
           request_id?: string
           started_at?: string | null
           status?: string
@@ -1018,6 +1021,13 @@ export type Database = {
           allowed: boolean
           used_count: number
         }[]
+      }
+      claim_generation_provider_request: {
+        Args: {
+          p_expected: number
+          p_job_id: string
+        }
+        Returns: boolean
       }
       expire_stale_generation_jobs: {
         Args: {

@@ -65,41 +65,41 @@ export const STAGE_BUDGETS = {
 export type GenerationStage = keyof typeof STAGE_BUDGETS;
 
 /**
- * The hard ceiling on one durable workflow step, and the request budgets that
- * have to fit inside it.
+ * The hard ceiling on one queue-consumer invocation, and the request budgets
+ * that have to fit inside it.
  *
- * A workflow step executes as a Vercel Function, so it inherits that platform's
+ * A queue consumer executes as a Vercel Function, so it inherits that platform's
  * maximum duration — 300 s on this account's plan, where 300 s is both the
  * default and the maximum and cannot be raised. `STAGE_BUDGETS.generate` is
- * exactly 300 s, which is fine for an offline canary and impossible for a step:
+ * exactly 300 s, which is fine for an offline canary and impossible for a consumer:
  * a request allowed to spend the whole ceiling leaves nothing for the parse,
- * the gate and the return, so the platform kills the step instead of the
+ * the gate and the return, so the platform kills the invocation instead of the
  * request timing out cleanly.
  *
- * These are the budgets the durable path uses instead. The slowest of seventeen
+ * These are the budgets the queued path uses instead. The slowest of seventeen
  * measured live Gemini requests was 186.5 s, so 240 s is that plus about 29%
- * headroom while still leaving 60 s inside the step. The repair keeps its
+ * headroom while still leaving 60 s inside the function. The repair keeps its
  * existing 180 s, which already fits.
  *
  * This is a deployment constraint, not a change to how generation works: the
  * prompts, the budgets in tokens, the gate and the one-repair ceiling are all
  * untouched. What changed is that the two requests no longer share one function.
  */
-export const STEP_CEILING_MS = 300_000;
+export const FUNCTION_CEILING_MS = 300_000;
 
-export const WORKFLOW_STEP_BUDGETS = {
+export const CONSUMER_BUDGETS = {
   generate: 240_000,
   repair: STAGE_BUDGETS.repair,
 } as const;
 
 /**
- * Room a step needs for everything that is not the provider call.
+ * Room a consumer needs for everything that is not the provider call.
  *
  * Asserted rather than trusted: the pipeline test checks each budget against
  * the ceiling, so raising one without raising the other fails a test instead of
  * failing in production five minutes into a paid generation.
  */
-export const STEP_OVERHEAD_MS = 30_000;
+export const CONSUMER_OVERHEAD_MS = 30_000;
 
 /**
  * Slack for everything that is not the provider call: parsing, gating,

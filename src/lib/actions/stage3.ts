@@ -39,7 +39,8 @@ import { codegenRenderingEnabled, renderProjectWithCodegen } from "@/lib/v2/code
 import { mergeCodegenState, type CodegenProjectState } from "@/lib/v2/codegen/projectState";
 import { appRuntimeEnabled, composeAppBrief } from "@/lib/v2/app/renderProject";
 import { readAppState } from "@/lib/v2/app/projectState";
-import { startFirstVersionWorkflow } from "@/lib/v2/app/startWorkflow";
+import { enqueueGeneration } from "@/lib/v2/app/generationQueue";
+import { resolveGeminiConfig } from "@/lib/v2/gemini/config";
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const TOKEN_PATTERN = /^[a-zA-Z0-9_-]{8,80}$/;
@@ -493,7 +494,7 @@ export async function generateFirstVersionAction(
      */
     if (appRuntimeEnabled()) {
       /**
-       * Handed to the durable runtime instead of run here.
+       * Queued instead of run here.
        *
        * This used to be the whole pipeline inline: generation, gate, repair,
        * compile and the writes, inside this one request. Vercel kills a function
@@ -514,8 +515,8 @@ export async function generateFirstVersionAction(
         locale,
       });
 
-      // Persist the direction before handing off. The workflow writes the
-      // application, not the intake, and a run that outlives this request must
+      // Persist the direction before enqueueing. The consumer writes the
+      // application, not the intake, and work that outlives this request must
       // not lose what the person asked for.
       await supabase.from("projects").update({
         snapshot_fields: toJson(
@@ -523,25 +524,31 @@ export async function generateFirstVersionAction(
         ),
       }).eq("id", projectId).eq("user_id", user.id);
 
-      const handoff = await startFirstVersionWorkflow({
+      const config = resolveGeminiConfig();
+      if (!config.ok) {
+        return releaseAndFail(t("unavailable"), "provider_unavailable", `App runtime failed: ${config.code}.`);
+      }
+
+      const queued = await enqueueGeneration({
         jobId: job.id,
         projectId,
         userId: user.id,
         brief,
         locale,
+        model: config.model,
       });
-      if (!handoff.ok) {
+      if (!queued.ok) {
         console.error("[ventrio-ai-error]", JSON.stringify({
           operation: "app_runtime_enqueue",
           projectId,
-          code: handoff.code,
         }));
-        return releaseAndFail(t("unavailable"), "provider_unavailable", `App runtime failed: ${handoff.code}.`);
+        return releaseAndFail(t("unavailable"), "provider_unavailable", "App runtime failed: enqueue_failed.");
       }
 
       // Returns in milliseconds, with the job identity the workspace already
-      // polls. No reply yet — there is nothing to report until the run finishes,
-      // and claiming otherwise is what the old inline path could not avoid.
+      // polls. No reply yet — there is nothing to report until the queued work
+      // finishes, and claiming otherwise is what the old inline path could not
+      // avoid.
       return { error: null, output: null, reply: null, durationMs: Date.now() - startedAt, jobId: job.id };
     }
 
