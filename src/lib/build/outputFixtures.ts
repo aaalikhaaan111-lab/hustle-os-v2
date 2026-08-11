@@ -1,5 +1,4 @@
 import type { Stage3ProjectOutput } from "@/lib/build/stage3Types";
-import { ART_DIRECTIONS, resolveArtDirection, type ArtDirection } from "@/lib/build/artDirection";
 
 /**
  * A real generated artifact, kept as a fixture.
@@ -32,7 +31,6 @@ export const CHRONOVERSE_OUTPUT: Stage3ProjectOutput = {
     styleNotes: "Dark field, thin rules, monospace labels against a heavy display face",
     theme: "atmospheric",
   },
-  design: resolveArtDirection("warm_archive"),
   hero: {
     eyebrow: "The MCU, reordered",
     headline: "Not release order. The order it actually happened.",
@@ -114,18 +112,3 @@ export const CHRONOVERSE_OUTPUT: Stage3ProjectOutput = {
     shortPost: "Rebuilt the MCU by when things actually happen, not when they came out.",
   },
 };
-
-
-/**
- * The same content under every art direction.
- *
- * Diversity has to be judged on the whole visual system — type, surface,
- * composition, graphic language, motion — not on colour, and judging it from
- * real generations costs a paid call each. These hold the copy constant and
- * vary only the direction, so any visible difference is the design system
- * working rather than the model writing different words.
- */
-export const DESIGN_VARIANTS: Record<ArtDirection, Stage3ProjectOutput["design"]> =
-  Object.fromEntries(
-    ART_DIRECTIONS.map((direction) => [direction, resolveArtDirection(direction)]),
-  ) as unknown as Record<ArtDirection, Stage3ProjectOutput["design"]>;

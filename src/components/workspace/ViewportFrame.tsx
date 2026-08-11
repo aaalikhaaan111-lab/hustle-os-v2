@@ -55,16 +55,6 @@ export function ViewportFrame({ width, children, className, style, title }: View
     const doc = frame?.contentDocument;
     if (!doc) return;
 
-    // Carry the font variables into the frame.
-    //
-    // next/font declares each face as a CSS variable on a class, and those
-    // classes live on the parent's <html>. A portal only moves elements, not
-    // the document they sit under, so inside the frame every
-    // var(--font-display-*) resolved to nothing and the whole type system fell
-    // back to ui-sans-serif — the art direction was invisible in the preview
-    // while looking correct in the markup.
-    doc.documentElement.className = document.documentElement.className;
-
     doc.documentElement.style.height = "auto";
     doc.body.style.margin = "0";
     doc.body.style.background = "transparent";

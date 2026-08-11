@@ -34,8 +34,6 @@ import {
   reserveUsage,
 } from "@/lib/jobs/generationJobs";
 import { MAX_FIRST_VERSION_ATTEMPTS, type FirstVersionJobView } from "@/lib/jobs/firstVersion";
-import { withNewOutput, withPreviousOutput } from "@/lib/build/stage3Types";
-import { editScopeFor, type SiteIntent } from "@/lib/build/siteEditIntent";
 import { toJson } from "@/lib/supabase/json";
 import { codegenRenderingEnabled, renderProjectWithCodegen } from "@/lib/v2/codegen/renderProject";
 import { mergeCodegenState, type CodegenProjectState } from "@/lib/v2/codegen/projectState";
@@ -85,27 +83,7 @@ function outputPrompt(locale: string, edit = false, feedbackGrounded = false): s
   const language = locale === "ru" ? "Russian" : "English";
   return `You are Ventrio's first-version engine. ${edit ? "Edit the existing website according to the user's latest request." : "Generate a complete, premium website for the chosen project idea."}
 
-${edit ? `EDIT SCOPE. The request carries an "editScope". Honour it exactly — the person asked for one thing, not a new site:
-- FOCUSED: change only what was asked for and whatever genuinely depends on it. A request about type, colour, spacing or one element must leave every other field byte-identical to currentOutput — do not reword copy, do not rename sections, do not swap the theme unless the request was about the theme. Copy the untouched fields through unchanged.
-- CONTENT_ADD: add what was asked for and leave the rest alone. Existing sections, copy and visual identity stay as they are.
-- CONTENT_REMOVE: remove exactly what was named and nothing else. Do not rebalance, rewrite or replace the sections that remain.
-- VISUAL_WHOLESALE: layout, theme, palette, hero composition and section rhythm may all change. The product's purpose, its sections' meaning, its form fields and its copy must survive — this is a restyle, not a new product.
-Always return the COMPLETE output object, including every field you did not change.
-
-` : ""}The output is a real product website — the kind of thing you'd expect from a well-funded startup's launch, not a generic SaaS template and not a mini-game. The visitor should feel "AI actually understood my idea and built something real for it" — not "this is another AI landing page template." Write finished, launch-ready copy in ${language}. Never mention that the user should research, validate, design, or build something later — this already exists.
-
-CHOOSE THE ART DIRECTION. "design.artDirection" is one decision that settles the whole visual system — typeface pairing, surface, composition, graphic language, motion, component style. Choose it for THIS product, the way a designer would decide what kind of thing they are making before drawing anything.
-
-- cinematic — deep canvas, condensed display type set very large, few words, one confident full-bleed moment. For products that trade on atmosphere.
-- editorial_magazine — paper, high-contrast serif, asymmetric columns, a real lede paragraph, rules between sections. For reading and for ideas.
-- luxury_minimal — light old-style serif, wide gutters, enormous whitespace, almost nothing on screen. Space is the luxury. For premium and considered products.
-- technical_data — monospace, ruled grid, dense rows, numbers doing the talking. For tools, dashboards and anything measured.
-- playful_community — expressive geometric display, colour fields, round raised cards, movement on hover. For things people join.
-- utilitarian_tool — plain geometric sans, high contrast, tight panel hero, no ornament. For getting a job done.
-- warm_archive — grain, warm serif, chronology, a number leading the hero. For collections and history.
-- brutalist_poster — type as the entire graphic, oversized condensed caps, flat monochrome, no navigation. For statements.
-
-Pick the one that a strong designer would pick for this idea. Do not default to the same direction repeatedly, and do not pick a decorative one for a functional product or a severe one for something warm and social. You do not choose the individual typefaces, spacing or layout — the direction settles those, so they always agree.
+The output is a real product website — the kind of thing you'd expect from a well-funded startup's launch, not a generic SaaS template and not a mini-game. The visitor should feel "AI actually understood my idea and built something real for it" — not "this is another AI landing page template." Write finished, launch-ready copy in ${language}. Never mention that the user should research, validate, design, or build something later — this already exists.
 
 BEFORE YOU WRITE ANYTHING, think like the best designer for this exact idea would — a real design director deciding what THIS idea needs, never a template picker matching it to an existing pattern (never output this reasoning, just let it steer the design):
 1. What kind of real product/site does this idea actually need (a brand showcase, an education product, an impact/mission site, a tool, a community hub)?
@@ -417,7 +395,6 @@ export async function generateFirstVersionAction(
     turn: null,
     direction,
     output: null,
-    history: [],
   };
 
   // A finished first version is final. Nothing below may run again for it.
@@ -668,12 +645,6 @@ export async function editProjectOutputAction(
   conversationId: string,
   requestId: string,
   instruction: string,
-  /**
-   * What the request is allowed to move. Without it every edit was a full
-   * rewrite of the artifact, so asking for a different typeface could come back
-   * with different product copy.
-   */
-  intent: SiteIntent = "EDIT_CURRENT",
 ): Promise<Stage3Result> {
   const t = await getTranslations("stage3");
   if (!UUID_PATTERN.test(projectId) || !UUID_PATTERN.test(conversationId) || !TOKEN_PATTERN.test(requestId)) {
@@ -761,7 +732,6 @@ export async function editProjectOutputAction(
       messages: [{ role: "user", content: JSON.stringify({
         currentOutput: stage3.output,
         requestedEdit: message,
-        editScope: editScopeFor(intent),
         projectLocale: locale,
         feedbackContext,
       }) }],
@@ -773,13 +743,7 @@ export async function editProjectOutputAction(
     const output = sanitizeStage3Output(parsed.output, stage3.output.preset);
     const reply = typeof parsed.message === "string" ? parsed.message.trim().slice(0, 500) : "";
     if (!output || !reply) return releaseAndFail(t("unavailable"));
-    // Keeps the replaced version so "верни предыдущую версию" has something to
-    // restore. Before this, each edit destroyed the artifact it replaced.
-    const nextState: Stage3ProjectState = {
-      ...withNewOutput(stage3, output),
-      status: "first_version_ready",
-      lastRequestId: requestMarker,
-    };
+    const nextState: Stage3ProjectState = { ...stage3, status: "first_version_ready", lastRequestId: requestMarker, output };
     const snapshot = mergeStage3ProjectState(project.snapshot_fields, nextState);
     snapshot.solution = output.identity.description;
     snapshot.audience = output.targetUser;
@@ -806,62 +770,6 @@ export async function editProjectOutputAction(
     console.error("[ventrio-ai-error]", JSON.stringify({ operation: "project_output_edit", projectId, message: error instanceof Error ? error.message : "unknown" }));
     return releaseAndFail(t("unavailable"));
   }
-}
-
-/**
- * Step the site back one version.
- *
- * No model call and no quota: the previous artifact is already stored, so this
- * is a swap, not a generation. That also makes it safe to offer as the recovery
- * from an edit someone did not like — undoing must never cost them anything or
- * be refused because their allowance ran out.
- */
-export async function undoProjectOutputAction(
-  projectId: string,
-  conversationId: string,
-): Promise<Stage3Result> {
-  const t = await getTranslations("stage3");
-  if (!UUID_PATTERN.test(projectId) || !UUID_PATTERN.test(conversationId)) {
-    return { error: t("errorInvalid"), output: null, reply: null };
-  }
-  const { supabase, user, project, stage3 } = await ownedProject(projectId);
-  if (!user) return { error: t("errorSession"), output: null, reply: null };
-  if (!project || !stage3 || !stage3.output || stage3.conversationId !== conversationId) {
-    return { error: t("errorDirection"), output: null, reply: null };
-  }
-
-  const restored = withPreviousOutput(stage3);
-  if (!restored || !restored.output) {
-    // Nothing to undo is not a failure — say so plainly and leave the site
-    // exactly as it is.
-    return { error: null, output: stage3.output, reply: t("undoNothing"), durationMs: 0 };
-  }
-
-  const locale = isLocale(project.locale) ? project.locale : DEFAULT_LOCALE;
-  const tProject = await getTranslations({ locale, namespace: "stage3" });
-  const output = restored.output;
-  const snapshot = mergeStage3ProjectState(project.snapshot_fields, restored);
-  snapshot.solution = output.identity.description;
-  snapshot.audience = output.targetUser;
-  snapshot.first_version = output.primaryValue;
-  const { error } = await supabase.from("projects").update({
-    name: output.identity.name,
-    target_audience: output.targetUser,
-    snapshot_fields: toJson(snapshot),
-  }).eq("id", projectId).eq("user_id", user.id);
-  if (error) return { error: t("errorSave"), output: null, reply: null };
-
-  const reply = tProject("undoDone");
-  await supabase.from("project_ai_messages").insert({
-    conversation_id: conversationId,
-    project_id: projectId,
-    user_id: user.id,
-    role: "assistant",
-    content: reply,
-  });
-  revalidatePath("/projects");
-  revalidatePath(`/projects/${projectId}`);
-  return { error: null, output, reply, durationMs: 0 };
 }
 
 // ============================================================================

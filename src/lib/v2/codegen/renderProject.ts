@@ -50,15 +50,15 @@ export async function renderProjectWithCodegen(
   const routes = codegenRoutesFor(input.output);
 
   /**
-   * Imagery follows the artifact's own decision.
+   * Every project gets the same trusted registry.
    *
-   * `imageryStrategy: "none"` is a real answer, not an absence — a type-led
-   * page that never reserves space for a picture beats one that frames a
-   * placeholder. Passing an empty registry in that case tells both the prompt
-   * and the gate there are no pictures, and the gate then refuses any layout
-   * that implies one. That pairing is what stops an empty visual column.
+   * This used to follow a per-project `imageryStrategy` decision carried on the
+   * artifact, so that a type-led page could declare "no pictures" and have the
+   * gate refuse any layout implying one. That field belongs to the art-direction
+   * work, which is not part of this release; without it there is nothing to
+   * branch on, and offering the full registry is the behaviour that predates it.
    */
-  const assets = input.output.design.imageryStrategy === "none" ? new Map() : TRUSTED_ASSETS;
+  const assets = TRUSTED_ASSETS;
 
   const result = await generateCodegenBundle(
     { model: config.model, brief, content, routes, assets },

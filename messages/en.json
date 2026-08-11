@@ -103,13 +103,7 @@
     "makeReal": "Let's make this real.",
     "step1": "Direction understood",
     "step2": "Building the first version",
-    "step3": "Revealing your project",
-    "actThinking": "Thinking",
-    "actDirection": "Choosing direction",
-    "actStructure": "Building structure",
-    "actStyling": "Styling",
-    "actMobile": "Checking mobile",
-    "actReady": "Ready"
+    "step3": "Revealing your project"
   },
   "stage3": {
     "errorInvalid": "That project request was invalid. Please try again.",
@@ -168,9 +162,7 @@
     "genStale": "Generation stopped responding.",
     "genRetry": "Try again",
     "genRetryingLabel": "Starting again…",
-    "genStillWorking": "Still working. A first version usually takes under a minute.",
-    "undoDone": "Restored the previous version.",
-    "undoNothing": "There is no previous version to go back to yet."
+    "genStillWorking": "Still working. A first version usually takes under a minute."
   },
   "publishing": {
     "controlsLabel": "Publishing controls",
