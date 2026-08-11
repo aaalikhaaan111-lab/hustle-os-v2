@@ -32,6 +32,7 @@ import {
   type JobErrorCode,
 } from "@/lib/jobs/generationJobs";
 import { enqueueRepair, type GenerateMessage, type RepairMessage } from "./generationQueue";
+import type { DeadlineOptions } from "./stages";
 import {
   beginGeneration,
   evaluateGeneration,
@@ -55,7 +56,10 @@ export type GenerationOutcome =
 const GENERATE_EXPECTS = 0;
 const REPAIR_EXPECTS = 1;
 
-export async function runGeneratePhase(message: GenerateMessage): Promise<GenerationOutcome> {
+export async function runGeneratePhase(
+  message: GenerateMessage,
+  options: DeadlineOptions = {},
+): Promise<GenerationOutcome> {
   const ref: JobRef = { jobId: message.jobId, projectId: message.projectId, userId: message.userId };
 
   const start = await beginGeneration(ref);
@@ -67,7 +71,7 @@ export async function runGeneratePhase(message: GenerateMessage): Promise<Genera
     return { outcome: "skipped", reason: "this generation was already claimed" };
   }
 
-  const generated = await requestGeneration(ref, { brief: message.brief });
+  const generated = await requestGeneration(ref, { brief: message.brief }, options);
   if (!generated.ok) {
     // A transport failure says nothing about the project, so it never buys a
     // repair — the same rule the inline pipeline applied.
@@ -98,7 +102,10 @@ export async function runGeneratePhase(message: GenerateMessage): Promise<Genera
   return fail(ref, "invalid_output", verdict.code, verdict.message);
 }
 
-export async function runRepairPhase(message: RepairMessage): Promise<GenerationOutcome> {
+export async function runRepairPhase(
+  message: RepairMessage,
+  options: DeadlineOptions = {},
+): Promise<GenerationOutcome> {
   const ref: JobRef = { jobId: message.jobId, projectId: message.projectId, userId: message.userId };
 
   const start = await beginGeneration(ref);
@@ -112,7 +119,7 @@ export async function runRepairPhase(message: RepairMessage): Promise<Generation
     brief: message.brief,
     issues: message.issues,
     plan: message.plan,
-  });
+  }, options);
   if (!repaired.ok) return fail(ref, "invalid_output", repaired.code, repaired.message);
 
   const verdict = await evaluateRepair(ref, { text: repaired.text, plan: message.plan });

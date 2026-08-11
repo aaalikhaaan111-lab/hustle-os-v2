@@ -107,18 +107,109 @@ export interface JobRef {
  * the call. It is also the honest signal: the row says "still working" because
  * work is still happening, not because a timer has not expired yet.
  */
-const HEARTBEAT_MS = 30_000;
+export const HEARTBEAT_MS = 30_000;
 
-export async function withHeartbeat<T>(jobId: string, stage: "generating" | "saving", run: () => Promise<T>): Promise<T> {
+/**
+ * The beat is deliberately fire-and-forget.
+ *
+ * It must not be awaited on the critical path and must not be able to fail the
+ * stage it is reporting on: a database hiccup while a healthy generation is
+ * running should cost a heartbeat, not the generation. The interval is
+ * independent of the provider `await` — the timer is scheduled before the
+ * operation starts and fires from the event loop, not from anything the
+ * operation does — which is what lets a four-minute request keep saying it is
+ * alive.
+ *
+ * A caveat worth writing down: this holds as long as timers fire at all. If the
+ * runtime suspends the invocation, nothing here can report anything, and the
+ * job's own stale sweep is the backstop. That is why the sweep still exists.
+ */
+export async function withHeartbeat<T>(
+  jobId: string,
+  stage: "generating" | "saving",
+  run: () => Promise<T>,
+  intervalMs: number = HEARTBEAT_MS,
+): Promise<T> {
   await beat(jobId, stage);
   const timer = setInterval(() => {
     void beat(jobId, stage).catch(() => {});
-  }, HEARTBEAT_MS);
+  }, intervalMs);
   try {
     return await run();
   } finally {
     clearInterval(timer);
   }
+}
+
+/* ── the consumer's own deadline ─────────────────────────────────────────── */
+
+/**
+ * A wall-clock ceiling the consumer enforces itself.
+ *
+ * THE DEFECT THIS FIXES, observed in production on 2026-08-11. A repair
+ * invocation started, won its claim, beat once, and was then never heard from
+ * again — no heartbeat, no completion, no failure record — until Vercel killed
+ * it near the 300 s function ceiling. Its provider budget was 180 s, so the
+ * request's own abort should have returned control at 180 s and did not.
+ *
+ * That abort is a request to the fetch layer, not a guarantee. It only works if
+ * something downstream honours the signal, and a stalled body read or a socket
+ * that never answers can leave the `await` pending regardless. So the ceiling
+ * cannot live inside the request; it has to be a timer the consumer owns,
+ * racing the whole operation.
+ *
+ * `Promise.race` does not cancel the loser. The provider promise may still
+ * settle later — that is unavoidable in JavaScript — so lateness is handled
+ * where it could do damage rather than pretended away: the result of a late
+ * settle is discarded here, and `persistGeneratedApp` re-reads the job before
+ * writing anything, so a straggler cannot save a version for a job that has
+ * already failed. See the note there.
+ */
+export const HARD_DEADLINES = {
+  /**
+   * Both leave real margin under the platform's 300 s ceiling, so a timeout is
+   * reported by this code rather than by the platform killing the invocation —
+   * the difference between a job that fails cleanly and one left `running`.
+   */
+  generate: 265_000,
+  repair: 220_000,
+} as const;
+
+export interface DeadlineOptions {
+  /** Overridden only by tests, which cannot wait three minutes to prove this. */
+  deadlineMs?: number;
+}
+
+/**
+ * Runs an operation, or gives up on it.
+ *
+ * Returns the operation's value if it settles first, and `onExpiry()` if the
+ * clock wins. The loser is left to its fate; nothing downstream trusts it.
+ */
+export async function withDeadline<T>(
+  ms: number,
+  run: () => Promise<T>,
+  onExpiry: () => T,
+): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const expiry = new Promise<T>((resolve) => {
+    timer = setTimeout(() => resolve(onExpiry()), ms);
+  });
+  try {
+    return await Promise.race([run(), expiry]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/** The outcome a stage reports when its own clock ran out. */
+function expired(label: string, ms: number): ProviderOutcome {
+  return {
+    ok: false,
+    code: "timeout",
+    message: `The ${label} request did not return within ${Math.round(ms / 1000)}s and was abandoned.`,
+    latencyMs: ms,
+  };
 }
 
 /* ── the guard ───────────────────────────────────────────────────────────── */
@@ -175,13 +266,15 @@ export async function beginGeneration(ref: JobRef): Promise<{ proceed: boolean; 
 export async function requestGeneration(
   ref: JobRef,
   input: { brief: string },
+  options: DeadlineOptions = {},
 ): Promise<ProviderOutcome> {
   const provider = createAppTransport();
   if (!provider.ok) {
     return { ok: false, code: "not_configured", message: provider.message, latencyMs: 0 };
   }
 
-  return withHeartbeat(ref.jobId, "generating", async () => {
+  const hard = options.deadlineMs ?? HARD_DEADLINES.generate;
+  return withHeartbeat(ref.jobId, "generating", () => withDeadline(hard, async () => {
     const controller = new AbortController();
     const deadline = setTimeout(() => controller.abort(), CONSUMER_BUDGETS.generate);
     try {
@@ -207,7 +300,7 @@ export async function requestGeneration(
     } finally {
       clearTimeout(deadline);
     }
-  });
+  }, () => expired("generation", hard)));
 }
 
 /* ── the gate ────────────────────────────────────────────────────────────── */
@@ -225,13 +318,15 @@ export async function evaluateGeneration(ref: JobRef, text: string): Promise<Ver
 export async function requestRepair(
   ref: JobRef,
   input: { brief: string; issues: string[]; plan: SerialPlan },
+  options: DeadlineOptions = {},
 ): Promise<ProviderOutcome> {
   const provider = createAppTransport();
   if (!provider.ok) {
     return { ok: false, code: "not_configured", message: provider.message, latencyMs: 0 };
   }
 
-  return withHeartbeat(ref.jobId, "generating", async () => {
+  const hard = options.deadlineMs ?? HARD_DEADLINES.repair;
+  return withHeartbeat(ref.jobId, "generating", () => withDeadline(hard, async () => {
     const controller = new AbortController();
     const deadline = setTimeout(() => controller.abort(), CONSUMER_BUDGETS.repair);
     try {
@@ -269,7 +364,7 @@ export async function requestRepair(
     } finally {
       clearTimeout(deadline);
     }
-  });
+  }, () => expired("repair", hard)));
 }
 
 export async function evaluateRepair(
@@ -305,6 +400,26 @@ export async function persistGeneratedApp(
 ): Promise<{ ok: boolean; message?: string }> {
   return withHeartbeat(ref.jobId, "saving", async () => {
     const service = createServiceClient();
+
+    /**
+     * A late straggler must not save anything.
+     *
+     * `withDeadline` cannot cancel the provider promise it abandoned, so that
+     * promise may still settle minutes later and walk this far. By then the job
+     * has been marked failed and its quota returned, and writing a version now
+     * would resurrect work the person was already told had failed — and leave a
+     * refunded generation with output. The job's own state is the authority, and
+     * it is re-read here rather than assumed from anything held in memory.
+     */
+    const { data: job } = await service
+      .from("generation_jobs")
+      .select("status")
+      .eq("id", ref.jobId)
+      .maybeSingle();
+    if (!job) return { ok: false, message: "The job is gone." };
+    if (job.status !== "running" && job.status !== "queued") {
+      return { ok: false, message: `The job is already ${job.status}; this result arrived too late.` };
+    }
 
     const { data: project } = await service
       .from("projects")
