@@ -89,6 +89,7 @@ export function WorkspaceView(props: WorkspaceViewProps) {
         stage3Status={props.stage3.status}
         direction={props.stage3.direction}
         initialOutput={props.stage3.output}
+        app={props.app}
         assistant={props.assistant}
         openingMessage={props.openingMessage}
         publication={props.publication}

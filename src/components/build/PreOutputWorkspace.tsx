@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import type { AssistantMessage } from "@/lib/actions/assistant";
 import { sendAssistantMessage } from "@/lib/actions/assistant";
@@ -14,6 +15,8 @@ import type { DesignPreviewId } from "@/lib/build/intake";
 import { intakeGenerationBrief, type IntakeAnswers } from "@/lib/build/intake";
 import type { Stage3ProjectOutput, Stage3Status } from "@/lib/build/stage3Types";
 import { ProjectOutputRenderer } from "@/components/build/ProjectOutputRenderer";
+import { AppPreview } from "@/components/workspace/AppPreview";
+import type { WorkspaceAppView } from "@/components/build/WorkspaceView";
 import { PublicationControls } from "@/components/publishing/PublicationControls";
 import { BuildScreen, OpenPreviewButton } from "@/components/workspace/BuildScreen";
 import { WorkspaceComposer } from "@/components/workspace-ui/Composer";
@@ -37,6 +40,14 @@ interface PreOutputWorkspaceProps {
   stage3Status: Stage3Status | null;
   direction: CreationDirection | null;
   initialOutput: Stage3ProjectOutput | null;
+  /**
+   * The generated application, when the app runtime built this project.
+   *
+   * A project it built has no `initialOutput` — it has an application — so
+   * every "do we have a version yet" test below has to consider both, or a
+   * finished project keeps being offered the button that builds it.
+   */
+  app: WorkspaceAppView | null;
   assistant: {
     available: boolean;
     conversationId: string | null;
@@ -71,6 +82,7 @@ export function PreOutputWorkspace({
   stage3Status,
   direction,
   initialOutput,
+  app,
   assistant,
   openingMessage,
   publication,
@@ -88,6 +100,9 @@ export function PreOutputWorkspace({
   const speechLocale = projectLocale || uiLocale;
 
   const [output, setOutput] = useState(initialOutput);
+  const router = useRouter();
+  // Either shape counts as "this project has been built".
+  const hasVersion = Boolean(output) || Boolean(app);
   const [messages, setMessages] = useState<ChatMessage[]>(
     assistant.messages.map((message) => ({ id: message.id, role: message.role, content: message.content }))
   );
@@ -100,7 +115,7 @@ export function PreOutputWorkspace({
   const [isEditingOutput, setIsEditingOutput] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  const job = useFirstVersionJob(projectId, Boolean(output));
+  const job = useFirstVersionJob(projectId, hasVersion);
   const hasFailed = job.phase === "failed" || job.phase === "stale";
   // A quota wall, not a failure — so it never borrows failure's wording, and it
   // offers no retry, because retrying would fail the same way every time.
@@ -142,7 +157,7 @@ export function PreOutputWorkspace({
     projectId,
     idea: ideaText,
     // Intake exists only in the gap between "has an idea" and "has output".
-    enabled: !output && !!direction && !job.active && assistant.available,
+    enabled: !hasVersion && !!direction && !job.active && assistant.available,
     onComplete: (answers: IntakeAnswers) => createFirstVersion(false, answers),
   });
 
@@ -154,7 +169,7 @@ export function PreOutputWorkspace({
     // No `!direction` here either: the server infers one when nobody picked a
     // card, so refusing on the client would only reinstate the gate one layer
     // up and leave the button silently dead.
-    if (busy || output) return;
+    if (busy || hasVersion) return;
     setNote(null);
     // Before the round trip, so the button answers on the first frame rather
     // than after the job row exists.
@@ -167,6 +182,20 @@ export function PreOutputWorkspace({
             // The number comes from the server's own reservation result, so the
             // sentence can never disagree with the limit actually applied.
             setNote(t("firstVersionLimitReached", { limit: result.limitReached.limit }));
+            return;
+          }
+          /**
+           * A successful app-runtime generation returns no `output`.
+           *
+           * It produced an application, which is persisted on the project
+           * rather than returned inline, so the only way to show it is to let
+           * the server re-read the row. The reply distinguishes this from the
+           * other no-output case below — a click that lost the race carries no
+           * reply, and refreshing on that would be harmless but pointless.
+           */
+          if (!result.error && result.reply) {
+            append("assistant", result.reply);
+            router.refresh();
             return;
           }
           // A job came back with no output and no error: this click lost the
@@ -317,6 +346,8 @@ export function PreOutputWorkspace({
         publication?.isPublished && publication.slug ? `${publicBaseUrl}/p/${publication.slug}` : null
       }
       preview={
+        // The old artifact wins where one exists; an app-runtime project has
+        // an application instead, rendered in its own scripted sandbox.
         output ? (
           <ProjectOutputRenderer
             projectKey={projectId}
@@ -325,6 +356,8 @@ export function PreOutputWorkspace({
             revealKey={revealKey}
             mode="preview"
           />
+        ) : app ? (
+          (device) => <AppPreview document={app.document} device={device} title={app.title} />
         ) : null
       }
       chat={({ previewOpen, canOpenPreview, openPreview }) => {

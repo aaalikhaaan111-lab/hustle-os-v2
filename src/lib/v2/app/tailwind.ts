@@ -27,6 +27,7 @@ import "server-only";
 
 import { createRequire } from "node:module";
 import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { compile } from "tailwindcss";
 import { Scanner } from "@tailwindcss/oxide";
 
@@ -78,7 +79,17 @@ export class TailwindCompileError extends Error {}
  * validator enforces do not stop existing here.
  */
 function stylesheetLoader() {
-  const require_ = createRequire(import.meta.url);
+  /**
+   * Resolved from the project root, not from this module.
+   *
+   * `createRequire(import.meta.url)` works when this file is a real path on
+   * disk — which it is under tsx, where every offline test passed. Inside
+   * Next's server bundle it is not: the module's URL is a bundler-internal
+   * location with no node_modules above it, and the first staging generation
+   * failed with "tailwindcss/index.css could not be read on the server" after
+   * spending two Gemini requests. The package root is stable in both.
+   */
+  const require_ = createRequire(join(process.cwd(), "package.json"));
   return async (id: string, base: string) => {
     const wanted = id.replace(/^["']|["']$/g, "");
     if (wanted !== "tailwindcss" && !wanted.startsWith("tailwindcss/")) {
