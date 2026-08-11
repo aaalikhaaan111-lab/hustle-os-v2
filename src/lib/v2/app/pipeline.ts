@@ -54,6 +54,11 @@ export type AppBuildResult =
 export interface BuildOptions {
   /** Ventrio-owned asset id → data URI, exposed to the app as a lookup table. */
   assets?: Record<string, string>;
+  /**
+   * The current request's CSP nonce, for Ventrio's own script tags in the
+   * sandbox document. Per-request and never persisted — see `sandbox.ts`.
+   */
+  nonce?: string;
 }
 
 export async function buildGeneratedApp(
@@ -105,6 +110,7 @@ export async function buildGeneratedApp(
     lang: app.metadata.locale,
     title: app.metadata.name,
     assets,
+    nonce: options.nonce,
   });
 
   return {

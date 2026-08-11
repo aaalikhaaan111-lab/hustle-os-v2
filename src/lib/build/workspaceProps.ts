@@ -10,6 +10,7 @@ import { loadProjectPublicationState } from "@/lib/publishing/queries";
 import { getSiteUrl } from "@/lib/site";
 import { compileCodegenBundle } from "@/lib/v2/codegen/compile";
 import { readCodegenState } from "@/lib/v2/codegen/projectState";
+import { headers } from "next/headers";
 import { readAppState } from "@/lib/v2/app/projectState";
 import { buildGeneratedApp } from "@/lib/v2/app/pipeline";
 import type { WorkspaceAppView, WorkspaceCodegenView } from "@/components/build/WorkspaceView";
@@ -129,7 +130,15 @@ async function compileStoredApp(snapshotFields: unknown): Promise<WorkspaceAppVi
   const state = readAppState(snapshotFields);
   if (!state) return null;
 
-  const built = await buildGeneratedApp(state.app);
+  /**
+   * The nonce the middleware minted for this request.
+   *
+   * Taken from the same header the app layout uses, so there is one nonce
+   * source rather than two. Nothing is stored: the document is rebuilt on
+   * every read and each rebuild carries only that request's nonce.
+   */
+  const nonce = (await headers()).get("x-nonce") ?? undefined;
+  const built = await buildGeneratedApp(state.app, { nonce });
   if (!built.ok) {
     console.error("[ventrio-app-runtime]", JSON.stringify({
       operation: "recompile_stored",

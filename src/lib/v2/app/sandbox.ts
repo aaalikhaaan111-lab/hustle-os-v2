@@ -95,6 +95,34 @@ export interface SandboxInput {
   title: string;
   /** Ventrio-owned asset id → data URI. */
   assets?: Record<string, string>;
+  /**
+   * The current request's CSP nonce, applied to Ventrio's own script tags.
+   *
+   * A `srcdoc` frame inherits the embedding page's Content-Security-Policy,
+   * and Ventrio's pages allow scripts only by nonce. Without this the document
+   * loads, the stylesheet applies, and React never mounts — the frame renders
+   * styled and empty, which is exactly what staging showed.
+   *
+   * It is per-request and ephemeral: passed in at build time, never stored on
+   * the project and never part of `GeneratedAppV1`. The document is rebuilt on
+   * every read, so each render carries that request's nonce and no other.
+   *
+   * Applied ONLY to the three tags this function writes. Markup the model
+   * produced never receives it, so a generated `<script>` in the app's own
+   * output is still refused by the inherited policy.
+   */
+  nonce?: string;
+}
+
+/**
+ * A nonce is written into an HTML attribute, so it is checked rather than
+ * trusted. The middleware emits base64 of a UUID; anything outside that
+ * alphabet is dropped rather than escaped, because a nonce that needed
+ * escaping did not come from the middleware.
+ */
+function nonceAttribute(nonce: string | undefined): string {
+  if (!nonce || !/^[A-Za-z0-9+/_=-]{16,256}$/.test(nonce)) return "";
+  return ` nonce="${nonce}"`;
 }
 
 const escapeHtml = (value: string): string =>
@@ -166,8 +194,9 @@ im.type = "importmap";
 im.textContent = JSON.stringify({ imports: __imports });
 document.head.appendChild(im);`;
 
+  const nonce = nonceAttribute(input.nonce);
   const assets = input.assets && Object.keys(input.assets).length > 0
-    ? `<script>window.__ventrioAssets = ${JSON.stringify(input.assets)};</script>`
+    ? `<script${nonce}>window.__ventrioAssets = ${JSON.stringify(input.assets)};</script>`
     : "";
 
   return `<!doctype html><html lang="${escapeHtml(lang)}"><head>`
@@ -184,8 +213,8 @@ document.head.appendChild(im);`;
     + (input.css ? `<style>${escapeForStyle(input.css)}</style>` : "")
     + `</head><body><div id="root"></div>`
     + assets
-    + `<script>${escapeForScript(shim)}</script>`
-    + `<script type="module">${escapeForScript(input.code)}</script>`
+    + `<script${nonce}>${escapeForScript(shim)}</script>`
+    + `<script type="module"${nonce}>${escapeForScript(input.code)}</script>`
     + `</body></html>`;
 }
 

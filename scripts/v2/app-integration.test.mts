@@ -178,7 +178,10 @@ const action = readFileSync(new URL("../../src/lib/actions/stage3.ts", import.me
 
 {
   const props = readFileSync(new URL("../../src/lib/build/workspaceProps.ts", import.meta.url), "utf8");
-  check("reopening compiles the stored project", /buildGeneratedApp\(state\.app\)/.test(props));
+  check("reopening compiles the stored project", /buildGeneratedApp\(state\.app, \{ nonce \}\)/.test(props));
+  // The rebuild carries the request's CSP nonce: a srcdoc frame inherits the
+  // page policy, and without it the app loads styled and never mounts.
+  check("and passes the request nonce into the rebuild", /const nonce = \(await headers\(\)\)\.get\("x-nonce"\)/.test(props));
   check("and shows nothing when the gate now refuses it", /if \(!built\.ok\) \{[\s\S]{0,400}?return null;/.test(props));
   check("no provider is contacted on read", !/generateApp\(|createAppTransport\(/.test(props));
 
