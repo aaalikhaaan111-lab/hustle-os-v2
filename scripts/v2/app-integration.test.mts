@@ -139,16 +139,32 @@ const action = readFileSync(new URL("../../src/lib/actions/stage3.ts", import.me
     (generateBody.match(/await claimJob\(/g) ?? []).length === 1);
   check("and reserves usage exactly once",
     (generateBody.match(/await reserveUsage\(/g) ?? []).length === 1);
-  check("the app runtime runs inside that job, not beside it",
-    generateBody.indexOf("renderProjectWithAppRuntime") > generateBody.indexOf("await reserveUsage("));
-  check("its failure path is the shared refund path",
-    /renderProjectWithAppRuntime[\s\S]{0,900}?releaseAndFail\(/.test(generateBody));
+  // Generation is a durable run now, but it is still *this* job's run: the
+  // handoff happens after the claim and after the reservation, so the workflow
+  // can only ever exist for a job that was claimed and a unit that was spent.
+  check("the run is started inside that job, not beside it",
+    generateBody.indexOf("startFirstVersionWorkflow") > generateBody.indexOf("await reserveUsage("));
+  check("a handoff that fails takes the shared refund path",
+    /startFirstVersionWorkflow[\s\S]{0,900}?releaseAndFail\(/.test(generateBody));
   check("the refund releases the reserved unit",
     /async function releaseAndFail[\s\S]{0,400}?releaseUsage\(/.test(action));
   check("and marks the job failed first",
     /async function releaseAndFail[\s\S]{0,400}?finishFailed\([\s\S]{0,200}?releaseUsage\(/.test(action));
-  check("success marks the job succeeded",
-    /renderProjectWithAppRuntime[\s\S]{0,3000}?finishSucceeded\(job\.id\)/.test(generateBody));
+  // Success is no longer the action's to report — the run outlives the request
+  // that started it, so the workflow's own persist step ends the job.
+  const steps = readFileSync(new URL("../../src/workflows/firstVersion/steps.ts", import.meta.url), "utf8");
+  check("success marks the job succeeded, from the step that saved it",
+    /finishSucceeded\(ref\.jobId\)/.test(steps));
+  // Scoped to the app-runtime branch: the older inline renderers still finish
+  // their own jobs in this action, and legitimately so — they return a document.
+  const appBranch = generateBody.slice(
+    generateBody.indexOf("if (appRuntimeEnabled()) {"),
+    generateBody.indexOf("const client = new Anthropic();"),
+  );
+  check("the app branch was found", appBranch.length > 200);
+  check("and it no longer claims to have finished the work",
+    !/finishSucceeded/.test(appBranch));
+  check("nor to have saved anything", !/mergeAppState/.test(appBranch));
 
   check("an in-flight job is returned rather than started again",
     /previous\.status === "queued" \|\| previous\.status === "running"/.test(generateBody));
@@ -171,7 +187,7 @@ const action = readFileSync(new URL("../../src/lib/actions/stage3.ts", import.me
   check("the app branch does not fall back to the old renderer",
     !/appRuntimeEnabled\(\)[\s\S]{0,2000}?renderProjectWithCodegen/.test(generateBody));
   check("the generated application is persisted",
-    /mergeAppState\(/.test(generateBody));
+    /mergeAppState\(/.test(steps));
 }
 
 /* ── 6. the workspace rebuilds from source, never from a stored document ─── */

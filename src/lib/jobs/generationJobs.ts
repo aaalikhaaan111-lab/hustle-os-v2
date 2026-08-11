@@ -1,7 +1,7 @@
 import "server-only";
 
 import { createServiceClient } from "@/lib/supabase/public";
-import { AI_USAGE_LIMITS, usageKeyFor, type AiUsageMetric, type UsageReservation } from "@/lib/ai/usage";
+import { AI_USAGE_LIMITS, isDailyMetric, usageKeyFor, type AiUsageMetric, type UsageReservation } from "@/lib/ai/usage";
 
 /**
  * Durable state for long-running AI generation.
@@ -347,15 +347,16 @@ export async function expireStaleForUser(
 ): Promise<number> {
   const service = createServiceClient();
   const cutoff = new Date(Date.now() - STALE_AFTER_MS).toISOString();
-  // The sweep releases every dead hold in one call, so it can only name one
-  // key. Today's is the right one for all but the rare job that was abandoned
-  // across midnight; that case credits the current day instead of the previous
-  // one, which is generous by at most a single unit and never over-charges.
+  // The base metric, not a resolved key: the sweep composes one key per job
+  // from that job's own `usage_reserved_at`, so a hold taken yesterday is
+  // refunded to yesterday. Passing a single resolved key here was only ever
+  // approximately right, and passing a key at all is what broke the sweep below.
   const { data, error } = await service.rpc("expire_stale_generation_jobs_for_user", {
     p_user_id: userId,
     p_kind: KIND,
+    p_metric: metric,
+    p_metric_daily: isDailyMetric(metric),
     p_cutoff: cutoff,
-    p_metric: usageKeyFor(metric),
   });
   if (error) {
     console.error("[ventrio-ai-usage-error]", JSON.stringify({
@@ -384,12 +385,27 @@ export async function expireStale(
 ): Promise<boolean> {
   const service = createServiceClient();
   const cutoff = new Date(Date.now() - STALE_AFTER_MS).toISOString();
+  /**
+   * THE DEFECT THIS FIXES, observed in production on 2026-08-11.
+   *
+   * A daily allowance is enforced under a per-day key —
+   * `first_version_generation:2026-08-11` — which is what `reserveUsage`
+   * charges. This call passed the bare metric name instead, so the sweep
+   * refunded a key nothing reserves. The production generation that was killed
+   * by the function timeout came back with its day key still charged and a
+   * legacy lifetime row decremented instead: the person lost a generation to a
+   * failure that was not theirs, and the counter that governs them never moved.
+   *
+   * The key is now composed per job from that job's own reservation timestamp,
+   * inside the transaction that ends it.
+   */
   const { data, error } = await service.rpc("expire_stale_generation_jobs", {
     p_project_id: projectId,
     p_user_id: userId,
     p_kind: KIND,
-    p_cutoff: cutoff,
     p_metric: metric,
+    p_metric_daily: isDailyMetric(metric),
+    p_cutoff: cutoff,
   });
   if (error) {
     console.error("[ventrio-ai-usage-error]", JSON.stringify({

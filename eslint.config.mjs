@@ -12,6 +12,10 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Written by the workflow compiler on every build — a bundled copy of the
+    // orchestrator plus the runtime's own route handlers. Generated, gitignored
+    // by a .gitignore the plugin ships, and not ours to lint.
+    "src/app/.well-known/workflow/**",
   ]),
 ]);
 

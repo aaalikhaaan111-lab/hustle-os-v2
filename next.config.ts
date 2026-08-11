@@ -1,5 +1,6 @@
 import type { NextConfig } from "next";
 import createNextIntlPlugin from "next-intl/plugin";
+import { withWorkflow } from "workflow/next";
 
 const withNextIntl = createNextIntlPlugin("./src/i18n/request.ts");
 
@@ -41,4 +42,12 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default withNextIntl(nextConfig);
+/**
+ * Generation runs as a durable workflow, not inside the request.
+ *
+ * `withWorkflow` compiles the `"use workflow"` / `"use step"` directives and
+ * mounts the runtime's own routes under `/.well-known/workflow/`. It has to
+ * wrap the intl plugin's output rather than the other way round: intl rewrites
+ * the config, and the workflow compiler needs to see the final one.
+ */
+export default withWorkflow(withNextIntl(nextConfig));

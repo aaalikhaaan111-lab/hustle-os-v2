@@ -403,9 +403,9 @@ export async function repairApp(
 
 /* ── accepting a response ────────────────────────────────────────────────── */
 
-type BuildOk = Extract<AppBuildResult, { ok: true }>;
+export type BuildOk = Extract<AppBuildResult, { ok: true }>;
 
-type Attempt =
+export type Attempt =
   | { ok: true; build: BuildOk }
   | {
       ok: false;
@@ -424,7 +424,7 @@ type Attempt =
 /**
  * Parses a response as a whole project and runs it through the gate.
  */
-async function accept(text: string, options: BuildOptions): Promise<Attempt> {
+export async function accept(text: string, options: BuildOptions): Promise<Attempt> {
   const framed = parseFramedProject(text);
   if (!framed.ok) {
     return {
@@ -451,7 +451,7 @@ async function accept(text: string, options: BuildOptions): Promise<Attempt> {
  * and leaves the project broken — a deleted component three files still import.
  * Nothing is applied in place, so a repair that fails leaves the base as it was.
  */
-async function acceptPatch(text: string, base: GeneratedAppV1, options: BuildOptions): Promise<Attempt> {
+export async function acceptPatch(text: string, base: GeneratedAppV1, options: BuildOptions): Promise<Attempt> {
   const framed = parseFramedPatch(text);
   if (!framed.ok) {
     return {
@@ -507,7 +507,7 @@ function refusal(build: Extract<AppBuildResult, { ok: false }>): Attempt {
 
 /* ── choosing the repair ─────────────────────────────────────────────────── */
 
-type RepairPlan =
+export type RepairPlan =
   | { mode: "patch"; base: GeneratedAppV1; context: AppRepairContext }
   | { mode: "rewrite"; reason: string };
 
@@ -519,7 +519,7 @@ type RepairPlan =
  * rather than sending a patch request that cannot be answered — an unanswerable
  * paid request is worse than an expensive one.
  */
-function planRepair(attempt: Extract<Attempt, { ok: false }>): RepairPlan {
+export function planRepair(attempt: Extract<Attempt, { ok: false }>): RepairPlan {
   if (!attempt.base) return { mode: "rewrite", reason: "no validated project to patch against" };
 
   const required = [...new Set(attempt.implicated ?? [])].filter((path) => path in attempt.base!.files);
@@ -597,7 +597,7 @@ function distinctFiles(errors: ReadonlyArray<{ file?: string }>): string[] {
 
 /* ── shared plumbing ─────────────────────────────────────────────────────── */
 
-function succeed(build: BuildOk) {
+export function succeed(build: BuildOk) {
   return {
     ok: true as const,
     app: build.app,
@@ -608,7 +608,7 @@ function succeed(build: BuildOk) {
   };
 }
 
-function fail(attempt: Extract<Attempt, { ok: false }>) {
+export function fail(attempt: Extract<Attempt, { ok: false }>) {
   return {
     ok: false as const,
     code: attempt.code,
@@ -641,7 +641,7 @@ function templateOf(app: GeneratedAppV1): RuntimeTemplateId {
   return (app.runtime.template as RuntimeTemplateId) ?? "react-spa";
 }
 
-function transportCode(response: Extract<GeminiResponse, { ok: false }>): AppFailureCode {
+export function transportCode(response: Extract<GeminiResponse, { ok: false }>): AppFailureCode {
   if (response.code === "timeout") return "timeout";
   /**
    * A truncated response is its own outcome, and never a repair.
@@ -660,7 +660,7 @@ function transportCode(response: Extract<GeminiResponse, { ok: false }>): AppFai
   return "transport";
 }
 
-function record(stages: AppStageRecord[], stage: AppStageRecord["stage"], response: GeminiResponse): void {
+export function record(stages: AppStageRecord[], stage: AppStageRecord["stage"], response: GeminiResponse): void {
   stages.push(
     response.ok
       ? { stage, ok: true, latencyMs: response.latencyMs, modelVersion: response.modelVersion, usage: response.usage }

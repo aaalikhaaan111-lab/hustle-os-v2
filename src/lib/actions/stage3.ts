@@ -37,8 +37,9 @@ import { MAX_FIRST_VERSION_ATTEMPTS, type FirstVersionJobView } from "@/lib/jobs
 import { toJson } from "@/lib/supabase/json";
 import { codegenRenderingEnabled, renderProjectWithCodegen } from "@/lib/v2/codegen/renderProject";
 import { mergeCodegenState, type CodegenProjectState } from "@/lib/v2/codegen/projectState";
-import { appRuntimeEnabled, composeAppBrief, renderProjectWithAppRuntime } from "@/lib/v2/app/renderProject";
-import { mergeAppState, readAppState } from "@/lib/v2/app/projectState";
+import { appRuntimeEnabled, composeAppBrief } from "@/lib/v2/app/renderProject";
+import { readAppState } from "@/lib/v2/app/projectState";
+import { startFirstVersionWorkflow } from "@/lib/v2/app/startWorkflow";
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const TOKEN_PATTERN = /^[a-zA-Z0-9_-]{8,80}$/;
@@ -491,60 +492,57 @@ export async function generateFirstVersionAction(
      * always did. The old renderer is not consulted and not used as a fallback.
      */
     if (appRuntimeEnabled()) {
-      await beat(job.id, "generating");
+      /**
+       * Handed to the durable runtime instead of run here.
+       *
+       * This used to be the whole pipeline inline: generation, gate, repair,
+       * compile and the writes, inside this one request. Vercel kills a function
+       * at 300 s — the maximum on this plan, not a default that can be raised —
+       * and the first production generation was killed by it after 300 s, having
+       * done real work that could not be saved. Two provider requests plus a
+       * compile do not fit in one request and no configuration makes them.
+       *
+       * Everything above this line is unchanged and still runs here, because it
+       * is what decides whether generation may happen at all: the finality
+       * guard, the stale sweep, one claimed job, one reserved unit. What leaves
+       * is only the part that takes minutes.
+       */
       const brief = composeAppBrief({
         idea: buildFirstVersionUserContent(direction, locale, intake, inferredDirection),
         productType: intake?.productType ?? null,
         designDirection: intake?.designDirection ?? null,
         locale,
       });
-      const rendered = await renderProjectWithAppRuntime({ brief, locale });
-      if (!rendered.ok) {
+
+      // Persist the direction before handing off. The workflow writes the
+      // application, not the intake, and a run that outlives this request must
+      // not lose what the person asked for.
+      await supabase.from("projects").update({
+        snapshot_fields: toJson(
+          mergeStage3ProjectState(project.snapshot_fields, { ...baseState, direction, status: "ready" }),
+        ),
+      }).eq("id", projectId).eq("user_id", user.id);
+
+      const handoff = await startFirstVersionWorkflow({
+        jobId: job.id,
+        projectId,
+        userId: user.id,
+        brief,
+        locale,
+      });
+      if (!handoff.ok) {
         console.error("[ventrio-ai-error]", JSON.stringify({
-          operation: "app_runtime_render",
+          operation: "app_runtime_enqueue",
           projectId,
-          code: rendered.code,
-          requestCount: rendered.telemetry?.requestCount ?? 0,
-          repaired: rendered.telemetry?.repaired ?? false,
-          issues: rendered.issues?.slice(0, 5) ?? [],
+          code: handoff.code,
         }));
-        return releaseAndFail(t("unavailable"), "invalid_output", `App runtime failed: ${rendered.code}.`);
+        return releaseAndFail(t("unavailable"), "provider_unavailable", `App runtime failed: ${handoff.code}.`);
       }
 
-      await beat(job.id, "saving");
-      const appState = rendered.state;
-      // The generated project is stored beside whatever else the snapshot
-      // holds; nothing existing is removed. `output` stays null — this project
-      // has an application, not a page artifact, and the workspace already
-      // treats either as "has something to show".
-      const snapshot = mergeAppState(
-        mergeStage3ProjectState(project.snapshot_fields, { ...baseState, direction, status: "first_version_ready" }),
-        appState,
-      );
-      snapshot.solution = appState.app.metadata.description;
-      const { error: saveError } = await supabase.from("projects").update({
-        name: appState.app.metadata.name,
-        snapshot_fields: toJson(snapshot),
-      }).eq("id", projectId).eq("user_id", user.id);
-      if (saveError) return releaseAndFail(t("errorSave"), "save_failed", "Saving the generated application failed.");
-
-      const tApp = await getTranslations({ locale, namespace: "stage3" });
-      const appReply = tApp("generationReply", { name: appState.app.metadata.name });
-      await supabase.from("project_ai_messages").insert({
-        id: stableUuid(`${baseState.conversationId}:first-version-ready`),
-        conversation_id: baseState.conversationId,
-        project_id: projectId,
-        user_id: user.id,
-        role: "assistant",
-        content: appReply,
-      });
-      await supabase.from("project_ai_conversations")
-        .update({ title: appState.app.metadata.name.slice(0, 60) })
-        .eq("id", baseState.conversationId).eq("user_id", user.id);
-      await finishSucceeded(job.id);
-      revalidatePath("/projects");
-      revalidatePath(`/projects/${projectId}`);
-      return { error: null, output: null, reply: appReply, durationMs: Date.now() - startedAt, jobId: job.id };
+      // Returns in milliseconds, with the job identity the workspace already
+      // polls. No reply yet — there is nothing to report until the run finishes,
+      // and claiming otherwise is what the old inline path could not avoid.
+      return { error: null, output: null, reply: null, durationMs: Date.now() - startedAt, jobId: job.id };
     }
 
     await beat(job.id, "generating");

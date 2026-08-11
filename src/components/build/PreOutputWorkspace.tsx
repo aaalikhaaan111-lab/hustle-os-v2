@@ -128,6 +128,28 @@ export function PreOutputWorkspace({
     usage.projectBuilds.available && usage.projectBuilds.used >= usage.projectBuilds.limit;
   const elapsed = useElapsedSeconds(job.active);
 
+  /**
+   * The generation finished somewhere else, so go and fetch what it made.
+   *
+   * App-runtime generation is a durable run now: the action returns in
+   * milliseconds and the application is written to the project minutes later,
+   * by something this tab has no handle on. The poll is what notices — but the
+   * poll only reads the job row, and the built application arrives through the
+   * server render. Without this the row would say "succeeded" beside an empty
+   * workspace until someone reloaded by hand.
+   *
+   * Guarded by a ref rather than by `hasVersion`, because the refresh and the
+   * new props are two renders apart: keying off state alone would fire a second
+   * refresh in the gap and, on the failure path, forever.
+   */
+  const refreshedForJob = useRef<string | null>(null);
+  useEffect(() => {
+    if (hasVersion || job.phase !== "succeeded") return;
+    if (refreshedForJob.current === projectId) return;
+    refreshedForJob.current = projectId;
+    router.refresh();
+  }, [hasVersion, job.phase, projectId, router]);
+
   // A job in flight counts as busy even when this tab did not start it — after
   // a refresh the transition is gone but the generation is not.
   const busy = isGenerating || isSending || job.active;

@@ -18,8 +18,17 @@ export async function proxy(request: NextRequest) {
   return response;
 }
 
+/**
+ * `.well-known/workflow/` is excluded deliberately.
+ *
+ * Those routes belong to the durable workflow runtime, which calls them
+ * server-to-server to advance a run. Passing them through here would attach a
+ * Supabase session refresh and a per-request CSP to machine traffic that has
+ * neither a browser nor a user behind it, and `updateSession` would rewrite
+ * cookies for a request that carries none.
+ */
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|auth/callback|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    "/((?!_next/static|_next/image|favicon.ico|auth/callback|\\.well-known/workflow/|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };
