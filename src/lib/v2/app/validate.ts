@@ -133,62 +133,83 @@ function codeOnly(source: string): string {
   );
 }
 
-const FORBIDDEN_SOURCE: Array<{ code: string; pattern: RegExp; detail: string; codeOnly?: boolean }> = [
+/**
+ * The matched text, with a little of what surrounds it.
+ *
+ * Server-side only: this is appended to a diagnostic that reaches the queue
+ * consumer's log and the repair prompt, never the browser — the action hands a
+ * person a translated sentence and nothing from here. Bounded hard, because a
+ * diagnostic is a clue and not a place to copy a project into.
+ *
+ * Read from the original source rather than the blanked copy, so the quote is
+ * what the model actually wrote.
+ */
+const EVIDENCE_CONTEXT = 60;
+const EVIDENCE_MAX = 180;
+
+function quoteMatch(source: string, index: number, length: number): string {
+  const from = Math.max(0, index - EVIDENCE_CONTEXT);
+  const to = Math.min(source.length, index + length + EVIDENCE_CONTEXT);
+  const quote = source.slice(from, to).replace(/\s+/g, " ").trim().slice(0, EVIDENCE_MAX);
+  return `Found: "${quote}"`;
+}
+
+const FORBIDDEN_SOURCE: Array<{
+  code: string;
+  pattern: RegExp;
+  detail: string;
+  codeOnly?: boolean;
+  /** Append the matched text and a little context to the diagnostic. */
+  evidence?: boolean;
+}> = [
   { code: "eval", pattern: /\beval\s*\(/, detail: "eval() is not allowed." },
   { code: "new_function", pattern: /\bnew\s+Function\s*\(/, detail: "new Function() is not allowed." },
   /**
-   * Reaching the embedder.
+   * Reaching the embedder, as a static check.
    *
-   * Narrower than it looks, and deliberately so. The first version of this rule
-   * was `\b(?:window\.)?(?:parent|top|opener)\b`, which refused
-   * `margin: { top: 8 }`, `style={{ top: 0 }}` and `href="#top"` — it made the
-   * runtime unusable and would have read to a model as an inexplicable
-   * rejection. A rule that fires on ordinary CSS is not a security control, it
-   * is a bug with a security-sounding name.
+   * NARROWED, DELIBERATELY, AND HERE IS THE ARGUMENT. Earlier versions matched
+   * a bare `parent.` / `top.` / `opener.` member access. That refused three
+   * production generations, and `parent` and `top` are ordinary variable names:
    *
-   * What is actually dangerous is *using* one of these as an object: either
-   * `window.parent...` or a bare `parent.` / `top.` / `opener.` member access.
-   * A preceding `.` or word character excludes `node.parent.x`, which is a
-   * perfectly normal tree walk over the app's own data.
+   *     const parent = node.parentElement;  parent.appendChild(child);
+   *     const top = rect.top;               top.toFixed(1);
    *
-   * AND IT HAS TO TELL CODE FROM PROSE. Two production generations were refused
-   * for English sentences. `codeOnly` blanks strings, template literals and
-   * comments, which fixed the first — a file of advice strings ending "Clamp it
-   * to the top." The second was a component, where the copy lives in JSX text:
+   * Telling those from the globals needs scope analysis, which means a parser,
+   * which is far more machinery than this layer is worth — because this layer
+   * is not what makes the sandbox safe. The runtime boundary is, and it holds
+   * independently of anything a model writes:
    *
-   *     <p>Measure from the top. Then score.</p>
+   *   read the parent DOM      `allow-same-origin` is absent, so the frame has
+   *                            an opaque origin and any cross-origin property
+   *                            access throws. Browser-enforced.
+   *   read parent storage      same-origin policy, and an opaque origin has no
+   *                            storage of its own to reach from.
+   *   navigate the parent      `allow-top-navigation` and its user-activation
+   *                            variant are both absent from SANDBOX_TOKENS.
+   *   send a trusted message   there is exactly one `message` listener in the
+   *                            product, and `parsePreviewMessage` checks the
+   *                            source object, the origin, the envelope, the
+   *                            protocol version, and then accepts three bounded
+   *                            shapes — ready, runtime-error, size. None grants
+   *                            anything. The published view listens for nothing.
    *
-   * JSX text is prose that is not inside quotes, so blanking literals cannot
-   * reach it. What separates it from code is the shape of the member access,
-   * not where it sits: real code writes `top.document`, and a sentence writes
-   * `top.` followed by a space. So the bare-identifier branch now requires an
-   * identifier immediately after the dot.
-   *
-   * That alone would miss `top . document`, which is legal if unusual, so a
-   * third branch catches a spaced access to any member worth reaching for. The
-   * two together refuse every real escape — including inside JSX expression
-   * braces, which are code and are matched as code — while an ordinary sentence
-   * about the top of a workpiece is left alone.
+   * So what remains here is the unambiguous form: an explicitly global access.
+   * `window.parent` cannot be a local binding, and a model that writes it is
+   * reaching for the embedder on purpose rather than naming a variable. That is
+   * worth refusing with a clear message. The ambiguous form is left to the
+   * runtime, which was always the control that mattered.
    */
   {
     code: "frame_escape",
-    pattern: new RegExp(
-      "(?:"
-      // window.parent / window.top / window.opener, spaced or not.
-      + "\\bwindow\\s*\\.\\s*(?:parent|top|opener)\\b"
-      // A bare member access: `parent.postMessage`, `{parent.location}` in JSX.
-      // The identifier must follow the dot immediately — "the top. Then" does not.
-      + "|(?:^|[^.\\w$])(?:parent|top|opener)\\s*\\.[A-Za-z_$]"
-      // The spaced form, but only onto something actually worth reaching for.
-      + "|(?:^|[^.\\w$])(?:parent|top|opener)\\s*\\.\\s*"
-      + "(?:document|location|postMessage|frames|opener|window|top|parent"
-      + "|origin|closed|name|history|navigator|localStorage|sessionStorage)\\b"
-      + ")",
-    ),
+    pattern: /\b(?:window|globalThis|self|frames)\s*\.\s*(?:parent|top|opener)\b/,
     detail: "Reaching the embedding page is not allowed.",
-    // Strings, template literals and comments are still blanked first. Belt and
-    // braces: the shape rule handles JSX text, this handles quoted prose.
+    // Strings, template literals and comments are blanked first, so a sentence
+    // that happens to contain "window.top" in prose is not a violation.
     codeOnly: true,
+    // Record what actually matched. Three generations were refused by this rule
+    // and none of them said which characters tripped it, so none could be
+    // diagnosed without spending another provider request.
+    evidence: true,
   },
   { code: "network", pattern: /\b(?:fetch|XMLHttpRequest|WebSocket|EventSource)\s*\(/, detail: "Network access is not available to a generated app." },
   { code: "network", pattern: /navigator\.sendBeacon/, detail: "Network access is not available to a generated app." },
@@ -347,8 +368,13 @@ export function validateGeneratedApp(value: unknown): AppValidation {
       let stripped: string | null = null;
       for (const rule of FORBIDDEN_SOURCE) {
         const text = rule.codeOnly ? (stripped ??= codeOnly(source)) : source;
-        if (rule.pattern.test(text)) {
-          issues.add(`$.files["${path}"]`, rule.code, rule.detail);
+        if (!rule.evidence) {
+          if (rule.pattern.test(text)) issues.add(`$.files["${path}"]`, rule.code, rule.detail);
+          continue;
+        }
+        const match = rule.pattern.exec(text);
+        if (match) {
+          issues.add(`$.files["${path}"]`, rule.code, `${rule.detail} ${quoteMatch(source, match.index, match[0].length)}`);
         }
       }
 
