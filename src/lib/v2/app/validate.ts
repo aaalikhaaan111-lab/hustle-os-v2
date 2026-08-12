@@ -150,14 +150,44 @@ const FORBIDDEN_SOURCE: Array<{ code: string; pattern: RegExp; detail: string; c
    * `window.parent...` or a bare `parent.` / `top.` / `opener.` member access.
    * A preceding `.` or word character excludes `node.parent.x`, which is a
    * perfectly normal tree walk over the app's own data.
+   *
+   * AND IT HAS TO TELL CODE FROM PROSE. Two production generations were refused
+   * for English sentences. `codeOnly` blanks strings, template literals and
+   * comments, which fixed the first — a file of advice strings ending "Clamp it
+   * to the top." The second was a component, where the copy lives in JSX text:
+   *
+   *     <p>Measure from the top. Then score.</p>
+   *
+   * JSX text is prose that is not inside quotes, so blanking literals cannot
+   * reach it. What separates it from code is the shape of the member access,
+   * not where it sits: real code writes `top.document`, and a sentence writes
+   * `top.` followed by a space. So the bare-identifier branch now requires an
+   * identifier immediately after the dot.
+   *
+   * That alone would miss `top . document`, which is legal if unusual, so a
+   * third branch catches a spaced access to any member worth reaching for. The
+   * two together refuse every real escape — including inside JSX expression
+   * braces, which are code and are matched as code — while an ordinary sentence
+   * about the top of a workpiece is left alone.
    */
   {
     code: "frame_escape",
-    pattern: /(?:\bwindow\s*\.\s*(?:parent|top|opener)\b|(?:^|[^.\w$])(?:parent|top|opener)\s*\.)/,
+    pattern: new RegExp(
+      "(?:"
+      // window.parent / window.top / window.opener, spaced or not.
+      + "\\bwindow\\s*\\.\\s*(?:parent|top|opener)\\b"
+      // A bare member access: `parent.postMessage`, `{parent.location}` in JSX.
+      // The identifier must follow the dot immediately — "the top. Then" does not.
+      + "|(?:^|[^.\\w$])(?:parent|top|opener)\\s*\\.[A-Za-z_$]"
+      // The spaced form, but only onto something actually worth reaching for.
+      + "|(?:^|[^.\\w$])(?:parent|top|opener)\\s*\\.\\s*"
+      + "(?:document|location|postMessage|frames|opener|window|top|parent"
+      + "|origin|closed|name|history|navigator|localStorage|sessionStorage)\\b"
+      + ")",
+    ),
     detail: "Reaching the embedding page is not allowed.",
-    // Read the code only. The bare-identifier branch cannot tell `top.` in
-    // `parent.postMessage` from `top.` at the end of "measure from the top." —
-    // and a production app was refused for the second. See `codeOnly`.
+    // Strings, template literals and comments are still blanked first. Belt and
+    // braces: the shape rule handles JSX text, this handles quoted prose.
     codeOnly: true,
   },
   { code: "network", pattern: /\b(?:fetch|XMLHttpRequest|WebSocket|EventSource)\s*\(/, detail: "Network access is not available to a generated app." },

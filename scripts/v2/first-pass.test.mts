@@ -116,6 +116,45 @@ for (const [name, source] of PROSE) {
 check("an ordinary tree walk still passes",
   !escapes({ "src/x.ts": "export const p = (n: { parent: { v: number } }) => n.parent.v;" }));
 
+/* ── 4b. JSX prose is prose, and JSX braces are code ─────────────────────── */
+
+/**
+ * The second production refusal. `codeOnly` blanks quoted prose, which cannot
+ * reach JSX text — that copy is not inside quotes:
+ *
+ *     <p>Measure from the top. Then score.</p>
+ *
+ * What separates it from code is the shape of the access, not where it sits:
+ * code writes `top.document`, a sentence writes `top.` and then a space.
+ */
+const JSX_PROSE: Array<[string, string]> = [
+  ["a sentence ending 'the top.'", 'export default () => <p>Measure from the top. Then score.</p>;'],
+  ["'Back to the top.' before a tag", 'export default () => <span>Back to the top.</span>;'],
+  ["'Parent company' as a noun", 'export default () => <div>Parent company information</div>;'],
+  ["a sentence ending 'the parent.'", 'export default () => <p>Ask the parent. Then wait.</p>;'],
+  ["prose whose next word is a real member name",
+    'export default () => <p>Return to the top. Name it later.</p>;'],
+];
+for (const [name, source] of JSX_PROSE) {
+  check(`JSX prose is not an escape: ${name}`, !escapes({ "src/x.tsx": source }), source);
+}
+
+/** Inside braces it is code again, and is caught as code. */
+const JSX_CODE: Array<[string, string]> = [
+  ["window.parent in an expression", 'export default () => <div>{window.parent.location.href}</div>;'],
+  ["a bare parent access in an expression", 'export default () => <div>{parent.location.href}</div>;'],
+  ["an escape beside prose in the same component",
+    'export default () => { const h = parent.location.href; return <p>Back to the top. Done</p>; };'],
+];
+for (const [name, source] of JSX_CODE) {
+  check(`still refused: ${name}`, escapes({ "src/x.tsx": source }), source);
+}
+
+// The spaced form is unusual but legal, and must not become a way through.
+check("still refused: a spaced member access", escapes({ "src/x.ts": "export const d = top . document;" }));
+check("and a spaced postMessage",
+  escapes({ "src/x.ts": "export function f(){ parent . postMessage(1, '*'); }" }));
+
 /* ── 5. every other source rule is untouched ─────────────────────────────── */
 
 /**
@@ -126,7 +165,7 @@ check("an ordinary tree walk still passes",
 const validator = read("src/lib/v2/app/validate.ts");
 check("exactly one rule reads code only", (validator.match(/codeOnly: true/g) ?? []).length === 1);
 check("and it is the frame-escape rule",
-  /code: "frame_escape",[\s\S]{0,400}?codeOnly: true/.test(validator));
+  /code: "frame_escape",[\s\S]{0,1600}?codeOnly: true/.test(validator));
 
 for (const [name, source, code] of [
   ["storage", "export const x = localStorage.getItem('a');", "storage"],
