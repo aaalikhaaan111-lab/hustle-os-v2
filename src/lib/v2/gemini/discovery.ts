@@ -63,7 +63,14 @@ export async function requestDiscoveryTurn(input: {
   if (!config.ok) return { ok: false, reason: `unconfigured:${config.code}` };
   if (input.history.length === 0) return { ok: false, reason: "empty_history" };
 
+  console.info("[ventrio-discovery]", JSON.stringify({
+    systemChars: input.system.length,
+    turns: input.history.length,
+    userChars: input.history.reduce((total, entry) => total + entry.content.length, 0),
+  }));
+
   const transport = new GoogleGeminiTransport(config.model);
+  const user = flatten(input.history);
   const controller = new AbortController();
   const deadline = setTimeout(() => controller.abort(), DISCOVERY_TIMEOUT_MS + 5_000);
 
@@ -72,7 +79,7 @@ export async function requestDiscoveryTurn(input: {
       {
         model: config.model,
         system: input.system,
-        user: flatten(input.history),
+        user,
         timeoutMs: DISCOVERY_TIMEOUT_MS,
         maxOutputTokens: DISCOVERY_MAX_OUTPUT_TOKENS,
         /**
@@ -87,7 +94,19 @@ export async function requestDiscoveryTurn(input: {
       controller.signal,
     );
 
-    if (!response.ok) return { ok: false, reason: `${response.code}` };
+    if (!response.ok) {
+      /**
+       * The code alone is not diagnosable.
+       *
+       * `server_error` says the provider refused and nothing about why, which
+       * cost a deploy to discover the first time. The transport's message has
+       * already been through `sanitiseTransportError`, so it carries no URL and
+       * no key; it is truncated here because a provider error body can be long
+       * and this is a log line, not a report.
+       */
+      const detail = response.message.replace(/\s+/g, " ").slice(0, 240);
+      return { ok: false, reason: `${response.code}:${detail}` };
+    }
 
     /**
      * The same tolerant parse the generation path uses.
@@ -98,7 +117,9 @@ export async function requestDiscoveryTurn(input: {
      * authority over what the object may contain.
      */
     const parsed = parseModelJsonSafe(response.text);
-    if (!parsed.ok) return { ok: false, reason: "unparseable" };
+    if (!parsed.ok) {
+      return { ok: false, reason: `unparseable:${response.text.length}b` };
+    }
 
     return {
       ok: true,
@@ -109,7 +130,12 @@ export async function requestDiscoveryTurn(input: {
       outputTokens: response.usage?.candidatesTokenCount,
     };
   } catch (error) {
-    return { ok: false, reason: error instanceof Error ? `threw:${error.name}` : "threw:unknown" };
+    return {
+      ok: false,
+      reason: error instanceof Error
+        ? `threw:${error.name}:${String(error.message).slice(0, 160)}`
+        : "threw:unknown",
+    };
   } finally {
     clearTimeout(deadline);
   }
