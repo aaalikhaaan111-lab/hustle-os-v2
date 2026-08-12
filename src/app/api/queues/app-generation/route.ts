@@ -27,8 +27,15 @@ export const POST = handleCallback<GenerationMessage>(
     const result =
       message.phase === "repair" ? await runRepairPhase(message) : await runGeneratePhase(message);
 
-    // One line per delivery, with the delivery count, because "did this run
-    // twice" is the question every invariant here is about.
+    /**
+     * One line per delivery. The delivery count is here because "did this run
+     * twice" is the question every invariant turns on; the gate's issues are
+     * here because without them a run of failures cannot be diagnosed at all.
+     *
+     * Bounded to the first few and truncated, because this is a diagnosis aid
+     * and not a place to spill a project into the log.
+     */
+    const issues = "issues" in result ? result.issues : undefined;
     console.log("[ventrio-generation]", JSON.stringify({
       phase: message.phase,
       jobId: message.jobId,
@@ -36,6 +43,7 @@ export const POST = handleCallback<GenerationMessage>(
       outcome: result.outcome,
       ...(result.outcome === "failed" ? { code: result.code } : {}),
       ...(result.outcome === "skipped" ? { reason: result.reason } : {}),
+      ...(issues?.length ? { issueCount: issues.length, issues: issues.slice(0, 6).map((i) => i.slice(0, 200)) } : {}),
     }));
   },
   {

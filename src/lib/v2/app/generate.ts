@@ -254,23 +254,28 @@ export async function generateApp(
           : appRewritePrompt(user, attempt.issues),
         timeoutMs: GENERATION_LIMITS.repairTimeoutMs,
         /**
-         * A rewrite needs a generation's budget, because it *is* a generation.
+         * A rewrite gets more room than a patch, and less than a generation.
          *
-         * Both repair shapes shared the repair budget, which is sized for a
-         * patch — a handful of files. A rewrite returns the whole project, and
-         * a live canary proved the consequence: a landing site was refused for
-         * one `require()` in one file, the rewrite that would have fixed it was
-         * given 32,000 tokens to reproduce a project the model had just written
-         * in 34,490, and it was cut off at 29,944. The generation was
-         * recoverable and the repair could not physically fit.
+         * Both repair shapes once shared the patch budget, and a live canary
+         * proved that wrong: a landing site was refused for one `require()`,
+         * and the rewrite that would have fixed it was given 32,000 tokens to
+         * reproduce a project the model had just written in 34,490. It was cut
+         * off at 29,944 — recoverable, and unable to physically fit.
          *
-         * A patch keeps the smaller budget on purpose: if a patch needs a full
-         * generation's room, the patch prompt is wrong and that is worth
-         * finding out rather than papering over.
+         * The correction then over-swung to the full artifact budget, 65,536,
+         * which let a rewrite run longer than the deadline it has to finish in.
+         * `maxOutputTokensRepairRewrite` is sized from what rewrites actually
+         * emit instead. A patch keeps the smallest budget on purpose: if a
+         * patch needs a generation's room, the patch prompt is wrong and that
+         * is worth finding out rather than papering over.
          */
         maxOutputTokens: plan.mode === "patch"
           ? GENERATION_LIMITS.maxOutputTokensRepair
-          : GENERATION_LIMITS.maxOutputTokensArtifact,
+          : GENERATION_LIMITS.maxOutputTokensRepairRewrite,
+        // The least reasoning the API offers. A repair is handed the files, the
+        // diagnostics and a patch contract; the depth the model spends by
+        // default is for deciding what to build, and here it is only latency.
+        thinkingLevel: "minimal",
         label: "repair",
       },
       controller.signal,
@@ -384,6 +389,7 @@ export async function repairApp(
         user: appRepairPrompt(input.diagnostics, context),
         timeoutMs: GENERATION_LIMITS.repairTimeoutMs,
         maxOutputTokens: GENERATION_LIMITS.maxOutputTokensRepair,
+        thinkingLevel: "minimal",
         label: "repair",
       },
       controller.signal,

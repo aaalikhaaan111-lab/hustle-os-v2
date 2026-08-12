@@ -343,12 +343,30 @@ export async function requestRepair(
                 })
               : appRewritePrompt(appUserPrompt(input.brief), input.issues),
           timeoutMs: CONSUMER_BUDGETS.repair,
-          // A rewrite is a generation and needs a generation's room; a patch
-          // keeps the smaller budget. Unchanged from the inline pipeline.
+          /**
+           * A rewrite still gets more room than a patch, but not a whole
+           * generation's worth. It has to finish inside the consumer deadline,
+           * which a generation does not — see `maxOutputTokensRepairRewrite`.
+           */
           maxOutputTokens:
             input.plan.mode === "patch"
               ? GENERATION_LIMITS.maxOutputTokensRepair
-              : GENERATION_LIMITS.maxOutputTokensArtifact,
+              : GENERATION_LIMITS.maxOutputTokensRepairRewrite,
+          /**
+           * The least reasoning the API offers, and the right amount here.
+           *
+           * The pinned model thinks at `medium` by default, which is depth for
+           * deciding what to build. A repair decides nothing: it is handed the
+           * exact files, the exact diagnostics and a patch contract, and asked
+           * to correct them. That thinking is latency spent before a single
+           * output token appears, and repair latency is what put the last
+           * production run past its deadline.
+           *
+           * Generation keeps the default. Nothing here changes what the model
+           * is asked to produce — same prompt, same contract, same validation
+           * afterwards.
+           */
+          thinkingLevel: "minimal",
           label: "repair",
         },
         controller.signal,

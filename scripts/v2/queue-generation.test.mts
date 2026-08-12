@@ -231,6 +231,13 @@ const repairMessage = () => ({ ...GENERATE, phase: "repair" as const, issues: RE
   check("and is not run inside this invocation", fake.__countOf("requestRepair") === 0);
   check("nothing is saved yet", fake.__countOf("persistGeneratedApp") === 0);
   check("and nothing is refunded yet", fake.__countOf("failGeneration") === 0);
+  // Three production generations failed the gate and left no trace of which
+  // rule they broke, which made "same mistake three times, or three different
+  // ones?" unanswerable. The objections now travel out of the run.
+  check("the gate's objections are reported, not dropped",
+    result.outcome === "queued-repair" && (result.issues ?? []).length > 0, JSON.stringify(result));
+  check("along with the stage that raised them",
+    result.outcome === "queued-repair" && result.stage === "refused");
   check("the plan the gate chose travels with it",
     JSON.stringify((fake.__calls().find((c) => c.step === "enqueueRepair")!.args[0] as { plan: unknown }).plan)
       === JSON.stringify(PLAN));
@@ -385,6 +392,19 @@ check("long stages beat while they work", /setInterval\(\s*\(\) => \{\s*void bea
 check("the interval is always cleared", /finally \{\s*clearInterval\(timer\);/.test(stagesSource));
 const HEARTBEAT = Number(/const HEARTBEAT_MS = ([\d_]+)/.exec(stagesSource)?.[1]?.replace(/_/g, "") ?? "0");
 check("the beat is frequent enough to matter", HEARTBEAT > 0 && HEARTBEAT * 4 < 300_000, String(HEARTBEAT));
+
+/* ── 8b. a failure says what was wrong with it ───────────────────────────── */
+
+{
+  fake.__reset({ verdict: { ok: false, code: "refused", message: "refused", issues: ["a", "b"], plan: null } });
+  const result = await runGeneratePhase(GENERATE as never);
+  check("a terminal failure carries its issues too",
+    result.outcome === "failed" && (result.issues ?? []).length === 2, JSON.stringify(result));
+}
+check("and the consumer writes them to the log",
+  /issueCount: issues\.length/.test(consumerSource) && /issues: issues\.slice\(0, 6\)/.test(consumerSource));
+check("bounded, so a project cannot be spilled into it",
+  /\.slice\(0, 200\)/.test(consumerSource));
 
 /* ── 9. no second job model, and no second orchestrator ──────────────────── */
 

@@ -142,6 +142,15 @@ export class GoogleGeminiTransport implements GeminiTransport {
       contents: [{ role: "user", parts: [{ text: request.user }] }],
       generationConfig: {
         maxOutputTokens: request.maxOutputTokens,
+        /**
+         * Only sent when the caller asked for a specific level.
+         *
+         * Left out entirely otherwise, so the model keeps its own default
+         * rather than this adapter pinning one. `thinkingLevel` and the legacy
+         * `thinkingBudget` are mutually exclusive — sending both is a 400 — and
+         * this only ever sends the former.
+         */
+        ...(request.thinkingLevel ? { thinkingConfig: { thinkingLevel: request.thinkingLevel } } : {}),
         // The pipeline is a JSON pipeline: asking for JSON by MIME type is what
         // this request has always documented itself as doing, and the local
         // chain — envelope, validator, compiler — remains the authority.

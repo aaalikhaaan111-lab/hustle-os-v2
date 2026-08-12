@@ -146,6 +146,24 @@ export const GENERATION_LIMITS = {
    */
   maxOutputTokensArtifact: 65_536,
   maxOutputTokensRepair: 32_000,
+  /**
+   * The ceiling for a rewrite repair, which reproduces the whole project.
+   *
+   * A rewrite used to be handed `maxOutputTokensArtifact` on the grounds that
+   * it *is* a generation — true of the work, and wrong as a budget, because a
+   * repair also has to fit inside a consumer deadline that a generation does
+   * not. At 65,536 the model may legitimately write a response that cannot
+   * finish in time, and the run is then killed by the clock rather than told
+   * anything useful. That is what the 2026-08-11 production repair did.
+   *
+   * Sized from what rewrites actually emit. Every one that completed produced
+   * between 23,572 and 26,732 output tokens; the single truncated attempt
+   * wanted more than 29,944. 40,000 clears all of them with room, and bounds
+   * the worst case to roughly the deadline — so an over-large project now
+   * reports `too_large`, which names the problem, instead of timing out, which
+   * does not.
+   */
+  maxOutputTokensRepairRewrite: 40_000,
   /** Refuse absurd payloads before parsing rather than after. */
   maxResponseBytes: 400_000,
   maxFounderPromptChars: 2_000,

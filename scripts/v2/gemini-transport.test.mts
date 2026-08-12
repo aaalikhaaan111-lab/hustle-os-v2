@@ -315,9 +315,47 @@ check("and never returns one", !/GEMINI_API_KEY/.test(providerExports));
 
 /* ── report ─────────────────────────────────────────────────────────────── */
 
+/* ── thinking level: sent only when asked for ────────────────────────────── */
+
+/**
+ * The pinned model thinks at `medium` by default. That is depth for deciding
+ * what to build, and a repair decides nothing — it is handed the files, the
+ * diagnostics and a patch contract. The depth is latency before the first
+ * output token, and repair latency is what pushed a production run past its
+ * deadline. `thinkingLevel` and the legacy `thinkingBudget` are mutually
+ * exclusive in the API; this only ever sends the former.
+ */
+{
+  const seen: Array<Record<string, unknown>> = [];
+  const capture: FetchLike = async (_url, init) => {
+    seen.push(JSON.parse(String(init.body)) as Record<string, unknown>);
+    return new Response(JSON.stringify({
+      candidates: [{ content: { parts: [{ text: "ok" }] }, finishReason: "STOP" }],
+      usageMetadata: { candidatesTokenCount: 1 },
+      modelVersion: "gemini-3.6-flash",
+    }), { status: 200, headers: { "content-type": "application/json" } });
+  };
+
+  const transport = new GoogleGeminiTransport("gemini-3.6-flash", capture);
+  const base = { model: "gemini-3.6-flash", system: "s", user: "u", maxOutputTokens: 100 } as const;
+
+  await transport.send({ ...base, label: "artifact" }, new AbortController().signal);
+  const generation = seen[0].generationConfig as Record<string, unknown>;
+  check("generation sends no thinking config at all", !("thinkingConfig" in generation));
+
+  await transport.send({ ...base, label: "repair", thinkingLevel: "minimal" }, new AbortController().signal);
+  const repair = seen[1].generationConfig as Record<string, unknown>;
+  check("a repair sends one", "thinkingConfig" in repair);
+  check("nested exactly where the API expects it",
+    JSON.stringify(repair.thinkingConfig) === JSON.stringify({ thinkingLevel: "minimal" }));
+  check("and never alongside the legacy budget field", !("thinkingBudget" in repair));
+  check("the output budget still travels with it", repair.maxOutputTokens === 100);
+}
+
 if (failures.length > 0) {
   console.error(`FAILED ${failures.length} of ${passed + failures.length}`);
   for (const failure of failures) console.error(`  ✗ ${failure}`);
   process.exit(1);
 }
 console.log(`gemini transport: ${passed} checks passed`);
+

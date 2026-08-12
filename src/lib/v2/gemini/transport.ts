@@ -29,6 +29,15 @@ export interface GeminiRequest {
   /** Overrides `GENERATION_LIMITS.requestTimeoutMs` for this request only. */
   timeoutMs?: number;
   maxOutputTokens: number;
+  /**
+   * How much reasoning the model should spend before answering.
+   *
+   * Omitted means the model's own default, which is `medium` for the pinned
+   * gemini-3.6-flash. Set explicitly only where the work does not warrant it —
+   * see the repair stage, which corrects named files against named diagnostics
+   * rather than designing anything.
+   */
+  thinkingLevel?: "minimal" | "low" | "medium" | "high";
   label: "brief" | "artifact" | "repair";
 }
 

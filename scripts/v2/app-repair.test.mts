@@ -350,10 +350,29 @@ check("the repair uses the repair budget", /timeoutMs: GENERATION_LIMITS\.repair
 // A rewrite IS a generation and needs a generation's room. A live canary lost
 // a recoverable project because the rewrite was given the patch budget: 32,000
 // tokens to reproduce what the model had just written in 34,490.
-check("a rewrite gets the generation's output budget, not the patch's",
-  /plan\.mode === "patch"\s*\?\s*GENERATION_LIMITS\.maxOutputTokensRepair\s*:\s*GENERATION_LIMITS\.maxOutputTokensArtifact/.test(source));
-check("and the two budgets are actually different",
-  GENERATION_LIMITS.maxOutputTokensArtifact > GENERATION_LIMITS.maxOutputTokensRepair);
+// A rewrite gets more room than a patch and less than a generation. It has to
+// finish inside a consumer deadline that a generation does not; at the full
+// artifact budget a live production repair ran past that deadline and was cut
+// off by the clock rather than told anything useful.
+check("a rewrite gets the rewrite-repair budget",
+  /plan\.mode === "patch"\s*\?\s*GENERATION_LIMITS\.maxOutputTokensRepair\s*:\s*GENERATION_LIMITS\.maxOutputTokensRepairRewrite/.test(source));
+check("which is larger than a patch's",
+  GENERATION_LIMITS.maxOutputTokensRepairRewrite > GENERATION_LIMITS.maxOutputTokensRepair);
+check("and smaller than a generation's",
+  GENERATION_LIMITS.maxOutputTokensRepairRewrite < GENERATION_LIMITS.maxOutputTokensArtifact);
+// Sized from what rewrites actually emit: every one that completed produced
+// between 23,572 and 26,732 output tokens, and the truncated attempt wanted
+// more than 29,944.
+check("with room for every rewrite that has ever completed",
+  GENERATION_LIMITS.maxOutputTokensRepairRewrite > 29_944);
+
+// A repair corrects named files against named diagnostics. The reasoning depth
+// the model spends by default is for deciding what to build, and here it is
+// latency before the first output token.
+check("both repair shapes ask for the least reasoning the API offers",
+  (source.match(/thinkingLevel: "minimal"/g) ?? []).length === 2);
+check("and generation is left at the model's own default",
+  !/label: "artifact"[\s\S]{0,200}?thinkingLevel/.test(source));
 check("the echo is bounded by bytes", /REPAIR_ECHO_BYTES/.test(source));
 // The count cap is gone on purpose: it decided which real diagnostics were
 // fixable. Size is the only bound, and an over-budget required set rewrites

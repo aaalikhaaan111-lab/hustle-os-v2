@@ -48,9 +48,24 @@ import type { GeneratedAppV1 } from "./contract";
 
 export type GenerationOutcome =
   | { outcome: "generated" }
-  | { outcome: "queued-repair" }
+  | { outcome: "queued-repair"; stage?: string; issues?: string[] }
   | { outcome: "skipped"; reason: string }
-  | { outcome: "failed"; code: string; message: string };
+  | {
+      outcome: "failed";
+      code: string;
+      message: string;
+      /**
+       * What the gate actually objected to.
+       *
+       * Carried out so the consumer can record it. Three production
+       * generations failed the gate on 2026-08-11 and not one of them left a
+       * trace of which rule it broke: the job row keeps a code, the log kept a
+       * code, and the issue list was computed and dropped. "Are these the same
+       * mistake three times, or three different ones?" was unanswerable, which
+       * is the one question worth asking about a run of failures.
+       */
+      issues?: string[];
+    };
 
 /** The counter value each phase requires. Generation first, repair second. */
 const GENERATE_EXPECTS = 0;
@@ -95,11 +110,13 @@ export async function runGeneratePhase(
       issues: verdict.issues,
       plan: verdict.plan,
     });
-    if (!queued.ok) return fail(ref, "invalid_output", verdict.code, verdict.message);
-    return { outcome: "queued-repair" };
+    if (!queued.ok) return fail(ref, "invalid_output", verdict.code, verdict.message, verdict.issues);
+    // Recorded even though the run continues: the first response's objections
+    // are what a repair is answering, and they are gone by the time it lands.
+    return { outcome: "queued-repair", stage: verdict.code, issues: verdict.issues };
   }
 
-  return fail(ref, "invalid_output", verdict.code, verdict.message);
+  return fail(ref, "invalid_output", verdict.code, verdict.message, verdict.issues);
 }
 
 export async function runRepairPhase(
@@ -123,7 +140,7 @@ export async function runRepairPhase(
   if (!repaired.ok) return fail(ref, "invalid_output", repaired.code, repaired.message);
 
   const verdict = await evaluateRepair(ref, { text: repaired.text, plan: message.plan });
-  if (!verdict.ok) return fail(ref, "invalid_output", verdict.code, verdict.message);
+  if (!verdict.ok) return fail(ref, "invalid_output", verdict.code, verdict.message, verdict.issues);
 
   return persist(ref, verdict.app, message);
 }
@@ -143,7 +160,8 @@ async function fail(
   code: JobErrorCode,
   reportedCode: string,
   message: string,
+  issues?: string[],
 ): Promise<GenerationOutcome> {
   await failGeneration(ref, { code, message: `App runtime failed: ${reportedCode}.` });
-  return { outcome: "failed", code: reportedCode, message };
+  return { outcome: "failed", code: reportedCode, message, issues };
 }
