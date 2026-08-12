@@ -366,11 +366,6 @@ export async function generateCreationTurnAction(
     .limit(20);
   const history: CreationMessage[] = (recentRows ?? []).reverse().map((row) => ({ role: asChatRole(row.role), content: row.content }));
 
-  // The conversation's language, not the account cookie's: the fallback copy
-  // below is persisted onto the project and read by generation, so it has to
-  // match the language the person is actually writing in.
-  const t = await getTranslations({ locale, namespace: "create" });
-
   /**
    * Give the reserved turn back, and say why on the way out.
    *
@@ -401,20 +396,33 @@ export async function generateCreationTurnAction(
      * `message` is this turn's text — the thing they just typed — which is
      * exactly what discovery was about to interpret. Null when there is too
      * little to build from, in which case the offer is simply not made.
+     *
+     * Everything here, including loading the copy, happens on the failure path
+     * and nowhere else. A fallback that could throw while discovery is working
+     * would break the path it exists to protect, which would be a worse bug
+     * than the one it fixes — so it is also wrapped: an offer that cannot be
+     * built is an offer withheld, never a turn turned into an exception. The
+     * language is the conversation's, because this copy is persisted onto the
+     * project and read by generation.
      */
-    const fallbackDirection = buildFallbackDirection({
-      idea: message,
-      copy: {
-        audience: t("fallbackAudience"),
-        problem: t("fallbackProblem"),
-        whyFits: t("fallbackWhyFits"),
-        creates: t("fallbackCreates"),
-        assumption: t("fallbackAssumption"),
-      },
-    });
-    return fallbackDirection
-      ? { ok: false, unavailable, fallbackDirection }
-      : { ok: false, unavailable };
+    try {
+      const t = await getTranslations({ locale, namespace: "create" });
+      const fallbackDirection = buildFallbackDirection({
+        idea: message,
+        copy: {
+          audience: t("fallbackAudience"),
+          problem: t("fallbackProblem"),
+          whyFits: t("fallbackWhyFits"),
+          creates: t("fallbackCreates"),
+          assumption: t("fallbackAssumption"),
+        },
+      });
+      if (fallbackDirection) return { ok: false, unavailable, fallbackDirection };
+    } catch {
+      // Falls through to the plain failure, which is what the person saw
+      // before this path existed.
+    }
+    return { ok: false, unavailable };
   }
 
   try {
