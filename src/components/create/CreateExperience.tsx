@@ -8,7 +8,8 @@ import {
   generateCreationTurnAction,
   selectCreationDirectionAction,
 } from "@/lib/actions/creation";
-import { generateFirstVersionAction } from "@/lib/actions/stage3";
+import { generateFirstVersionAction, getFirstVersionJobAction } from "@/lib/actions/stage3";
+import { classifyFirstVersionStart, startedFromJobView } from "@/lib/build/firstVersionStart";
 import {
   type CreationChoice,
   type CreationDirection,
@@ -168,19 +169,44 @@ export function CreateExperience({ userId, initialDraft }: CreateExperienceProps
         selectedProjectId = result.projectId;
         setCreationPhase("generating");
         const generation = await generateFirstVersionAction(result.projectId);
-        if (generation.error || !generation.output) {
+
+        /**
+         * A queued generation is a success, not a missing output.
+         *
+         * The app runtime executes on a worker outside this request, so the
+         * action returns a job id and no version — see `classifyFirstVersionStart`,
+         * which owns this reading. `check-job` is the case the reply cannot
+         * settle alone: the project may already be building or already built,
+         * and the job state says which.
+         */
+        let start = classifyFirstVersionStart(generation);
+        if (start.outcome === "check-job") {
+          const view = await getFirstVersionJobAction(result.projectId);
+          start = startedFromJobView(view)
+            ? { outcome: "started", via: "job" }
+            : { outcome: "failed", error: null };
+        }
+
+        if (start.outcome === "limit-reached") {
           selectionLockRef.current = false;
           setCreationPhase("idle");
           setSelectedDirection(null);
-          if (generation.limitReached) {
-            setNote(t("firstVersionLimitReached", { limit: generation.limitReached.limit }));
-            setNoteIsLimitReached(true);
-            return;
-          }
-          setGenerationRetry({ direction, index });
-          setNote(generation.error ?? t("errorSaveFailed"));
+          setNote(t("firstVersionLimitReached", { limit: start.limit.limit }));
+          setNoteIsLimitReached(true);
           return;
         }
+        if (start.outcome === "failed") {
+          selectionLockRef.current = false;
+          setCreationPhase("idle");
+          setSelectedDirection(null);
+          setGenerationRetry({ direction, index });
+          setNote(start.error ?? t("errorSaveFailed"));
+          return;
+        }
+
+        // Started. The workspace polls the job from here — it already draws the
+        // progress, the finished application, and the real failure with Retry —
+        // so nobody waits on /create for something happening elsewhere.
         try {
           window.localStorage.removeItem(storageKey);
         } catch {

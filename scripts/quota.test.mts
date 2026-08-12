@@ -139,10 +139,19 @@ for (const locale of ["en", "ru"]) {
 // server's own reservation result rather than re-derived in the client.
 const preOutput = read("src/components/build/PreOutputWorkspace.tsx");
 const create = read("src/components/create/CreateExperience.tsx");
+// `/create` reads the reply through `classifyFirstVersionStart`, which carries
+// `limitReached` across unchanged as `start.limit` — so the number is still the
+// server's, one name further along. `create-async-start.test.mts` pins that
+// pass-through; what matters here is that neither screen invents the figure.
 check(
   "the message is given the server's limit",
   /firstVersionLimitReached", \{ limit: result\.limitReached\.limit \}/.test(preOutput)
-    && /firstVersionLimitReached", \{ limit: generation\.limitReached\.limit \}/.test(create),
+    && /firstVersionLimitReached", \{ limit: start\.limit\.limit \}/.test(create),
+);
+check(
+  "and never a hard-coded one",
+  !/firstVersionLimitReached", \{ limit: \d+ \}/.test(preOutput)
+    && !/firstVersionLimitReached", \{ limit: \d+ \}/.test(create),
 );
 
 /* ── 6. the usage popover reads what the enforcer writes ────────────────── */
