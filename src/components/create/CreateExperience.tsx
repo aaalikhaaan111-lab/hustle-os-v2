@@ -74,6 +74,15 @@ export function CreateExperience({ userId, initialDraft }: CreateExperienceProps
   const [selectedChoices, setSelectedChoices] = useState<string[]>([]);
   const [refineTarget, setRefineTarget] = useState<string | null>(null);
   const [generationRetry, setGenerationRetry] = useState<{ direction: CreationDirection; index: number } | null>(null);
+  /**
+   * The person's own idea, offered as a direction after discovery failed.
+   *
+   * Offered rather than taken. Retry is still the first thing next to the note,
+   * because a transient provider failure usually clears — but nobody has to sit
+   * through an outage to start a project, and everything this produces is
+   * editable in the workspace afterwards.
+   */
+  const [fallbackDirection, setFallbackDirection] = useState<CreationDirection | null>(null);
   const [creationPhase, setCreationPhase] = useState<CreationPhase>("idle");
   const [isSending, startSending] = useTransition();
   const [thinkingStep, setThinkingStep] = useState(0);
@@ -140,6 +149,7 @@ export function CreateExperience({ userId, initialDraft }: CreateExperienceProps
     selectionLockRef.current = true;
     setSelectedDirection(index);
     setGenerationRetry(null);
+    setFallbackDirection(null);
     setCreationPhase("persisting");
     setNote(null);
     setNoteIsLimitReached(false);
@@ -215,6 +225,7 @@ export function CreateExperience({ userId, initialDraft }: CreateExperienceProps
     setNote(null);
     setNoteIsLimitReached(false);
     setGenerationRetry(null);
+    setFallbackDirection(null);
     setSelectedChoices([]);
     startSending(async () => {
       try {
@@ -237,6 +248,13 @@ export function CreateExperience({ userId, initialDraft }: CreateExperienceProps
           if (result.limitReached) {
             setNote(t("discoveryLimitReached", { limit: result.limitReached.limit }));
             setNoteIsLimitReached(true);
+            return;
+          }
+          // Discovery failed. If the server could make a direction out of what
+          // they wrote, say so and offer it beside Retry.
+          if (result.fallbackDirection) {
+            setFallbackDirection(result.fallbackDirection);
+            setNote(t("fallbackNote"));
             return;
           }
           setNote(t("unavailable"));
@@ -391,6 +409,7 @@ export function CreateExperience({ userId, initialDraft }: CreateExperienceProps
     setNote(null);
     setNoteIsLimitReached(false);
     setGenerationRetry(null);
+    setFallbackDirection(null);
     setRefineTarget(name);
     setInput("");
     requestAnimationFrame(() => {
@@ -553,6 +572,19 @@ export function CreateExperience({ userId, initialDraft }: CreateExperienceProps
                   weight="medium" className="text-[13px]"
                 >
                   {t("retry")}
+                </VentrioButton>
+              )}
+              {/* Second, deliberately. Retrying costs a moment and keeps the
+                  conversation; this skips it. The person picks which. */}
+              {fallbackDirection && !noteIsLimitReached && (
+                <VentrioButton
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => chooseDirection(fallbackDirection, 0)}
+                  disabled={isSending || creating}
+                  weight="medium" className="text-[13px]"
+                >
+                  {t("fallbackOffer")}
                 </VentrioButton>
               )}
             </div>

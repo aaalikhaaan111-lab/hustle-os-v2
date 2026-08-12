@@ -103,7 +103,14 @@
     "makeReal": "Let's make this real.",
     "step1": "Direction understood",
     "step2": "Building the first version",
-    "step3": "Revealing your project"
+    "step3": "Revealing your project",
+    "fallbackOffer": "Continue with my idea",
+    "fallbackNote": "The creation assistant is unavailable. You can try again, or start building from your idea as you wrote it — you can change any of it in the workspace.",
+    "fallbackAudience": "Not narrowed yet — the first version is for whoever the idea is for",
+    "fallbackProblem": "Taken from the idea as written, not yet explored in conversation",
+    "fallbackWhyFits": "It is your own idea, in your own words.",
+    "fallbackCreates": "A first version of the idea exactly as described, to react to and change",
+    "fallbackAssumption": "The creation conversation did not happen: the audience, the motivation and the first experience are assumed from the idea as written and are not confirmed."
   },
   "stage3": {
     "errorInvalid": "That project request was invalid. Please try again.",

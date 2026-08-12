@@ -27,6 +27,7 @@ import {
   type Stage3ProjectState,
 } from "@/lib/build/stage3Types";
 import { consumeAiUsage, releaseAiUsage, type LimitReachedInfo } from "@/lib/ai/usage";
+import { buildFallbackDirection, shouldOfferFallback } from "@/lib/build/creationFallback";
 
 /**
  * Narrows a stored message role to the two the product actually has.
@@ -239,7 +240,19 @@ export async function loadCreationDraftAction(): Promise<PersistedCreationDraft 
 
 export type CreationTurnResult =
   | { ok: true; turn: CreationTurn; projectName: string; locale: string }
-  | { ok: false; unavailable: boolean; limitReached?: LimitReachedInfo };
+  | {
+      ok: false;
+      unavailable: boolean;
+      limitReached?: LimitReachedInfo;
+      /**
+       * The person's own idea, ready to use as the direction.
+       *
+       * Present only when discovery itself failed and there is enough of an
+       * idea to build from. It is an offer, not a decision — the client shows
+       * it beside Retry and never takes it on someone's behalf.
+       */
+      fallbackDirection?: CreationDirection;
+    };
 
 export async function generateCreationTurnAction(
   projectId: string,
@@ -316,7 +329,18 @@ export async function generateCreationTurnAction(
     if (messageError && messageError.code !== "23505") return { ok: false, unavailable: true };
   }
 
-  if (!process.env.ANTHROPIC_API_KEY) return { ok: false, unavailable: true };
+  /**
+   * There used to be an `ANTHROPIC_API_KEY` check here.
+   *
+   * It outlived the provider. Discovery moved to Gemini when the Anthropic
+   * account ran out of credit, and this line stayed behind — so `/create` was
+   * still gated on a key it no longer used, and clearing that key would have
+   * stopped the funnel again for a reason that had nothing to do with the
+   * request. A missing Gemini key is reported by `resolveGeminiConfig` as
+   * `unconfigured`, which now reaches the fallback like any other provider
+   * failure, which is the correct outcome: no key means no discovery, not no
+   * project.
+   */
 
   // Reserve one discovery turn BEFORE spending on the model, so a rejected
   // request never reaches the provider call. Placed after the lastRequestId
@@ -342,6 +366,11 @@ export async function generateCreationTurnAction(
     .limit(20);
   const history: CreationMessage[] = (recentRows ?? []).reverse().map((row) => ({ role: asChatRole(row.role), content: row.content }));
 
+  // The conversation's language, not the account cookie's: the fallback copy
+  // below is persisted onto the project and read by generation, so it has to
+  // match the language the person is actually writing in.
+  const t = await getTranslations({ locale, namespace: "create" });
+
   /**
    * Give the reserved turn back, and say why on the way out.
    *
@@ -353,13 +382,39 @@ export async function generateCreationTurnAction(
    * and no secrets.
    */
   async function releaseAndFail(unavailable: boolean, reason: string): Promise<CreationTurnResult> {
+    const offered = shouldOfferFallback(reason);
     console.error("[ventrio-ai-error]", JSON.stringify({
       operation: "creation_discovery",
       projectId,
       reason,
+      // Whether the person was left with a way forward. The distinction between
+      // "discovery failed" and "discovery failed and they were stuck" is the
+      // one worth being able to count.
+      fallbackOffered: offered,
     }));
     await releaseAiUsage(user!.id, "discovery_turn");
-    return { ok: false, unavailable };
+    if (!offered) return { ok: false, unavailable };
+
+    /**
+     * Their idea becomes the direction.
+     *
+     * `message` is this turn's text — the thing they just typed — which is
+     * exactly what discovery was about to interpret. Null when there is too
+     * little to build from, in which case the offer is simply not made.
+     */
+    const fallbackDirection = buildFallbackDirection({
+      idea: message,
+      copy: {
+        audience: t("fallbackAudience"),
+        problem: t("fallbackProblem"),
+        whyFits: t("fallbackWhyFits"),
+        creates: t("fallbackCreates"),
+        assumption: t("fallbackAssumption"),
+      },
+    });
+    return fallbackDirection
+      ? { ok: false, unavailable, fallbackDirection }
+      : { ok: false, unavailable };
   }
 
   try {
