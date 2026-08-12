@@ -1,40 +1,6 @@
-import { existsSync, readFileSync } from "node:fs";
 import type { NextConfig } from "next";
 import createNextIntlPlugin from "next-intl/plugin";
-import { RUNTIME_LIBRARIES } from "./src/lib/v2/app/runtime";
-
-/**
- * Every package the generated-app bundler has to be able to resolve, plus
- * everything those packages need.
- *
- * THE DEFECT THIS FIXES. The workspace recompiles a stored application on every
- * read, and that compile bundles the runtime libraries from `node_modules` with
- * `resolveDir: process.cwd()`. Nothing in Ventrio's own source imports recharts
- * or framer-motion, so Next traced none of them into the serverless function,
- * and the first production generation that ever succeeded rendered as "Something
- * went wrong" — esbuild could not resolve nine specifiers. The application was
- * stored correctly and perfectly fine; there was simply nothing to build it
- * against.
- *
- * Computed rather than listed. A hand-written array would drift the first time a
- * library is added to `RUNTIME_LIBRARIES` or one of them gains a dependency, and
- * the failure it produces is a blank error page after a paid generation.
- */
-function runtimeClosure(): string[] {
-  const seen = new Set<string>();
-  const walk = (name: string): void => {
-    if (seen.has(name)) return;
-    const manifest = `node_modules/${name}/package.json`;
-    if (!existsSync(manifest)) return;
-    seen.add(name);
-    const pkg = JSON.parse(readFileSync(manifest, "utf8")) as { dependencies?: Record<string, string> };
-    for (const dependency of Object.keys(pkg.dependencies ?? {})) walk(dependency);
-  };
-  // React itself is not in RUNTIME_LIBRARIES — it is the scaffold every
-  // generated app is built on, so the bundler always needs it.
-  for (const name of ["react", "react-dom", ...RUNTIME_LIBRARIES.map((library) => library.name)]) walk(name);
-  return [...seen].sort();
-}
+import { runtimeClosure } from "./src/lib/v2/app/runtimeClosure";
 
 const withNextIntl = createNextIntlPlugin("./src/i18n/request.ts");
 
