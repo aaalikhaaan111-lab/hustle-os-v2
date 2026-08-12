@@ -12,7 +12,6 @@ import { CodegenPreview } from "@/components/workspace/CodegenPreview";
 import { AppPreview } from "@/components/workspace/AppPreview";
 import { BuildScreen, OpenPreviewButton } from "@/components/workspace/BuildScreen";
 import { IconEye } from "@/components/workspace-ui/parts";
-import { VentrioLinkButton } from "@/components/ui/VentrioButton";
 import type { CreationDirection } from "@/lib/build/creationTypes";
 import type { Stage3ProjectOutput, Stage3Status } from "@/lib/build/stage3Types";
 import type { Locale } from "@/i18n/locale";
@@ -163,7 +162,7 @@ export function WorkspaceView(props: WorkspaceViewProps) {
           onFieldSaved={handleFieldSaved}
           footer={
             hasOutput && canOpenPreview ? (
-              <ReadyCard onOpenPreview={openPreview} projectId={props.projectId} />
+              <ReadyCard onOpenPreview={openPreview} />
             ) : null
           }
         />
@@ -177,7 +176,7 @@ export function WorkspaceView(props: WorkspaceViewProps) {
  * output exists and the preview panel is closed. It states only what is true —
  * something has been generated — and offers the two real destinations.
  */
-function ReadyCard({ onOpenPreview, projectId }: { onOpenPreview: () => void; projectId: string }) {
+function ReadyCard({ onOpenPreview }: { onOpenPreview: () => void }) {
   const t = useTranslations("workspace");
   return (
     <div
@@ -188,11 +187,10 @@ function ReadyCard({ onOpenPreview, projectId }: { onOpenPreview: () => void; pr
       <p className="mt-1 text-[14px] leading-relaxed" style={{ color: "var(--ink-2)" }}>
         {t("buildVersionReadyBody")}
       </p>
+      {/* One destination, because there is only one. The Versions link that
+          used to sit here led to a page that could only say it was empty. */}
       <div className="mt-3.5 flex flex-wrap gap-2">
         <OpenPreviewButton onOpen={onOpenPreview} label={t("openPreview")} icon={<IconEye className="h-4 w-4" />} />
-        <VentrioLinkButton href={`/projects/${projectId}/versions`} variant="secondary" size="sm">
-          {t("navVersions")}
-        </VentrioLinkButton>
       </div>
     </div>
   );

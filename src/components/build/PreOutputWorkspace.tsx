@@ -18,6 +18,7 @@ import { ProjectOutputRenderer } from "@/components/build/ProjectOutputRenderer"
 import { AppPreview } from "@/components/workspace/AppPreview";
 import type { WorkspaceAppView } from "@/components/build/WorkspaceView";
 import { PublicationControls } from "@/components/publishing/PublicationControls";
+import { FeedbackPanel } from "@/components/publishing/FeedbackPanel";
 import { BuildScreen, OpenPreviewButton } from "@/components/workspace/BuildScreen";
 import { WorkspaceComposer } from "@/components/workspace-ui/Composer";
 import { UsageMenu } from "@/components/workspace-ui/UsageMenu";
@@ -338,6 +339,25 @@ export function PreOutputWorkspace({
       }
       onPreviewRetry={job.canRetry ? () => createFirstVersion(true) : null}
       published={Boolean(publication?.isPublished)}
+      publishControl={
+        hasVersion ? (
+          <PublicationControls
+            key={publication?.updatedAt ?? "private-draft"}
+            projectId={projectId}
+            projectLocale={projectLocale}
+            output={output}
+            shareTitle={output?.identity.name ?? app?.title ?? projectName}
+            shareText={output?.launchCopy.shortPost}
+            initialPublication={publication}
+            publicBaseUrl={publicBaseUrl}
+            compact
+            onDraftChanged={(nextOutput) => {
+              setOutput(nextOutput);
+              setRevealKey((value) => value + 1);
+            }}
+          />
+        ) : null
+      }
       shareUrl={
         // Draft previews are real but unaddressable; only a publication has a URL.
         publication?.isPublished && publication.slug ? `${publicBaseUrl}/p/${publication.slug}` : null
@@ -505,42 +525,42 @@ export function PreOutputWorkspace({
                     application rather than a page artifact, and it is just as
                     publishable — gating on `output` alone left those projects
                     with a finished app and no way to share it. */}
-                {hasVersion && (
-                  <div className="flex flex-col gap-4">
-                    {canOpenPreview && (
-                      <div
-                        className="rise rounded-[var(--r-lg)] border p-4"
-                        style={{ borderColor: "var(--line-accent)", background: "var(--surface)" }}
-                      >
-                        <p className="text-[14px] font-medium">{tw("buildVersionReady")}</p>
-                        <p className="mt-1 text-[14px] leading-relaxed" style={{ color: "var(--ink-2)" }}>
-                          {tw("buildVersionReadyBody")}
-                        </p>
-                        <div className="mt-3.5">
-                          <OpenPreviewButton
-                            onOpen={openPreview}
-                            label={tw("openPreview")}
-                            icon={<IconEye className="h-4 w-4" />}
-                          />
-                        </div>
-                      </div>
-                    )}
-
-                    <PublicationControls
-                      key={publication?.updatedAt ?? "private-draft"}
-                      projectId={projectId}
-                      projectLocale={projectLocale}
-                      output={output}
-                      shareTitle={output?.identity.name ?? app?.title ?? projectName}
-                      shareText={output?.launchCopy.shortPost}
-                      initialPublication={publication}
-                      publicBaseUrl={publicBaseUrl}
-                      onDraftChanged={(nextOutput) => {
-                        setOutput(nextOutput);
-                        setRevealKey((value) => value + 1);
-                      }}
-                    />
+                {/* Only the invitation to look, which is a thing to say in a
+                    conversation. The publish controls used to sit here too —
+                    product controls inside the chat — and now live in the
+                    preview toolbar, above the thing they publish. */}
+                {hasVersion && canOpenPreview && (
+                  <div
+                    className="rise rounded-[var(--r-lg)] border p-4"
+                    style={{ borderColor: "var(--line-accent)", background: "var(--surface)" }}
+                  >
+                    <p className="text-[14px] font-medium">{tw("buildVersionReady")}</p>
+                    <p className="mt-1 text-[14px] leading-relaxed" style={{ color: "var(--ink-2)" }}>
+                      {tw("buildVersionReadyBody")}
+                    </p>
+                    <div className="mt-3.5">
+                      <OpenPreviewButton
+                        onOpen={openPreview}
+                        label={tw("openPreview")}
+                        icon={<IconEye className="h-4 w-4" />}
+                      />
+                    </div>
                   </div>
+                )}
+
+                {/* Feedback on real responses is a conversation about the
+                    product, not a control over it, so it stays here while the
+                    publish actions move to the toolbar. */}
+                {hasVersion && publication && (
+                  <FeedbackPanel
+                    projectId={projectId}
+                    projectLocale={projectLocale}
+                    publication={publication}
+                    onDraftChanged={(nextOutput) => {
+                      setOutput(nextOutput);
+                      setRevealKey((value) => value + 1);
+                    }}
+                  />
                 )}
               </div>
             </div>

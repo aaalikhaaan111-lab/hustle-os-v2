@@ -110,7 +110,10 @@
     "fallbackProblem": "Taken from the idea as written, not yet explored in conversation",
     "fallbackWhyFits": "It is your own idea, in your own words.",
     "fallbackCreates": "A first version of the idea exactly as described, to react to and change",
-    "fallbackAssumption": "The creation conversation did not happen: the audience, the motivation and the first experience are assumed from the idea as written and are not confirmed."
+    "fallbackAssumption": "The creation conversation did not happen: the audience, the motivation and the first experience are assumed from the idea as written and are not confirmed.",
+    "progressPreparing": "Preparing the project…",
+    "progressBuilding": "Building the application…",
+    "progressOpening": "Opening your workspace…"
   },
   "stage3": {
     "errorInvalid": "That project request was invalid. Please try again.",
@@ -1146,6 +1149,16 @@
     "previewGeneratingBody": "This panel fills in as soon as there is something to show.",
     "previewFailedTitle": "The first version could not be built",
     "previewFailedBody": "Nothing was saved, so trying again starts cleanly.",
-    "previewRetry": "Try again"
+    "previewRetry": "Try again",
+    "openPublicPage": "Open published page",
+    "metricResponses": "Responses",
+    "metricPeople": "People who responded",
+    "metricLastActivity": "Last response",
+    "metricSince": "Published",
+    "analyticsUnpublishedTitle": "Nothing to measure yet",
+    "analyticsUnpublishedBody": "Publish your project and anything people send back will be counted here.",
+    "analyticsQuietTitle": "Published, no responses yet",
+    "analyticsQuietBody": "Share the link. The moment someone responds, it shows up here.",
+    "analyticsScopeNote": "Ventrio counts responses people send through your published project. It does not track page views or visitors."
   }
 }

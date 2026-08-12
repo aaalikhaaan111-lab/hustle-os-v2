@@ -140,6 +140,15 @@ export const IconCopy = ({ className }: IconProps) => (
     <path d="M11.6 6.4V5.2a1.6 1.6 0 0 0-1.6-1.6H5.2a1.6 1.6 0 0 0-1.6 1.6V10a1.6 1.6 0 0 0 1.6 1.6h1.2" />
   </svg>
 );
+/** Opens the published page in a new tab: a box with an arrow leaving it. */
+export const IconExternal = ({ className }: IconProps) => (
+  <svg {...s} className={c(className)}>
+    <path d="M10.6 3.4h4v4" />
+    <path d="M14.6 3.4 8.8 9.2" />
+    <path d="M13.4 10.4v3.4a1.2 1.2 0 0 1-1.2 1.2H4.2A1.2 1.2 0 0 1 3 13.8V5.8a1.2 1.2 0 0 1 1.2-1.2h3.4" />
+  </svg>
+);
+
 export const IconChat = ({ className }: IconProps) => (
   <svg {...s} className={c(className)}>
     <path d="M15 8.6c0 2.9-2.7 5.2-6 5.2a7 7 0 0 1-1.9-.25L3.6 14.8l.9-2.6A5 5 0 0 1 3 8.6c0-2.9 2.7-5.2 6-5.2s6 2.3 6 5.2z" />

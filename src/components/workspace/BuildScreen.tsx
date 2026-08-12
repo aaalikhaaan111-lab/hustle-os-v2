@@ -10,11 +10,12 @@ import {
   IconExpand,
   IconEye,
   IconMinimize,
+  IconExternal,
   IconMobile,
   IconTablet,
   IconRefresh,
 } from "@/components/workspace-ui/parts";
-import { VentrioButton } from "@/components/ui/VentrioButton";
+import { VentrioButton, VentrioLinkButton } from "@/components/ui/VentrioButton";
 import { cn } from "@/lib/utils";
 import { ViewportFrame } from "@/components/workspace/ViewportFrame";
 import { DEVICE_WIDTHS, type DeviceMode } from "@/lib/build/deviceWidths";
@@ -71,6 +72,15 @@ export interface BuildScreenProps {
    * the copy control says so rather than inventing one.
    */
   shareUrl?: string | null;
+  /**
+   * The publish control, rendered in the preview toolbar.
+   *
+   * Handed in rather than built here: publishing needs the project id, the
+   * publication state and its own server actions, all of which belong to the
+   * screen above. What this owns is the decision that the control belongs over
+   * the preview rather than inside the conversation.
+   */
+  publishControl?: ReactNode;
 }
 
 /**
@@ -90,6 +100,7 @@ export function BuildScreen({
   onPreviewRetry = null,
   published,
   shareUrl = null,
+  publishControl = null,
 }: BuildScreenProps) {
   const t = useTranslations("workspace");
   // Whether real output exists — which decides only whether the panel opens by
@@ -184,10 +195,21 @@ export function BuildScreen({
           className="rise flex min-h-0 min-w-0 flex-1 flex-col rounded-r-[inherit] border-l"
           style={{ borderColor: "var(--line)", background: "var(--raised)" }}
         >
-          <div className="flex h-12 shrink-0 items-center gap-2 px-4">
-            <span className="min-w-0 truncate text-[13px] font-semibold">{t("tabPreview")}</span>
+          {/* ── The preview toolbar ──────────────────────────────────────
+              Everything that acts on the generated product lives here, above
+              the thing it acts on. These controls used to float in a rail down
+              the right edge and, for publishing, sit inside the conversation —
+              so the chat carried product controls and the preview carried none.
+              The split is now the one the product means: the chat is for
+              talking to Ventrio, this bar is for the thing Ventrio made.
+
+              It scrolls rather than wraps on a narrow screen: a toolbar that
+              reflows to two rows pushes the preview down the page every time
+              the viewport changes. */}
+          <div className="flex h-12 shrink-0 items-center gap-2 overflow-x-auto px-4">
+            <span className="min-w-0 shrink-0 truncate text-[13px] font-semibold">{t("tabPreview")}</span>
             <span
-              className="rounded-full px-2 py-[3px] text-[12px] font-semibold leading-none"
+              className="shrink-0 rounded-full px-2 py-[3px] text-[12px] font-semibold leading-none"
               style={
                 published
                   ? { background: "var(--ok-soft)", color: "var(--ok)" }
@@ -197,19 +219,64 @@ export function BuildScreen({
               {published ? t("statusLive") : t("statusDraft")}
             </span>
 
-            {/* Below the floating rail's breakpoint the same controls live here
-                instead, so a phone never depends on a hover affordance. */}
-            <div className="ml-auto flex shrink-0 items-center gap-1 lg:hidden">
-              <BarButton label={t("reload")} onClick={() => setReloadKey((key) => key + 1)}>
-                <IconRefresh className="h-[18px] w-[18px]" />
-              </BarButton>
-              <BarButton
-                label={shareUrl ? t("copyPreviewLink") : t("previewLinkUnavailable")}
-                onClick={copyLink}
-                disabled={!shareUrl}
-              >
-                <IconCopy className="h-[18px] w-[18px]" />
-              </BarButton>
+            <div className="ml-auto flex shrink-0 items-center gap-1">
+              {/* Viewport. Only meaningful with something to look at. */}
+              {hasOutput && (
+                <>
+                  <BarButton label={t("viewportDesktop")} active={device === "desktop"} onClick={() => setDevice("desktop")}>
+                    <IconDesktop className="h-[18px] w-[18px]" />
+                  </BarButton>
+                  <BarButton label={t("viewportTablet")} active={device === "tablet"} onClick={() => setDevice("tablet")}>
+                    <IconTablet className="h-[18px] w-[18px]" />
+                  </BarButton>
+                  <BarButton label={t("viewportMobile")} active={device === "mobile"} onClick={() => setDevice("mobile")}>
+                    <IconMobile className="h-[18px] w-[18px]" />
+                  </BarButton>
+                  <ToolbarDivider />
+                  <BarButton label={t("reload")} onClick={() => setReloadKey((key) => key + 1)}>
+                    <IconRefresh className="h-[18px] w-[18px]" />
+                  </BarButton>
+                  <BarButton
+                    label={fullScreen ? t("exitFullScreen") : t("fullScreen")}
+                    active={fullScreen}
+                    onClick={() => setFullScreen((value) => !value)}
+                  >
+                    {fullScreen ? <IconMinimize className="h-[18px] w-[18px]" /> : <IconExpand className="h-[18px] w-[18px]" />}
+                  </BarButton>
+                </>
+              )}
+
+              {/* Share, and only once there is something to share. A draft
+                  preview is real but has no address, so the controls that
+                  depend on one are absent rather than disabled-and-lying. */}
+              {shareUrl && (
+                <>
+                  <ToolbarDivider />
+                  <BarButton label={t("copyPreviewLink")} onClick={copyLink}>
+                    <IconCopy className="h-[18px] w-[18px]" />
+                  </BarButton>
+                  <VentrioLinkButton
+                    href={shareUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    variant="icon"
+                    size="md"
+                    label={t("openPublicPage")}
+                  >
+                    <IconExternal className="h-[18px] w-[18px]" />
+                  </VentrioLinkButton>
+                </>
+              )}
+
+              {/* Publishing, handed in by the screen that owns the action. */}
+              {publishControl && (
+                <>
+                  <ToolbarDivider />
+                  <div className="shrink-0">{publishControl}</div>
+                </>
+              )}
+
+              <ToolbarDivider />
               <BarButton label={t("closePreview")} onClick={() => changePreviewOpen(false)}>
                 <IconClose className="h-[18px] w-[18px]" />
               </BarButton>
@@ -243,72 +310,34 @@ export function BuildScreen({
         </section>
       )}
 
-      {/* ── The floating utility rail ────────────────────────────────────────
-          Desktop only. Every button here changes something real; nothing was
-          added to fill it. The rail is present from the start, because the
-          control that opens the preview is one of the things it carries — and
-          hiding that until after the first generation is what made the preview
-          look like it did not exist yet. Controls that act on output are still
-          only shown when there is output. */}
+      {/* ── The panel toggle ─────────────────────────────────────────────
+          All that is left of the floating rail. Switching between conversation
+          and preview is a layout choice, not a product control, and it has to
+          stay reachable when the preview is closed and its toolbar is not on
+          screen. Everything that acts on the generated product moved into that
+          toolbar. */}
       <div className="pointer-events-none absolute inset-y-0 right-4 z-20 hidden items-center lg:flex">
-          <div
-            className="lift-3 pointer-events-auto flex flex-col gap-1 rounded-[var(--r-md)] border p-1.5"
-            style={{ borderColor: "var(--line)", background: "var(--surface)" }}
+        <div
+          className="lift-3 pointer-events-auto flex flex-col gap-1 rounded-[var(--r-md)] border p-1.5"
+          style={{ borderColor: "var(--line)", background: "var(--surface)" }}
+        >
+          <RailButton
+            label={t("focusChat")}
+            active={!previewOpen}
+            onClick={() => changePreviewOpen(false)}
+            disabled={!previewOpen}
           >
-            <RailButton
-              label={t("focusChat")}
-              active={!previewOpen}
-              onClick={() => changePreviewOpen(false)}
-              disabled={!previewOpen}
-            >
-              <IconChat className="h-[18px] w-[18px]" />
-            </RailButton>
-            <RailButton
-              label={previewOpen ? t("closePreview") : t("openPreview")}
-              active={previewOpen}
-              onClick={() => changePreviewOpen(!previewOpen)}
-            >
-              <IconEye className="h-[18px] w-[18px]" />
-            </RailButton>
-
-            {previewOpen && (
-              <>
-                <Divider />
-                <RailButton
-                  label={t("viewportDesktop")}
-                  active={device === "desktop"}
-                  onClick={() => setDevice("desktop")}
-                >
-                  <IconDesktop className="h-[18px] w-[18px]" />
-                </RailButton>
-                <RailButton label={t("viewportTablet")} active={device === "tablet"} onClick={() => setDevice("tablet")}>
-                  <IconTablet className="h-[18px] w-[18px]" />
-                </RailButton>
-                <RailButton label={t("viewportMobile")} active={device === "mobile"} onClick={() => setDevice("mobile")}>
-                  <IconMobile className="h-[18px] w-[18px]" />
-                </RailButton>
-                <Divider />
-                <RailButton label={t("reload")} onClick={() => setReloadKey((key) => key + 1)}>
-                  <IconRefresh className="h-[18px] w-[18px]" />
-                </RailButton>
-                <RailButton
-                  label={shareUrl ? t("copyPreviewLink") : t("previewLinkUnavailable")}
-                  onClick={copyLink}
-                  disabled={!shareUrl}
-                >
-                  <IconCopy className="h-[18px] w-[18px]" />
-                </RailButton>
-                <RailButton
-                  label={fullScreen ? t("exitFullScreen") : t("fullScreen")}
-                  active={fullScreen}
-                  onClick={() => setFullScreen((value) => !value)}
-                >
-                  {fullScreen ? <IconMinimize className="h-[18px] w-[18px]" /> : <IconExpand className="h-[18px] w-[18px]" />}
-                </RailButton>
-              </>
-            )}
-          </div>
+            <IconChat className="h-[18px] w-[18px]" />
+          </RailButton>
+          <RailButton
+            label={previewOpen ? t("closePreview") : t("openPreview")}
+            active={previewOpen}
+            onClick={() => changePreviewOpen(!previewOpen)}
+          >
+            <IconEye className="h-[18px] w-[18px]" />
+          </RailButton>
         </div>
+      </div>
 
       {copied && (
         <div
@@ -400,10 +429,6 @@ export function OpenPreviewButton({ onOpen, label, icon }: { onOpen: () => void;
   );
 }
 
-function Divider() {
-  return <span className="mx-1 my-0.5 block h-px" style={{ background: "var(--line)" }} />;
-}
-
 /** A control in the floating rail: square, quiet until it matters. */
 function RailButton({
   label,
@@ -440,21 +465,44 @@ function RailButton({
   );
 }
 
-/** The same controls, in the panel header, where the rail is not available. */
+/**
+ * A control in the preview toolbar.
+ *
+ * `active` paints the button *and* announces it. Without `aria-pressed` the
+ * selected viewport is conveyed by colour alone, so a screen reader hears three
+ * identical Desktop/Tablet/Mobile buttons with no way to tell which is in
+ * effect. Buttons that merely act — reload, close — take no `active` and stay
+ * plain, rather than claiming a pressed state they do not have.
+ */
 function BarButton({
   label,
   onClick,
+  active,
   disabled,
   children,
 }: {
   label: string;
   onClick: () => void;
+  active?: boolean;
   disabled?: boolean;
   children: ReactNode;
 }) {
   return (
-    <VentrioButton variant="icon" size="md" shape="circle" label={label} disabled={disabled} onClick={onClick}>
+    <VentrioButton
+      variant="icon"
+      size="md"
+      label={label}
+      on={active}
+      {...(active === undefined ? {} : { "aria-pressed": active })}
+      disabled={disabled}
+      onClick={onClick}
+    >
       {children}
     </VentrioButton>
   );
+}
+
+/** A hairline between groups of toolbar controls. */
+function ToolbarDivider() {
+  return <span className="mx-1 h-5 w-px shrink-0" style={{ background: "var(--line)" }} aria-hidden />;
 }

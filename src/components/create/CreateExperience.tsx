@@ -473,26 +473,23 @@ export function CreateExperience({ userId, initialDraft }: CreateExperienceProps
                 {t("subhead")}
               </p>
 
-              <div className="mt-9 grid w-full grid-cols-2 gap-2.5 text-left sm:grid-cols-5">
+              {/* Five stacked rows, not a five-column strip. At the width a
+                  phone actually has, five columns were five slivers. */}
+              <div className="choice-stack mt-9 w-full">
                 {STARTING_POINTS.map((point, index) => (
-                  <button
-                    key={point.id}
-                    type="button"
-                    disabled={isSending || creating}
-                    onClick={() => pickStartingPoint(point)}
-                    className={cn(
-                      "starting-point group relative min-h-[108px] overflow-hidden rounded-[1.35rem] p-3.5 text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-50",
-                      index === STARTING_POINTS.length - 1 && "col-span-2 sm:col-span-1"
-                    )}
-                  >
-                    <span className="starting-point-mark" aria-hidden />
-                    <span className="relative mt-7 block text-[13px] font-semibold leading-snug text-ink">
-                      {t(point.labelKey)}
-                    </span>
-                    <span className="relative mt-1 block text-[11px] leading-4 text-ink-muted">
-                      {t(point.detailKey)}
-                    </span>
-                  </button>
+                  <div key={point.id} className="choice-row-wrap" style={{ animationDelay: `${index * 45}ms` }}>
+                    <button
+                      type="button"
+                      disabled={isSending || creating}
+                      onClick={() => pickStartingPoint(point)}
+                      className="choice-row"
+                    >
+                      <span className="choice-row-text">
+                        <span className="choice-row-title">{t(point.labelKey)}</span>
+                        <span className="choice-row-hint">{t(point.detailKey)}</span>
+                      </span>
+                    </button>
+                  </div>
                 ))}
               </div>
             </section>
@@ -529,6 +526,28 @@ export function CreateExperience({ userId, initialDraft }: CreateExperienceProps
                     <span key={thinkingStep} className="animate-field-in">{t(THINKING_STEP_KEYS[thinkingStep])}</span>
                   </div>
                 )}
+
+                {/* Starting a build reads as one more turn in the conversation.
+                    This replaced a full-screen overlay that covered the chat and
+                    counted three invented steps — the person lost the thread of
+                    what they had been talking about, and the steps described
+                    nothing the system had actually reported. Each line below is
+                    a state this component is genuinely in: the direction is
+                    being saved, the job has been claimed, or we are on the way
+                    to the workspace. The workspace picks the story up from the
+                    job row itself. */}
+                {creating && (
+                  <div className="flex items-center gap-2.5 text-sm text-ink-secondary" aria-live="polite" role="status">
+                    <span className="creation-signal-dot" aria-hidden />
+                    <span className="animate-field-in">
+                      {creationPhase === "persisting"
+                        ? t("progressPreparing")
+                        : creationPhase === "generating"
+                          ? t("progressBuilding")
+                          : t("progressOpening")}
+                    </span>
+                  </div>
+                )}
               </div>
 
               {showChoices && (
@@ -543,9 +562,9 @@ export function CreateExperience({ userId, initialDraft }: CreateExperienceProps
               )}
 
               {showDirections && (
-                <div className={cn("direction-grid", selectedDirection !== null && "has-selection")}>
+                <div className="choice-stack">
                   {turn.directions.map((direction, index) => (
-                    <DirectionCard
+                    <DirectionRow
                       key={`${direction.name}-${index}`}
                       direction={direction}
                       index={index}
@@ -651,12 +670,7 @@ export function CreateExperience({ userId, initialDraft }: CreateExperienceProps
         </div>
       </div>
 
-      {creating && selectedDirection !== null && turn?.phase === "propose" && (
-        <CreationTransition
-          direction={turn.directions[selectedDirection]}
-          phase={creationPhase}
-        />
-      )}
+
     </div>
   );
 }
@@ -681,25 +695,25 @@ function ChoiceGrid({
   return (
     <div className="emergence flex flex-col gap-3" aria-label={t("choicesLabel")}>
       {multiple && <p className="text-xs font-medium text-ink-muted">{t("chooseSeveral")}</p>}
-      <div className="grid gap-2 sm:grid-cols-2">
+      <div className="choice-stack">
         {choices.map((choice, index) => {
           const active = selected.includes(choice.id);
           return (
-            <button
-              key={choice.id}
-              type="button"
-              disabled={busy}
-              aria-pressed={multiple ? active : undefined}
-              onClick={() => onPick(choice)}
-              className={cn("context-choice", active && "is-selected")}
-              style={{ animationDelay: `${index * 55}ms` }}
-            >
-              <span className="choice-indicator" aria-hidden>{active ? "✓" : String(index + 1).padStart(2, "0")}</span>
-              <span className="min-w-0">
-                <span className="block text-sm font-semibold text-ink">{choice.title}</span>
-                {choice.description && <span className="mt-0.5 block text-xs leading-5 text-ink-muted">{choice.description}</span>}
-              </span>
-            </button>
+            <div key={choice.id} className="choice-row-wrap" style={{ animationDelay: `${index * 45}ms` }}>
+              <button
+                type="button"
+                disabled={busy}
+                aria-pressed={multiple ? active : undefined}
+                onClick={() => onPick(choice)}
+                className={cn("choice-row", active && "is-selected")}
+              >
+                <span className="choice-row-text">
+                  <span className="choice-row-title">{choice.title}</span>
+                  {choice.description && <span className="choice-row-hint">{choice.description}</span>}
+                </span>
+                {active && <span aria-hidden style={{ color: "var(--color-accent)" }}>✓</span>}
+              </button>
+            </div>
           );
         })}
       </div>
@@ -719,7 +733,20 @@ function ChoiceGrid({
   );
 }
 
-function DirectionCard({
+/**
+ * One proposed direction, as a row.
+ *
+ * This replaced a card carrying a display-size heading, three labelled detail
+ * rows and two buttons. Everything it dropped — who it is for, what Ventrio
+ * will create, why it fits — the assistant has already said in the message
+ * directly above; repeating it in a card turned an answer into a form. What is
+ * left is the name and one line, which is what a person needs to choose.
+ *
+ * Refine sits beside the row rather than inside it: a button cannot contain a
+ * button, and dropping Refine to make the whole row clickable would cost a real
+ * action for a rule about clicking.
+ */
+function DirectionRow({
   direction,
   index,
   selected,
@@ -736,63 +763,28 @@ function DirectionCard({
 }) {
   const t = useTranslations("create");
   return (
-    <article
-      className={cn("direction-card", selected && "is-selected")}
-      style={{ animationDelay: `${index * 110}ms` }}
-    >
-      <div className="direction-index" aria-hidden>{String(index + 1).padStart(2, "0")}</div>
-      <h2 className="ventrio-display mt-8 text-[1.65rem] leading-none text-ink">{direction.name}</h2>
-      <p className="mt-3 text-sm leading-6 text-ink-secondary">{direction.concept}</p>
-      <dl className="mt-6 grid gap-4">
-        <DirectionDetail label={t("cardFor")} value={direction.forWho} />
-        <DirectionDetail label={t("cardCreates")} value={direction.creates} />
-        <DirectionDetail label={t("cardWhyFits")} value={direction.whyFits} />
-      </dl>
-      <div className="mt-7 flex flex-wrap items-center gap-2">
-        <VentrioButton variant="generative" size="sm" shape="pill" disabled={busy} onClick={onChoose}>
-          {t("buildThis")} <span aria-hidden>→</span>
-        </VentrioButton>
-        <VentrioButton variant="ghost" size="sm" shape="pill" disabled={busy} onClick={onRefine}>
-          {t("refine")}
-        </VentrioButton>
-      </div>
-    </article>
-  );
-}
-
-function DirectionDetail({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="grid gap-1 border-t border-border pt-3">
-      <dt className="text-[10px] font-semibold uppercase tracking-[0.16em] text-ink-muted">{label}</dt>
-      <dd className="text-[13px] leading-5 text-ink">{value}</dd>
+    <div className="choice-row-wrap" style={{ animationDelay: `${index * 45}ms` }}>
+      <button
+        type="button"
+        disabled={busy}
+        onClick={onChoose}
+        className={cn("choice-row", selected && "is-selected")}
+      >
+        <span className="choice-row-text">
+          <span className="choice-row-title">{direction.name}</span>
+          <span className="choice-row-hint">{direction.concept}</span>
+        </span>
+        {selected && (
+          <span className="shrink-0 text-[13px]" style={{ color: "var(--color-accent)" }}>
+            {t("buildThis")}
+          </span>
+        )}
+      </button>
+      <button type="button" disabled={busy} onClick={onRefine} className="choice-row-aside">
+        {t("refine")}
+      </button>
     </div>
   );
 }
 
-function CreationTransition({ direction, phase }: { direction: CreationDirection; phase: CreationPhase }) {
-  const t = useTranslations("create");
-  return (
-    <div className="creation-transition fixed inset-0 z-[90] flex items-center justify-center px-5" role="status" aria-live="polite">
-      <div className="creation-transition-field" aria-hidden />
-      <div className="relative flex w-full max-w-lg flex-col items-center text-center">
-        <span className="creation-orbit" aria-hidden><span /></span>
-        <p className="mt-8 text-xs font-semibold uppercase tracking-[0.2em] text-accent/80">{direction.name}</p>
-        <h2 className="ventrio-display mt-3 text-[clamp(2.4rem,10vw,4.6rem)] leading-[0.98] text-ink">{t("makeReal")}</h2>
-        <div className="mt-9 grid w-full max-w-sm gap-3 text-left">
-          <TransitionStep label={t("step1")} state="done" />
-          <TransitionStep label={t("step2")} state={phase === "persisting" || phase === "generating" ? "active" : "done"} />
-          <TransitionStep label={t("step3")} state={phase === "handoff" ? "active" : "waiting"} />
-        </div>
-      </div>
-    </div>
-  );
-}
 
-function TransitionStep({ label, state }: { label: string; state: "done" | "active" | "waiting" }) {
-  return (
-    <div className={cn("transition-step", `is-${state}`)}>
-      <span className="transition-step-mark" aria-hidden>{state === "done" ? "✓" : ""}</span>
-      <span>{label}</span>
-    </div>
-  );
-}

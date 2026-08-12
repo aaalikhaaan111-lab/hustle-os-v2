@@ -32,10 +32,22 @@ interface PublicationControlsProps {
   shareText?: string;
   initialPublication: ProjectPublicationState | null;
   publicBaseUrl: string;
+  /**
+   * Toolbar form: the publish actions alone.
+   *
+   * The dock used to sit in the conversation carrying the status, the URL, copy
+   * and share, and the feedback panel. Publishing belongs over the preview, so
+   * the actions moved there — but the toolbar already shows live/draft, already
+   * copies the link and already opens the page, and repeating them beside
+   * themselves is how a toolbar stops being readable. The feedback panel is a
+   * conversation about responses and stays in the conversation.
+   */
+  compact?: boolean;
   onDraftChanged: (output: Stage3ProjectOutput) => void;
 }
 
 export function PublicationControls({
+  compact = false,
   projectId,
   projectLocale,
   output,
@@ -113,6 +125,44 @@ export function PublicationControls({
   function unpublish() {
     if (!window.confirm(t("unpublishConfirm"))) return;
     run(() => unpublishProjectAction(projectId));
+  }
+
+  const publishActions = (
+    <>
+      {!publication?.isPublished && (
+        <button type="button" disabled={isPending} onClick={() => run(() => publishProjectAction(projectId))} className="publication-primary">
+          {isPending ? t("publishing") : publication ? t("republish") : t("publish")}
+        </button>
+      )}
+      {publication?.isPublished && hasUnpublishedChanges && (
+        <button type="button" disabled={isPending} onClick={() => run(() => updatePublishedVersionAction(projectId))} className="publication-primary">
+          {isPending ? t("updating") : t("updateLive")}
+        </button>
+      )}
+    </>
+  );
+
+  if (compact) {
+    return (
+      <div className="flex shrink-0 items-center gap-1.5" aria-label={t("controlsLabel")}>
+        {hasUnpublishedChanges && !publication?.isPublished && (
+          <span className="publication-change-badge">{t("unpublishedChanges")}</span>
+        )}
+        {publishActions}
+        {publication?.isPublished && (
+          <button type="button" disabled={isPending} onClick={unpublish} className="publication-secondary publication-danger">
+            {t("unpublish")}
+          </button>
+        )}
+        {/* Errors are announced here rather than swallowed: the toolbar is
+            where the action was taken, so it is where the answer belongs. */}
+        {(notice || error) && (
+          <span role={error ? "alert" : "status"} className={cn("publication-message", error && "is-error")}>
+            {error ?? notice}
+          </span>
+        )}
+      </div>
+    );
   }
 
   return (

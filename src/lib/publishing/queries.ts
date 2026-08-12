@@ -181,3 +181,56 @@ async function readCachedPublicProject(slug: string): Promise<PublicProjectPubli
 
 export const getPublicProject = cache(readCachedPublicProject);
 export const getUncachedPublicProject = readPublicProject;
+
+/**
+ * The only numbers Ventrio can honestly report about a published project.
+ *
+ * WHAT IS DELIBERATELY ABSENT. Page views, visitors and sessions. Nothing
+ * anywhere in the product records a request to a public page — there is no
+ * pageview table, no beacon on `/p/[slug]`, no analytics provider — so a
+ * "views" figure could only ever be a number made up on the page. The analytics
+ * screen used to lean on that absence by listing what Ventrio *would* watch for;
+ * this returns what it can actually count instead.
+ *
+ * `submitter_hash` is a per-submitter hash the publish flow already writes, so
+ * distinct values are a real count of distinct people who responded — not of
+ * people who visited, which remains unknown and unclaimed.
+ */
+export interface ProjectAnalytics {
+  published: boolean;
+  publishedAt: string | null;
+  responseCount: number;
+  uniqueSubmitters: number;
+  firstResponseAt: string | null;
+  lastResponseAt: string | null;
+}
+
+export async function loadProjectAnalytics(
+  supabase: Client,
+  userId: string,
+  projectId: string,
+): Promise<ProjectAnalytics> {
+  const { data: publication } = await supabase
+    .from("project_publications")
+    .select("is_published, published_at")
+    .eq("project_id", projectId)
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  const { data: responses } = await supabase
+    .from("project_responses")
+    .select("submitter_hash, created_at")
+    .eq("project_id", projectId)
+    .eq("user_id", userId)
+    .order("created_at", { ascending: true });
+
+  const rows = responses ?? [];
+  return {
+    published: Boolean(publication?.is_published),
+    publishedAt: publication?.published_at ?? null,
+    responseCount: rows.length,
+    uniqueSubmitters: new Set(rows.map((row) => row.submitter_hash)).size,
+    firstResponseAt: rows[0]?.created_at ?? null,
+    lastResponseAt: rows[rows.length - 1]?.created_at ?? null,
+  };
+}

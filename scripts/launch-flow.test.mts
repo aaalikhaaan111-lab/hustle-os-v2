@@ -200,7 +200,14 @@ check("the public form endpoint refuses app publications",
 const workspace = read("src/components/build/PreOutputWorkspace.tsx");
 check("the build card is hidden once a version exists in either shape",
   /\{!hasVersion && !job\.active && \(/.test(workspace));
-check("and publishing is offered for either shape", /\{hasVersion && \(/.test(workspace));
+// Publishing moved from the conversation into the preview toolbar, so the
+// gate is now the toolbar slot. What matters is unchanged and is what is
+// asserted: it is offered for `hasVersion` — an app or an artifact — and never
+// for `output` alone, which is what left app-runtime projects unable to share.
+check("and publishing is offered for either shape",
+  /publishControl=\{\s*hasVersion \? \(/.test(workspace));
+check("publishing is not gated on the artifact shape",
+  !/publishControl=\{\s*output \?/.test(workspace));
 check("both derive from the same test", /const hasVersion = Boolean\(output\) \|\| Boolean\(app\)/.test(workspace));
 
 /* ── report ─────────────────────────────────────────────────────────────── */

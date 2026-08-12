@@ -182,7 +182,10 @@ export function StructuredChoice({
         role="radiogroup"
         aria-labelledby={labelledById}
         onKeyDown={onKeyDown}
-        className="flex snap-x snap-mandatory gap-2 overflow-x-auto px-3 pb-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        /* Stacked, not a horizontal filmstrip. Options that scroll sideways
+           hide themselves: the fourth style or audience was off-screen with
+           nothing to say so, and on a phone even the second was. */
+        className="flex flex-col gap-2 px-3 pb-3"
       >
         {options.map((option, index) => {
           const isSelected = option.id === selectedId;
@@ -199,7 +202,7 @@ export function StructuredChoice({
               data-option-id={option.id}
               onFocus={() => setFocusIndex(index)}
               onClick={() => pick(option.id)}
-              className="group flex min-w-[148px] flex-1 snap-start flex-col gap-1.5 rounded-[11px] border p-2 text-left outline-none transition-all focus-visible:ring-2 focus-visible:ring-offset-1 disabled:opacity-50 @sm:min-w-0"
+              className="group flex w-full items-center gap-2.5 rounded-[11px] border p-2 text-left outline-none transition-all focus-visible:ring-2 focus-visible:ring-offset-1 disabled:opacity-50"
               style={{
                 borderColor: isSelected ? "var(--accent)" : "var(--line)",
                 background: isSelected ? "var(--accent-soft)" : "var(--surface)",
@@ -210,18 +213,20 @@ export function StructuredChoice({
               }}
             >
               {option.preview && (
-                <span className="block h-[52px] w-full overflow-hidden rounded-[10px]">
+                <span className="block h-[38px] w-[56px] shrink-0 overflow-hidden rounded-[8px]">
                   <DesignPreview id={option.preview} />
                 </span>
               )}
-              <span className="text-[12.5px] font-semibold leading-snug" style={{ color: "var(--ink)" }}>
-                {option.label}
-              </span>
-              {option.hint && (
-                <span className="text-[11px] leading-snug" style={{ color: "var(--ink-3)" }}>
-                  {option.hint}
+              <span className="min-w-0 flex-1">
+                <span className="block text-[12.5px] font-semibold leading-snug" style={{ color: "var(--ink)" }}>
+                  {option.label}
                 </span>
-              )}
+                {option.hint && (
+                  <span className="mt-0.5 block truncate text-[11px] leading-snug" style={{ color: "var(--ink-3)" }}>
+                    {option.hint}
+                  </span>
+                )}
+              </span>
             </button>
           );
         })}

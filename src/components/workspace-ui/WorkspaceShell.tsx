@@ -14,7 +14,6 @@ import {
   IconPlus,
   IconProjects,
   IconSettings,
-  IconVersions,
   StatusPill,
   VentrioMark,
   type ProjectState,
@@ -103,7 +102,16 @@ export function WorkspaceShell({
     ? [
         { href: `/projects/${project.id}`, label: t("navBuild"), Icon: IconBuild },
         { href: `/projects/${project.id}/analytics`, label: t("navAnalytics"), Icon: IconAnalytics },
-        { href: `/projects/${project.id}/versions`, label: t("navVersions"), Icon: IconVersions },
+        /**
+         * Versions is deliberately absent.
+         *
+         * `project_publications` keeps one row per project and overwrites it, so
+         * there has never been a version history to list — `loadProjectVersions`
+         * returns an empty array by construction. The destination existed only
+         * to explain that it was empty, which is a worse answer than not
+         * offering it. Undo and revert stay where they are useful, on the work
+         * itself; the types and loaders are untouched for when history is real.
+         */
       ]
     : [];
 
