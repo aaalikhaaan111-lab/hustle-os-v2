@@ -81,6 +81,15 @@ export interface BuildScreenProps {
    * the preview rather than inside the conversation.
    */
   publishControl?: ReactNode;
+  /**
+   * What the generated app reported after it mounted, or failed to.
+   *
+   * A crashed application still renders an iframe, so the panel cannot tell a
+   * blank app from a broken one by looking. These are the app's own words, and
+   * showing them is the difference between "nothing happened" and a stated
+   * failure someone can act on.
+   */
+  runtimeErrors?: readonly string[];
 }
 
 /**
@@ -101,6 +110,7 @@ export function BuildScreen({
   published,
   shareUrl = null,
   publishControl = null,
+  runtimeErrors = [],
 }: BuildScreenProps) {
   const t = useTranslations("workspace");
   // Whether real output exists — which decides only whether the panel opens by
@@ -287,6 +297,31 @@ export function BuildScreen({
             {/* Full-width centring container. The frame measures this to decide
                 its scale, so its width must not depend on the frame — see
                 ViewportFrame. The border therefore lives on the frame itself. */}
+            {/* Stated, not silent. A running app that threw looks identical to
+                one that rendered nothing, so the errors it reported sit over
+                the frame rather than only in a console nobody has open. */}
+            {hasOutput && runtimeErrors.length > 0 && (
+              <div
+                role="alert"
+                className="mx-auto mb-3 w-full max-w-[720px] rounded-[var(--r-md)] border p-3"
+                style={{ borderColor: "var(--warn)", background: "var(--surface)" }}
+              >
+                <p className="text-[13px] font-semibold" style={{ color: "var(--warn)" }}>
+                  {t("previewRuntimeErrorTitle")}
+                </p>
+                <ul className="mt-1 space-y-0.5">
+                  {runtimeErrors.slice(0, 3).map((message) => (
+                    <li key={message} className="truncate font-mono text-[11.5px]" style={{ color: "var(--ink-2)" }}>
+                      {message}
+                    </li>
+                  ))}
+                </ul>
+                <VentrioButton variant="secondary" size="sm" className="mt-2.5" onClick={() => setReloadKey((key) => key + 1)}>
+                  {t("reload")}
+                </VentrioButton>
+              </div>
+            )}
+
             {hasOutput ? (
               <div className="flex w-full justify-center">
                 <ViewportFrame

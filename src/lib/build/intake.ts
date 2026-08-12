@@ -130,57 +130,51 @@ export function inferDomain(idea: string): IntakeDomain {
  * so two domains can offer a similarly-named shape without colliding in
  * persisted state.
  */
+/**
+ * What Ventrio can build, offered as product shapes rather than page layouts.
+ *
+ * WHAT THIS REPLACED. Every domain used to offer three page shapes — a landing,
+ * a story, a gallery; a timeline, an archive, an editorial. Not one of them was
+ * an application. Ventrio builds React applications with state, views and
+ * interaction, and the first decision it asked anybody to make could only
+ * describe a page, so the product introduced itself as a landing-page
+ * generator and the model was told to build one.
+ *
+ * APPLICATION IS FIRST, EVERYWHERE. It is the default in the sense that
+ * matters: the option people read before the others, in every domain. The rest
+ * are ordered by how often that domain actually wants them.
+ *
+ * The ids are stable and persisted — `useBuildIntake` stores an answer across
+ * reloads, so renaming one invalidates a resume in progress. The *phrase* the
+ * generator receives lives in `CANONICAL` below — the one place that turns an
+ * id into words — because a model given "general.landing" is being told an
+ * internal key, not a product.
+ */
+const APPLICATION: IntakeOption = { id: "type.application", labelKey: "intakeTypeApplication", hintKey: "intakeTypeApplicationHint" };
+const DASHBOARD: IntakeOption = { id: "type.dashboard", labelKey: "intakeTypeDashboard", hintKey: "intakeTypeDashboardHint" };
+const TOOL: IntakeOption = { id: "type.tool", labelKey: "intakeTypeTool", hintKey: "intakeTypeToolHint" };
+const STORE: IntakeOption = { id: "type.store", labelKey: "intakeTypeStore", hintKey: "intakeTypeStoreHint" };
+const PORTFOLIO: IntakeOption = { id: "type.portfolio", labelKey: "intakeTypePortfolio", hintKey: "intakeTypePortfolioHint" };
+const CONTENT: IntakeOption = { id: "type.content", labelKey: "intakeTypeContent", hintKey: "intakeTypeContentHint" };
+const LANDING: IntakeOption = { id: "type.landing", labelKey: "intakeTypeLandingPage", hintKey: "intakeTypeLandingPageHint" };
+
+/** The whole vocabulary, for anything that needs to enumerate it. */
+export const PRODUCT_TYPE_OPTIONS: readonly IntakeOption[] = [
+  APPLICATION, DASHBOARD, TOOL, STORE, PORTFOLIO, CONTENT, LANDING,
+];
+
+/** Four per domain, Application first, the rest ordered by how often it fits. */
 const PRODUCT_TYPES: Record<IntakeDomain, IntakeOption[]> = {
-  fandom: [
-    { id: "fandom.timeline", labelKey: "intakeTypeTimeline", hintKey: "intakeTypeTimelineHint" },
-    { id: "fandom.archive", labelKey: "intakeTypeArchive", hintKey: "intakeTypeArchiveHint" },
-    { id: "fandom.editorial", labelKey: "intakeTypeEditorial", hintKey: "intakeTypeEditorialHint" },
-  ],
-  portfolio: [
-    { id: "portfolio.showcase", labelKey: "intakeTypeShowcase", hintKey: "intakeTypeShowcaseHint" },
-    { id: "portfolio.caseStudies", labelKey: "intakeTypeCaseStudies", hintKey: "intakeTypeCaseStudiesHint" },
-    { id: "portfolio.onePage", labelKey: "intakeTypeOnePage", hintKey: "intakeTypeOnePageHint" },
-  ],
-  localBusiness: [
-    { id: "localBusiness.storefront", labelKey: "intakeTypeStorefront", hintKey: "intakeTypeStorefrontHint" },
-    { id: "localBusiness.menu", labelKey: "intakeTypeMenu", hintKey: "intakeTypeMenuHint" },
-    { id: "localBusiness.booking", labelKey: "intakeTypeBooking", hintKey: "intakeTypeBookingHint" },
-  ],
-  event: [
-    { id: "event.landing", labelKey: "intakeTypeEventLanding", hintKey: "intakeTypeEventLandingHint" },
-    { id: "event.programme", labelKey: "intakeTypeProgramme", hintKey: "intakeTypeProgrammeHint" },
-    { id: "event.invite", labelKey: "intakeTypeInvite", hintKey: "intakeTypeInviteHint" },
-  ],
-  tool: [
-    { id: "tool.productPage", labelKey: "intakeTypeProductPage", hintKey: "intakeTypeProductPageHint" },
-    { id: "tool.explainer", labelKey: "intakeTypeExplainer", hintKey: "intakeTypeExplainerHint" },
-    { id: "tool.waitlist", labelKey: "intakeTypeWaitlist", hintKey: "intakeTypeWaitlistHint" },
-  ],
-  community: [
-    { id: "community.hub", labelKey: "intakeTypeHub", hintKey: "intakeTypeHubHint" },
-    { id: "community.manifesto", labelKey: "intakeTypeManifesto", hintKey: "intakeTypeManifestoHint" },
-    { id: "community.directory", labelKey: "intakeTypeDirectory", hintKey: "intakeTypeDirectoryHint" },
-  ],
-  learning: [
-    { id: "learning.courseLanding", labelKey: "intakeTypeCourseLanding", hintKey: "intakeTypeCourseLandingHint" },
-    { id: "learning.guide", labelKey: "intakeTypeGuide", hintKey: "intakeTypeGuideHint" },
-    { id: "learning.syllabus", labelKey: "intakeTypeSyllabus", hintKey: "intakeTypeSyllabusHint" },
-  ],
-  shop: [
-    { id: "shop.catalog", labelKey: "intakeTypeCatalog", hintKey: "intakeTypeCatalogHint" },
-    { id: "shop.singleProduct", labelKey: "intakeTypeSingleProduct", hintKey: "intakeTypeSingleProductHint" },
-    { id: "shop.lookbook", labelKey: "intakeTypeLookbook", hintKey: "intakeTypeLookbookHint" },
-  ],
-  cause: [
-    { id: "cause.campaign", labelKey: "intakeTypeCampaign", hintKey: "intakeTypeCampaignHint" },
-    { id: "cause.story", labelKey: "intakeTypeStory", hintKey: "intakeTypeStoryHint" },
-    { id: "cause.report", labelKey: "intakeTypeReport", hintKey: "intakeTypeReportHint" },
-  ],
-  general: [
-    { id: "general.landing", labelKey: "intakeTypeLanding", hintKey: "intakeTypeLandingHint" },
-    { id: "general.story", labelKey: "intakeTypeNarrative", hintKey: "intakeTypeNarrativeHint" },
-    { id: "general.showcase", labelKey: "intakeTypeGallery", hintKey: "intakeTypeGalleryHint" },
-  ],
+  fandom: [APPLICATION, CONTENT, PORTFOLIO, LANDING],
+  portfolio: [APPLICATION, PORTFOLIO, CONTENT, LANDING],
+  localBusiness: [APPLICATION, STORE, LANDING, CONTENT],
+  event: [APPLICATION, LANDING, CONTENT, DASHBOARD],
+  tool: [APPLICATION, TOOL, DASHBOARD, LANDING],
+  community: [APPLICATION, CONTENT, DASHBOARD, LANDING],
+  learning: [APPLICATION, TOOL, CONTENT, DASHBOARD],
+  shop: [APPLICATION, STORE, LANDING, PORTFOLIO],
+  cause: [APPLICATION, CONTENT, LANDING, DASHBOARD],
+  general: [APPLICATION, DASHBOARD, TOOL, CONTENT, LANDING],
 };
 
 /**
@@ -389,36 +383,15 @@ export function intakeDirective(answers: IntakeAnswers, labels: (key: string) =>
  * no instruction at all rather than a placeholder to interpret.
  */
 const CANONICAL: Record<string, string> = {
-  "fandom.timeline": "an interactive timeline",
-  "fandom.archive": "a fan archive",
-  "fandom.editorial": "an editorial experience",
-  "portfolio.showcase": "a work showcase",
-  "portfolio.caseStudies": "case studies",
-  "portfolio.onePage": "a one-page portfolio",
-  "localBusiness.storefront": "a storefront page",
-  "localBusiness.menu": "a menu page",
-  "localBusiness.booking": "a booking page",
-  "event.landing": "an event landing page",
-  "event.programme": "a programme page",
-  "event.invite": "an invitation page",
-  "tool.productPage": "a product page",
-  "tool.explainer": "an explainer page",
-  "tool.waitlist": "a waitlist page",
-  "community.hub": "a community hub",
-  "community.manifesto": "a manifesto page",
-  "community.directory": "a directory",
-  "learning.courseLanding": "a course landing page",
-  "learning.guide": "a guide",
-  "learning.syllabus": "a syllabus page",
-  "shop.catalog": "a product catalogue",
-  "shop.singleProduct": "a single-product page",
-  "shop.lookbook": "a lookbook",
-  "cause.campaign": "a campaign page",
-  "cause.story": "a story page",
-  "cause.report": "an impact report",
-  "general.landing": "a landing page",
-  "general.story": "a narrative page",
-  "general.showcase": "a visual showcase",
+  // Product shapes. These replaced twenty-seven page shapes — a landing, a
+  // story, a gallery per domain — none of which was an application.
+  "type.application": "an interactive application with multiple views and real state",
+  "type.dashboard": "a dashboard that presents data and lets people filter and explore it",
+  "type.tool": "a focused tool that does one job well",
+  "type.store": "a store with a catalogue, product detail and a cart",
+  "type.portfolio": "a portfolio presenting work, with detail views",
+  "type.content": "a content site with sections, navigation and readable articles",
+  "type.landing": "a landing page that explains one offer and asks for one action",
   "design.cinematic": "cinematic: deep field, one dominant image, restrained warm accent",
   "design.missionControl": "mission-control: dense data grid, precise mono labels, dark instrumentation",
   "design.editorial": "editorial: narrow measure, strong type hierarchy, generous negative space",

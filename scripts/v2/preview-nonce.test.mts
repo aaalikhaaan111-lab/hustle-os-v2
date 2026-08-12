@@ -45,9 +45,16 @@ const base = {
   check("the module bootstrap carries it", /<script type="module" nonce="/.test(doc));
   check("the shim carries it", /<script nonce="/.test(doc));
 
+  // Three tags Ventrio writes without assets: the failure reporter, the import
+  // map shim, and the app module. The reporter was added when a module that
+  // failed to load left the preview white with nothing reported — it is
+  // Ventrio's own script and is nonced like the others.
   const withoutAssets = buildSandboxDocument({ ...base, nonce: NONCE });
   check("a document with no assets still nonces its scripts",
-    (withoutAssets.match(/<script[^>]*nonce=/g) ?? []).length === 2);
+    (withoutAssets.match(/<script[^>]*nonce=/g) ?? []).length === 3);
+  check("and every one of them is Ventrio's",
+    (withoutAssets.match(/<script/g) ?? []).length === 3,
+    String((withoutAssets.match(/<script/g) ?? []).length));
 }
 
 /* ── 2. omitted or malformed nonces are dropped, never interpolated ──────── */
@@ -83,10 +90,19 @@ const base = {
   // a script block looks only for `</script`, which the escaping neutralises.
   // What matters is that nothing but Ventrio's own tags carries the nonce.
   check("the generated string cannot close Ventrio's element", hostile.includes("<\\/script"));
-  check("the nonce appears exactly as many times as Ventrio wrote it",
-    (hostile.match(new RegExp(NONCE, "g")) ?? []).length === 2);
+  // The property is that the nonce appears only on tags Ventrio emitted, and
+  // never on anything the model produced. The count tracks how many scripts
+  // Ventrio writes — three since the failure reporter joined them — so it is
+  // compared against the tags rather than a number written twice.
   const nonced = hostile.match(/<script[^>]*nonce=/g) ?? [];
-  check("and only two tags are authorised", nonced.length === 2, String(nonced.length));
+  check("the nonce appears exactly as many times as Ventrio wrote it",
+    (hostile.match(new RegExp(NONCE, "g")) ?? []).length === nonced.length);
+  check("and only Ventrio's three tags are authorised", nonced.length === 3, String(nonced.length));
+  // The model's own "<script" is still in the document as text. That it is
+  // present and unnonced is the whole point: the count above must not grow
+  // just because generated output mentions a script.
+  const literal = (hostile.match(/<script/g) ?? []).length;
+  check("the generated tag text is present but unauthorised", literal > nonced.length, `${literal} vs ${nonced.length}`);
 }
 
 /* ── 4. nothing else about the sandbox moved ─────────────────────────────── */

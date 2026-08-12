@@ -104,6 +104,11 @@ export function PreOutputWorkspace({
   const router = useRouter();
   // Either shape counts as "this project has been built".
   const hasVersion = Boolean(output) || Boolean(app);
+  /**
+   * What the generated app said when it ran. Held here because the preview
+   * panel is what shows it, and the panel is this screen's to configure.
+   */
+  const [runtimeErrors, setRuntimeErrors] = useState<string[]>([]);
   const [messages, setMessages] = useState<ChatMessage[]>(
     assistant.messages.map((message) => ({ id: message.id, role: message.role, content: message.content }))
   );
@@ -338,6 +343,7 @@ export function PreOutputWorkspace({
             : "generating"
       }
       onPreviewRetry={job.canRetry ? () => createFirstVersion(true) : null}
+      runtimeErrors={runtimeErrors}
       published={Boolean(publication?.isPublished)}
       publishControl={
         hasVersion ? (
@@ -374,7 +380,9 @@ export function PreOutputWorkspace({
             mode="preview"
           />
         ) : app ? (
-          (device) => <AppPreview document={app.document} device={device} title={app.title} />
+          (device) => (
+            <AppPreview document={app.document} device={device} title={app.title} onRuntimeErrors={setRuntimeErrors} />
+          )
         ) : null
       }
       chat={({ previewOpen, canOpenPreview, openPreview }) => {

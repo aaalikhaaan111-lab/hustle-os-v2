@@ -19,6 +19,7 @@ import "server-only";
 import { compileGeneratedApp, type CompileDiagnostic } from "./compile";
 import { buildSandboxDocument } from "./sandbox";
 import { getRuntimeBundle } from "./runtimeBundle";
+import { specifiersIn } from "./validate";
 import { validateGeneratedApp, type AppIssue } from "./validate";
 import type { GeneratedAppV1 } from "./contract";
 
@@ -96,9 +97,30 @@ export async function buildGeneratedApp(
    * The template's own imports are always included: Ventrio's entry module
    * mounts with them, so their absence would be a build that cannot start.
    */
+  /**
+   * What the app actually imports, not what it declared.
+   *
+   * `runtime.dependencies` is a package list — `date-fns` — while a file may
+   * legitimately import `date-fns/locale`, which the validator allows. Building
+   * from the declaration produced an import map missing exactly those subpaths,
+   * and an unresolvable bare specifier does not fail one component: it stops
+   * the whole module graph before the app's first line, which is why the
+   * preview went white with nothing reported. Reading the sources is what makes
+   * "allowed to import" and "present in the import map" the same set.
+   */
+  const imported = new Set<string>();
+  for (const source of Object.values(app.files as unknown as Record<string, string>)) {
+    if (typeof source !== "string") continue;
+    for (const specifier of specifiersIn(source)) {
+      if (!specifier.startsWith(".") && !specifier.startsWith("/")) imported.add(specifier);
+    }
+  }
   const needed = [
+    // The template's own imports: Ventrio's entry module mounts with them, so
+    // their absence would be a build that cannot start.
     "react", "react-dom", "react-dom/client", "react/jsx-runtime",
     ...app.runtime.dependencies,
+    ...imported,
   ];
   const runtime = await getRuntimeBundle(needed);
 

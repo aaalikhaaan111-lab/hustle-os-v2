@@ -54,6 +54,23 @@ function publishablePayload(
   return output ?? null;
 }
 
+/**
+ * Says why a publish failed, in one line, without user content.
+ *
+ * Every branch below used to return the same sentence and discard the database
+ * error, so a CHECK constraint written for a different payload shape looked
+ * exactly like a transient write failure — and cost an investigation rather
+ * than a log line. The code and constraint name are the whole diagnosis.
+ */
+function logPublishFailure(operation: string, projectId: string, error: { code?: string; message?: string } | null): void {
+  console.error("[ventrio-publish]", JSON.stringify({
+    operation,
+    projectId,
+    code: error?.code ?? "unknown",
+    detail: (error?.message ?? "").replace(/\s+/g, " ").slice(0, 200),
+  }));
+}
+
 function invalidatePublication(projectId: string, slug: string) {
   updateTag(publicProjectCacheTag(slug));
   revalidatePath(`/p/${slug}`);
@@ -111,7 +128,10 @@ export async function publishProjectAction(projectId: string): Promise<Publicati
       })
       .eq("project_id", projectId)
       .eq("user_id", user.id);
-    if (error) return failure(t("errorPublish"));
+    if (error) {
+      logPublishFailure("republish", projectId, error);
+      return failure(t("errorPublish"));
+    }
     invalidatePublication(projectId, existing.slug);
     return successResult(projectId, existing.slug, t("republishedSuccess"));
   }
@@ -132,7 +152,10 @@ export async function publishProjectAction(projectId: string): Promise<Publicati
       insertedSlug = slug;
       break;
     }
-    if (error.code !== "23505") return failure(t("errorPublish"));
+    if (error.code !== "23505") {
+      logPublishFailure("publish", projectId, error);
+      return failure(t("errorPublish"));
+    }
   }
 
   if (!insertedSlug) return failure(t("errorSlug"));

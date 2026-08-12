@@ -72,6 +72,8 @@ export function WorkspaceView(props: WorkspaceViewProps) {
   // next load.
   const [existingValues, setExistingValues] =
     useState<Partial<Record<StructuredField, string>>>(props.savedFields);
+  // The generated app's own report, shown over the preview rather than nowhere.
+  const [runtimeErrors, setRuntimeErrors] = useState<string[]>([]);
 
   function handleFieldSaved(field: StructuredField, value: string) {
     setExistingValues((prev) => ({ ...prev, [field]: value }));
@@ -110,6 +112,7 @@ export function WorkspaceView(props: WorkspaceViewProps) {
 
   return (
     <BuildScreen
+      runtimeErrors={runtimeErrors}
       published={Boolean(props.publication?.isPublished)}
       shareUrl={shareUrl}
       /**
@@ -126,7 +129,12 @@ export function WorkspaceView(props: WorkspaceViewProps) {
       preview={
         props.app
           ? (device) => (
-              <AppPreview document={props.app!.document} device={device} title={props.app!.title} />
+              <AppPreview
+                document={props.app!.document}
+                device={device}
+                title={props.app!.title}
+                onRuntimeErrors={setRuntimeErrors}
+              />
             )
           : props.codegen && props.codegen.routes.length > 0
           ? (device) => (

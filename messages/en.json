@@ -784,7 +784,21 @@
     "intakeBack": "Back",
     "voiceDismissed": "Dictation needs the microphone. Press the microphone again and choose Allow.",
     "voiceInsecure": "Voice input needs a secure (https) connection.",
-    "buildAcknowledged": "Got it. I'm building the first version now — I'll make reasonable choices about the structure, content and look, and you can change any of it afterwards."
+    "buildAcknowledged": "Got it. I'm building the first version now — I'll make reasonable choices about the structure, content and look, and you can change any of it afterwards.",
+    "intakeTypeApplication": "Application",
+    "intakeTypeApplicationHint": "Multiple views, real state, things people can do",
+    "intakeTypeDashboard": "Dashboard",
+    "intakeTypeDashboardHint": "Data to read, filter and explore",
+    "intakeTypeTool": "Tool",
+    "intakeTypeToolHint": "One job, done well",
+    "intakeTypeStore": "Store",
+    "intakeTypeStoreHint": "Catalogue, product pages and a cart",
+    "intakeTypePortfolio": "Portfolio",
+    "intakeTypePortfolioHint": "Work presented, with detail views",
+    "intakeTypeContent": "Content site",
+    "intakeTypeContentHint": "Sections, navigation and readable pages",
+    "intakeTypeLandingPage": "Landing page",
+    "intakeTypeLandingPageHint": "One offer, one action"
   },
   "profile": {
     "title": "Profile",
@@ -1159,6 +1173,7 @@
     "analyticsUnpublishedBody": "Publish your project and anything people send back will be counted here.",
     "analyticsQuietTitle": "Published, no responses yet",
     "analyticsQuietBody": "Share the link. The moment someone responds, it shows up here.",
-    "analyticsScopeNote": "Ventrio counts responses people send through your published project. It does not track page views or visitors."
+    "analyticsScopeNote": "Ventrio counts responses people send through your published project. It does not track page views or visitors.",
+    "previewRuntimeErrorTitle": "The app reported an error while running"
   }
 }

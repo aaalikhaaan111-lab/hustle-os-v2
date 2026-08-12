@@ -35,7 +35,7 @@ import "server-only";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { build } from "esbuild";
-import { RUNTIME_LIBRARIES } from "./runtime";
+import { isAllowedImport, RUNTIME_LIBRARIES } from "./runtime";
 
 const execFileAsync = promisify(execFile);
 
@@ -133,9 +133,19 @@ async function buildCore(specifiers: readonly string[]): Promise<string> {
 const cache = new Map<string, Promise<RuntimeBundle>>();
 
 export function getRuntimeBundle(specifiers: readonly string[] = ALL_ENTRIES): Promise<RuntimeBundle> {
-  // Only real runtime entries, deduplicated and ordered, so the cache key is
-  // canonical and an unknown specifier can never reach the bundler.
-  const wanted = [...new Set(specifiers.filter((s) => ALL_ENTRIES.includes(s)))].sort();
+  /**
+   * Deduplicated and ordered, so the cache key is canonical, and filtered
+   * through the same allowlist the validator applies — never wider.
+   *
+   * It used to admit only exact `RUNTIME_LIBRARIES` names. But `isAllowedImport`
+   * deliberately permits documented subpaths (`date-fns/locale`,
+   * `react-dom/client`), so the gate accepted an import the bundler then
+   * silently dropped: the import map shipped without it and the browser failed
+   * to resolve the specifier, killing the module graph before a single line of
+   * the app ran. Sharing the allowlist is what keeps "allowed to import" and
+   * "actually built" the same set.
+   */
+  const wanted = [...new Set(specifiers.filter((s) => isAllowedImport(s)))].sort();
   const key = wanted.join("|");
 
   const existing = cache.get(key);

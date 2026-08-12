@@ -29,6 +29,7 @@
  */
 
 import { RUNTIME_LIBRARIES } from "./runtime";
+import { PREVIEW_PROTOCOL_VERSION, PREVIEW_SOURCE } from "./protocol";
 
 /**
  * The sandbox attribute. `allow-same-origin` is absent by design.
@@ -194,6 +195,67 @@ im.type = "importmap";
 im.textContent = JSON.stringify({ imports: __imports });
 document.head.appendChild(im);`;
 
+  /**
+   * The failure reporter, and why it is a classic script before the module.
+   *
+   * `ready` and `runtime-error` used to be posted by the app's own compiled
+   * entry — inside the very module that can fail to load. When a bare specifier
+   * did not resolve, the whole graph died before its first line: the parent got
+   * no ready, no error, and no way to tell a slow build from a dead one. The
+   * preview simply stayed white, for as long as anyone left it open.
+   *
+   * This runs first, in its own script, so it is already listening when the
+   * module is fetched. It reports three things the module cannot report about
+   * itself — a load or resolution error, an unhandled rejection, and a start
+   * that never happened — using the same envelope the parser already checks, so
+   * nothing about the message contract changes.
+   *
+   * The watchdog is the backstop: any failure mode nobody predicted still ends
+   * as a stated error rather than a blank rectangle. It is cancelled by the
+   * app's own `ready`, so a healthy app never sees it.
+   */
+  const reporter = `(function () {
+  var sent = 0;
+  var started = false;
+  function post(kind, message, stack) {
+    if (sent > 8) return;
+    sent += 1;
+    try {
+      parent.postMessage({
+        source: ${JSON.stringify(PREVIEW_SOURCE)},
+        version: ${PREVIEW_PROTOCOL_VERSION},
+        type: "runtime-error",
+        payload: {
+          kind: String(kind).slice(0, 40),
+          message: String(message == null ? "Unknown error" : message).slice(0, 2000),
+          stack: String(stack == null ? "" : stack).slice(0, 4000)
+        }
+      }, "*");
+    } catch (ignored) {}
+  }
+  addEventListener("message", function (event) {
+    // The app's own ready passes through here on its way out; seeing it is how
+    // the watchdog knows it has nothing to say.
+    if (event && event.data && event.data.type === "ready") started = true;
+  });
+  addEventListener("error", function (event) {
+    var error = event && event.error;
+    post(error && error.name ? error.name : "Error", (error && error.message) || (event && event.message), error && error.stack);
+  }, true);
+  addEventListener("unhandledrejection", function (event) {
+    var reason = event && event.reason;
+    post("UnhandledRejection", (reason && reason.message) || reason, reason && reason.stack);
+  });
+  var mark = function () { started = true; };
+  window.__ventrioStarted = mark;
+  setTimeout(function () {
+    if (started || window.__ventrioReady) return;
+    var root = document.getElementById("root");
+    if (root && root.childElementCount > 0) return;
+    post("DidNotStart", "The application did not start. Its code loaded but nothing rendered.", "");
+  }, 8000);
+})();`;
+
   const nonce = nonceAttribute(input.nonce);
   const assets = input.assets && Object.keys(input.assets).length > 0
     ? `<script${nonce}>window.__ventrioAssets = ${JSON.stringify(input.assets)};</script>`
@@ -213,6 +275,8 @@ document.head.appendChild(im);`;
     + (input.css ? `<style>${escapeForStyle(input.css)}</style>` : "")
     + `</head><body><div id="root"></div>`
     + assets
+    // First, so it is listening before anything can fail.
+    + `<script${nonce}>${escapeForScript(reporter)}</script>`
     + `<script${nonce}>${escapeForScript(shim)}</script>`
     + `<script type="module"${nonce}>${escapeForScript(input.code)}</script>`
     + `</body></html>`;

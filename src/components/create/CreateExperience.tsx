@@ -508,14 +508,58 @@ export function CreateExperience({ userId, initialDraft }: CreateExperienceProps
                       </div>
                     </div>
                   ) : (
-                    <div
-                      key={index}
-                      className={cn(
-                        "animate-message-in max-w-[720px] whitespace-pre-wrap text-[17px] leading-8 tracking-[-0.015em] text-ink",
-                        isLatestAssistant && showDirections && "ventrio-display text-[clamp(1.75rem,5vw,3rem)] leading-[1.08]"
+                    <div key={index} className="animate-message-in flex max-w-[720px] flex-col gap-3">
+                      <div
+                        className={cn(
+                          "whitespace-pre-wrap text-[17px] leading-8 tracking-[-0.015em] text-ink",
+                          isLatestAssistant && showDirections && "ventrio-display text-[clamp(1.75rem,5vw,3rem)] leading-[1.08]"
+                        )}
+                      >
+                        {message.content}
+                      </div>
+
+                      {/* The options this message offered, under this message.
+                          They used to render as a separate block after the whole
+                          conversation, which made them read as navigation that
+                          happened to be nearby rather than as part of what the
+                          assistant just said. Nothing times them out: they stay
+                          until they are used, until the conversation moves on,
+                          or until a newer assistant message replaces them. */}
+                      {isLatestAssistant && showChoices && (
+                        <ChoiceGrid
+                          choices={turn.choices}
+                          multiple={turn.choiceMode === "multiple"}
+                          selected={selectedChoices}
+                          busy={isSending || creating}
+                          onPick={pickChoice}
+                          onContinue={submitMultipleChoices}
+                        />
                       )}
-                    >
-                      {message.content}
+
+                      {isLatestAssistant && showDirections && (
+                        <div className="choice-stack">
+                          {turn.directions.map((direction, directionIndex) => (
+                            <DirectionRow
+                              key={`${direction.name}-${directionIndex}`}
+                              direction={direction}
+                              index={directionIndex}
+                              selected={selectedDirection === directionIndex}
+                              busy={creating || isSending}
+                              onChoose={() => chooseDirection(direction, directionIndex)}
+                              onRefine={() => beginRefine(direction.name)}
+                            />
+                          ))}
+                          <button
+                            type="button"
+                            disabled={creating || isSending}
+                            onClick={() => send(t("anotherMsg"), null)}
+                            className="direction-another focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-40"
+                          >
+                            <span aria-hidden>↗</span>
+                            {t("showAnother")}
+                          </button>
+                        </div>
+                      )}
                     </div>
                   );
                 })}
@@ -550,41 +594,6 @@ export function CreateExperience({ userId, initialDraft }: CreateExperienceProps
                 )}
               </div>
 
-              {showChoices && (
-                <ChoiceGrid
-                  choices={turn.choices}
-                  multiple={turn.choiceMode === "multiple"}
-                  selected={selectedChoices}
-                  busy={isSending || creating}
-                  onPick={pickChoice}
-                  onContinue={submitMultipleChoices}
-                />
-              )}
-
-              {showDirections && (
-                <div className="choice-stack">
-                  {turn.directions.map((direction, index) => (
-                    <DirectionRow
-                      key={`${direction.name}-${index}`}
-                      direction={direction}
-                      index={index}
-                      selected={selectedDirection === index}
-                      busy={creating || isSending}
-                      onChoose={() => chooseDirection(direction, index)}
-                      onRefine={() => beginRefine(direction.name)}
-                    />
-                  ))}
-                  <button
-                    type="button"
-                    disabled={creating || isSending}
-                    onClick={() => send(t("anotherMsg"), null)}
-                    className="direction-another focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-40"
-                  >
-                    <span aria-hidden>↗</span>
-                    {t("showAnother")}
-                  </button>
-                </div>
-              )}
             </section>
           )}
         </div>

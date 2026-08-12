@@ -71,15 +71,15 @@ function runFlow(idea: string, picks: (string | null)[]) {
   check("ambiguous idea asks two questions", plan.steps.length === 2, `${plan.steps.length}`);
   check("first question is product type", plan.steps[0].id === "productType");
   check("second question is design direction", plan.steps[1].id === "designDirection");
-  check("each step offers exactly three options",
-    plan.steps.every((s) => s.options.length === 3),
+  check("each step offers three to five options",
+    plan.steps.every((s) => s.options.length >= 3 && s.options.length <= 5),
     plan.steps.map((s) => s.options.length).join(","));
 
-  const run = runFlow(idea, ["fandom.timeline", "design.cinematic"]);
+  const run = runFlow(idea, ["type.application", "design.cinematic"]);
   check("two answers complete the intake", run.latched);
   check("exactly one generation is dispatched", run.generations === 1, `${run.generations}`);
   check("the payload carries both choices",
-    run.payload?.productType === "an interactive timeline" && !!run.payload?.designDirection,
+    /^an interactive application/.test(run.payload?.productType ?? "") && !!run.payload?.designDirection,
     JSON.stringify(run.payload));
 }
 
@@ -105,10 +105,10 @@ function runFlow(idea: string, picks: (string | null)[]) {
   check("deferring every step still generates", run.generations === 1, `${run.generations}`);
   check("a fully deferred intake sends no directive", run.payload === null, JSON.stringify(run.payload));
 
-  const partial = runFlow("i like marvel cinematic universe", ["fandom.archive", null]);
+  const partial = runFlow("i like marvel cinematic universe", ["type.content", null]);
   check("deferring only the design still generates", partial.generations === 1);
   check("…and sends the answered half only",
-    partial.payload?.productType === "a fan archive" && partial.payload?.designDirection === undefined,
+    /^a content site/.test(partial.payload?.productType ?? "") && partial.payload?.designDirection === undefined,
     JSON.stringify(partial.payload));
 }
 
@@ -158,7 +158,14 @@ function runFlow(idea: string, picks: (string | null)[]) {
   for (const domain of INTAKE_DOMAINS) {
     const types = productTypesFor(domain);
     const designs = designDirectionsFor(domain);
-    check(`${domain}: three product types`, types.length === 3, `${types.length}`);
+    // Product types are now the shared product vocabulary — Application first,
+    // then whichever shapes that domain most often wants — so a domain offers
+    // four, and `general` five. Still bounded: these render as one row each
+    // directly under an assistant message, and a list nobody reads to the end
+    // is a list that hid its own options.
+    check(`${domain}: three to five product types`, types.length >= 3 && types.length <= 5, `${types.length}`);
+    check(`${domain}: application is offered first`, types[0]?.id === "type.application", types[0]?.id);
+    check(`${domain}: product type ids are unique`, new Set(types.map((t) => t.id)).size === types.length);
     check(`${domain}: three design directions`, designs.length === 3, `${designs.length}`);
     check(`${domain}: design ids are unique`, new Set(designs.map((d) => d.id)).size === 3);
     check(`${domain}: every design has a local preview`,
@@ -228,20 +235,20 @@ function runFlow(idea: string, picks: (string | null)[]) {
   // End to end from the option ids the UI actually stores.
   const fromUi = JSON.parse(buildFirstVersionUserContent(
     direction, "ru",
-    intakeGenerationBrief({ productType: "fandom.archive", designDirection: "design.missionControl" })));
+    intakeGenerationBrief({ productType: "type.dashboard", designDirection: "design.missionControl" })));
   check("a stored product-type id arrives as English design vocabulary",
-    fromUi.intake?.productType === "a fan archive", JSON.stringify(fromUi.intake));
+    /^a dashboard that presents data/.test(fromUi.intake?.productType ?? ""), JSON.stringify(fromUi.intake));
   check("a stored design id arrives as English design vocabulary",
     /mission-control/.test(fromUi.intake?.designDirection ?? ""), JSON.stringify(fromUi.intake));
   check("a Russian project still declares its locale to the model", fromUi.projectLocale === "ru");
 
   // Half deferred: the answered half arrives, the deferred half is absent.
   const half = JSON.parse(buildFirstVersionUserContent(
-    direction, "en", intakeGenerationBrief({ productType: "fandom.timeline", designDirection: null })));
+    direction, "en", intakeGenerationBrief({ productType: "type.application", designDirection: null })));
   check("a deferred design sends no designDirection key",
     half.intake && !("designDirection" in half.intake), JSON.stringify(half.intake));
   check("…while the answered product type still arrives",
-    half.intake?.productType === "an interactive timeline");
+    /^an interactive application/.test(half.intake?.productType ?? ""), JSON.stringify(half.intake));
 
   // Fully deferred: byte-identical to the pre-feature request.
   const deferred = buildFirstVersionUserContent(direction, "en", intakeGenerationBrief({ productType: null, designDirection: null }));

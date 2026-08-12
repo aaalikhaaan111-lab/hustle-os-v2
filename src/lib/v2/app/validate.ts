@@ -73,7 +73,16 @@ const DYNAMIC_IMPORT = /\bimport\s*\(\s*["']([^"']+)["']\s*\)/g;
 const COMPUTED_IMPORT = /\bimport\s*\(\s*(?!["'])/;
 const REQUIRE_CALL = /\brequire\s*\(/;
 
-function specifiersIn(source: string): string[] {
+/**
+ * Every module specifier a source file imports.
+ *
+ * Exported because the bundler needs the same answer the validator gets. When
+ * the two disagreed, the gate allowed `date-fns/locale`, the bundle was built
+ * from the declared package list instead, and the import map shipped without
+ * it — so the browser could not resolve the specifier and the whole module
+ * graph died before anything ran. One reader, one answer.
+ */
+export function specifiersIn(source: string): string[] {
   const found: string[] = [];
   for (const re of [STATIC_IMPORT, EXPORT_FROM, DYNAMIC_IMPORT]) {
     re.lastIndex = 0;
