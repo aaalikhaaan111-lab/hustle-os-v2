@@ -158,6 +158,7 @@ export type Database = {
           heartbeat_at: string | null
           id: string
           kind: string
+          payload: Json | null
           progress_stage: string | null
           project_id: string
           provider_requests: number
@@ -178,6 +179,7 @@ export type Database = {
           heartbeat_at?: string | null
           id?: string
           kind?: string
+          payload?: Json | null
           progress_stage?: string | null
           project_id: string
           provider_requests?: number
@@ -198,6 +200,7 @@ export type Database = {
           heartbeat_at?: string | null
           id?: string
           kind?: string
+          payload?: Json | null
           progress_stage?: string | null
           project_id?: string
           provider_requests?: number

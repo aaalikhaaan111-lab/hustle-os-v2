@@ -1,7 +1,7 @@
 /**
  * First-version generation, as the queue runs it.
  *
- *   npx tsx --conditions=react-server scripts/v2/queue-generation.test.mts
+ *   npx tsx --conditions=react-server scripts/v2/worker-generation.test.mts
  *
  * WHAT THIS IS FOR. Production killed the old inline pipeline at the platform's
  * 300 s function ceiling, mid-generation, with a job left `running` and a unit
@@ -36,8 +36,8 @@ function check(name: string, ok: boolean, detail = ""): void {
 const read = (path: string) => readFileSync(new URL(`../../${path}`, import.meta.url), "utf8");
 const runSource = read("src/lib/v2/app/runGeneration.ts");
 const stagesSource = read("src/lib/v2/app/stages.ts");
-const consumerSource = read("src/app/api/queues/app-generation/route.ts");
-const queueSource = read("src/lib/v2/app/generationQueue.ts");
+const workerSource = read("worker/main.ts");
+
 const actionSource = read("src/lib/actions/stage3.ts");
 
 /* ── 1. every provider call fits inside one function ─────────────────────── */
@@ -66,27 +66,61 @@ check("so the queued path does not use it",
 check("and the repair uses its own budget",
   /timeoutMs: CONSUMER_BUDGETS\.repair/.test(stagesSource));
 
-/* ── 2. the consumer never retries, and never runs twice ─────────────────── */
+/* ── 2. the executor runs a job once, and only once ──────────────────────── */
 
-// A retry is a second paid generation nobody asked for. `acknowledge` drops the
-// message rather than redelivering it.
-check("the consumer disables queue retries", /retry: \(\) => \(\{ acknowledge: true \}\)/.test(consumerSource));
-// The lease must outlive the handler, or the message is redelivered mid-call
-// and a second request is paid for.
-check("and holds the lease past the longest call",
-  /visibilityTimeoutSeconds: (\d+)/.test(consumerSource)
-    && Number(/visibilityTimeoutSeconds: (\d+)/.exec(consumerSource)![1]) * 1000 > CONSUMER_BUDGETS.generate);
-check("the consumer may run for the whole function ceiling",
-  new RegExp(`maxDuration = ${FUNCTION_CEILING_MS / 1000}`).test(consumerSource));
-// The guard that actually protects the money: a counter on the job, moved by a
-// compare-and-swap, so a redelivered message is refused before it spends.
-check("each phase claims a provider request first",
+// The worker is a long-running process, not a function with a ceiling. That is
+// the entire reason it exists: three attempts to run a multi-minute provider
+// call inside a Vercel function failed, twice by the invocation simply ceasing
+// to execute.
+check("the worker loops rather than being invoked", /while \(running\)/.test(workerSource));
+check("it takes one job per tick", /\/\/ One job per tick/.test(workerSource));
+check("it sleeps when idle instead of spinning", /await sleep\(IDLE_MS\)/.test(workerSource));
+check("and backs off after an unexpected error", /await sleep\(BACKOFF_MS\)/.test(workerSource));
+
+// Selecting is not owning. Two workers may read the same row; exactly one wins
+// the compare-and-swap inside `runGeneratePhase`.
+check("it selects candidates without claiming them", /claimableJobs\(/.test(workerSource));
+check("and the claim is the existing compare-and-swap",
   (runSource.match(/claimProviderRequest\(/g) ?? []).length === 2);
 check("generation claims from zero, repair from one",
   /GENERATE_EXPECTS = 0/.test(runSource) && /REPAIR_EXPECTS = 1/.test(runSource));
 check("the claim comes before the provider call",
   runSource.indexOf("claimProviderRequest(ref.jobId, GENERATE_EXPECTS)") < runSource.indexOf("await requestGeneration("));
 check("and the guard fails closed", /return false;\n  \}\n  return data === true;/.test(read("src/lib/jobs/generationJobs.ts")));
+
+// Only rows that can actually be run are offered, so a claimed-then-crashed job
+// is never picked up a second time and paid for twice.
+const jobsSource = read("src/lib/jobs/generationJobs.ts");
+check("only unclaimed jobs are offered", /\.eq\("provider_requests", 0\)/.test(jobsSource));
+check("and only jobs that carry their input", /\.not\("payload", "is", null\)/.test(jobsSource));
+
+// A throw leaves the row alone on purpose: the stale sweep owns recovery, and
+// guessing a status from the loop would be a second accounting path.
+check("a throwing job is left to the stale sweep", /job_threw/.test(workerSource));
+check("and the worker sweeps abandoned jobs itself", /expireStaleForUser\(userId\)/.test(workerSource));
+check("draining lets the job in flight finish", /running = false;/.test(workerSource));
+
+// Secrets are checked by name and never printed.
+check("the worker refuses to start without its configuration", /startup_failed/.test(workerSource));
+check("and logs only the names of what is missing", /log\("startup_failed", \{ missing \}\)/.test(workerSource));
+/**
+ * Asserted against the log calls themselves, not the file.
+ *
+ * The worker legitimately reads `job.payload.brief` to build the message it
+ * runs; what must never happen is that brief reaching a log line. So this looks
+ * at what is inside `log(...)` and nothing else.
+ */
+{
+  const logCalls = workerSource.match(/\blog\((?:[^()]|\([^()]*\))*\)/g) ?? [];
+  check("the worker logs something", logCalls.length >= 5, String(logCalls.length));
+  const logged = logCalls.join("\n");
+  check("no brief reaches the log", !/payload\.brief(?!\.length)/.test(logged), logged.slice(0, 160));
+  check("its size does, which is the useful part", /briefChars/.test(logged));
+  // Nothing that could carry a key or a project.
+  for (const forbidden of ["apiKey", "GEMINI_API_KEY", "SUPABASE_SERVICE_ROLE_KEY", "process.env"]) {
+    check(`no ${forbidden} in any log line`, !logged.includes(forbidden), forbidden);
+  }
+}
 
 /* ── 3. the action hands off instead of generating ───────────────────────── */
 
@@ -95,30 +129,25 @@ const appBranch = actionSource.slice(
   actionSource.indexOf("await beat(job.id, \"generating\");\n    const client = new Anthropic();"),
 );
 check("the app-runtime branch was found", appBranch.length > 200);
-check("it enqueues the work", /enqueueGeneration\(/.test(appBranch));
+check("it records the work for the worker", /savePayload\(/.test(appBranch));
 // The whole point: the pipeline no longer runs inside the request.
 check("and does not render inline any more", !/renderProjectWithAppRuntime/.test(actionSource));
-check("a failed enqueue refunds rather than leaving a running row",
-  /if \(!queued\.ok\)/.test(appBranch) && /releaseAndFail/.test(appBranch));
+check("a payload that cannot be written refunds rather than leaving a running row",
+  /if \(!recorded\)/.test(appBranch) && /releaseAndFail/.test(appBranch));
 
 // Ordering: the claim and the reservation still happen before the handoff, so
 // a run only ever exists for a job that was genuinely claimed and paid for.
 const claimAt = actionSource.indexOf("const job = await claimJob(");
 const reserveAt = actionSource.indexOf("const reservation = await reserveUsage(");
-const startAt = actionSource.indexOf("const queued = await enqueueGeneration(");
+const startAt = actionSource.indexOf("const recorded = await savePayload(");
 check("the job is claimed before quota is reserved", claimAt > 0 && claimAt < reserveAt);
-check("and quota is reserved before anything is queued", reserveAt > 0 && reserveAt < startAt);
+check("and quota is reserved before the work is recorded", reserveAt > 0 && reserveAt < startAt);
 check("the account-wide stale sweep still runs first",
   actionSource.indexOf("await expireStaleForUser(user.id)") < claimAt);
 check("and the finality guard still comes before all of it",
   actionSource.indexOf("if (readAppState(project.snapshot_fields))") < claimAt);
-check("the work is enqueued once, from one place",
-  (actionSource.match(/enqueueGeneration\(/g) ?? []).length === 1);
-// The outer of two guards: the queue itself refuses a duplicate publish.
-check("every send carries an idempotency key derived from the job",
-  /idempotencyKey,/.test(queueSource)
-    && /`generate:\$\{input\.jobId\}`/.test(queueSource)
-    && /`repair:\$\{input\.jobId\}`/.test(queueSource));
+check("the work is recorded once, from one place",
+  (actionSource.match(/savePayload\(/g) ?? []).length === 1);
 
 /**
  * Reconnecting must not enqueue a second time.
@@ -415,10 +444,12 @@ check("the beat is frequent enough to matter", HEARTBEAT > 0 && HEARTBEAT * 4 < 
   check("a terminal failure carries its issues too",
     result.outcome === "failed" && (result.issues ?? []).length === 2, JSON.stringify(result));
 }
-check("and the consumer writes them to the log",
-  /issueCount: issues\.length/.test(consumerSource) && /issues: issues\.slice\(0, 6\)/.test(consumerSource));
+// Three production generations were refused and none recorded which rule they
+// broke, so none could be diagnosed without spending another provider request.
+check("and the worker writes them to the log",
+  /issueCount: result\.issues\?\.length/.test(workerSource) && /issues: result\.issues\.slice\(0, 4\)/.test(workerSource));
 check("bounded, so a project cannot be spilled into it",
-  /\.slice\(0, 200\)/.test(consumerSource));
+  /issue\.slice\(0, 160\)/.test(workerSource));
 
 /* ── 8c. the shipping configuration makes exactly one request ────────────── */
 
@@ -472,22 +503,38 @@ check("the consumer advances the existing job row",
 check("it never claims a job of its own", !/claimJob/.test(stagesSource + runSource));
 check("and never reserves quota of its own", !/reserveUsage/.test(stagesSource + runSource));
 
-// One async mechanism, not two. The workflow SDK attempt is gone entirely.
+/**
+ * One executor, not three.
+ *
+ * Two previous attempts at running generation on Vercel are gone entirely — the
+ * durable-workflow SDK, whose own endpoints never resolved, and the queue
+ * consumer, whose invocation twice stopped executing. Leaving either in place
+ * would mean two things able to claim the same job.
+ */
 {
   const { existsSync } = await import("node:fs");
   const root = new URL("../../", import.meta.url);
   check("the workflow orchestrator is gone", !existsSync(new URL("src/workflows", root)));
   check("its generated endpoints are gone", !existsSync(new URL("src/app/.well-known", root)));
-  const pkg = JSON.parse(read("package.json")) as { dependencies?: Record<string, string> };
-  check("the workflow SDK is not a dependency", !("workflow" in (pkg.dependencies ?? {})));
-  check("the queue SDK is", "@vercel/queue" in (pkg.dependencies ?? {}));
-  const vercelJson = JSON.parse(read("vercel.json")) as {
-    functions?: Record<string, { experimentalTriggers?: Array<{ topic?: string }> }>;
+  check("the queue consumer route is gone", !existsSync(new URL("src/app/api/queues", root)));
+  check("and its trigger configuration with it", !existsSync(new URL("vercel.json", root)));
+
+  const pkg = JSON.parse(read("package.json")) as {
+    dependencies?: Record<string, string>;
+    devDependencies?: Record<string, string>;
+    scripts?: Record<string, string>;
   };
-  const trigger = vercelJson.functions?.["src/app/api/queues/app-generation/route.ts"]?.experimentalTriggers?.[0];
-  check("the consumer is wired to the topic it consumes", trigger?.topic === "ventrio-app-generation");
-  check("and the producer sends to that same topic",
-    new RegExp(`GENERATION_TOPIC = "${trigger?.topic}"`).test(queueSource));
+  check("the workflow SDK is not a dependency", !("workflow" in (pkg.dependencies ?? {})));
+  check("nor is the queue SDK", !("@vercel/queue" in (pkg.dependencies ?? {})));
+  // The worker is a real process, so its runner is a real dependency rather
+  // than something `npx` happens to fetch.
+  check("the worker has a start script", (pkg.scripts ?? {}).worker === "tsx --conditions=react-server worker/main.ts");
+  check("and its runner is declared", "tsx" in (pkg.devDependencies ?? {}));
+
+  // Nothing in the web app may execute a provider call any more.
+  check("no route sends to a queue", !/@vercel\/queue/.test(read("src/lib/v2/app/generationQueue.ts")));
+  check("and the action only records the work",
+    !/enqueueGeneration/.test(actionSource) && /savePayload\(/.test(actionSource));
 }
 
 /** Advances the modelled counter to a given value, for repair-only scenarios. */
@@ -502,4 +549,4 @@ if (failures.length > 0) {
   for (const failure of failures) console.error(`  ✗ ${failure}`);
   process.exit(1);
 }
-console.log(`queue generation: ${passed} checks passed`);
+console.log(`worker generation: ${passed} checks passed`);

@@ -139,13 +139,13 @@ const action = readFileSync(new URL("../../src/lib/actions/stage3.ts", import.me
     (generateBody.match(/await claimJob\(/g) ?? []).length === 1);
   check("and reserves usage exactly once",
     (generateBody.match(/await reserveUsage\(/g) ?? []).length === 1);
-  // Generation is queued now, but it is still *this* job's work: the enqueue
-  // happens after the claim and after the reservation, so a message can only
-  // ever exist for a job that was claimed and a unit that was spent.
-  check("the work is queued inside that job, not beside it",
-    generateBody.indexOf("enqueueGeneration") > generateBody.indexOf("await reserveUsage("));
-  check("an enqueue that fails takes the shared refund path",
-    /enqueueGeneration[\s\S]{0,900}?releaseAndFail\(/.test(generateBody));
+  // Generation runs in an external worker now, but it is still *this* job's
+  // work: the payload is written after the claim and after the reservation, so
+  // a runnable job can only ever exist for one that was claimed and paid for.
+  check("the work is recorded inside that job, not beside it",
+    generateBody.indexOf("savePayload") > generateBody.indexOf("await reserveUsage("));
+  check("a payload that cannot be written takes the shared refund path",
+    /savePayload[\s\S]{0,900}?releaseAndFail\(/.test(generateBody));
   check("the refund releases the reserved unit",
     /async function releaseAndFail[\s\S]{0,400}?releaseUsage\(/.test(action));
   check("and marks the job failed first",

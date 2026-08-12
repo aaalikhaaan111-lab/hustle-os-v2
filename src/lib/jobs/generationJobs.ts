@@ -305,6 +305,88 @@ export async function claimProviderRequest(jobId: string, expected: number): Pro
   return data === true;
 }
 
+/**
+ * What a job needs in order to be executed by something other than the request
+ * that created it.
+ *
+ * The composed brief, the locale and the pinned model — the arguments the
+ * generation was always about, which used to travel in a queue message and were
+ * never written down. Nothing secret goes in here: the worker reads its own API
+ * key from its own environment.
+ */
+export interface GenerationPayload {
+  brief: string;
+  locale: string;
+  model: string;
+}
+
+/** Records the payload, so an external executor can find the work and run it. */
+export async function savePayload(jobId: string, payload: GenerationPayload): Promise<boolean> {
+  const service = createServiceClient();
+  const { error } = await service
+    .from("generation_jobs")
+    .update({ payload: payload as unknown as never })
+    .eq("id", jobId);
+  if (error) {
+    console.error("[ventrio-generation-job-error]", JSON.stringify({
+      operation: "save_payload",
+      message: error.message,
+    }));
+    return false;
+  }
+  return true;
+}
+
+export interface ClaimableJob {
+  id: string;
+  projectId: string;
+  userId: string;
+  payload: GenerationPayload;
+}
+
+/**
+ * Jobs an executor may pick up, oldest first.
+ *
+ * Deliberately a plain read, not a claim. Selecting is not the same as owning:
+ * two workers may return the same row here and exactly one will win
+ * `claimProviderRequest`, which is the compare-and-swap that actually decides.
+ * Keeping those separate means the claim stays the single place that has to be
+ * atomic, and it is already the mechanism that bounds provider spend.
+ *
+ * A job whose `provider_requests` is already 1 is excluded: it has been claimed,
+ * and if its executor died the stale sweep will end and refund it rather than
+ * letting a second worker pay for the same generation.
+ */
+export async function claimableJobs(limit = 5): Promise<ClaimableJob[]> {
+  const service = createServiceClient();
+  const { data, error } = await service
+    .from("generation_jobs")
+    .select("id, project_id, user_id, payload")
+    .eq("kind", KIND)
+    .in("status", ["queued", "running"])
+    .eq("provider_requests", 0)
+    .not("payload", "is", null)
+    .order("created_at", { ascending: true })
+    .limit(limit);
+  if (error || !data) return [];
+
+  const jobs: ClaimableJob[] = [];
+  for (const row of data) {
+    const payload = row.payload as unknown as Partial<GenerationPayload> | null;
+    // A row whose payload is unusable is left alone rather than half-run; the
+    // stale sweep ends it on the same terms as any other abandoned job.
+    if (!payload || typeof payload.brief !== "string" || !payload.brief.trim()) continue;
+    if (typeof payload.locale !== "string" || typeof payload.model !== "string") continue;
+    jobs.push({
+      id: row.id,
+      projectId: row.project_id,
+      userId: row.user_id,
+      payload: { brief: payload.brief, locale: payload.locale, model: payload.model },
+    });
+  }
+  return jobs;
+}
+
 export async function finishSucceeded(jobId: string): Promise<void> {
   const service = createServiceClient();
   const now = new Date().toISOString();

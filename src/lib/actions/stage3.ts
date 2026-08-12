@@ -23,6 +23,7 @@ import {
   attemptsSoFar,
   beat,
   jobsSoFar,
+  savePayload,
   claimJob,
   expireStale,
   expireStaleForUser,
@@ -40,7 +41,6 @@ import { codegenRenderingEnabled, renderProjectWithCodegen } from "@/lib/v2/code
 import { mergeCodegenState, type CodegenProjectState } from "@/lib/v2/codegen/projectState";
 import { appRuntimeEnabled, composeAppBrief } from "@/lib/v2/app/renderProject";
 import { readAppState } from "@/lib/v2/app/projectState";
-import { enqueueGeneration } from "@/lib/v2/app/generationQueue";
 import { resolveGeminiConfig } from "@/lib/v2/gemini/config";
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -545,24 +545,34 @@ export async function generateFirstVersionAction(
         return releaseAndFail(t("unavailable"), "provider_unavailable", `App runtime failed: ${config.code}.`);
       }
 
-      const queued = await enqueueGeneration({
-        jobId: job.id,
-        projectId,
-        userId: user.id,
-        brief,
-        locale,
-        model: config.model,
-      });
-      if (!queued.ok) {
+      /**
+       * Record the work and stop. Something else runs it.
+       *
+       * Generation no longer executes anywhere in Vercel. Three attempts to run
+       * a multi-minute provider call inside a function failed in three separate
+       * ways — a 300 s timeout, and twice an invocation that simply stopped
+       * executing, taking its timers and its logs with it — and none of them was
+       * addressable from inside the function. An external worker polls for jobs
+       * carrying a payload and executes them in a process that stays alive.
+       *
+       * Everything above this line is unchanged, because it is what decides
+       * whether a generation may happen at all: the finality guard, the stale
+       * sweep, one claimed job, one reserved unit. What leaves is only the part
+       * that takes minutes.
+       */
+      const recorded = await savePayload(job.id, { brief, locale, model: config.model });
+      if (!recorded) {
         console.error("[ventrio-ai-error]", JSON.stringify({
-          operation: "app_runtime_enqueue",
+          operation: "app_runtime_payload",
           projectId,
         }));
-        return releaseAndFail(t("unavailable"), "provider_unavailable", "App runtime failed: enqueue_failed.");
+        // Nothing will ever pick this up, so it is a failed generation now
+        // rather than a row that waits forever for a worker that cannot find it.
+        return releaseAndFail(t("unavailable"), "provider_unavailable", "App runtime failed: payload_failed.");
       }
 
       // Returns in milliseconds, with the job identity the workspace already
-      // polls. No reply yet — there is nothing to report until the queued work
+      // polls. No reply yet — there is nothing to report until the worker
       // finishes, and claiming otherwise is what the old inline path could not
       // avoid.
       return { error: null, output: null, reply: null, durationMs: Date.now() - startedAt, jobId: job.id };
