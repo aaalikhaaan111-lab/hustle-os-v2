@@ -27,6 +27,30 @@ export function appRuntimeEnabled(): boolean {
   return process.env.VENTRIO_APP_RUNTIME === "1";
 }
 
+/**
+ * Whether a refused first pass may buy a second provider request.
+ *
+ * OFF, and off is the shipping configuration. The repair stage is implemented,
+ * tested and correct in isolation — but it runs in a second queue invocation,
+ * and that invocation has twice been observed to stop executing entirely:
+ * heartbeats, the provider abort and the consumer's own wall-clock deadline all
+ * stopped in the same instant, and the platform killed it at the 300 s ceiling.
+ * A stage that can silently stop is not something a person's first impression
+ * of the product should depend on.
+ *
+ * So V1 makes exactly one provider request. A first pass that the gate refuses
+ * fails cleanly, refunds, and offers Retry — which is a worse outcome per
+ * attempt and a far better one per user, because it always resolves in about a
+ * minute instead of sometimes resolving in five and sometimes not at all.
+ *
+ * The repair code stays. It is the obvious thing to re-enable once the runtime
+ * question is answered, and deleting a tested path to express a deployment
+ * decision would only mean rebuilding it later.
+ */
+export function appRepairEnabled(): boolean {
+  return process.env.VENTRIO_APP_REPAIR === "1";
+}
+
 export type AppRenderResult =
   | { ok: true; state: AppProjectState; document: string; telemetry: AppTelemetry }
   | { ok: false; code: string; message: string; issues?: string[]; telemetry?: AppTelemetry };

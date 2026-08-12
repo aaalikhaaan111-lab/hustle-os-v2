@@ -32,6 +32,7 @@ import {
   type JobErrorCode,
 } from "@/lib/jobs/generationJobs";
 import { enqueueRepair, type GenerateMessage, type RepairMessage } from "./generationQueue";
+import { appRepairEnabled } from "./renderProject";
 import type { DeadlineOptions } from "./stages";
 import {
   beginGeneration,
@@ -96,10 +97,16 @@ export async function runGeneratePhase(
   const verdict: Verdict = await evaluateGeneration(ref, generated.text);
   if (verdict.ok) return persist(ref, verdict.app, message);
 
-  // Worth a second request: hand it to another invocation with the plan the
-  // gate already chose, rather than starting a repair in the time this one has
-  // left over.
-  if (verdict.plan) {
+  /**
+   * A second request, only if this deploy allows one.
+   *
+   * V1 does not. `appRepairEnabled` is off in production, so a refused first
+   * pass ends here: the job fails cleanly, the quota unit goes back, and the
+   * person is offered Retry. That keeps the live invariant at one provider
+   * request per attempt and keeps every outcome inside a single invocation,
+   * which is the one that has never stopped executing.
+   */
+  if (verdict.plan && appRepairEnabled()) {
     const queued = await enqueueRepair({
       jobId: ref.jobId,
       projectId: ref.projectId,

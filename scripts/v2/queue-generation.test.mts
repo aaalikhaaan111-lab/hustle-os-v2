@@ -188,6 +188,20 @@ registerHooks({
 // share one module instance. A relative specifier here resolves through the
 // loader to a different key and the recording silently goes to a second copy.
 const fake = (await import(FAKE)) as typeof import("./fixtures/fakeSteps.mts");
+
+/**
+ * The repair branch is off in production, so the scenarios that exercise it
+ * turn it on explicitly. Everything asserted about the shipping configuration
+ * runs with the flag as it actually ships — see section 10.
+ */
+const withRepair = <T,>(run: () => Promise<T>): Promise<T> => {
+  const saved = process.env.VENTRIO_APP_REPAIR;
+  process.env.VENTRIO_APP_REPAIR = "1";
+  return run().finally(() => {
+    if (saved === undefined) delete process.env.VENTRIO_APP_REPAIR;
+    else process.env.VENTRIO_APP_REPAIR = saved;
+  });
+};
 const { runGeneratePhase, runRepairPhase } = await import("../../src/lib/v2/app/runGeneration");
 
 const GENERATE = {
@@ -223,7 +237,7 @@ const repairMessage = () => ({ ...GENERATE, phase: "repair" as const, issues: RE
 /* a repairable failure queues exactly one repair, and does not run it here */
 {
   fake.__reset({ verdict: REPAIRABLE });
-  const result = await runGeneratePhase(GENERATE as never);
+  const result = await withRepair(() => runGeneratePhase(GENERATE as never));
   check("a repairable failure queues a repair", result.outcome === "queued-repair", JSON.stringify(result));
   check("the repair is queued once", fake.__countOf("enqueueRepair") === 1);
   // The whole point of the second message: the repair gets its own function,
@@ -287,7 +301,7 @@ const repairMessage = () => ({ ...GENERATE, phase: "repair" as const, issues: RE
 /* a failed enqueue is a failed generation, not a silent stall */
 {
   fake.__reset({ verdict: REPAIRABLE, enqueue: { ok: false, message: "queue down" } });
-  const result = await runGeneratePhase(GENERATE as never);
+  const result = await withRepair(() => runGeneratePhase(GENERATE as never));
   check("a repair that cannot be queued fails the run", result.outcome === "failed");
   check("and refunds, rather than leaving a running job", fake.__countOf("failGeneration") === 1);
 }
@@ -405,6 +419,51 @@ check("and the consumer writes them to the log",
   /issueCount: issues\.length/.test(consumerSource) && /issues: issues\.slice\(0, 6\)/.test(consumerSource));
 check("bounded, so a project cannot be spilled into it",
   /\.slice\(0, 200\)/.test(consumerSource));
+
+/* ── 8c. the shipping configuration makes exactly one request ────────────── */
+
+/**
+ * V1 is one shot. The repair stage exists and is tested, but it runs in a second
+ * invocation that has twice stopped executing until the platform killed it, so
+ * production does not depend on it. A refused first pass ends the attempt.
+ */
+{
+  delete process.env.VENTRIO_APP_REPAIR;
+  fake.__reset({ verdict: REPAIRABLE });
+  const result = await runGeneratePhase(GENERATE as never);
+  check("a refused first pass fails instead of queueing a repair",
+    result.outcome === "failed", JSON.stringify(result));
+  check("nothing is queued", fake.__countOf("enqueueRepair") === 0);
+  check("the provider was asked exactly once", fake.__countOf("requestGeneration") === 1);
+  check("the job records exactly one provider request", fake.__claimed("job-1") === 1);
+  check("quota is released exactly once", fake.__countOf("failGeneration") === 1);
+  check("nothing is persisted", fake.__countOf("persistGeneratedApp") === 0);
+  // The objections still travel out, for the log — they are simply not acted on.
+  check("and the gate's objections are still reported",
+    result.outcome === "failed" && (result.issues ?? []).length > 0);
+}
+
+/* a duplicate delivery of that same message still spends nothing */
+{
+  delete process.env.VENTRIO_APP_REPAIR;
+  fake.__reset({ verdict: REPAIRABLE });
+  await runGeneratePhase(GENERATE as never);
+  const second = await runGeneratePhase(GENERATE as never);
+  check("a duplicate after a one-shot failure is skipped", second.outcome === "skipped", JSON.stringify(second));
+  check("with no second provider request", fake.__countOf("requestGeneration") === 1);
+  check("and no second refund", fake.__countOf("failGeneration") === 1);
+}
+
+/* a clean first pass is unaffected by any of this */
+{
+  delete process.env.VENTRIO_APP_REPAIR;
+  fake.__reset({ verdict: { ok: true, app: APP } });
+  const result = await runGeneratePhase(GENERATE as never);
+  check("a first pass that validates still succeeds", result.outcome === "generated");
+  check("in one provider request", fake.__claimed("job-1") === 1);
+  check("persisted once", fake.__countOf("persistGeneratedApp") === 1);
+  check("and refunding nothing", fake.__countOf("failGeneration") === 0);
+}
 
 /* ── 9. no second job model, and no second orchestrator ──────────────────── */
 

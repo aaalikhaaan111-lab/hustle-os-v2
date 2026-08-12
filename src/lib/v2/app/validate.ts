@@ -105,7 +105,35 @@ function specifiersIn(source: string): string[] {
  * is a build error the model can be told about, rather than a feature that
  * appears to exist and does not work.
  */
-const FORBIDDEN_SOURCE: Array<{ code: string; pattern: RegExp; detail: string }> = [
+/**
+ * Blanks string literals, template literals and comments, keeping length and
+ * line structure so nothing else shifts.
+ *
+ * THE DEFECT THIS FIXES, observed in production on 2026-08-12. A generated
+ * woodworking app was refused with
+ * `frame_escape — Reaching the embedding page is not allowed` in
+ * `src/data/mistakesData.ts`, a file of advice strings. The rule's bare-identifier
+ * branch matches `top.` preceded by anything that is not a dot or word
+ * character — which is exactly what the end of the sentence "Clamp it to the
+ * top." looks like. The app was correct and safe; the copy contained an English
+ * sentence about the top of a workpiece.
+ *
+ * A pattern that reads prose as code cannot be answered by any instruction to
+ * the model short of "do not write that word", so it is fixed here. Only rules
+ * that opt in are affected, and only the text they read changes: every real
+ * escape — `window.parent`, `parent.postMessage(...)`, `top.document` — is still
+ * matched, because those live in code, which is exactly what survives.
+ */
+function codeOnly(source: string): string {
+  // Order matters: a quote inside a comment must not open a string, and a
+  // comment marker inside a string must not open a comment.
+  return source.replace(
+    /\/\*[\s\S]*?\*\/|\/\/[^\n]*|'(?:\\.|[^'\\\n])*'|"(?:\\.|[^"\\\n])*"|`(?:\\.|[^`\\])*`/g,
+    (match) => match.replace(/[^\n]/g, " "),
+  );
+}
+
+const FORBIDDEN_SOURCE: Array<{ code: string; pattern: RegExp; detail: string; codeOnly?: boolean }> = [
   { code: "eval", pattern: /\beval\s*\(/, detail: "eval() is not allowed." },
   { code: "new_function", pattern: /\bnew\s+Function\s*\(/, detail: "new Function() is not allowed." },
   /**
@@ -127,6 +155,10 @@ const FORBIDDEN_SOURCE: Array<{ code: string; pattern: RegExp; detail: string }>
     code: "frame_escape",
     pattern: /(?:\bwindow\s*\.\s*(?:parent|top|opener)\b|(?:^|[^.\w$])(?:parent|top|opener)\s*\.)/,
     detail: "Reaching the embedding page is not allowed.",
+    // Read the code only. The bare-identifier branch cannot tell `top.` in
+    // `parent.postMessage` from `top.` at the end of "measure from the top." —
+    // and a production app was refused for the second. See `codeOnly`.
+    codeOnly: true,
   },
   { code: "network", pattern: /\b(?:fetch|XMLHttpRequest|WebSocket|EventSource)\s*\(/, detail: "Network access is not available to a generated app." },
   { code: "network", pattern: /navigator\.sendBeacon/, detail: "Network access is not available to a generated app." },
@@ -281,8 +313,11 @@ export function validateGeneratedApp(value: unknown): AppValidation {
       }
       if (!/\.(tsx|ts|jsx|js)$/.test(path)) continue;
 
+      // Computed once and only if some rule wants it; most read the raw source.
+      let stripped: string | null = null;
       for (const rule of FORBIDDEN_SOURCE) {
-        if (rule.pattern.test(source)) {
+        const text = rule.codeOnly ? (stripped ??= codeOnly(source)) : source;
+        if (rule.pattern.test(text)) {
           issues.add(`$.files["${path}"]`, rule.code, rule.detail);
         }
       }

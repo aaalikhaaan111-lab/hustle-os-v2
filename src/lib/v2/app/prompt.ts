@@ -53,7 +53,18 @@ RULES FOR THE FRAME
 - Every marker sits alone on its own line, exactly as written above.
 - Every file in "manifest" gets exactly one block, and every block's path is
   in "manifest". No extras, no omissions, no duplicates.
-- The closing marker repeats the same path as the opening one.
+- The closing marker repeats the same path as the opening one — character for
+  character, the path you just opened, not the next file you are about to write:
+
+    CORRECT
+    ${fileOpen("src/data/checksData.ts")}
+    export const checks = [];
+    ${fileClose("src/data/checksData.ts")}
+
+    WRONG — closes a different path than it opened, and the response is refused
+    ${fileOpen("src/data/checksData.ts")}
+    export const checks = [];
+    ${fileClose("src/data/woodData.ts")}
 - File contents may never contain the text "${MARKER_PREFIX}".
 - Only the header is JSON. Escaping anything inside a file block is a bug.
 
@@ -94,6 +105,21 @@ window.parent / top / opener, service workers, require().
 That includes a "persistence" or "storage" helper module. A generated project
 was refused for one src/utils/storage.ts wrapping localStorage; everything
 else about it was fine. There is no persistence layer to write.
+
+THE APP IS ALONE IN ITS FRAME
+Your application runs inside a sandboxed frame on a Ventrio page. It must never
+reach that page, or acknowledge that it exists. There is no approved API for
+talking to it — not a message channel, not a handshake, not a resize callback.
+
+Never write any of these:
+  window.parent   window.top   window.opener
+  parent.<anything>   top.<anything>   opener.<anything>
+  parent.document   top.document   parent.postMessage(...)
+  postMessage to any frame, or a listener for messages from one
+
+Build as though the frame is the whole world. Everything the app needs — its
+layout, its state, its sizing — it decides for itself, from React and CSS.
+An app that asks the page around it for anything is refused.
 
 Hold everything in React state — useState, useReducer, context. Seed it from
 a source file you import. State resets when the preview reloads, and that is
