@@ -118,6 +118,56 @@ export function parsePreviewMessage(
   }
 }
 
+export interface PreviewHandlers {
+  /** The app inside signalled that it mounted. */
+  onReady?: () => void;
+  /** Distinct runtime errors so far, most frequent first. */
+  onRuntimeErrors?: (messages: string[]) => void;
+}
+
+/**
+ * Listens for one preview frame's messages. Returns the teardown.
+ *
+ * WHICH WINDOW, AND WHY IT IS NOT `window`. A sandboxed frame posts to its
+ * `parent`. That is the window of the document the frame lives in — which in
+ * the workspace is *not* the top window, because `ViewportFrame` renders the
+ * preview inside a same-origin iframe of its own and portals React into it. So
+ * a listener on the page's `window` sits one document above where the messages
+ * arrive and hears nothing at all.
+ *
+ * That was a real defect, found in production on 2026-08-12: `data-ready` never
+ * flipped, and every runtime error a generated app reported was dropped on the
+ * floor — the preview looked fine while the one channel that says otherwise was
+ * disconnected. Resolving the window from the frame itself is what makes this
+ * correct at any nesting depth, including none.
+ *
+ * A frame with no owning window is not an error: it is a frame that was never
+ * inserted into a document, and there is nothing to listen to yet.
+ */
+export function subscribePreview(
+  frame: Pick<HTMLIFrameElement, "ownerDocument" | "contentWindow"> | null,
+  handlers: PreviewHandlers,
+): () => void {
+  const target = frame?.ownerDocument?.defaultView;
+  if (!frame || !target) return () => {};
+
+  const log = new RuntimeErrorLog();
+  const handler = (event: MessageEvent): void => {
+    // Every check lives in `parsePreviewMessage`: source, origin, shape and
+    // type. Anything that is not this frame's own message is dropped.
+    const message = parsePreviewMessage(event, { expectedSource: frame.contentWindow });
+    if (!message) return;
+    if (message.type === "ready") handlers.onReady?.();
+    if (message.type === "runtime-error") {
+      log.add(message.payload);
+      handlers.onRuntimeErrors?.(log.describe());
+    }
+  };
+
+  target.addEventListener("message", handler as EventListener);
+  return () => target.removeEventListener("message", handler as EventListener);
+}
+
 /**
  * Runtime errors collected from one preview session.
  *

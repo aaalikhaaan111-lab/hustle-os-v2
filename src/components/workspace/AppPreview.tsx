@@ -19,7 +19,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { SANDBOX_ATTRIBUTE } from "@/lib/v2/app/sandbox";
-import { parsePreviewMessage, RuntimeErrorLog } from "@/lib/v2/app/protocol";
+import { subscribePreview } from "@/lib/v2/app/protocol";
 import type { DeviceMode } from "@/lib/build/deviceWidths";
 
 export interface AppPreviewProps {
@@ -34,22 +34,21 @@ export function AppPreview({ document: srcDoc, device, title, onRuntimeErrors }:
   const frameRef = useRef<HTMLIFrameElement | null>(null);
   const [ready, setReady] = useState(false);
 
-  useEffect(() => {
-    const log = new RuntimeErrorLog();
-    const handler = (event: MessageEvent) => {
-      // Every check lives in `parsePreviewMessage`: source, origin, shape and
-      // type. Anything that is not this frame's own message is dropped.
-      const message = parsePreviewMessage(event, { expectedSource: frameRef.current?.contentWindow ?? null });
-      if (!message) return;
-      if (message.type === "ready") setReady(true);
-      if (message.type === "runtime-error") {
-        log.add(message.payload);
-        onRuntimeErrors?.(log.describe());
-      }
-    };
-    window.addEventListener("message", handler);
-    return () => window.removeEventListener("message", handler);
-  }, [onRuntimeErrors]);
+  /**
+   * The window to listen on comes from the frame, never from `window`.
+   *
+   * `ViewportFrame` portals this component into a same-origin iframe, so the
+   * sandboxed preview's `parent` is that iframe's window and the page's own
+   * `window` never sees the message. See `subscribePreview`, which owns the
+   * reasoning and the resolution.
+   *
+   * The effect runs after refs are attached, so `frameRef.current` is the
+   * mounted element here.
+   */
+  useEffect(
+    () => subscribePreview(frameRef.current, { onReady: () => setReady(true), onRuntimeErrors }),
+    [onRuntimeErrors],
+  );
 
   return (
     <iframe

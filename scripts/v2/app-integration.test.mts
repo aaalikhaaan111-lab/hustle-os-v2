@@ -211,7 +211,12 @@ const action = readFileSync(new URL("../../src/lib/actions/stage3.ts", import.me
   // this token is never used, and a naive search finds the explanation.
   const previewCode = preview.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
   check("never allow-same-origin", !/allow-same-origin/.test(previewCode));
-  check("and validates every message through the protocol", /parsePreviewMessage\(/.test(preview));
+  // The validation moved into `subscribePreview` when the listener had to be
+  // attached to the frame's own window rather than the page's; both halves are
+  // asserted so the component cannot start listening on its own again.
+  check("and reads its messages through the protocol's subscriber", /subscribePreview\(/.test(preview));
+  const protocolSource = readFileSync(new URL("../../src/lib/v2/app/protocol.ts", import.meta.url), "utf8");
+  check("which validates every message", /subscribePreview[\s\S]{0,900}parsePreviewMessage\(/.test(protocolSource));
 }
 
 /* ── report ─────────────────────────────────────────────────────────────── */

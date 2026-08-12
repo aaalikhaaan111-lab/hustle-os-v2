@@ -202,9 +202,15 @@ for (const [name, path, source] of PROSE) {
   }
   check("and nothing else", (protocol.match(/case "/g) ?? []).length === 3);
 
-  // Exactly one listener in the product, and it is that one.
+  // Exactly one listener in the product, and it is that one. It lives in
+  // `subscribePreview` rather than the component, because the window to listen
+  // on has to be resolved from the frame — the workspace portals the preview
+  // into a nested document, and a listener on `window` heard nothing.
   const preview = read("src/components/workspace/AppPreview.tsx");
-  check("the workspace frame validates through it", /parsePreviewMessage\(event/.test(preview));
+  check("the workspace frame subscribes through the protocol", /subscribePreview\(frameRef\.current/.test(preview));
+  check("and validates there", /subscribePreview[\s\S]{0,900}parsePreviewMessage\(event/.test(protocol));
+  check("it listens on the frame's window, not the page's",
+    /const target = frame\?\.ownerDocument\?\.defaultView/.test(protocol));
   const publicView = read("src/components/publishing/PublicAppView.tsx");
   check("and the published view listens for nothing", !/addEventListener/.test(publicView));
 }
