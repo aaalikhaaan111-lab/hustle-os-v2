@@ -12,6 +12,8 @@ import { getSiteUrl } from "@/lib/site";
 import { getCurrentUser } from "@/lib/supabase/currentUser";
 import { createClient } from "@/lib/supabase/server";
 import { toJson } from "@/lib/supabase/json";
+import { appPublicationPayload } from "@/lib/publishing/payload";
+import { readAppState } from "@/lib/v2/app/projectState";
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -19,14 +21,37 @@ function failure(error: string): PublicationActionResult {
   return { error, publication: null, publicUrl: null, message: null };
 }
 
+/**
+ * The thing this project would publish, in whichever form it has one.
+ *
+ * A project built by the app runtime has an application and no page artifact;
+ * one built by the fixed renderer has the reverse. Both are resolved here so
+ * every caller below asks the same question — "is there something to publish,
+ * and what is it called" — rather than each learning the difference.
+ *
+ * The application is read through `readAppState`, which re-runs the gate. A
+ * project whose stored application no longer validates cannot be published,
+ * which is the same rule the workspace applies before showing it.
+ */
 async function ownedOutput(projectId: string) {
   const supabase = await createClient();
   const user = await getCurrentUser(supabase);
-  if (!user) return { supabase, user: null, project: null, output: null };
+  if (!user) return { supabase, user: null, project: null, output: null, app: null, name: null };
   const project = await getProjectById(supabase, user.id, projectId);
   const stage3 = parseStage3ProjectState(project?.snapshot_fields);
   const output = sanitizeStage3Output(stage3?.output, stage3?.direction?.projectType);
-  return { supabase, user, project, output };
+  const app = readAppState(project?.snapshot_fields);
+  const name = app ? app.app.metadata.name : output ? output.identity.name : null;
+  return { supabase, user, project, output, app, name };
+}
+
+/** What goes into the `output` column, for whichever shape this project is. */
+function publishablePayload(
+  app: ReturnType<typeof readAppState>,
+  output: ReturnType<typeof sanitizeStage3Output>,
+): unknown | null {
+  if (app) return appPublicationPayload(app);
+  return output ?? null;
 }
 
 function invalidatePublication(projectId: string, slug: string) {
@@ -56,11 +81,12 @@ async function successResult(
 export async function publishProjectAction(projectId: string): Promise<PublicationActionResult> {
   const t = await getTranslations("publishing");
   if (!UUID_PATTERN.test(projectId)) return failure(t("errorInvalid"));
-  const { supabase, user, project, output } = await ownedOutput(projectId);
+  const { supabase, user, project, output, app, name } = await ownedOutput(projectId);
   if (!user) return failure(t("errorSession"));
   if (!project) return failure(t("errorUnauthorized"));
-  if (!output) return failure(t("errorMissingOutput"));
-  if (!hasUsableProjectName(output.identity.name)) return failure(t("errorNameRequired"));
+  const payload = publishablePayload(app, output);
+  if (!payload || !name) return failure(t("errorMissingOutput"));
+  if (!hasUsableProjectName(name)) return failure(t("errorNameRequired"));
   if (!isLocale(project.locale)) return failure(t("errorInvalid"));
 
   const { data: existing } = await supabase
@@ -78,7 +104,7 @@ export async function publishProjectAction(projectId: string): Promise<Publicati
     const { error } = await supabase
       .from("project_publications")
       .update({
-        output: toJson(output),
+        output: toJson(payload),
         locale: project.locale,
         is_published: true,
         published_at: new Date().toISOString(),
@@ -90,7 +116,7 @@ export async function publishProjectAction(projectId: string): Promise<Publicati
     return successResult(projectId, existing.slug, t("republishedSuccess"));
   }
 
-  const baseSlug = slugifyProjectName(output.identity.name);
+  const baseSlug = slugifyProjectName(name);
   let insertedSlug: string | null = null;
   for (let attempt = -1; attempt < 5; attempt += 1) {
     const slug = attempt === -1 ? baseSlug : slugCollisionCandidate(baseSlug, projectId, attempt);
@@ -99,7 +125,7 @@ export async function publishProjectAction(projectId: string): Promise<Publicati
       user_id: user.id,
       slug,
       locale: project.locale,
-      output: toJson(output),
+      output: toJson(payload),
       is_published: true,
     });
     if (!error) {
@@ -117,10 +143,13 @@ export async function publishProjectAction(projectId: string): Promise<Publicati
 export async function updatePublishedVersionAction(projectId: string): Promise<PublicationActionResult> {
   const t = await getTranslations("publishing");
   if (!UUID_PATTERN.test(projectId)) return failure(t("errorInvalid"));
-  const { supabase, user, project, output } = await ownedOutput(projectId);
+  const { supabase, user, project, output, app } = await ownedOutput(projectId);
   if (!user) return failure(t("errorSession"));
   if (!project) return failure(t("errorUnauthorized"));
-  if (!output) return failure(t("errorMissingOutput"));
+  // Republishing pushes whatever the project holds now — an edited application
+  // included. That is the whole mechanism by which a published app is updated.
+  const payload = publishablePayload(app, output);
+  if (!payload) return failure(t("errorMissingOutput"));
   if (!isLocale(project.locale)) return failure(t("errorInvalid"));
 
   const { data: publication } = await supabase
@@ -133,7 +162,7 @@ export async function updatePublishedVersionAction(projectId: string): Promise<P
 
   const { error } = await supabase
     .from("project_publications")
-    .update({ output: toJson(output), locale: project.locale })
+    .update({ output: toJson(payload), locale: project.locale })
     .eq("project_id", projectId)
     .eq("user_id", user.id);
   if (error) return failure(t("errorUpdate"));

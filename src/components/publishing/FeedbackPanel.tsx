@@ -34,7 +34,9 @@ export function FeedbackPanel({ projectId, projectLocale, publication, onDraftCh
   const [isProposing, startProposal] = useTransition();
   const [isApplying, startApply] = useTransition();
   const [isDeleting, startDelete] = useTransition();
-  const fieldLabels = new Map(publication.output.form.fields.map((field) => [field.id, field.label]));
+  // Response feedback belongs to the page artifact's form. An application
+  // collects nothing through Ventrio, so there are no labels to resolve.
+  const fieldLabels = new Map((publication.output?.form.fields ?? []).map((field) => [field.id, field.label]));
   const canAnalyze = responseCount > 0 && !feedback.isCurrent && !isAnalyzing && !feedback.analyzing;
 
   function analyze() {

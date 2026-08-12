@@ -83,6 +83,16 @@ export async function POST(
     return response("unavailable", 503);
   }
   if (!publication) return response("not_found", 404);
+  /**
+   * Only page artifacts have a Ventrio-managed form.
+   *
+   * A published application owns its own interactions and runs sandboxed with
+   * no network, so it cannot reach this endpoint and has no field schema to
+   * validate against. A request naming an app publication is therefore not a
+   * malformed submission — it is a submission to something that does not
+   * collect any, and is refused as not-found.
+   */
+  if (!publication.output) return response("not_found", 404);
   const payload = validatePublicResponse(publication.output, envelope.values);
   if (!payload) return response("invalid", 400);
 

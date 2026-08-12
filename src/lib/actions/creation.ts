@@ -1,13 +1,13 @@
 "use server";
 
 import { createHash } from "node:crypto";
-import Anthropic from "@anthropic-ai/sdk";
 import { revalidatePath } from "next/cache";
 import { getLocale, getTranslations } from "next-intl/server";
 import { DEFAULT_LOCALE, isLocale, type Locale } from "@/i18n/locale";
 import { detectMessageLocale, replyLocaleFor } from "@/lib/build/messageLocale";
 import { createClient } from "@/lib/supabase/server";
 import { toJson } from "@/lib/supabase/json";
+import { requestDiscoveryTurn } from "@/lib/v2/gemini/discovery";
 import {
   CREATION_LIMITS,
   isStartingPoint,
@@ -19,7 +19,6 @@ import {
   type CreationStartingPoint,
   type CreationTurn,
   type PersistedCreationDraft,
-  V1_PRESETS,
 } from "@/lib/build/creationTypes";
 import {
   STAGE3_VERSION,
@@ -44,73 +43,14 @@ function asChatRole(value: string): "user" | "assistant" {
 const TOKEN_PATTERN = /^[a-zA-Z0-9_-]{8,80}$/;
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
-const CREATION_SCHEMA = {
-  type: "object",
-  properties: {
-    phase: { type: "string", enum: ["ask", "propose"] },
-    message: { type: "string" },
-    choices: {
-      type: "array",
-      items: {
-        type: "object",
-        properties: { id: { type: "string" }, title: { type: "string" }, description: { type: "string" } },
-        required: ["id", "title", "description"],
-        additionalProperties: false,
-      },
-    },
-    choiceMode: { type: "string", enum: ["single", "multiple"] },
-    transition: { type: "string", enum: ["none", "focus", "reveal"] },
-    directions: {
-      type: "array",
-      items: {
-        type: "object",
-        properties: {
-          name: { type: "string" }, concept: { type: "string" }, forWho: { type: "string" },
-          creates: { type: "string" }, whyFits: { type: "string" },
-          projectType: { type: "string", enum: [...V1_PRESETS] }, problem: { type: "string" },
-          audience: { type: "string" }, niche: { type: "string" },
-          creativeBrief: {
-            type: "object",
-            properties: {
-              startingMaterial: { type: "string" },
-              motivation: { type: "string" },
-              firstAudience: { type: "string" },
-              desiredExperience: { type: "string" },
-              personalIngredients: { type: "array", items: { type: "string" } },
-              constraints: { type: "array", items: { type: "string" } },
-              assumptions: { type: "array", items: { type: "string" } },
-            },
-            required: [
-              "startingMaterial",
-              "motivation",
-              "firstAudience",
-              "desiredExperience",
-              "personalIngredients",
-              "constraints",
-              "assumptions",
-            ],
-            additionalProperties: false,
-          },
-        },
-        required: [
-          "name",
-          "concept",
-          "forWho",
-          "creates",
-          "whyFits",
-          "projectType",
-          "problem",
-          "audience",
-          "niche",
-          "creativeBrief",
-        ],
-        additionalProperties: false,
-      },
-    },
-  },
-  required: ["phase", "message", "choices", "choiceMode", "transition", "directions"],
-  additionalProperties: false,
-};
+/**
+ * The turn's shape is enforced by `sanitizeCreationTurn`, not by the provider.
+ *
+ * A JSON schema used to travel with the request as `output_config.format`.
+ * Gemini refuses this pipeline's schemas at every size we could construct — the
+ * same finding the generation path recorded — so the request asks for JSON by
+ * MIME type and the local validator remains the authority, which it always was.
+ */
 
 function creationSystemPrompt(locale: Locale | string, previousTurn: CreationTurn | null): string {
   const language = locale === "ru" ? "Russian" : "English";
@@ -173,13 +113,16 @@ function newStage3State(sessionId: string, conversationId: string, point: Creati
   };
 }
 
-function logAiUsage(operation: "creation_discovery", startedAt: number, response: Anthropic.Message) {
+function logAiUsage(
+  operation: "creation_discovery",
+  result: { model: string; latencyMs: number; inputTokens?: number; outputTokens?: number },
+) {
   console.info("[ventrio-ai-usage]", JSON.stringify({
     operation,
-    model: response.model,
-    durationMs: Date.now() - startedAt,
-    inputTokens: response.usage.input_tokens,
-    outputTokens: response.usage.output_tokens,
+    model: result.model,
+    durationMs: result.latencyMs,
+    inputTokens: result.inputTokens,
+    outputTokens: result.outputTokens,
   }));
 }
 
@@ -376,7 +319,7 @@ export async function generateCreationTurnAction(
   if (!process.env.ANTHROPIC_API_KEY) return { ok: false, unavailable: true };
 
   // Reserve one discovery turn BEFORE spending on the model, so a rejected
-  // request never reaches the Anthropic call. Placed after the lastRequestId
+  // request never reaches the provider call. Placed after the lastRequestId
   // cache check and the message-save above, so a retried request (same
   // requestId) short-circuits before ever getting here and can't consume
   // quota twice.
@@ -420,19 +363,23 @@ export async function generateCreationTurnAction(
   }
 
   try {
-    const startedAt = Date.now();
-    const client = new Anthropic();
-    const response = await client.messages.create({
-      model: "claude-sonnet-5",
-      max_tokens: 4096,
-      output_config: { effort: "medium", format: { type: "json_schema", schema: CREATION_SCHEMA } },
+    /**
+     * Discovery runs on Gemini, like everything else in the user's path.
+     *
+     * It used to be the one Anthropic call left, and when that account ran out
+     * of credit the whole funnel stopped: no project could be started, and no
+     * existing project could reach generation either, because only discovery
+     * sets a direction. Generation was healthy on Gemini throughout and none of
+     * it was reachable. The prompt, the schema and the validator below are
+     * unchanged — only the provider moved.
+     */
+    const result = await requestDiscoveryTurn({
       system: creationSystemPrompt(locale, stage3.turn),
-      messages: history.map((entry) => ({ role: entry.role, content: entry.content })),
+      history: history.map((entry) => ({ role: entry.role, content: entry.content })),
     });
-    logAiUsage("creation_discovery", startedAt, response);
-    const textBlock = response.content.find((block) => block.type === "text");
-    if (!textBlock || textBlock.type !== "text") return releaseAndFail(true, "no_text_block");
-    const turn = sanitizeCreationTurn(JSON.parse(textBlock.text));
+    if (!result.ok) return releaseAndFail(true, result.reason);
+    logAiUsage("creation_discovery", result);
+    const turn = sanitizeCreationTurn(result.value);
     if (!turn) return releaseAndFail(true, "turn_failed_validation");
     const nextState: Stage3ProjectState = {
       ...stage3,

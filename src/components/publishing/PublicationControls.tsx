@@ -17,7 +17,19 @@ import { FeedbackPanel } from "@/components/publishing/FeedbackPanel";
 interface PublicationControlsProps {
   projectId: string;
   projectLocale: Locale;
-  output: Stage3ProjectOutput;
+  /**
+   * The page artifact, when this project has one.
+   *
+   * Null for a project the app runtime built: it publishes an application, and
+   * the two things this component needs from an artifact — a name to share and
+   * a draft to compare — come from `shareTitle` and the publication itself
+   * instead. Publishing is otherwise identical for both.
+   */
+  output: Stage3ProjectOutput | null;
+  /** What to call this project when the share sheet opens. */
+  shareTitle: string;
+  /** One line for the share sheet, when the project has one to offer. */
+  shareText?: string;
   initialPublication: ProjectPublicationState | null;
   publicBaseUrl: string;
   onDraftChanged: (output: Stage3ProjectOutput) => void;
@@ -27,6 +39,8 @@ export function PublicationControls({
   projectId,
   projectLocale,
   output,
+  shareTitle,
+  shareText,
   initialPublication,
   publicBaseUrl,
   onDraftChanged,
@@ -38,8 +52,19 @@ export function PublicationControls({
   const [isPending, startTransition] = useTransition();
 
   const publicUrl = publication ? `${publicBaseUrl}/p/${publication.slug}` : null;
+  /**
+   * Only meaningful for a page artifact, which is a value we can compare.
+   *
+   * An application is republished on demand rather than diffed: comparing two
+   * compiled projects would answer a question nobody asked, and the owner
+   * already knows whether they have edited since publishing.
+   */
   const hasUnpublishedChanges = useMemo(
-    () => !!publication?.isPublished && !publicationMatchesDraft(publication.output, output),
+    () =>
+      !!publication?.isPublished
+      && !!publication.output
+      && !!output
+      && !publicationMatchesDraft(publication.output, output),
     [output, publication],
   );
 
@@ -73,8 +98,8 @@ export function PublicationControls({
     if (navigator.share) {
       try {
         await navigator.share({
-          title: output.identity.name,
-          text: output.launchCopy.shortPost,
+          title: shareTitle,
+          text: shareText ?? shareTitle,
           url: publicUrl,
         });
         return;

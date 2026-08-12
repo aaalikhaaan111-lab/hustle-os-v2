@@ -168,10 +168,54 @@ export async function jobCountSoFar(projectId: string, userId: string): Promise<
 }
 
 /**
- * How many attempts have really been made, so the retry cap is enforced
- * against work that was actually attempted rather than against every row.
+ * How many attempts this project has actually spent.
+ *
+ * THE DEFECT THIS FIXES. The cap used to count rows, so three failures ended a
+ * project permanently — whatever caused them. In practice what caused them was
+ * us: a function timeout, a suspended invocation, a validator that read prose
+ * as a frame escape. A person who did nothing wrong lost the project, and the
+ * cap is per project and permanent, so there was no way back.
+ *
+ * An attempt is spent when the job kept the unit of quota it reserved. That is
+ * already recorded, and it is exactly the right question:
+ *
+ *   reserved, never released  →  it succeeded, or it failed in a way we charged
+ *                                for. It counts.
+ *   reserved and released     →  it was refunded. Ventrio failed, or the gate
+ *                                refused the output. It does not count.
+ *   never reserved            →  it never got as far as spending anything —
+ *                                out of quota, or the check itself broke.
+ *
+ * So the guarantee is simple: if the person was not charged, the project is not
+ * consumed. Uncontrolled retrying is bounded separately — see `jobsSoFar`.
  */
 export async function attemptsSoFar(projectId: string, userId: string): Promise<number> {
+  const service = createServiceClient();
+  const { count } = await service
+    .from("generation_jobs")
+    .select("id", { count: "exact", head: true })
+    .eq("project_id", projectId)
+    .eq("user_id", userId)
+    .eq("kind", KIND)
+    .not("usage_reserved_at", "is", null)
+    .is("usage_released_at", null);
+  return count ?? 0;
+}
+
+/**
+ * Every attempt this project has made, refunded or not.
+ *
+ * The backstop `attemptsSoFar` deliberately does not provide. A refunded
+ * failure costs the person nothing and should not consume their project — but
+ * some refunded failures still cost a real provider request, so "retry as often
+ * as you like" is not a position either. This bounds the loop without charging
+ * anyone for our own faults.
+ *
+ * Costless rows are excluded on the same reasoning as before: a row that was
+ * refused for having no quota left did no work and should not count against
+ * anything.
+ */
+export async function jobsSoFar(projectId: string, userId: string): Promise<number> {
   const service = createServiceClient();
   const { count } = await service
     .from("generation_jobs")

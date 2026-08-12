@@ -1,9 +1,23 @@
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import { ProjectOutputRenderer } from "@/components/build/ProjectOutputRenderer";
+import { PublicAppView } from "@/components/publishing/PublicAppView";
 import { getPublicProject } from "@/lib/publishing/queries";
 import { isPublicSlug } from "@/lib/publishing/slug";
 import { getSiteUrl } from "@/lib/site";
+import { buildGeneratedApp } from "@/lib/v2/app/pipeline";
+
+/**
+ * A published project, for anyone with the link.
+ *
+ * Two shapes reach this page. A project built by the fixed renderer publishes a
+ * page artifact and renders as it always has. A project built by the app
+ * runtime publishes an application, and is compiled here and served in the same
+ * sandboxed frame the owner sees in the workspace — same sandbox attributes,
+ * same inner CSP, same nonce discipline. A visitor gets exactly the thing that
+ * was built, with none of the trust the owner's session carries.
+ */
 
 export const revalidate = 3600;
 
@@ -21,8 +35,10 @@ export async function generateMetadata({ params }: PublicProjectPageProps): Prom
     return { title: "Project unavailable — Ventrio", robots: { index: false, follow: false } };
   }
 
-  const title = publication.output.identity.name;
-  const description = publication.output.identity.description;
+  // Both shapes carry a name and a description; the query normalises them so
+  // this does not have to know which one it has.
+  const title = publication.name;
+  const description = publication.description;
   const canonical = `${getSiteUrl()}/p/${publication.slug}`;
   return {
     title,
@@ -38,6 +54,31 @@ export default async function PublicProjectPage({ params }: PublicProjectPagePro
   if (!isPublicSlug(slug)) notFound();
   const publication = await getPublicProject(slug);
   if (!publication) notFound();
+
+  if (publication.app) {
+    /**
+     * Compiled per request, from source, never from a stored document.
+     *
+     * The same rule the workspace follows: what is persisted is the project,
+     * and the document is rebuilt every time it is shown. It carries this
+     * request's CSP nonce, because a srcdoc frame inherits the parent page's
+     * policy and would otherwise refuse Ventrio's own bootstrap script.
+     */
+    const nonce = (await headers()).get("x-nonce") ?? undefined;
+    const built = await buildGeneratedApp(publication.app, { nonce });
+    // A published application that no longer compiles is a 404 rather than a
+    // broken page. It cannot be repaired from here, and showing a frame full of
+    // build errors to a stranger is worse than showing nothing.
+    if (!built.ok) notFound();
+
+    return (
+      <main className="public-project-page">
+        <PublicAppView title={publication.name} document={built.document} />
+      </main>
+    );
+  }
+
+  if (!publication.output) notFound();
 
   return (
     <main className="public-project-page">

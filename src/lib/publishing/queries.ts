@@ -4,7 +4,7 @@ import { cache } from "react";
 import { unstable_cache } from "next/cache";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { isLocale } from "@/i18n/locale";
-import { sanitizeStage3Output } from "@/lib/build/stage3Types";
+import { parsePublicationPayload, publicationDescription, publicationName } from "@/lib/publishing/payload";
 import { isPublicSlug } from "@/lib/publishing/slug";
 import { feedbackStateFromRow } from "@/lib/feedback/queries";
 import type {
@@ -51,8 +51,10 @@ export async function loadProjectPublicationState(
     .maybeSingle();
 
   if (!publication || !isLocale(publication.locale)) return null;
-  const output = sanitizeStage3Output(publication.output);
-  if (!output) return null;
+  // Either shape, gate re-run on the way. A publication that no longer passes
+  // is treated as absent rather than served half-built.
+  const payload = parsePublicationPayload(publication.output);
+  if (!payload) return null;
 
   const [{ count }, { data: recent }, { data: responseIds }, { data: feedbackRow }] = await Promise.all([
     supabase
@@ -87,7 +89,9 @@ export async function loadProjectPublicationState(
   return {
     slug: publication.slug,
     locale: publication.locale,
-    output,
+    output: payload.kind === "output" ? payload.output : null,
+    app: payload.kind === "app" ? payload.app : null,
+    name: publicationName(payload),
     isPublished: publication.is_published,
     publishedAt: publication.published_at,
     updatedAt: publication.updated_at,
@@ -147,13 +151,16 @@ async function readPublicProject(slug: string): Promise<PublicProjectPublication
   // the full cache window.
   if (error) throw new Error("Public project lookup failed.");
   if (!data || !isLocale(data.locale)) return null;
-  const output = sanitizeStage3Output(data.output);
-  if (!output) return null;
+  const payload = parsePublicationPayload(data.output);
+  if (!payload) return null;
 
   return {
     slug: data.slug,
     locale: data.locale,
-    output,
+    output: payload.kind === "output" ? payload.output : null,
+    app: payload.kind === "app" ? payload.app : null,
+    name: publicationName(payload),
+    description: publicationDescription(payload),
     publishedAt: data.published_at,
     updatedAt: data.updated_at,
   };

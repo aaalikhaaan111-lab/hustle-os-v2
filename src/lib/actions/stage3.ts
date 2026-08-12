@@ -22,6 +22,7 @@ import { consumeAiUsage, releaseAiUsage, type LimitReachedInfo } from "@/lib/ai/
 import {
   attemptsSoFar,
   beat,
+  jobsSoFar,
   claimJob,
   expireStale,
   expireStaleForUser,
@@ -33,7 +34,7 @@ import {
   releaseUsage,
   reserveUsage,
 } from "@/lib/jobs/generationJobs";
-import { MAX_FIRST_VERSION_ATTEMPTS, type FirstVersionJobView } from "@/lib/jobs/firstVersion";
+import { MAX_FIRST_VERSION_ATTEMPTS, MAX_FIRST_VERSION_JOBS, type FirstVersionJobView } from "@/lib/jobs/firstVersion";
 import { toJson } from "@/lib/supabase/json";
 import { codegenRenderingEnabled, renderProjectWithCodegen } from "@/lib/v2/codegen/renderProject";
 import { mergeCodegenState, type CodegenProjectState } from "@/lib/v2/codegen/projectState";
@@ -308,10 +309,15 @@ export async function getFirstVersionJobAction(projectId: string): Promise<First
     job = await latestJob(projectId, user.id);
   }
   const attempts = await attemptsSoFar(projectId, user.id);
+  const jobs = await jobsSoFar(projectId, user.id);
   return {
     job,
     hasOutput: Boolean(stage3?.output),
-    attemptsRemaining: Math.max(0, MAX_FIRST_VERSION_ATTEMPTS - attempts),
+    // Whichever ceiling binds first is the one the person has left.
+    attemptsRemaining: Math.max(0, Math.min(
+      MAX_FIRST_VERSION_ATTEMPTS - attempts,
+      MAX_FIRST_VERSION_JOBS - jobs,
+    )),
   };
 }
 
@@ -427,8 +433,18 @@ export async function generateFirstVersionAction(
     return { error: null, output: null, reply: null, jobId: previous.id };
   }
 
+  /**
+   * Two ceilings, and they mean different things.
+   *
+   * `attempts` counts only generations the person was actually charged for, so
+   * a run of Ventrio's own failures — a timeout, a suspended invocation, a gate
+   * refusal — refunds and leaves the project exactly as retryable as it was.
+   * `jobs` counts every attempt regardless, which stops an endlessly refunded
+   * loop from spending provider requests without bound.
+   */
   const attempts = await attemptsSoFar(projectId, user.id);
-  if (attempts >= MAX_FIRST_VERSION_ATTEMPTS) {
+  const jobs = await jobsSoFar(projectId, user.id);
+  if (attempts >= MAX_FIRST_VERSION_ATTEMPTS || jobs >= MAX_FIRST_VERSION_JOBS) {
     return { error: t("errorRetriesExhausted"), output: null, reply: null };
   }
 

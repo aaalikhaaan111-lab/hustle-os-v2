@@ -411,7 +411,10 @@ export function PreOutputWorkspace({
                     changes what this card offers, never whether it is here —
                     losing sight of the direction is the last thing someone
                     needs when generation has just gone wrong. */}
-                {!output && !job.active && (
+                {/* `hasVersion`, not `output`: an app-runtime project has no
+                    page artifact, and gating on that alone kept offering
+                    "Create first version" for a project that already had one. */}
+                {!hasVersion && !job.active && (
                   <div
                     className="rise rounded-[var(--r-lg)] border p-5"
                     style={{ borderColor: "var(--line-2)", background: "var(--surface)" }}
@@ -498,7 +501,11 @@ export function PreOutputWorkspace({
                   </div>
                 )}
 
-                {output && (
+                {/* Either shape counts. A project the app runtime built has an
+                    application rather than a page artifact, and it is just as
+                    publishable — gating on `output` alone left those projects
+                    with a finished app and no way to share it. */}
+                {hasVersion && (
                   <div className="flex flex-col gap-4">
                     {canOpenPreview && (
                       <div
@@ -524,6 +531,8 @@ export function PreOutputWorkspace({
                       projectId={projectId}
                       projectLocale={projectLocale}
                       output={output}
+                      shareTitle={output?.identity.name ?? app?.title ?? projectName}
+                      shareText={output?.launchCopy.shortPost}
                       initialPublication={publication}
                       publicBaseUrl={publicBaseUrl}
                       onDraftChanged={(nextOutput) => {
