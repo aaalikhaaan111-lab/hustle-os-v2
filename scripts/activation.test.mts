@@ -31,6 +31,10 @@ const signupForm = read("src/components/auth/SignupForm.tsx");
 const callback = read("src/app/auth/callback/route.ts");
 const assistant = read("src/lib/actions/assistant.ts");
 const creation = read("src/lib/actions/creation.ts");
+// The discovery prompt moved out of the action so it could be exported and
+// tested; `creation.ts` is "use server", where every export must be async.
+// The assertions below split accordingly: control flow here, wording there.
+const creationGuide = read("src/lib/build/creationPrompt.ts");
 const buildAi = read("src/lib/actions/buildAi.ts");
 const buildScreen = read("src/components/workspace/BuildScreen.tsx");
 const chat = read("src/components/build/AssistantChat.tsx");
@@ -99,7 +103,7 @@ check(
 );
 
 // The prompts must say the message wins, not the interface.
-for (const [name, source] of [["assistant", buildAi], ["creation guide", creation]] as const) {
+for (const [name, source] of [["assistant", buildAi], ["creation guide", creationGuide]] as const) {
   check(
     `the ${name} prompt names the user's message as the language authority`,
     /most recent message/.test(source) && /overrides the interface language/.test(source),
@@ -113,20 +117,20 @@ for (const [name, source] of [["assistant", buildAi], ["creation guide", creatio
 // discovery.
 check(
   "the four-fact completeness gate is gone",
-  !/Propose only when you can ground all four required facts/.test(creation),
+  !/Propose only when you can ground all four required facts/.test(creationGuide),
 );
-check("the guide is told to build first", /BUILD FIRST/.test(creation));
+check("the guide is told to build first", /BUILD FIRST/.test(creationGuide));
 check(
   "one question is the ceiling before proposing",
-  /exactly ONE short question/.test(creation) && /Never ask a third/.test(creation),
+  /exactly ONE short question/.test(creationGuide) && /Never ask a third/.test(creationGuide),
 );
 check(
   "a buildable first message skips questions entirely",
-  /go straight to "propose" without asking anything/.test(creation),
+  /go straight to "propose" without asking anything/.test(creationGuide),
 );
 check(
   "missing facts become assumptions rather than questions",
-  /Assume rather than interrogate/.test(creation),
+  /Assume rather than interrogate/.test(creationGuide),
 );
 
 // The workspace assistant is shown a stage label from a retired flow, and was
