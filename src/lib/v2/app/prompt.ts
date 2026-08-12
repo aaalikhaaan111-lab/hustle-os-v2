@@ -132,10 +132,36 @@ seems to want a picture, give that space something that is actually there —
 never an empty box, a grey placeholder, or a column reserved for an image that
 will not load.
 
-TYPOGRAPHY
-Nothing below 12px. Not labels, not chips, not captions, not metadata — the
-build is refused if the compiled CSS contains a smaller size. Body copy and
-controls read best at 14–16px. Small is not the same as refined.
+TYPOGRAPHY — 12px MINIMUM, ENFORCED
+Never write a font size below 12px for text a person reads. Not labels, not
+chips, not captions, not metadata, not table cells, not badges, not footnotes.
+The build is refused if the compiled CSS contains a smaller size.
+
+These exact utilities are the ones that keep getting written, and every one of
+them is refused:
+
+  FORBIDDEN — refused by the build
+    text-[10px]  text-[11px]  text-[9px]
+    text-[0.625rem]  text-[0.6875rem]
+    any arbitrary font size computing below 12px, in px, rem or em
+
+  ALLOWED — use these instead
+    text-xs        12px — the smallest permitted, for genuinely minor text
+    text-[12px]    12px — the same thing spelled out; the floor, not below it
+    text-[0.75rem] 12px — also fine
+    text-sm        14px — labels, captions, supporting copy
+    text-base      16px — body copy and controls
+
+Body copy and controls read best at 14–16px. Small is not the same as refined.
+
+Before you finish, read back every font-size utility and every font-size
+declaration you have authored, in every file, and confirm each one that applies
+to readable text is 12px or larger. This is the single most common reason a
+project is refused.
+
+This constrains text only. Arbitrary values for spacing, borders, radii, icon
+dimensions, line heights, tracking and non-text CSS are unaffected — a 10px gap
+or a 1px rule is fine.
 
 ART DIRECTION
 Choose the palette, type and surface treatment from the product and the brief.
@@ -193,6 +219,36 @@ export interface AppRepairContext {
  * memory, and a patch that "restores" nine files it never saw is exactly the
  * whole-project regeneration this path exists to avoid.
  */
+/**
+ * What a repair must not break while fixing what it was asked to fix.
+ *
+ * THE DEFECT THIS ADDRESSES. A production repair was sent to correct a single
+ * framing error and returned a project carrying eight new font sizes below the
+ * 12px floor, across five components. The repair fixed its named problem and
+ * failed the gate on a rule it had introduced violations of — so the run cost
+ * two provider requests and produced nothing.
+ *
+ * A repair is answering a refusal, and every rule that applied to the original
+ * project still applies to the repaired one. The validator runs again afterwards
+ * regardless and remains the authority; this is here so the model knows that
+ * before it writes, rather than discovering it in a diagnostic it never sees.
+ */
+const REPAIR_CONSTRAINTS = `EVERY ORIGINAL RULE STILL APPLIES
+Fixing the problems listed above does not suspend anything else. The repaired
+project is validated again in full, and a repair that fixes its named failure
+while introducing a different one is refused exactly like the first attempt.
+
+In particular, do not introduce text below the 12px minimum. Never write
+text-[10px], text-[11px], text-[0.625rem], text-[0.6875rem], or any arbitrary
+font size computing below 12px, in px, rem or em. Use text-xs (12px) as the
+smallest readable size, text-sm (14px) for labels and captions, text-base (16px)
+for body. This applies to every file you touch, including ones you are only
+editing for an unrelated reason. Non-text values — spacing, borders, radii, icon
+sizes — are unaffected.
+
+Before returning, re-read the font sizes in every file you are sending back and
+confirm each one that applies to readable text is 12px or larger.`;
+
 export function appRepairPrompt(diagnostics: string[], context: AppRepairContext): string {
   // Shown in the same frame the answer must use, so the format is demonstrated
   // rather than only described.
@@ -230,7 +286,9 @@ never JSON strings and may never contain "${MARKER_PREFIX}".
 
 The environment has not changed: no localStorage, sessionStorage, indexedDB,
 cookies, service workers, fetch or eval. Hold state in React. Do not fix a
-problem by replacing working functionality with a simpler page.`;
+problem by replacing working functionality with a simpler page.
+
+${REPAIR_CONSTRAINTS}`;
 }
 
 /**
@@ -257,5 +315,7 @@ ${diagnostics.slice(0, 25).map((line) => `- ${line}`).join("\n")}
 
 Build the same product the brief asked for. Fixing a refusal by shipping less
 than was requested — a marketing page instead of the application, a form
-without validation — is not a fix.`;
+without validation — is not a fix.
+
+${REPAIR_CONSTRAINTS}`;
 }
