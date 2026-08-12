@@ -58,6 +58,21 @@ token, no site URL, no rate-limit secret.
 `railway.json` sets the start command; there is no HTTP server and no health
 endpoint, because a poller has nothing to serve and Railway restarts on exit.
 
+Three things had to be set on the service, and all three are the kind that fail
+loudly once and then never again:
+
+- `NIXPACKS_NODE_VERSION=24`. Nixpacks defaults to Node 18, which this repo does
+  not run on. `engines.node` in package.json says the same thing for anyone
+  reading, but Nixpacks wants the variable.
+- `NIXPACKS_INSTALL_CMD=rm -f package-lock.json && npm install --no-audit --no-fund`.
+  Two reasons. Railway's npm resolves a transitive range under `next` to
+  `@swc/helpers@0.5.23` where the lock pins 0.5.15, and `npm ci` refuses any
+  drift by design. And a lock generated on macOS omits the Linux native binding
+  for `@tailwindcss/oxide`, which the compile step needs — that is npm's
+  optional-dependency bug (npm/cli#4828), and installing fresh on the target
+  platform is the documented remedy. Vercel still builds the web app from the
+  lock, where reproducibility matters more than it does for a poller.
+
 1. New service from this repo.
 2. Set the four variables above.
 3. Deploy. `started` appears in the logs within seconds.
