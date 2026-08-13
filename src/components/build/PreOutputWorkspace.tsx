@@ -261,6 +261,21 @@ export function PreOutputWorkspace({
     // Generation now infers a direction rather than requiring one, so intent is
     // the only thing this needs to check.
     if (!output && !job.active && classifyBuildIntent(content, { hasOutput: false }) === "BUILD_NOW") {
+      /**
+       * An open question is answered, never stepped over.
+       *
+       * "just build it" while a build question is on screen used to call
+       * `createFirstVersion` directly, which left the question rendered behind
+       * a generation it had no part in — the same shape as the proposal that
+       * used to pick its own first option. Deferring routes the instruction
+       * through the intake instead: the person said "you decide", which is
+       * exactly what the defer answer means, and the intake dispatches when it
+       * has what it needs.
+       */
+      if (intake.step) {
+        intake.choose(null);
+        return;
+      }
       createFirstVersion();
       return;
     }
@@ -556,6 +571,36 @@ export function PreOutputWorkspace({
                   </div>
                 )}
 
+                {/* The build question, as a turn in the conversation.
+                    It used to sit in the footer above the composer — a form
+                    docked to the bottom of the screen rather than something
+                    the assistant asked — so it read as chrome, and answering
+                    it felt like filling in a field rather than replying. It is
+                    the last thing in the thread because it is the last thing
+                    said, and it stays there until it is answered: nothing
+                    dismisses it and nothing chooses for the person. */}
+                {intake.step && (
+                  <div className="ws-turn flex flex-col gap-2.5">
+                    <StructuredChoice
+                      key={intake.step.id}
+                      labelledById="build-intake-title"
+                      title={tb(intake.step.titleKey as never)}
+                      deferLabel={tb(intake.step.deferKey as never)}
+                      progress={intake.progress ?? undefined}
+                      disabled={busy}
+                      options={intake.step.options.map((option) => ({
+                        id: option.id,
+                        label: tb(option.labelKey as never),
+                        hint: option.hintKey ? tb(option.hintKey as never) : undefined,
+                        preview: "preview" in option ? (option as { preview: DesignPreviewId }).preview : undefined,
+                      }))}
+                      onChoose={intake.choose}
+                      onBack={intake.back ?? undefined}
+                      backLabel={tb("intakeBack")}
+                    />
+                  </div>
+                )}
+
                 {/* Feedback on real responses is a conversation about the
                     product, not a control over it, so it stays here while the
                     publish actions move to the toolbar. */}
@@ -575,25 +620,6 @@ export function PreOutputWorkspace({
 
             <div className="shrink-0 px-5 pb-5 pt-2 sm:px-8 sm:pb-7">
               <div className="mx-auto w-full" style={{ maxWidth: measure }}>
-                {intake.step ? (
-                  <StructuredChoice
-                    key={intake.step.id}
-                    labelledById="build-intake-title"
-                    title={tb(intake.step.titleKey as never)}
-                    deferLabel={tb(intake.step.deferKey as never)}
-                    progress={intake.progress ?? undefined}
-                    disabled={busy}
-                    options={intake.step.options.map((option) => ({
-                      id: option.id,
-                      label: tb(option.labelKey as never),
-                      hint: option.hintKey ? tb(option.hintKey as never) : undefined,
-                      preview: "preview" in option ? (option as { preview: DesignPreviewId }).preview : undefined,
-                    }))}
-                    onChoose={intake.choose}
-                    onBack={intake.back ?? undefined}
-                    backLabel={tb("intakeBack")}
-                  />
-                ) : null}
                 <div className="mb-2 flex flex-wrap gap-2" hidden={!!intake.step}>
                   {suggestions.map((suggestion) => (
                     <VentrioButton

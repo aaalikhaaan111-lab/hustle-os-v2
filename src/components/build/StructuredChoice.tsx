@@ -125,11 +125,12 @@ export function StructuredChoice({
   return (
     <section
       aria-labelledby={labelledById}
-      className="@container mb-2 rounded-[14px] border"
-      style={{ borderColor: "var(--line)", background: "var(--surface)" }}
+      // No border or panel fill: this is the assistant asking, and a framed
+      // card around the question made it read as a form docked to the page.
+      className="@container"
       data-testid="structured-choice"
     >
-      <header className="flex items-center justify-between gap-3 px-3 pb-1.5 pt-2.5">
+      <header className="flex items-start justify-between gap-3 px-3 pb-2">
         <div className="flex min-w-0 items-center gap-1.5">
           {onBack && (
             <button
@@ -144,7 +145,11 @@ export function StructuredChoice({
               ← {backLabel}
             </button>
           )}
-          <h2 id={labelledById} className="truncate text-[13px] font-semibold leading-tight" style={{ color: "var(--ink)" }}>
+          {/* The question, at the size the assistant's other messages use.
+              It was 13px, semibold and truncated — smaller than the
+              conversation around it, and a question that cannot finish its own
+              sentence. */}
+          <h2 id={labelledById} className="text-[15px] font-normal leading-[1.65]" style={{ color: "var(--ink)" }}>
             {title}
           </h2>
         </div>
@@ -174,9 +179,8 @@ export function StructuredChoice({
         about how much room the cards actually have. `@container` makes the row
         respond to its own box.
 
-        Horizontal scroll when narrow rather than a wrap: three cards wrapping
-        to 2 + 1 reads as a broken grid, and a stacked column would push the
-        composer off-screen — the one thing the intake must never do.
+        The options stack, one row each. They used to scroll sideways, which
+        hid the fourth and fifth behind an edge with nothing to say so.
       */}
       <div
         role="radiogroup"

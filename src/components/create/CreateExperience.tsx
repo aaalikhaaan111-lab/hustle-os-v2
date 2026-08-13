@@ -19,7 +19,6 @@ import {
   type CreationTurn,
 } from "@/lib/build/creationTypes";
 import { takeSeed } from "@/lib/create/seed";
-import { classifyBuildIntent } from "@/lib/build/buildIntent";
 import { WorkspaceComposer } from "@/components/workspace-ui/Composer";
 import { VentrioButton } from "@/components/ui/VentrioButton";
 import { useVoiceInput, voiceErrorKey } from "@/lib/workspace/useVoiceInput";
@@ -293,24 +292,24 @@ export function CreateExperience({ userId, initialDraft }: CreateExperienceProps
         ]);
         setPendingRequestId(null);
 
-        // "Сам придумай" means build, not "show me three cards".
-        //
-        // When the person has explicitly handed the decision over, stopping to
-        // ask which of three directions they prefer is the same interruption
-        // they just declined. If this turn proposed directions and the message
-        // that produced them was an explicit build instruction, the first
-        // direction is taken and generation starts in the same turn. The other
-        // directions were the model's own alternatives, so picking its first is
-        // a choice it already ranked — and everything it produces is editable
-        // afterwards anyway.
-        if (
-          result.turn.phase === "propose" &&
-          result.turn.directions.length > 0 &&
-          classifyBuildIntent(content, { hasOutput: false }) === "BUILD_NOW"
-        ) {
-          queueMicrotask(() => chooseDirection(result.turn.directions[0], 0));
-          return;
-        }
+        /**
+         * A proposal ends the turn. It never starts a generation.
+         *
+         * This used to read the message for build intent — "просто сделай",
+         * "just build it" — and, when it found one, take `directions[0]` and
+         * generate in the same tick. The reasoning was that someone who has
+         * handed over the decision should not be asked to choose again.
+         *
+         * In practice it meant three options appeared, were readable for about
+         * a second, and then vanished into a generation of the first one. The
+         * person saw a choice being offered and taken away from them, and the
+         * thing being built was whichever direction the model happened to rank
+         * first — a decision nobody made.
+         *
+         * Build intent is still honoured where it belongs: the guide reads it
+         * and answers with a proposal instead of another question. Choosing
+         * between what it proposed is the one step that stays with the person.
+         */
         // The conversation's language is settled by the message, not by the
         // account cookie, so the surrounding chrome may now be in the wrong
         // one. Re-rendering the server component picks up the project's locale
@@ -494,8 +493,11 @@ export function CreateExperience({ userId, initialDraft }: CreateExperienceProps
               </div>
             </section>
           ) : (
-            <section className={cn("flex flex-col", showDirections ? "gap-8" : "gap-7")}>
-              <div className={cn("flex flex-col gap-7 transition-opacity duration-500", showDirections && "settled-state")}>
+            <section className="flex flex-col gap-6">
+              {/* No `settled-state`: it dimmed the entire conversation to 24%
+                  the moment options appeared, so the message explaining them
+                  faded out exactly when it was needed. */}
+              <div className="flex flex-col gap-5">
                 {messages.map((message, index) => {
                   const isLatestAssistant = message.role === "assistant" && index === messages.length - 1;
                   return message.role === "user" ? (
@@ -508,13 +510,17 @@ export function CreateExperience({ userId, initialDraft }: CreateExperienceProps
                       </div>
                     </div>
                   ) : (
-                    <div key={index} className="animate-message-in flex max-w-[720px] flex-col gap-3">
-                      <div
-                        className={cn(
-                          "whitespace-pre-wrap text-[17px] leading-8 tracking-[-0.015em] text-ink",
-                          isLatestAssistant && showDirections && "ventrio-display text-[clamp(1.75rem,5vw,3rem)] leading-[1.08]"
-                        )}
-                      >
+                    <div key={index} className="animate-message-in flex max-w-[720px] flex-col gap-2.5">
+                      {/* A message, at message size.
+                          The latest assistant turn used to be promoted to
+                          display type — clamp(1.75rem, 5vw, 3rem) in the
+                          display face — whenever it carried a proposal. It read
+                          as a landing-page headline announcing the options
+                          rather than as the assistant saying something, and on
+                          a phone one sentence filled the screen. Every turn now
+                          uses the same size and weight, which is what makes the
+                          conversation read as a conversation. */}
+                      <div className="whitespace-pre-wrap text-[15px] leading-[1.65] text-ink">
                         {message.content}
                       </div>
 

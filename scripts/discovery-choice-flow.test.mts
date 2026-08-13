@@ -1,0 +1,162 @@
+/**
+ * The first flow: idea → discovery → the person chooses → generation.
+ *
+ *   npx tsx --conditions=react-server scripts/discovery-choice-flow.test.mts
+ *
+ * The step this pins is the one that kept being skipped. Discovery would return
+ * three directions, and if the message that produced them read as a build
+ * instruction — "just build it", "просто сделай" — the screen took
+ * `directions[0]` and generated it in the same tick. Three options appeared,
+ * were readable for about a second, and vanished into a generation of whichever
+ * one the model happened to rank first. The person watched a choice being
+ * offered and taken away, and nobody decided what got built.
+ *
+ * So: a proposal ends the turn. Generation begins on an explicit selection and
+ * on nothing else.
+ *
+ * Source-level, because there is no DOM here and what regressed was which
+ * branch runs after a turn arrives — which source states exactly.
+ *
+ * Offline. No network, no provider, no database.
+ */
+
+import { readFileSync } from "node:fs";
+import { classifyBuildIntent } from "../src/lib/build/buildIntent";
+
+let passed = 0;
+const failures: string[] = [];
+function check(name: string, ok: boolean, detail = ""): void {
+  if (ok) { passed += 1; return; }
+  failures.push(`${name}${detail ? ` — ${detail}` : ""}`);
+}
+
+const read = (path: string) => readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
+const code = (source: string) =>
+  source.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "").replace(/\{\/\*[\s\S]*?\*\/\}/g, "");
+
+const createExperience = read("src/components/create/CreateExperience.tsx");
+const createCode = code(createExperience);
+const preOutput = read("src/components/build/PreOutputWorkspace.tsx");
+const preOutputCode = code(preOutput);
+const structured = read("src/components/build/StructuredChoice.tsx");
+
+/* ── 1. nothing generates without a selection ────────────────────────────── */
+
+/**
+ * `chooseDirection` is the only door to generation from `/create`, so the
+ * question is who is allowed to open it. Only the row's own click handler may.
+ */
+const callers = [...createCode.matchAll(/chooseDirection\(/g)].length;
+check("chooseDirection exists", callers > 0);
+check(
+  "and is only ever called from a click handler",
+  !/queueMicrotask\(\(\) => chooseDirection/.test(createCode),
+  "something schedules a selection instead of waiting for one",
+);
+check(
+  "no effect selects a direction",
+  !/useEffect\([\s\S]{0,600}chooseDirection\(/.test(createCode),
+);
+check(
+  "no timer selects a direction",
+  !/set(?:Timeout|Interval)\([\s\S]{0,300}chooseDirection\(/.test(createCode),
+);
+check(
+  "directions\\[0\\] is never taken by the screen",
+  !/directions\[0\]/.test(createCode),
+  "the first option is being auto-selected again",
+);
+
+/* ── 2. build intent cannot skip the proposal ────────────────────────────── */
+
+// The classifier still recognises these — the fix is not to stop reading intent,
+// it is to stop acting on it by choosing for someone.
+for (const phrase of ["just build it", "просто сделай", "сделай сайт"]) {
+  check(`"${phrase}" is still read as a build instruction`, classifyBuildIntent(phrase, { hasOutput: false }) === "BUILD_NOW");
+}
+check(
+  "but /create no longer reads intent to decide for the person",
+  !/classifyBuildIntent/.test(createCode),
+  "the bypass is back in /create",
+);
+check(
+  "and the proposal branch no longer short-circuits",
+  !/phase === "propose"[\s\S]{0,200}BUILD_NOW/.test(createCode),
+);
+
+/**
+ * The workspace has the same shape of bug: an explicit build instruction used
+ * to call `createFirstVersion` straight past an open question.
+ */
+check("the workspace defers an open question rather than stepping over it", /if \(intake\.step\) \{\s*intake\.choose\(null\);/.test(preOutputCode));
+check(
+  "and only generates directly when nothing is being asked",
+  /intake\.choose\(null\);[\s\S]{0,80}\}\s*createFirstVersion\(\);/.test(preOutputCode),
+);
+
+/* ── 3. options belong to the message that offered them ──────────────────── */
+
+check("choices render inside the assistant turn", /isLatestAssistant && showChoices/.test(createExperience));
+check("directions render inside the assistant turn", /isLatestAssistant && showDirections/.test(createExperience));
+check(
+  "and not in a block after the conversation",
+  !/<\/div>\s*\n\s*\{showChoices && \(/.test(createExperience),
+);
+check("the build question is a turn in the thread", /\{intake\.step && \(/.test(preOutput));
+check(
+  "and no longer sits in the footer above the composer",
+  !/shrink-0 px-5 pb-5 pt-2[\s\S]{0,200}<StructuredChoice/.test(preOutput),
+  "the docked form is back",
+);
+
+/* ── 4. options persist ──────────────────────────────────────────────────── */
+
+// Nothing may hide them but the three events that end them.
+const optionsRegion = createCode.slice(
+  createCode.indexOf("const showDirections"),
+  createCode.indexOf("function ChoiceGrid"),
+);
+check("no timer hides the options", !/set(?:Timeout|Interval)/.test(optionsRegion));
+check("no opacity transition fades the conversation out", !/settled-state/.test(createCode), "the 24% dim is back");
+check("selection ends them", /setSelectedDirection\(index\)/.test(createExperience));
+check("sending a message ends them", /setTurn\(null\)/.test(createExperience));
+check("a new turn replaces them", /setTurn\(result\.turn\)/.test(createExperience));
+
+/* ── 5. chat looks like chat ─────────────────────────────────────────────── */
+
+/**
+ * The latest assistant turn was promoted to display type whenever it carried a
+ * proposal — `clamp(1.75rem, 5vw, 3rem)` in the display face. It announced the
+ * options like a landing-page headline, and on a phone one sentence filled the
+ * screen.
+ */
+const messageBlock = createExperience.slice(
+  createExperience.indexOf("A message, at message size"),
+  createExperience.indexOf("{message.content}", createExperience.indexOf("A message, at message size")),
+);
+check("assistant messages use body type", /text-\[15px\] leading-\[1\.65\]/.test(messageBlock), messageBlock.slice(-120));
+check("no display face in the thread", !/ventrio-display/.test(createCode.slice(createCode.indexOf("messages.map"))), "hero type is back");
+for (const hero of ["clamp(1.75rem", "clamp(2.35rem", "text-[19px]", "text-[17px]"]) {
+  check(`no ${hero} in the conversation`, !createCode.slice(createCode.indexOf("messages.map")).includes(hero));
+}
+check("user and assistant turns share a size", /text-\[15px\] leading-\[1\.6\]/.test(createExperience));
+
+// The question in the workspace is a message too, not a form label.
+check("the build question uses body type", /text-\[15px\] font-normal leading-\[1\.65\]/.test(structured));
+check("and is not truncated mid-sentence", !/truncate text-\[13px\]/.test(structured));
+check("nor framed as a panel", !/rounded-\[14px\] border/.test(code(structured)));
+
+/* ── 6. the options themselves stay compact ──────────────────────────────── */
+
+check("options are stacked rows", /className="choice-stack"/.test(createExperience));
+check("never columns", !/grid-cols-/.test(createCode));
+const css = read("src/app/globals.css");
+check("a row is one line of supporting text", /\.choice-row-hint \{[\s\S]{0,220}white-space: nowrap/.test(css));
+check("and the title matches message size", /\.choice-row-title \{[\s\S]{0,120}font-size: 0\.9375rem/.test(css));
+
+if (failures.length > 0) {
+  console.error(`discovery-choice-flow: ${failures.length} failed, ${passed} passed`);
+  for (const failure of failures) console.error(`  ✗ ${failure}`);
+  process.exit(1);
+}
+console.log(`discovery-choice-flow: ${passed} checks passed`);

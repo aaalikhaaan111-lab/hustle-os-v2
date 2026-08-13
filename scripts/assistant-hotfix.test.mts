@@ -151,7 +151,14 @@ check("ru edit detection still works", isProjectOutputEditRequest("сделай 
   // requiring a chosen direction is what sent build requests to a model that
   // could only answer them with a refusal.
   check("an explicit build request is routed to generation before the chat",
-    /classifyBuildIntent\(content, \{ hasOutput: false \}\) === "BUILD_NOW"[\s\S]{0,80}createFirstVersion\(\)/.test(component));
+    /classifyBuildIntent\(content, \{ hasOutput: false \}\) === "BUILD_NOW"[\s\S]{0,900}createFirstVersion\(\)/.test(component));
+  // It reaches generation through an open question rather than around one. A
+  // build instruction while the intake is still asking used to call
+  // `createFirstVersion` directly, leaving the question on screen behind a
+  // generation it had no part in — so it now answers the question the way the
+  // person meant, "you decide", and the intake dispatches when it is ready.
+  check("…and defers an open question instead of skipping it",
+    /if \(intake\.step\) \{\s*intake\.choose\(null\);/.test(component));
   check("and no longer requires a direction to have been chosen",
     !/direction && isFirstVersionRequest/.test(component));
 
