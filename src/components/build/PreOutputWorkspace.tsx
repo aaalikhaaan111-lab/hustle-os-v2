@@ -480,7 +480,14 @@ export function PreOutputWorkspace({
                     answered or deferred; the card comes back for everything
                     after — retrying a failure, or building once there is
                     nothing left to ask. */}
-                {!hasVersion && !job.active && !intake.step && (
+                {/* `job.loaded` for the same reason the question waits for it.
+                    Before the first read, `job.active` is false and there is no
+                    question yet, so this card matched — and appeared for a
+                    frame before being replaced by the question it duplicates.
+                    Until the row has been read this screen does not know which
+                    of the two states it is in, and the honest thing to show for
+                    a state you cannot name is nothing. */}
+                {job.loaded && !hasVersion && !job.active && !intake.step && (
                   <div
                     className="rise rounded-[var(--r-lg)] border p-5"
                     style={{ borderColor: "var(--line-2)", background: "var(--surface)" }}

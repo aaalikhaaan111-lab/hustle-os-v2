@@ -203,8 +203,12 @@ const workspace = read("src/components/build/PreOutputWorkspace.tsx");
 // it is `hasVersion` that hides the card, not `output` — gating on the page
 // artifact alone kept offering "Create first version" to app-runtime projects
 // that already had one.
+// Written as a term the gate must contain, not the whole expression: it has
+// since gained `job.loaded &&` in front and `!intake.step` behind, and neither
+// changes what this pins — the card is hidden by `hasVersion`, never by
+// `output` alone, which is what kept offering it to app-runtime projects.
 check("the build card is hidden once a version exists in either shape",
-  /\{!hasVersion && !job\.active && /.test(workspace));
+  /&& !hasVersion && !job\.active && /.test(workspace));
 check("and never gates on the artifact shape alone",
   !/\{!output && !job\.active && \(/.test(workspace));
 // Publishing moved from the conversation into the preview toolbar, so the

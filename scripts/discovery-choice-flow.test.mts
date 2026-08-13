@@ -243,9 +243,16 @@ check(
  * everything after it: retrying a failure, or building when there is nothing
  * left to ask.
  */
+// Written as the terms the gate must contain rather than the exact expression,
+// so adding a further condition — `job.loaded` was added after this — does not
+// read as the duplicate returning.
+const createCardGate = preOutputCode.slice(
+  preOutputCode.indexOf("{job.loaded && !hasVersion"),
+  preOutputCode.indexOf("{job.loaded && !hasVersion") + 90,
+);
 check(
   "the create card is hidden while a question is pending",
-  /\{!hasVersion && !job\.active && !intake\.step && \(/.test(preOutputCode),
+  createCardGate.includes("!intake.step"),
   "the duplicate call to action is back",
 );
 
@@ -265,6 +272,47 @@ check(
   "and the question cannot appear beside a failed job",
   /job\.loaded && job\.phase === "idle"/.test(preOutputCode),
 );
+
+/* ── 9. nothing is offered before the state is known ─────────────────────── */
+
+/**
+ * On first paint there is no job view yet, so `job.active` is false and there is
+ * no question — which is exactly the shape of "nothing has ever been built".
+ * The create card matched that and appeared for a frame before the question it
+ * duplicates replaced it.
+ *
+ * Both controls now wait for the same read. Until the row has been read the
+ * screen cannot name which state it is in, and the honest thing to show for a
+ * state you cannot name is nothing.
+ */
+check(
+  "the create card waits for the job row to be read",
+  /\{job\.loaded && !hasVersion && !job\.active && !intake\.step && \(/.test(preOutputCode),
+  "the CTA can render before the first poll again",
+);
+check(
+  "the question waits for the same read",
+  /enabled: !hasVersion && !!direction && job\.loaded && job\.phase === "idle"/.test(preOutputCode),
+);
+
+/**
+ * `loaded` has to mean "a row was read", not "a row exists" — otherwise a
+ * project with no job at all would never finish loading and the workspace would
+ * offer nothing forever.
+ */
+const jobHook = read("src/lib/workspace/useFirstVersionJob.ts");
+check("loaded means the view was fetched", /loaded: view !== null/.test(jobHook));
+check(
+  "and a project with no job still becomes loaded",
+  /setView\(next\)/.test(jobHook),
+  "nothing sets the view, so loaded could never become true",
+);
+
+// The progress card is not an action and is already correct: it needs an
+// actually-running job, which cannot be true before the first read.
+check("the progress card needs a running job", /\{job\.active && elapsed >= 1 && \(/.test(preOutputCode));
+// Retry likewise: `canRetry` requires a failed or stale phase.
+check("retry needs a failed job", /onPreviewRetry=\{job\.canRetry \?/.test(preOutputCode));
 
 if (failures.length > 0) {
   console.error(`discovery-choice-flow: ${failures.length} failed, ${passed} passed`);
