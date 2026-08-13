@@ -231,6 +231,41 @@ check(
   /!output && job\.loaded && !job\.active && classifyBuildIntent/.test(preOutputCode),
 );
 
+/* ── 8. one control per step ─────────────────────────────────────────────── */
+
+/**
+ * The workspace showed the build question and a "Создать первую версию" card at
+ * the same time: two controls for one step, in different words, and the card's
+ * button carried no answer to the question sitting above it. Whichever the
+ * person pressed, one of the two was wrong — and nothing on screen said which.
+ *
+ * The question owns the step while it is pending. The card returns for
+ * everything after it: retrying a failure, or building when there is nothing
+ * left to ask.
+ */
+check(
+  "the create card is hidden while a question is pending",
+  /\{!hasVersion && !job\.active && !intake\.step && \(/.test(preOutputCode),
+  "the duplicate call to action is back",
+);
+
+// Both halves matter: the question must still be the thing that is shown.
+check("the question renders in that state", /\{intake\.step && \(/.test(preOutputCode));
+check(
+  "and it is the intake that generates when answered",
+  /onComplete: \(answers: IntakeAnswers\) => createFirstVersion\(false, answers\)/.test(preOutputCode),
+);
+
+/**
+ * The card is hidden, not deleted — a failed generation still needs its retry,
+ * and that state cannot collide with the question, which requires an idle job.
+ */
+check("the card still exists for the states that need it", /t\("createFirstVersion"\)/.test(preOutputCode));
+check(
+  "and the question cannot appear beside a failed job",
+  /job\.loaded && job\.phase === "idle"/.test(preOutputCode),
+);
+
 if (failures.length > 0) {
   console.error(`discovery-choice-flow: ${failures.length} failed, ${passed} passed`);
   for (const failure of failures) console.error(`  ✗ ${failure}`);

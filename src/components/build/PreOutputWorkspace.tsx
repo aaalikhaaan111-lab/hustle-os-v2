@@ -472,7 +472,15 @@ export function PreOutputWorkspace({
                 {/* `hasVersion`, not `output`: an app-runtime project has no
                     page artifact, and gating on that alone kept offering
                     "Create first version" for a project that already had one. */}
-                {!hasVersion && !job.active && (
+                {/* `!intake.step`: while the build question is still on screen,
+                    this card offered the same next action a second time, in
+                    different words, with no answer to the question attached. Two
+                    controls for one step is a choice about which one matters,
+                    and neither said. The question owns the step until it is
+                    answered or deferred; the card comes back for everything
+                    after — retrying a failure, or building once there is
+                    nothing left to ask. */}
+                {!hasVersion && !job.active && !intake.step && (
                   <div
                     className="rise rounded-[var(--r-lg)] border p-5"
                     style={{ borderColor: "var(--line-2)", background: "var(--surface)" }}

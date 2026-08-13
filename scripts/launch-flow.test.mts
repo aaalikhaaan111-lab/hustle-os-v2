@@ -198,8 +198,15 @@ check("the public form endpoint refuses app publications",
 /* ── 6. the workspace stops offering what it already did ─────────────────── */
 
 const workspace = read("src/components/build/PreOutputWorkspace.tsx");
+// The gate has since gained `&& !intake.step`, so the build question and this
+// card can never offer the same step twice. What matters here is unchanged:
+// it is `hasVersion` that hides the card, not `output` — gating on the page
+// artifact alone kept offering "Create first version" to app-runtime projects
+// that already had one.
 check("the build card is hidden once a version exists in either shape",
-  /\{!hasVersion && !job\.active && \(/.test(workspace));
+  /\{!hasVersion && !job\.active && /.test(workspace));
+check("and never gates on the artifact shape alone",
+  !/\{!output && !job\.active && \(/.test(workspace));
 // Publishing moved from the conversation into the preview toolbar, so the
 // gate is now the toolbar slot. What matters is unchanged and is what is
 // asserted: it is offered for `hasVersion` — an app or an artifact — and never
