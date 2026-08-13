@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale } from "next-intl/server";
 import { isLocale } from "@/i18n/locale";
+import { clientMessages } from "@/i18n/clientMessages";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/supabase/currentUser";
 import { CreateExperience } from "@/components/create/CreateExperience";
@@ -29,7 +30,10 @@ export default async function CreatePage() {
   // scopes its subtree this way; this is the same fix one screen earlier.
   const accountLocale = await getLocale();
   const locale = isLocale(initialDraft?.locale) ? initialDraft.locale : accountLocale;
-  const messages = (await import(`../../../messages/${locale}.json`)).default;
+  // Trimmed the same way the root provider is: this subtree is a second full
+  // copy of the bundle in the same HTML, so the namespaces no client component
+  // reads are dropped from both.
+  const messages = clientMessages((await import(`../../../messages/${locale}.json`)).default);
 
   // Creation lives inside the one authenticated shell, so Overview, Projects
   // and Settings stay one click away and there is no second navigation on

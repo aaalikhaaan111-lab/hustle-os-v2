@@ -6,8 +6,48 @@ import { getSiteUrl, isSafeRedirectPath } from "@/lib/site";
 const PROTECTED_PREFIXES = ["/create", "/projects", "/build", "/profile", "/dashboard", "/settings"];
 const AUTH_ROUTES = ["/login", "/signup"];
 
+/**
+ * Pages whose content is identical for everyone, signed in or not.
+ *
+ * None of these routes reads the visitor's identity: they render from the
+ * message bundle and `legal.ts` alone, which is why the session refresh below
+ * — a network-validated `getUser()`, measured at 400–500 ms — buys them
+ * nothing. Skipping it is the whole optimisation.
+ *
+ * `/` is deliberately NOT here. The landing page calls `getCurrentUser` itself
+ * to route an already-signed-in visitor onward, so skipping the proxy's call
+ * would only move the same round trip into the page.
+ *
+ * A route joins this list only when it reads no identity. If one later needs
+ * the user, remove it here rather than reading the hint header below.
+ */
+const PUBLIC_CONTENT_ROUTES = [
+  "/privacy",
+  "/terms",
+  "/cookies",
+  "/ai-policy",
+  "/about",
+  "/faq",
+  "/who-its-for",
+  "/contact",
+  "/delete-account",
+];
+
 function matchesPrefix(pathname: string, prefixes: string[]) {
   return prefixes.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
+}
+
+/**
+ * Whether a Supabase auth cookie is present — not whether it is valid.
+ *
+ * Used for one thing: picking which links the nav shows on the routes above.
+ * It is never an authorisation input, which is why it is reported under its own
+ * header and never as `x-user-id` (the header `getCurrentUser` trusts as
+ * identity). Presence is cheap and local; validity costs the round trip this
+ * function exists to avoid.
+ */
+function hasAuthCookie(request: NextRequest): boolean {
+  return request.cookies.getAll().some(({ name }) => /^sb-.+-auth-token(\.\d+)?$/.test(name));
 }
 
 export async function updateSession(request: NextRequest) {
@@ -24,6 +64,19 @@ export async function updateSession(request: NextRequest) {
 
   if (pathname.startsWith("/api/public/")) {
     return NextResponse.next({ request });
+  }
+
+  // Public content: no session needed, so no session is fetched. The identity
+  // headers are stripped rather than trusted — a client may send anything, and
+  // on this branch nothing has validated it.
+  if (matchesPrefix(pathname, PUBLIC_CONTENT_ROUTES)) {
+    const requestHeaders = new Headers(request.headers);
+    requestHeaders.delete("x-user-id");
+    requestHeaders.delete("x-user-email");
+    requestHeaders.delete("x-ventrio-public-route");
+    requestHeaders.delete("x-ventrio-session-hint");
+    if (hasAuthCookie(request)) requestHeaders.set("x-ventrio-session-hint", "1");
+    return NextResponse.next({ request: { headers: requestHeaders } });
   }
 
   // Google OAuth's PKCE code verifier is written to a cookie scoped to
@@ -43,8 +96,9 @@ export async function updateSession(request: NextRequest) {
   }
 
   // Never trust a client-supplied shell marker on authenticated routes. Only
-  // the public-path branch above is allowed to set it.
+  // the public-path branches above are allowed to set these.
   request.headers.delete("x-ventrio-public-route");
+  request.headers.delete("x-ventrio-session-hint");
 
   let supabaseResponse = NextResponse.next({ request });
 

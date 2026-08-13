@@ -4,6 +4,7 @@ import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages, getTranslations } from "next-intl/server";
 import { headers } from "next/headers";
 import { AppShell } from "@/components/layout/AppShell";
+import { clientMessages } from "@/i18n/clientMessages";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -58,10 +59,25 @@ export default async function RootLayout({
   }
 
   const locale = await getLocale();
-  const messages = await getMessages();
-  // Middleware forwards the authenticated user's id on live routes; the drawer
-  // uses it to show the right auth controls.
-  const isAuthenticated = Boolean(requestHeaders.get("x-user-id"));
+  const messages = clientMessages(await getMessages());
+  /**
+   * Which auth controls the drawer and the landing nav show.
+   *
+   * Two sources, and the difference matters. `x-user-id` is set only after the
+   * proxy's network-validated `getUser()`, and it is what `getCurrentUser`
+   * treats as identity — so it is the authoritative one. On public content
+   * routes the proxy skips that call (it is a ~400 ms round trip for a page
+   * that needs no session) and instead reports whether a Supabase auth cookie
+   * is present, which is enough to pick between "Log in" and "Projects".
+   *
+   * The hint is deliberately a separate header rather than a forged
+   * `x-user-id`: it names no user, nothing authorises against it, and the worst
+   * a spoofed value can do is show a signed-out visitor a link that redirects
+   * them to /login. Every protected route is still gated by the proxy and by
+   * the identity check inside the page.
+   */
+  const isAuthenticated =
+    Boolean(requestHeaders.get("x-user-id")) || requestHeaders.get("x-ventrio-session-hint") === "1";
 
   return (
     <html

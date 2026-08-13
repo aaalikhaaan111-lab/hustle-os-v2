@@ -7,6 +7,7 @@ import { buildWorkspaceViewProps } from "@/lib/build/workspaceProps";
 import { loadWorkspaceUsage } from "@/lib/workspace/usage";
 import { WorkspaceShell } from "@/components/workspace-ui/WorkspaceShell";
 import { WorkspaceView } from "@/components/build/WorkspaceView";
+import { clientMessages } from "@/i18n/clientMessages";
 
 interface ProjectWorkspacePageProps {
   params: Promise<{ id: string }>;
@@ -48,7 +49,9 @@ export default async function ProjectWorkspacePage({ params, searchParams }: Pro
   // corrected the voice-input language — every visible label still came from
   // the root provider. Re-scoping the subtree is what actually fixes it, and it
   // fixes the whole workspace at once rather than one label at a time.
-  const workspaceMessages = (await import(`../../../../messages/${props.projectLocale}.json`)).default;
+  const workspaceMessages = clientMessages(
+    (await import(`../../../../messages/${props.projectLocale}.json`)).default,
+  );
 
   // The shell is new; what it wraps is the same WorkspaceView with the same
   // assistant, publication and stage-3 props it already received.
