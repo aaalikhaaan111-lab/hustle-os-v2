@@ -16,7 +16,18 @@ export default async function TermsPage() {
   const tCommon = await getTranslations("legal.common");
   const tc = await getTranslations("common");
 
-  const intro = t("intro", { productName: legalConfig.productName });
+  // Every variable the string names has to be supplied: next-intl treats a
+  // missing one as a formatting error and renders the key path — this page was
+  // publishing the literal text "legal.terms.intro" where its opening paragraph
+  // belongs. The same operator details are resolved the same way on /privacy
+  // and /ai-policy, whose intros were already passing them.
+  const cityPart = legalConfig.operatorCity ? `, ${legalConfig.operatorCity}` : "";
+  const intro = t("intro", {
+    productName: legalConfig.productName,
+    operatorName: legalConfig.operatorName,
+    operatorCountry: legalConfig.operatorCountry,
+    operatorCityPart: cityPart,
+  });
 
   const sections = t.raw("sections") as { title: string; body: string }[];
   const resolvedSections = sections.map((section) => ({
