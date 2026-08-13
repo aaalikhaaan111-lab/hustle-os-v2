@@ -363,14 +363,28 @@ export function PreOutputWorkspace({
 
   return (
     <BuildScreen
-      // The panel is reachable from the start, so it has to say which phase the
-      // first version is in rather than sitting empty.
+      /**
+       * The panel says what this screen knows, and no more.
+       *
+       * `idle` used to mean "empty" — but `useFirstVersionJob` reports `idle`
+       * before the first poll returns too, so the panel asserted "nothing has
+       * been built yet" for a project that might already have an application.
+       * `succeeded` was also mapped to "empty", which claimed emptiness for the
+       * whole window between a job finishing and the rebuilt project arriving.
+       *
+       * Only a job row that has been read, with nothing in it, is empty.
+       * Anything else this screen cannot name yet is loading.
+       */
       previewStatus={
-        job.phase === "failed" || job.phase === "stale"
-          ? "failed"
-          : job.phase === "idle" || job.phase === "succeeded"
-            ? "empty"
-            : "generating"
+        !job.loaded
+          ? "loading"
+          : job.phase === "failed" || job.phase === "stale"
+            ? "failed"
+            : job.active
+              ? "generating"
+              : job.phase === "idle"
+                ? "empty"
+                : "loading"
       }
       onPreviewRetry={job.canRetry ? () => createFirstVersion(true) : null}
       runtimeErrors={runtimeErrors}

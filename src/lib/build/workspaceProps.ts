@@ -101,6 +101,16 @@ export async function buildWorkspaceViewProps(
     },
     codegen: compileStoredCodegen(project.snapshot_fields),
     app: await compileStoredApp(project.snapshot_fields),
+    /**
+     * A stored version exists that this deploy could not rebuild.
+     *
+     * Both recompiles fail closed and return null, which the workspace could
+     * not tell apart from "this project never had a version" — so a project
+     * whose stored app the gate now refuses was shown "your preview will appear
+     * here". The difference matters to the person: one is a project they have
+     * not built yet, the other is a version they have that is not displayable.
+     */
+    versionUnavailable: await storedVersionUnavailable(project.snapshot_fields),
   };
 }
 
@@ -126,6 +136,22 @@ export async function buildWorkspaceViewProps(
  * rendering once the gate is tightened rather than being grandfathered in.
  * Reopening a project therefore costs a compile and never a provider request.
  */
+/**
+ * True when something is stored and nothing rendered.
+ *
+ * Deliberately derived from the same two readers the props use, rather than
+ * from a flag threaded out of them: whatever makes them return null is what
+ * this has to notice, and re-asking is cheaper to keep correct than a second
+ * code path that has to be remembered.
+ */
+async function storedVersionUnavailable(snapshotFields: unknown): Promise<boolean> {
+  const storedApp = readAppState(snapshotFields);
+  if (storedApp) return (await compileStoredApp(snapshotFields)) === null;
+  const storedCodegen = readCodegenState(snapshotFields);
+  if (storedCodegen) return compileStoredCodegen(snapshotFields) === null;
+  return false;
+}
+
 async function compileStoredApp(snapshotFields: unknown): Promise<WorkspaceAppView | null> {
   const state = readAppState(snapshotFields);
   if (!state) return null;

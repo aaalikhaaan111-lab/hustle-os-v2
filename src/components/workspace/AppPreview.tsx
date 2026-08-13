@@ -18,6 +18,7 @@
  */
 
 import { useEffect, useRef, useState } from "react";
+import { useTranslations } from "next-intl";
 import { SANDBOX_ATTRIBUTE } from "@/lib/v2/app/sandbox";
 import { subscribePreview } from "@/lib/v2/app/protocol";
 import type { DeviceMode } from "@/lib/build/deviceWidths";
@@ -31,8 +32,19 @@ export interface AppPreviewProps {
 }
 
 export function AppPreview({ document: srcDoc, device, title, onRuntimeErrors }: AppPreviewProps) {
+  const t = useTranslations("workspace");
   const frameRef = useRef<HTMLIFrameElement | null>(null);
-  const [ready, setReady] = useState(false);
+  /**
+   * Which document reported that it started, rather than a boolean.
+   *
+   * A new document is a new boot, and a flag would have to be reset when
+   * `srcDoc` changes — which is a setState inside an effect, and a cascading
+   * render. Recording *what* became ready makes the answer derived: readiness
+   * belongs to one document, so a different one is simply not ready yet, with
+   * nothing to reset.
+   */
+  const [readyFor, setReadyFor] = useState<string | null>(null);
+  const ready = readyFor === srcDoc;
 
   /**
    * The window to listen on comes from the frame, never from `window`.
@@ -43,22 +55,48 @@ export function AppPreview({ document: srcDoc, device, title, onRuntimeErrors }:
    * reasoning and the resolution.
    *
    * The effect runs after refs are attached, so `frameRef.current` is the
-   * mounted element here.
+   * mounted element here. It re-subscribes when the document changes, because
+   * that is a different run of a different application and the previous run's
+   * listener has nothing left to hear.
    */
   useEffect(
-    () => subscribePreview(frameRef.current, { onReady: () => setReady(true), onRuntimeErrors }),
-    [onRuntimeErrors],
+    () => subscribePreview(frameRef.current, { onReady: () => setReadyFor(srcDoc), onRuntimeErrors }),
+    [onRuntimeErrors, srcDoc],
   );
 
+  /**
+   * The frame is mounted before the app inside it has run.
+   *
+   * `ready` already existed and drove nothing but a data attribute, so an
+   * application that took a second to boot — or a dark one that painted its
+   * background before its content — was a white or black rectangle with no
+   * indication that anything was happening. The overlay covers exactly that
+   * gap and nothing else: the frame, its sandbox and its document are
+   * untouched, and it is removed by the app's own `ready` message.
+   */
   return (
-    <iframe
-      ref={frameRef}
-      srcDoc={srcDoc}
-      sandbox={SANDBOX_ATTRIBUTE}
-      title={title}
-      data-ready={ready ? "true" : "false"}
-      data-device={device}
-      className="h-full w-full border-0 bg-white"
-    />
+    <div className="relative h-full w-full">
+      <iframe
+        ref={frameRef}
+        srcDoc={srcDoc}
+        sandbox={SANDBOX_ATTRIBUTE}
+        title={title}
+        data-ready={ready ? "true" : "false"}
+        data-device={device}
+        className="h-full w-full border-0 bg-white"
+      />
+      {!ready && (
+        <div
+          className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-center"
+          style={{ background: "var(--surface)" }}
+          role="status"
+          aria-live="polite"
+          data-testid="app-preview-booting"
+        >
+          <span aria-hidden className="ai-pending mb-1 h-9 w-9 rounded-full border-2" style={{ borderColor: "var(--line-2)" }} />
+          <p className="text-[14px] font-medium" style={{ color: "var(--ink-2)" }}>{t("previewBootingTitle")}</p>
+        </div>
+      )}
+    </div>
   );
 }

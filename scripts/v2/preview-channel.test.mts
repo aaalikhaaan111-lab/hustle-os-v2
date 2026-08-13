@@ -249,9 +249,17 @@ check("AppPreview subscribes through subscribePreview", /subscribePreview\(frame
 // The binding this file cannot execute: ready must come from the channel, and
 // data-ready must come from ready. Both halves are asserted so neither can be
 // quietly decoupled from the other.
+// Readiness is recorded as *which document* started, not as a boolean — a flag
+// would need resetting when the document changes, which is a setState inside an
+// effect. The chain this pins is unchanged: onReady → the ready state →
+// data-ready, with the overlay now hanging off the same state.
 check(
-  "onReady sets the ready state",
-  /onReady:\s*\(\)\s*=>\s*setReady\(true\)/.test(appPreview),
+  "onReady records the document that started",
+  /onReady:\s*\(\)\s*=>\s*setReadyFor\(srcDoc\)/.test(appPreview),
+);
+check(
+  "and ready is derived from it",
+  /const ready = readyFor === srcDoc;/.test(appPreview),
 );
 
 check(

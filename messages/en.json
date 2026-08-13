@@ -1174,6 +1174,11 @@
     "analyticsQuietTitle": "Published, no responses yet",
     "analyticsQuietBody": "Share the link. The moment someone responds, it shows up here.",
     "analyticsScopeNote": "Ventrio counts responses people send through your published project. It does not track page views or visitors.",
-    "previewRuntimeErrorTitle": "The app reported an error while running"
+    "previewRuntimeErrorTitle": "The app reported an error while running",
+    "previewLoadingTitle": "Loading your project",
+    "previewLoadingBody": "One moment — checking what this project already has.",
+    "previewUnavailableTitle": "This version could not be loaded",
+    "previewUnavailableBody": "It is still saved. This workspace could not rebuild it, so nothing is shown rather than something wrong.",
+    "previewBootingTitle": "Starting your app…"
   }
 }

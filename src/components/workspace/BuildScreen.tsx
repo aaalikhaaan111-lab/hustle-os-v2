@@ -31,6 +31,17 @@ function subscribeToNarrow(onChange: () => void) {
   return () => media.removeEventListener("change", onChange);
 }
 
+/**
+ * The four things the preview panel can be, kept apart.
+ *
+ * They were one word before: `"empty"` covered a job row that had not been read
+ * yet, a generation that had just succeeded but whose app had not arrived, and
+ * a stored version that failed to rebuild — all reported as "your preview will
+ * appear here", which was a claim about the project rather than about what this
+ * screen knew.
+ */
+export type PreviewStatus = "loading" | "generating" | "failed" | "unavailable" | "empty";
+
 export interface BuildChatContext {
   previewOpen: boolean;
   /** True when real output exists but the panel is currently closed. */
@@ -62,7 +73,16 @@ export interface BuildScreenProps {
    * about, and nothing to explain that it was coming. The panel is now always
    * reachable and answers for itself in each phase.
    */
-  previewStatus?: "empty" | "generating" | "failed";
+  /**
+   * What the panel should say when there is nothing to render.
+   *
+   * Required, and `"empty"` is no longer the default. It used to be both
+   * optional and defaulted, so a caller that forgot it asserted "nothing has
+   * been built yet" — which `WorkspaceView` did for every project whose stored
+   * version would not recompile. `"loading"` is the state for "not known yet";
+   * `"empty"` now means only that there is genuinely nothing.
+   */
+  previewStatus: PreviewStatus;
   /** Offered in the failed state; omit when a retry is not possible. */
   onPreviewRetry?: (() => void) | null;
   published: boolean;
@@ -105,7 +125,7 @@ export interface BuildScreenProps {
 export function BuildScreen({
   chat,
   preview,
-  previewStatus = "empty",
+  previewStatus,
   onPreviewRetry = null,
   published,
   shareUrl = null,
@@ -403,22 +423,25 @@ function PreviewPlaceholder({
   onRetry,
   t,
 }: {
-  status: "empty" | "generating" | "failed";
+  status: PreviewStatus;
   onRetry: (() => void) | null;
   t: ReturnType<typeof useTranslations<"workspace">>;
 }) {
-  const titleKey =
-    status === "generating"
-      ? "previewGeneratingTitle"
-      : status === "failed"
-        ? "previewFailedTitle"
-        : "previewEmptyTitle";
-  const bodyKey =
-    status === "generating"
-      ? "previewGeneratingBody"
-      : status === "failed"
-        ? "previewFailedBody"
-        : "previewEmptyBody";
+  const copy = {
+    loading: ["previewLoadingTitle", "previewLoadingBody"],
+    generating: ["previewGeneratingTitle", "previewGeneratingBody"],
+    failed: ["previewFailedTitle", "previewFailedBody"],
+    // A version exists and would not rebuild. Not the same as never having had
+    // one, and not the same as a generation that failed — nothing is in flight
+    // and nothing was lost; this copy of the workspace cannot render what is
+    // stored.
+    unavailable: ["previewUnavailableTitle", "previewUnavailableBody"],
+    empty: ["previewEmptyTitle", "previewEmptyBody"],
+  }[status] as [Parameters<typeof t>[0], Parameters<typeof t>[0]];
+
+  // Only a real failure offers an action. "Loading" has nothing to retry, and
+  // offering one would invite a click that does nothing.
+  const showRetry = (status === "failed" || status === "unavailable") && !!onRetry;
 
   return (
     <div
@@ -432,20 +455,20 @@ function PreviewPlaceholder({
         aria-hidden
         className={cn(
           "mb-1 h-9 w-9 rounded-full border-2",
-          status === "generating" && "ai-pending"
+          (status === "generating" || status === "loading") && "ai-pending"
         )}
         style={{
-          borderColor: status === "failed" ? "var(--warn)" : "var(--line-2)",
+          borderColor: status === "failed" || status === "unavailable" ? "var(--warn)" : "var(--line-2)",
           borderStyle: status === "empty" ? "dashed" : "solid",
         }}
       />
       <p className="text-[15px] font-semibold" style={{ color: "var(--ink)" }}>
-        {t(titleKey)}
+        {t(copy[0])}
       </p>
       <p className="text-[13px] leading-relaxed" style={{ color: "var(--ink-3)" }}>
-        {t(bodyKey)}
+        {t(copy[1])}
       </p>
-      {status === "failed" && onRetry && (
+      {showRetry && (
         <VentrioButton variant="primary" size="sm" className="mt-2" onClick={onRetry}>
           {t("previewRetry")}
         </VentrioButton>

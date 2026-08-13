@@ -48,6 +48,14 @@ export interface WorkspaceViewProps {
   codegen: WorkspaceCodegenView | null;
   /** The generated application, when this project was built by app-runtime. */
   app: WorkspaceAppView | null;
+  /**
+   * A version is stored but could not be rebuilt for display.
+   *
+   * Separate from `app`/`codegen` being null, which also happens when a project
+   * simply has no version. Only this screen can tell the person which of the
+   * two they are looking at, and only if it is told.
+   */
+  versionUnavailable: boolean;
 }
 
 /** A recompiled generated application, ready for a scripted sandbox frame. */
@@ -112,6 +120,12 @@ export function WorkspaceView(props: WorkspaceViewProps) {
 
   return (
     <BuildScreen
+      /**
+       * Explicit, never the default. This screen used to pass nothing and take
+       * `"empty"`, so a stored version that would not recompile was reported as
+       * a project with no version at all.
+       */
+      previewStatus={hasOutput ? "empty" : props.versionUnavailable ? "unavailable" : "empty"}
       runtimeErrors={runtimeErrors}
       published={Boolean(props.publication?.isPublished)}
       shareUrl={shareUrl}

@@ -74,6 +74,7 @@ export function Harness({
           </div>
         )}
         preview={null}
+        previewStatus="empty"
         published={false}
         shareUrl={null}
       />
@@ -93,6 +94,7 @@ export function Harness({
           <div style={{ padding: 24, font: "14px system-ui" }}>chat stand-in</div>
         )}
         preview={output}
+        previewStatus="empty"
         published={published}
         shareUrl={published ? "https://ventrio.org/p/chronoverse-fixture" : null}
       />
