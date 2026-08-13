@@ -29,6 +29,7 @@ import "server-only";
 
 import {
   claimProviderRequest,
+  recordTokenUsage,
   type JobErrorCode,
 } from "@/lib/jobs/generationJobs";
 import { enqueueRepair, type GenerateMessage, type RepairMessage } from "./generationQueue";
@@ -88,6 +89,10 @@ export async function runGeneratePhase(
   }
 
   const generated = await requestGeneration(ref, { brief: message.brief }, options);
+  // Before the gate, so a response that gets refused is still counted. Those
+  // runs cost exactly what a successful one costs and are roughly a third of
+  // current model spend.
+  await recordTokenUsage(ref.jobId, generated.usage);
   if (!generated.ok) {
     // A transport failure says nothing about the project, so it never buys a
     // repair — the same rule the inline pipeline applied.

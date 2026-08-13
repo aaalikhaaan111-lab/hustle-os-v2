@@ -43,6 +43,7 @@ import { toJson } from "@/lib/supabase/json";
 import { parseStage3ProjectState, mergeStage3ProjectState, type Stage3ProjectState } from "@/lib/build/stage3Types";
 import { beat, finishFailed, finishSucceeded, releaseUsage, type JobErrorCode } from "@/lib/jobs/generationJobs";
 import { CONSUMER_BUDGETS, GENERATION_LIMITS } from "../gemini/config";
+import type { GeminiUsage } from "../gemini/transport";
 import { createAppTransport } from "./provider";
 import {
   accept,
@@ -60,10 +61,60 @@ import ruMessages from "../../../../messages/ru.json";
 
 /* ── what crosses a message boundary ─────────────────────────────────────── */
 
+/**
+ * What one provider call reported about its own size.
+ *
+ * Carried on both branches. A response that failed the gate still cost exactly
+ * what it cost, and those are the runs worth measuring — roughly a third of
+ * production model spend currently buys output that never becomes a project.
+ */
+export interface ProviderUsage {
+  inputTokens?: number;
+  outputTokens?: number;
+  thoughtsTokens?: number;
+  cachedTokens?: number;
+}
+
+/** The provider's own vocabulary, renamed once, here. */
+export function providerUsage(usage: GeminiUsage | undefined): ProviderUsage | undefined {
+  if (!usage) return undefined;
+  return {
+    inputTokens: usage.promptTokenCount,
+    outputTokens: usage.candidatesTokenCount,
+    thoughtsTokens: usage.thoughtsTokenCount,
+    cachedTokens: usage.cachedContentTokenCount,
+  };
+}
+
+/**
+ * The same figures off a failure, where they arrive inside free-form
+ * diagnostics.
+ *
+ * `diagnostics` is typed `Record<string, unknown>` because each transport
+ * decides what to put there, so this reads defensively and keeps only finite
+ * non-negative numbers. Anything else is dropped rather than stored: a wrong
+ * token count is worse than a missing one, because a missing one is visible as
+ * a null and a wrong one is not.
+ */
+function usageFromDiagnostics(diagnostics: Record<string, unknown> | undefined): ProviderUsage | undefined {
+  const raw = diagnostics?.usage;
+  if (!raw || typeof raw !== "object") return undefined;
+  const source = raw as Record<string, unknown>;
+  const count = (value: unknown): number | undefined =>
+    typeof value === "number" && Number.isFinite(value) && value >= 0 ? value : undefined;
+  const usage: ProviderUsage = {
+    inputTokens: count(source.inputTokens),
+    outputTokens: count(source.outputTokens),
+    thoughtsTokens: count(source.thoughtsTokens),
+    cachedTokens: count(source.cachedTokens),
+  };
+  return Object.values(usage).some((value) => value !== undefined) ? usage : undefined;
+}
+
 /** One provider call's outcome. Plain JSON: it may travel in a message. */
 export type ProviderOutcome =
-  | { ok: true; text: string; latencyMs: number }
-  | { ok: false; code: string; message: string; latencyMs: number };
+  | { ok: true; text: string; latencyMs: number; usage?: ProviderUsage }
+  | { ok: false; code: string; message: string; latencyMs: number; usage?: ProviderUsage };
 
 /** The gate's verdict on one response, with the repair plan already chosen. */
 export type Verdict =
@@ -290,12 +341,21 @@ export async function requestGeneration(
         controller.signal,
       );
       return response.ok
-        ? { ok: true as const, text: response.text, latencyMs: response.latencyMs }
+        ? {
+            ok: true as const,
+            text: response.text,
+            latencyMs: response.latencyMs,
+            usage: providerUsage(response.usage),
+          }
         : {
             ok: false as const,
             code: transportCode(response),
             message: response.message,
             latencyMs: response.latencyMs,
+            // A response that was truncated or refused was still generated and
+            // still billed. Its usage is in the diagnostics rather than beside
+            // the text, because there is no text.
+            usage: usageFromDiagnostics(response.diagnostics),
           };
     } finally {
       clearTimeout(deadline);
@@ -372,12 +432,21 @@ export async function requestRepair(
         controller.signal,
       );
       return response.ok
-        ? { ok: true as const, text: response.text, latencyMs: response.latencyMs }
+        ? {
+            ok: true as const,
+            text: response.text,
+            latencyMs: response.latencyMs,
+            usage: providerUsage(response.usage),
+          }
         : {
             ok: false as const,
             code: transportCode(response),
             message: response.message,
             latencyMs: response.latencyMs,
+            // A response that was truncated or refused was still generated and
+            // still billed. Its usage is in the diagnostics rather than beside
+            // the text, because there is no text.
+            usage: usageFromDiagnostics(response.diagnostics),
           };
     } finally {
       clearTimeout(deadline);

@@ -45,6 +45,17 @@ export interface GeminiUsage {
   promptTokenCount?: number;
   candidatesTokenCount?: number;
   totalTokenCount?: number;
+  /**
+   * Billed as output, reported apart from it.
+   *
+   * Both of these were already read off every response and then dropped at this
+   * boundary, which left the success path unable to say what a generation cost
+   * — the only place the number existed was a log line. They are carried now
+   * because `generation_jobs` stores them.
+   */
+  thoughtsTokenCount?: number;
+  /** Priced an order of magnitude below fresh input, so it cannot be folded in. */
+  cachedContentTokenCount?: number;
 }
 
 export type GeminiResponse =

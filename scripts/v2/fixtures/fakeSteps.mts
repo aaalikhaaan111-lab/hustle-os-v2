@@ -93,7 +93,22 @@ export async function beginGeneration(...args: unknown[]) {
 
 export async function requestGeneration(...args: unknown[]) {
   record("requestGeneration", args);
-  return state.scenario.generation ?? { ok: true, text: "<<<generated>>>", latencyMs: 1 };
+  return (
+    state.scenario.generation
+    ?? {
+      ok: true,
+      text: "<<<generated>>>",
+      latencyMs: 1,
+      // The default response reports usage, so the bookkeeping write is
+      // exercised on the happy path rather than only when a scenario opts in.
+      usage: { inputTokens: 2364, outputTokens: 25000, thoughtsTokens: 120, cachedTokens: 0 },
+    }
+  );
+}
+
+/** Bookkeeping only: records the cost of the request that just happened. */
+export async function recordTokenUsage(...args: unknown[]) {
+  record("recordTokenUsage", args);
 }
 
 export async function evaluateGeneration(...args: unknown[]) {

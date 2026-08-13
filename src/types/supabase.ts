@@ -152,6 +152,10 @@ export type Database = {
         Row: {
           attempt_count: number
           created_at: string
+          cached_tokens: number | null
+          input_tokens: number | null
+          output_tokens: number | null
+          thoughts_tokens: number | null
           error_code: string | null
           error_message: string | null
           finished_at: string | null
@@ -173,6 +177,10 @@ export type Database = {
         Insert: {
           attempt_count?: number
           created_at?: string
+          cached_tokens?: number | null
+          input_tokens?: number | null
+          output_tokens?: number | null
+          thoughts_tokens?: number | null
           error_code?: string | null
           error_message?: string | null
           finished_at?: string | null
@@ -194,6 +202,10 @@ export type Database = {
         Update: {
           attempt_count?: number
           created_at?: string
+          cached_tokens?: number | null
+          input_tokens?: number | null
+          output_tokens?: number | null
+          thoughts_tokens?: number | null
           error_code?: string | null
           error_message?: string | null
           finished_at?: string | null

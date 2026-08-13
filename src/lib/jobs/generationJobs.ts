@@ -337,6 +337,49 @@ export async function savePayload(jobId: string, payload: GenerationPayload): Pr
   return true;
 }
 
+/**
+ * What the provider said this job's request cost.
+ *
+ * Best-effort and deliberately non-fatal: a generation that produced a working
+ * project must not fail because a bookkeeping write did. A missing row here
+ * costs an accurate average; a thrown error here costs the user their app.
+ *
+ * Written once, right after the provider answers and BEFORE the gate runs, so
+ * the runs that get refused are measured too — those are about a third of
+ * current model spend and they are the ones worth seeing.
+ *
+ * Undefined counts are written as null rather than zero. "No usage reported"
+ * and "zero tokens" are different facts, and only one of them should ever be
+ * averaged.
+ */
+export async function recordTokenUsage(
+  jobId: string,
+  usage: {
+    inputTokens?: number;
+    outputTokens?: number;
+    thoughtsTokens?: number;
+    cachedTokens?: number;
+  } | undefined,
+): Promise<void> {
+  if (!usage) return;
+  const service = createServiceClient();
+  const { error } = await service
+    .from("generation_jobs")
+    .update({
+      input_tokens: usage.inputTokens ?? null,
+      output_tokens: usage.outputTokens ?? null,
+      thoughts_tokens: usage.thoughtsTokens ?? null,
+      cached_tokens: usage.cachedTokens ?? null,
+    })
+    .eq("id", jobId);
+  if (error) {
+    console.error("[ventrio-generation-job-error]", JSON.stringify({
+      operation: "record_token_usage",
+      message: error.message,
+    }));
+  }
+}
+
 export interface ClaimableJob {
   id: string;
   projectId: string;

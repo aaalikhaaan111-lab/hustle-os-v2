@@ -261,6 +261,27 @@ const repairMessage = () => ({ ...GENERATE, phase: "repair" as const, issues: RE
   check("it saves exactly once", fake.__countOf("persistGeneratedApp") === 1);
   check("and refunds nothing", fake.__countOf("failGeneration") === 0);
   check("one provider request is recorded against the job", fake.__claimed("job-1") === 1);
+  check("what the request cost is written down", fake.__countOf("recordTokenUsage") === 1);
+}
+
+/**
+ * The cost of a refused run is recorded too.
+ *
+ * This is the case the telemetry exists for. A response that fails the gate was
+ * generated and billed exactly like one that passes, and those runs are roughly
+ * a third of current model spend — so the write has to happen before the
+ * verdict, not after a success.
+ */
+{
+  fake.__reset({ verdict: { ok: false, code: "refused", message: "refused", issues: [] } });
+  await runGeneratePhase(GENERATE as never);
+  check("a refused generation still records its cost", fake.__countOf("recordTokenUsage") === 1);
+  const order = fake.__calls().map((call) => call.step);
+  check(
+    "and records it before the gate runs",
+    order.indexOf("recordTokenUsage") < order.indexOf("evaluateGeneration"),
+    order.join(" -> "),
+  );
 }
 
 /* a repairable failure queues exactly one repair, and does not run it here */

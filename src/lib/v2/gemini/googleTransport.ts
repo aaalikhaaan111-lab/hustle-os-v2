@@ -277,6 +277,8 @@ export class GoogleGeminiTransport implements GeminiTransport {
           promptTokenCount: usage.promptTokenCount,
           candidatesTokenCount: usage.candidatesTokenCount,
           totalTokenCount: usage.totalTokenCount,
+          thoughtsTokenCount: usage.thoughtsTokenCount,
+          cachedContentTokenCount: usage.cachedContentTokenCount,
         },
         latencyMs: latency(),
       };
