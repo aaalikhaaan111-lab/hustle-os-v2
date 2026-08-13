@@ -35,7 +35,6 @@ export function usageLabels(tw: ReturnType<typeof useTranslations<"workspace">>)
     aiChanges: tw("usageChanges"),
     projectBuilds: tw("usageBuilds"),
     evolutionCredits: tw("usageEvolution"),
-    trackedSessions: tw("usageSessions"),
     unavailable: tw("usageUnavailable"),
     note: tw("usageNote"),
   };

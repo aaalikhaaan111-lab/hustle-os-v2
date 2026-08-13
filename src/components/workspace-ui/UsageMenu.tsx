@@ -11,7 +11,6 @@ export interface UsageLabels {
   aiChanges: string;
   projectBuilds: string;
   evolutionCredits: string;
-  trackedSessions: string;
   unavailable: string;
   note: string;
 }
@@ -48,7 +47,6 @@ export function UsageMenu({ usage, labels }: { usage: WorkspaceUsage; labels: Us
     { label: labels.aiChanges, counter: usage.aiChanges },
     { label: labels.projectBuilds, counter: usage.projectBuilds },
     { label: labels.evolutionCredits, counter: usage.evolutionCredits },
-    { label: labels.trackedSessions, counter: usage.trackedSessions },
   ];
 
   return (

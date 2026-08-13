@@ -114,7 +114,6 @@ export function SettingsClient({
                   { label: t("usageChanges"), counter: usage.aiChanges },
                   { label: t("usageBuilds"), counter: usage.projectBuilds },
                   { label: t("usageEvolution"), counter: usage.evolutionCredits },
-                  { label: t("usageSessions"), counter: usage.trackedSessions },
                 ].map(({ label, counter }) => (
                   <li key={label}>
                     <div className="flex items-baseline justify-between gap-2">
