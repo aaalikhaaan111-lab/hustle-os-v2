@@ -839,7 +839,8 @@
     "about": "About Ventrio",
     "whoItsFor": "Who it's for",
     "faq": "FAQ",
-    "blurb": "Ventrio turns an idea into a real project, then keeps improving it from how people actually use it."
+    "blurb": "Ventrio turns an idea into a real project, then keeps improving it from how people actually use it.",
+    "aiPolicy": "AI Policy"
   },
   "legal": {
     "common": {
@@ -849,123 +850,127 @@
     },
     "privacy": {
       "pageTitle": "Privacy Policy",
-      "intro": "This policy explains what data {productName} (the \"Service\") collects, why, and how it's handled. The Service is currently operated by {operatorName} ({operatorCountry}{operatorCityPart}). For any privacy questions, email {contactEmail}.",
+      "intro": "This policy explains what data {productName} collects, why, and who processes it. {productName} is operated by {operatorName}, {operatorCountry}{operatorCityPart}. Questions: {contactEmail}.",
       "sections": [
         {
-          "title": "What data we collect",
-          "body": "• Signup data: email and password, or — if you sign in with Google — the email, name, and profile data Google shares with us with your consent.\n• Profile data: display name, interests, and preferred daily study time, which you provide during onboarding.\n• Learning progress: XP, activity streak, and Play session participation (answers, correctness, response time, points earned) — stored on our servers.\n• Challenge answers and video reflection notes are stored ONLY locally in your browser (localStorage) and are not kept by us on an ongoing basis — except that challenge answer text is temporarily sent to an AI review service (see \"Who we share data with\" below).\n• Technical data: session and authentication cookies, language preference, and standard infrastructure logs (see below)."
+          "title": "What we collect",
+          "body": "• Account information — the email address you sign up with, and an encrypted password. Authentication is handled by Supabase.\n• What you write — the ideas, descriptions and messages you send to {productName}, and the conversations they belong to.\n• What {productName} builds for you — the directions proposed for your project, the generated application or site, and the versions you publish.\n• Usage counters — how many generations and idea conversations you have used against your free allowance.\n• Technical logs — request logs kept by our hosting providers, which include IP address, browser user agent, and timestamps.\n\nWe do not collect analytics about how visitors behave on the products you publish. No such tracking exists in {productName}."
         },
         {
-          "title": "Why we use this data",
-          "body": "To create and secure your account, save your learning progress, power live Play sessions and leaderboards, improve the educational product, and respond to your support requests."
+          "title": "Why we use it",
+          "body": "To create and secure your account; to generate, store and display the projects you ask for; to publish a project when you choose to; to enforce free-usage limits fairly; to keep the service running and to investigate faults and abuse."
         },
         {
-          "title": "Legal basis",
-          "body": "We process data based on the consent you give at signup (the required checkbox) and when signing in with Google (Google's own consent screen), and to the extent necessary to provide the Service itself."
+          "title": "AI processing",
+          "body": "Generating a direction or a first version requires sending your idea, your project description and the related conversation to a third-party AI provider. {productName} currently uses Google (Gemini API) for idea conversations and for generating applications, and Anthropic for parts of the in-project assistant and feedback analysis.\n\nThose providers process this content to return a result. We do not control their internal handling and we do not send them your email address or password. If you would rather a piece of information were not sent to an AI provider, do not put it in a prompt or a project."
         },
         {
-          "title": "Who we share data with",
-          "body": "We do not sell your data. To run the Service, we use the following technical partners (processors):\n• Supabase — database, authentication, and account storage.\n• Vercel — hosting and delivery of the app; keeps standard server request logs.\n• Google OAuth — sign-in with your Google account.\n• YouTube/Google — video lessons are embedded via the YouTube player; once you click \"Play,\" Google may process viewing data according to its own privacy policy.\n• Anthropic (Claude API) — the text of your challenge answer is temporarily sent to Anthropic for automated AI review and feedback; it is not used by Anthropic to train models under the commercial API, and we do not retain it linked to your identity after review.\nEach of these partners may process data on servers located outside your country."
+          "title": "Who else processes your data",
+          "body": "• Supabase — accounts, authentication and the database where projects, conversations and published versions are stored.\n• Vercel — hosting for the website and its server functions, including request logs.\n• Railway — hosting for the background service that generates applications.\n• Google and Anthropic — AI processing, as described above.\n\nWe do not sell your data, and we do not share it for advertising."
         },
         {
-          "title": "International data transfers",
-          "body": "Because our processors (Supabase, Vercel, Google, Anthropic) are global services, data may be processed on servers in different countries. We aim to work only with partners that provide an adequate level of data protection."
+          "title": "Where data is processed",
+          "body": "These providers operate infrastructure in several countries, so your data may be processed outside the country you live in. We choose providers that offer standard contractual protections for such transfers."
         },
         {
-          "title": "How long we keep data",
-          "body": "We keep account data for as long as your account is active. After account deletion (see the \"Delete Account\" page), server-side data tied to your profile is removed within a reasonable period. Data saved locally in your browser stays on your device until you clear it yourself."
+          "title": "How long we keep it",
+          "body": "Projects, conversations and generated versions are kept while your account exists, so you can come back to them. Technical logs are kept for a short period by our hosting providers under their own retention settings. When you delete your account, your projects, conversations and published versions are deleted with it."
         },
         {
-          "title": "How we protect data",
-          "body": "We use standard security measures (encrypted connections, database-level access restrictions, token-based authorization). No service can guarantee absolute protection against every possible threat, but we aim to follow industry best practices."
+          "title": "Published projects are public",
+          "body": "When you publish a project it becomes available at a public address that anyone with the link can open. Nothing else about your account becomes public. You can unpublish at any time from the project's preview toolbar."
+        },
+        {
+          "title": "Security",
+          "body": "Access to your data is restricted per account at the database level. Passwords are stored hashed by Supabase and are never visible to us. No system is perfectly secure, and we do not claim otherwise."
         },
         {
           "title": "Your rights",
-          "body": "You can:\n• request access to your data;\n• correct inaccurate data — most fields are editable directly in your Profile;\n• request deletion of your account and associated data.\nTo exercise any of these rights, email {contactEmail} or use the \"Delete Account\" page."
+          "body": "You can access and correct your account details, export or delete your projects, and delete your account entirely from the Delete Account page. Depending on where you live you may also have the right to object to processing or to lodge a complaint with a data protection authority. Write to {contactEmail}."
         },
         {
           "title": "Minors",
-          "body": "{productName} is built for users aged {minimumAge} and up. We deliberately avoid collecting unnecessary sensitive data (ID numbers, exact home address, payment details) and is not intended for children under {minimumAge}. If you become aware that a younger child has created an account, please contact us and we'll remove it."
+          "body": "{productName} is not intended for children under {minimumAge}. If we learn that an account belongs to someone younger, we will delete it."
         },
         {
-          "title": "Changes to this policy",
-          "body": "We may update this policy as the Service evolves. The effective date is shown at the bottom of this page. We'll try to notify you of significant changes through the Service or via the email you registered with."
+          "title": "Changes",
+          "body": "If this policy changes materially we will update the effective date below and, where the change is significant, tell account holders by email."
         }
       ]
     },
     "terms": {
       "pageTitle": "Terms of Use",
-      "intro": "By using {productName} (the \"Service\"), you agree to these terms. If you don't agree, please don't use the Service.",
+      "intro": "By using {productName} (the \"Service\") you agree to these terms. The Service is operated by {operatorName}, {operatorCountry}{operatorCityPart}.",
       "sections": [
         {
-          "title": "Acceptance of terms",
-          "body": "By registering for or using the Service, you confirm that you've read and accept these Terms of Use and the Privacy Policy."
-        },
-        {
-          "title": "Minimum age",
-          "body": "The Service is intended for users aged {minimumAge} and up. By registering, you confirm you're at least {minimumAge}."
+          "title": "What the Service does",
+          "body": "{productName} helps you turn an idea into a working first version of a website or application. You describe an idea, {productName} proposes directions with you, generates a first version, shows it in a preview, and lets you publish it at a public address."
         },
         {
           "title": "Your account",
-          "body": "You're responsible for keeping your password secure and for all activity under your account. Let us know if you suspect unauthorized access to your account."
+          "body": "You need an account to use the Service. Keep your credentials to yourself; you are responsible for what happens under your account. You must be at least {minimumAge} years old."
         },
         {
-          "title": "Educational purpose",
-          "body": "{productName} is an educational platform for building entrepreneurial thinking. Challenges, simulations, Play sessions, and AI-generated feedback are for learning purposes only and are NOT financial, legal, or investment advice. Any business decisions you make are your own responsibility and risk."
+          "title": "What you may not do",
+          "body": "Do not use the Service to create or publish anything unlawful, deceptive, or infringing; anything that impersonates a real person or organisation; malware, phishing or credential-harvesting pages; or content that harasses or endangers others. Do not attempt to break out of the preview sandbox, disrupt the Service, or work around usage limits."
         },
         {
-          "title": "Acceptable use",
-          "body": "You may not: break the law, impersonate another person, attempt unauthorized access to the Service or other users' data, post abusive or harmful content, or use the Service to send spam."
+          "title": "Your content and what you make",
+          "body": "You keep ownership of what you write and of the projects generated for you. You grant {productName} the permissions it needs to store, process and display them in order to run the Service — including sending them to the AI providers named in the Privacy Policy.\n\nYou are responsible for what you publish. AI-generated output is not checked by a human before you see it, and publishing it is your decision."
         },
         {
-          "title": "Conduct in Play sessions",
-          "body": "Play sessions are live, group sessions. Participants must treat each other respectfully; abuse, cheating, or disrupting a session may result in removal from the session or restricted access to the Service."
+          "title": "Generated output is not unique",
+          "body": "Similar prompts can produce similar results for different people. {productName} does not promise that anything generated for you is original, or that it does not resemble output produced for someone else."
         },
         {
-          "title": "Intellectual property",
-          "body": "The Service's content (text, design, challenges, courses) belongs to {productName} or its licensors and is protected by law. You may use it only for your own personal learning."
+          "title": "Usage limits",
+          "body": "Free accounts have a daily allowance for generations and idea conversations. We may change these allowances. A generation that fails through no fault of yours is refunded to your allowance."
         },
         {
-          "title": "Third-party content",
-          "body": "The Service uses embedded YouTube videos and Google OAuth sign-in. Using these features is also governed by the terms and policies of those services (Google/YouTube), which we don't control."
+          "title": "Availability",
+          "body": "The Service is provided as it is, without a guaranteed level of availability. It depends on third-party providers, and an outage at one of them can interrupt it. We may change or discontinue features."
         },
         {
-          "title": "Suspension and termination",
-          "body": "We may restrict or terminate account access for violations of these terms. You can delete your account at any time (see the \"Delete Account\" page)."
-        },
-        {
-          "title": "Disclaimer of warranties",
-          "body": "The Service is provided \"as is,\" without warranties of any kind, express or implied. We don't guarantee uninterrupted operation, error-free performance, or that the Service will meet your specific expectations."
+          "title": "No warranty",
+          "body": "The Service is provided \"as is\" and \"as available\", without warranties of any kind, to the fullest extent the law allows. We do not warrant that generated output will be accurate, complete, fit for a particular purpose, or free of errors."
         },
         {
           "title": "Limitation of liability",
-          "body": "To the extent permitted by law, {productName} is not liable for indirect, incidental, or consequential damages arising from your use of the Service."
+          "body": "To the fullest extent permitted by law, we are not liable for indirect or consequential losses, lost profits, lost data, or business decisions taken on the basis of anything generated by the Service."
+        },
+        {
+          "title": "Suspension",
+          "body": "We may suspend or close an account that breaks these terms or puts the Service or its users at risk. You can stop using the Service and delete your account at any time."
         },
         {
           "title": "Governing law",
-          "body": "The governing law and jurisdiction for these terms: {governingLaw}. This field is a placeholder and requires confirmation by the product owner before public launch."
+          "body": "These terms are governed by {governingLaw}."
+        },
+        {
+          "title": "Changes",
+          "body": "We may update these terms. Continued use after an update means you accept the revised terms."
         }
       ]
     },
     "cookies": {
       "pageTitle": "Cookie Policy",
-      "intro": "{productName} uses a minimal, mostly technically-necessary set of cookies and browser local storage — no advertising or marketing trackers.",
+      "intro": "{productName} uses only the cookies it needs to work. There are no advertising cookies, no marketing trackers, and no analytics cookies.",
       "sections": [
         {
-          "title": "What we use",
-          "body": "• Session/authentication cookies (Supabase) — needed to keep you signed in.\n• Language cookie (NEXT_LOCALE) — remembers your chosen interface language.\n• Browser local storage (localStorage) — stores your learning progress, guided-tour state, and answer drafts on your device so the Service is fast and resilient offline."
+          "title": "What we set",
+          "body": "• Authentication and session cookies, set by Supabase. These keep you signed in and are required for the Service to work. Removing them signs you out.\n• A language cookie (NEXT_LOCALE), which remembers whether you chose English or Russian.\n\nThat is the complete list."
         },
         {
-          "title": "Embedded YouTube videos",
-          "body": "Videos on the platform load on click — the YouTube player is only embedded on the page after you click \"Play\" yourself. After that, Google may set its own cookies and process viewing data according to its own privacy policy."
+          "title": "Browser storage",
+          "body": "{productName} also uses your browser's local storage for interface preferences — whether the preview panel is open, whether the navigation is expanded, your language choice, and a short token that lets an unfinished project be resumed. This stays in your browser and is not sent to us as a cookie."
         },
         {
-          "title": "Why there's no cookie consent banner",
-          "body": "Since we don't use advertising or analytics trackers, only technically-necessary cookies, we don't show an Accept/Reject banner — this page instead serves as the informational notice required by applicable law for technically-necessary cookies."
+          "title": "What we do not use",
+          "body": "No analytics cookies. No advertising or retargeting pixels. No third-party trackers. Nothing measures how visitors behave on a project you publish, because {productName} has no such capability."
         },
         {
           "title": "Managing cookies",
-          "body": "You can clear cookies and local storage in your browser settings at any time — note that this will sign you out and reset progress saved locally on that device."
+          "body": "You can clear or block cookies in your browser settings. Blocking the authentication cookies will prevent you from signing in, because the Service cannot keep you signed in without them."
         }
       ]
     },
@@ -980,17 +985,55 @@
       "intro": "You can request full deletion of your {productName} account and its associated data at any time.",
       "whatGetsDeleted": {
         "title": "What gets deleted",
-        "body": "Once deletion is confirmed, we'll delete your sign-in account (email/Google) and all server-side data tied to it: your profile, interests, XP and activity streak, and Play session participation and answers."
+        "body": "Once deletion is confirmed we delete your sign-in account and everything on the server tied to it: your profile, your projects — including the ideas you described, the directions chosen and the generated applications — your conversations with {productName}, your generation history and usage counters, and any versions you published, which stop being reachable at their public address."
       },
       "whatStays": {
-        "title": "What isn't deleted automatically",
-        "body": "Challenge progress and video reflection notes are stored only locally in the browser on the devices you used. We can't remotely erase this data — you can do it yourself by clearing site data in your browser settings on each device."
+        "title": "What is not deleted automatically",
+        "body": "Interface preferences kept in your own browser — whether the preview panel is open, your language choice, and the token for resuming an unfinished project. Clear your browser storage to remove them. Technical request logs held by our hosting providers expire on their own retention schedule."
       },
       "howTo": {
         "title": "How to request deletion",
-        "body": "Right now, account deletion is handled manually by our team — there's no automatic \"Delete now\" button yet. Email {contactEmail} with the subject \"Delete account\" from the email address linked to your account (or include it in the message if you sign in with Google). We'll verify your identity and delete the account within a reasonable time."
+        "body": "Account deletion is handled manually — there is no automatic \"Delete now\" button yet. Email {contactEmail} with the subject \"Delete account\", from the address linked to your account. We verify that the request comes from the account holder and confirm by email once it is done."
       },
       "limitationNote": "Note: account deletion isn't instant or fully automated — that's a deliberate choice, so we never delete data by mistake without confirmation."
+    },
+    "aiPolicy": {
+      "pageTitle": "AI Usage Policy",
+      "intro": "{productName} uses AI to help you turn an idea into a working first version. This page explains what that means in practice, and what it does not mean.",
+      "sections": [
+        {
+          "title": "Where AI is used",
+          "body": "• Working out a direction from the idea you describe.\n• Generating the first version of your application or site.\n• Assisting in the project conversation.\n\nAI runs when you ask for it. {productName} does not generate new versions on its own, does not change a published project without being asked, and does not watch how anyone uses what you published."
+        },
+        {
+          "title": "Which providers",
+          "body": "{productName} currently sends prompts and project content to Google (Gemini API) and, for parts of the in-project assistant and feedback analysis, to Anthropic. What is sent is described in the Privacy Policy."
+        },
+        {
+          "title": "AI output can be wrong",
+          "body": "Generated text, code and design are produced by a statistical model. They can contain factual mistakes, broken logic, inaccurate claims, unsuitable wording, or content that does not fit your intent. Output is not reviewed by a human before you see it."
+        },
+        {
+          "title": "Review before you publish",
+          "body": "You are responsible for what you publish. Read the generated content, check any facts or claims it makes, and confirm it is appropriate for your audience before putting it at a public address. Do not publish generated material that states something you have not verified — particularly anything legal, medical, financial or safety-related."
+        },
+        {
+          "title": "Do not put secrets in prompts",
+          "body": "Anything you type into a prompt or a project may be sent to an AI provider. Do not include passwords, API keys, payment details, or other people's personal data."
+        },
+        {
+          "title": "No guarantee of outcomes",
+          "body": "{productName} does not promise that a generated product will attract users, generate revenue, pass a review, or succeed commercially. It produces a working first version to build on; what happens next is your work, not a result the Service guarantees."
+        },
+        {
+          "title": "Limits of the sandbox",
+          "body": "Generated applications run inside a restricted preview that cannot reach your account or your data. That protects you while previewing. It is not a security review of the generated code, and it does not make the code fit for handling other people's sensitive data."
+        },
+        {
+          "title": "Reporting a problem",
+          "body": "If generated output is harmful, infringing, or wrong in a way that matters, tell us at {contactEmail}."
+        }
+      ]
     }
   },
   "errors": {
