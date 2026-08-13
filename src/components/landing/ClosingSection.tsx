@@ -8,8 +8,15 @@ import styles from "./ClosingSection.module.css";
 /**
  * The loop, as five panels on the source component's six-column bento: three
  * narrow panels across the top and two wide ones beneath. Read in order they
- * state the whole argument — idea, first version, publish, real use, one
- * signal, a proposed improvement, and an approval that stays with the owner.
+ * state the whole argument — what you start with, choosing a direction,
+ * choosing a shape, seeing it work, and putting it on a public link.
+ *
+ * The copy here used to describe an argument the product could not make:
+ * behavioural signals, an improvement Ventrio proposed on its own, and a next
+ * version waiting for approval. None of that is built — `loadProductSignals`
+ * returns an empty array, nothing records a visit, and no version is prepared
+ * without being asked for. The figures below are abstract and unchanged; only
+ * what they are captioned with is now something that happens.
  *
  * Each panel's figure is built from the same abstract vocabulary as the two
  * motion sections above (paper surface, skeleton rows, accent action, traces),
@@ -86,7 +93,7 @@ export function ClosingSection({ isAuthenticated }: { isAuthenticated: boolean }
           <p className={styles.panelBody}>{t("improve3Body")}</p>
         </article>
 
-        {/* 4 — repetition condenses into one signal */}
+        {/* 4 — the parts converge into one built thing */}
         <article className={`${styles.panel} ${styles.wide}`} style={{ "--i": 3 } as React.CSSProperties}>
           <div className={styles.wideBody}>
             <h3 className={styles.panelTitle}>{t("improve4Title")}</h3>
@@ -105,7 +112,7 @@ export function ClosingSection({ isAuthenticated }: { isAuthenticated: boolean }
           </div>
         </article>
 
-        {/* 5 — the next version, waiting on the owner */}
+        {/* 5 — the finished version, on a public address */}
         <article className={`${styles.panel} ${styles.wide}`} style={{ "--i": 4 } as React.CSSProperties}>
           <div className={styles.wideBody}>
             <h3 className={styles.panelTitle}>{t("improve5Title")}</h3>
