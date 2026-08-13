@@ -138,20 +138,23 @@ for (const locale of ["en", "ru"]) {
 // The number shown has to be the number enforced, so it is passed from the
 // server's own reservation result rather than re-derived in the client.
 const preOutput = read("src/components/build/PreOutputWorkspace.tsx");
-const create = read("src/components/create/CreateExperience.tsx");
-// `/create` reads the reply through `classifyFirstVersionStart`, which carries
-// `limitReached` across unchanged as `start.limit` — so the number is still the
-// server's, one name further along. `create-async-start.test.mts` pins that
-// pass-through; what matters here is that neither screen invents the figure.
+// Comments explain that the call used to live here, so this reads the code.
+const create = read("src/components/create/CreateExperience.tsx")
+  .replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+// `/create` no longer calls `generateFirstVersionAction` — choosing a direction
+// persists it and hands off — so the workspace is the only place that can be
+// told a limit was reached, and the only place that reports one.
 check(
   "the message is given the server's limit",
-  /firstVersionLimitReached", \{ limit: result\.limitReached\.limit \}/.test(preOutput)
-    && /firstVersionLimitReached", \{ limit: start\.limit\.limit \}/.test(create),
+  /firstVersionLimitReached", \{ limit: result\.limitReached\.limit \}/.test(preOutput),
 );
 check(
   "and never a hard-coded one",
-  !/firstVersionLimitReached", \{ limit: \d+ \}/.test(preOutput)
-    && !/firstVersionLimitReached", \{ limit: \d+ \}/.test(create),
+  !/firstVersionLimitReached", \{ limit: \d+ \}/.test(preOutput),
+);
+check(
+  "the create screen cannot reach a generation limit it never calls",
+  !/generateFirstVersionAction/.test(create),
 );
 
 /* ── 6. the usage popover reads what the enforcer writes ────────────────── */

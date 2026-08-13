@@ -154,6 +154,83 @@ const css = read("src/app/globals.css");
 check("a row is one line of supporting text", /\.choice-row-hint \{[\s\S]{0,220}white-space: nowrap/.test(css));
 check("and the title matches message size", /\.choice-row-title \{[\s\S]{0,120}font-size: 0\.9375rem/.test(css));
 
+/* ── 7. the transition from proposal to generation ───────────────────────── */
+
+/**
+ * THE PATH THAT WAS ACTUALLY RUNNING. Removing the `directions[0]` auto-select
+ * was not enough, because clicking a direction generated too: `chooseDirection`
+ * called `selectCreationDirectionAction` and then `generateFirstVersionAction`
+ * in the same breath. A job existed before anyone had been asked what to build.
+ *
+ * The workspace then opened on that running job and rendered "Что Ventrio
+ * создаст?" over it — `!job.active` is false before the first poll returns —
+ * and rendered it again when the job finished, in the frames before the rebuilt
+ * project arrived. Two flows starting one project; the second one's answer
+ * could not change anything.
+ *
+ * Reconstructed from production project 7f7815ac: message 05:05:02, proposal
+ * 05:05:16, job 05:05:47 — the direction click, not a product-type click.
+ */
+check(
+  "/create cannot start a generation at all",
+  !/generateFirstVersionAction/.test(createCode),
+  "the create screen can generate again",
+);
+check(
+  "choosing a direction only persists the direction",
+  /selectCreationDirectionAction\(projectId, direction, startingPoint\)/.test(createCode),
+);
+check(
+  "and hands off rather than building",
+  /router\.push\(`\/projects\/\$\{result\.projectId\}`\)/.test(createCode),
+);
+
+/**
+ * Every remaining door into generation, and who opens it. The intake's
+ * `onComplete` fires only from `choose`, which is a click or the explicit
+ * defer control — there is no effect, timer or mount path into it.
+ */
+check("the workspace generates from the intake's completion", /onComplete: \(answers: IntakeAnswers\) => createFirstVersion\(false, answers\)/.test(preOutputCode));
+check(
+  "and the intake completes only from choose",
+  !/useEffect\([\s\S]{0,400}onComplete\(/.test(code(read("src/lib/build/useBuildIntake.ts"))),
+);
+check(
+  "no effect starts a generation",
+  !/useEffect\([\s\S]{0,500}createFirstVersion\(/.test(preOutputCode),
+);
+check(
+  "no timer starts a generation",
+  !/set(?:Timeout|Interval)\([\s\S]{0,300}createFirstVersion\(/.test(preOutputCode),
+);
+
+/**
+ * The question must never render over a job. `!job.active` was the bug: false
+ * before the first poll and false again the instant a job finishes.
+ */
+check(
+  "the question waits for the job row to be read",
+  /enabled: !hasVersion && !!direction && job\.loaded && job\.phase === "idle"/.test(preOutputCode),
+);
+check("the hook reports whether it has read anything", /loaded: view !== null/.test(read("src/lib/workspace/useFirstVersionJob.ts")));
+/**
+ * A queued generation is a success, not a missing output — the rule that used
+ * to live in `/create`. The workspace is the only caller now, and it reads a
+ * returned `jobId` as "already running" rather than showing a failure.
+ */
+check(
+  "a queued generation is not reported as a failure",
+  /if \(result\.jobId && !result\.error\) return;/.test(preOutputCode),
+);
+check(
+  "and the limit still comes from the server's own reservation",
+  /result\.limitReached\.limit/.test(preOutputCode),
+);
+check(
+  "and a typed build instruction waits for it too",
+  /!output && job\.loaded && !job\.active && classifyBuildIntent/.test(preOutputCode),
+);
+
 if (failures.length > 0) {
   console.error(`discovery-choice-flow: ${failures.length} failed, ${passed} passed`);
   for (const failure of failures) console.error(`  ✗ ${failure}`);

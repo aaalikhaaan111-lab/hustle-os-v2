@@ -8,8 +8,6 @@ import {
   generateCreationTurnAction,
   selectCreationDirectionAction,
 } from "@/lib/actions/creation";
-import { generateFirstVersionAction, getFirstVersionJobAction } from "@/lib/actions/stage3";
-import { classifyFirstVersionStart, startedFromJobView } from "@/lib/build/firstVersionStart";
 import {
   type CreationChoice,
   type CreationDirection,
@@ -166,50 +164,27 @@ export function CreateExperience({ userId, initialDraft }: CreateExperienceProps
           return;
         }
         selectedProjectId = result.projectId;
-        setCreationPhase("generating");
-        const generation = await generateFirstVersionAction(result.projectId);
 
         /**
-         * A queued generation is a success, not a missing output.
+         * Choosing a direction chooses a direction. It does not build.
          *
-         * The app runtime executes on a worker outside this request, so the
-         * action returns a job id and no version — see `classifyFirstVersionStart`,
-         * which owns this reading. `check-job` is the case the reply cannot
-         * settle alone: the project may already be building or already built,
-         * and the job state says which.
+         * This used to call `generateFirstVersionAction` here, so a click on one
+         * of the proposal rows claimed a job and reserved a unit before anybody
+         * had been asked what to build. The workspace then opened on top of a
+         * generation already in flight and asked "Что Ventrio создаст?" over it
+         * — a question whose answer could no longer change anything — and asked
+         * it a second time when the job finished, in the gap before the fresh
+         * props arrived. That is the parallel path: two flows starting the same
+         * project, one of them without being asked.
+         *
+         * The direction is persisted and the person is handed to the workspace,
+         * which asks the remaining question and starts the generation when it is
+         * answered. Every transition from here on follows a click.
          */
-        let start = classifyFirstVersionStart(generation);
-        if (start.outcome === "check-job") {
-          const view = await getFirstVersionJobAction(result.projectId);
-          start = startedFromJobView(view)
-            ? { outcome: "started", via: "job" }
-            : { outcome: "failed", error: null };
-        }
-
-        if (start.outcome === "limit-reached") {
-          selectionLockRef.current = false;
-          setCreationPhase("idle");
-          setSelectedDirection(null);
-          setNote(t("firstVersionLimitReached", { limit: start.limit.limit }));
-          setNoteIsLimitReached(true);
-          return;
-        }
-        if (start.outcome === "failed") {
-          selectionLockRef.current = false;
-          setCreationPhase("idle");
-          setSelectedDirection(null);
-          setGenerationRetry({ direction, index });
-          setNote(start.error ?? t("errorSaveFailed"));
-          return;
-        }
-
-        // Started. The workspace polls the job from here — it already draws the
-        // progress, the finished application, and the real failure with Retry —
-        // so nobody waits on /create for something happening elsewhere.
         try {
           window.localStorage.removeItem(storageKey);
         } catch {
-          // Non-fatal: the successful project is already persisted.
+          // Non-fatal: the selected project is already persisted.
         }
         setCreationPhase("handoff");
         router.push(`/projects/${result.projectId}`);

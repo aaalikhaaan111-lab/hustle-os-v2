@@ -184,8 +184,18 @@ export function PreOutputWorkspace({
   const intake = useBuildIntake({
     projectId,
     idea: ideaText,
-    // Intake exists only in the gap between "has an idea" and "has output".
-    enabled: !hasVersion && !!direction && !job.active && assistant.available,
+    /**
+     * The gap between "has an idea" and "has anything at all".
+     *
+     * `!job.active` was not enough. It is false before the first poll returns
+     * and false again the moment a job finishes, so the question rendered twice
+     * over a generation it could no longer affect — once as the workspace
+     * opened on a job started elsewhere, and once when that job succeeded, in
+     * the frames before the rebuilt project arrived. `phase === "idle"` is true
+     * only when no job row exists at all, and `loaded` says the row has
+     * actually been read rather than merely not fetched yet.
+     */
+    enabled: !hasVersion && !!direction && job.loaded && job.phase === "idle" && assistant.available,
     onComplete: (answers: IntakeAnswers) => createFirstVersion(false, answers),
   });
 
@@ -260,7 +270,12 @@ export function PreOutputWorkspace({
     // had no way to build and so asked for the problem to be confirmed instead.
     // Generation now infers a direction rather than requiring one, so intent is
     // the only thing this needs to check.
-    if (!output && !job.active && classifyBuildIntent(content, { hasOutput: false }) === "BUILD_NOW") {
+    // `job.loaded` is part of the condition, not an optimisation. Until the job
+    // row has been read this tab cannot tell "nothing has ever been built" from
+    // "a generation is already running", and it cannot tell whether a question
+    // is still waiting — so a build instruction typed in the first second used
+    // to start a second path past both.
+    if (!output && job.loaded && !job.active && classifyBuildIntent(content, { hasOutput: false }) === "BUILD_NOW") {
       /**
        * An open question is answered, never stepped over.
        *

@@ -38,6 +38,16 @@ export interface FirstVersionJobState {
   attemptsRemaining: number;
   /** True while a job is genuinely in flight — drives the disabled state. */
   active: boolean;
+  /**
+   * True once the job row has actually been read.
+   *
+   * Before the first poll returns there is no view, so `phase` reads "idle" —
+   * indistinguishable from a project that has never generated. Anything that
+   * must not appear over a running job has to wait for this, or it renders in
+   * the gap and then disappears, which is how the build question came back
+   * after a generation had already finished.
+   */
+  loaded: boolean;
   canRetry: boolean;
   /** Call the moment the button is pressed, before any await. */
   markStarting: (retry?: boolean) => void;
@@ -103,6 +113,7 @@ export function useFirstVersionJob(projectId: string, hasOutput: boolean): First
 
   return {
     phase,
+    loaded: view !== null,
     stage: job?.progressStage ?? null,
     errorCode: job?.errorCode ?? null,
     attemptsRemaining,
