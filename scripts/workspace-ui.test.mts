@@ -120,7 +120,10 @@ for (const key of ["progressPreparing", "progressBuilding", "progressOpening"]) 
 }
 
 // The workspace's own progress still comes from the job row, not from a timer.
-check("workspace stages are read from the job", /job\.stage === "preparing"/.test(preOutput));
+// Stages moved out of an inline label function into `generationProgress`, which
+// maps the pipeline's own `progress_stage` values. Still the job row, one
+// indirection along, and now the whole list rather than one active line.
+check("workspace stages are read from the job", /generationProgress\(job\.stage, job\.phase\)/.test(preOutput));
 
 /* ── 5. choices are stacked rows, not columns ────────────────────────────── */
 

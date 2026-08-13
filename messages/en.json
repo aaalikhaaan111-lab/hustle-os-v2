@@ -172,7 +172,12 @@
     "genStale": "Generation stopped responding.",
     "genRetry": "Try again",
     "genRetryingLabel": "Starting again…",
-    "genStillWorking": "Still working. A first version usually takes under a minute."
+    "genStillWorking": "Still working. A first version usually takes under a minute.",
+    "progressQueued": "Queueing the job…",
+    "progressPreparing": "Working through your idea…",
+    "progressGenerating": "Building the application…",
+    "progressSaving": "Checking and saving the result…",
+    "progressCompleted": "Opening your app…"
   },
   "publishing": {
     "controlsLabel": "Publishing controls",

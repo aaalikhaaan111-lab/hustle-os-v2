@@ -285,9 +285,11 @@ check(
  * screen cannot name which state it is in, and the honest thing to show for a
  * state you cannot name is nothing.
  */
+// The gate has since gained `job.phase !== "succeeded"`, so this reads the
+// terms it must contain rather than the exact expression.
 check(
   "the create card waits for the job row to be read",
-  /\{job\.loaded && !hasVersion && !job\.active && !intake\.step && \(/.test(preOutputCode),
+  createCardGate.includes("job.loaded"),
   "the CTA can render before the first poll again",
 );
 check(

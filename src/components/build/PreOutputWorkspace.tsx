@@ -24,6 +24,7 @@ import { WorkspaceComposer } from "@/components/workspace-ui/Composer";
 import { UsageMenu } from "@/components/workspace-ui/UsageMenu";
 import { usageLabels } from "@/components/build/AssistantChat";
 import { GenerationSteps, type GenerationStep } from "@/components/workspace-ui/GenerationSteps";
+import { generationProgress } from "@/lib/workspace/generationProgress";
 import { GenerativeButton, IconBuild, IconEye } from "@/components/workspace-ui/parts";
 import { VentrioButton } from "@/components/ui/VentrioButton";
 import { useVoiceInput, voiceErrorKey } from "@/lib/workspace/useVoiceInput";
@@ -336,30 +337,21 @@ export function PreOutputWorkspace({
     });
   }
 
-  // Each completed row is something the project genuinely already contains —
-  // a saved concept, a saved audience, a chosen direction. Only the last row is
-  // the request actually in flight, so nothing here is a staged performance.
-  const generationSteps: GenerationStep[] = [
-    { label: t("genUnderstanding"), state: projectConcept || direction?.concept ? "done" : "waiting" },
-    { label: t("genAudience"), state: projectAudience || direction?.audience ? "done" : "waiting" },
-    { label: t("genDirection"), state: direction ? "done" : "waiting" },
-    { label: activeStageLabel(), state: "active" },
-  ];
-
   /**
-   * For the first few seconds the last row says what the click did, because
-   * that is all anyone knows yet. Once the job has been running long enough for
-   * a stage to have been written and read back, it says what is actually
-   * happening — never a guess, and never a stage the row has not reported.
+   * The run, as the pipeline reports it.
+   *
+   * Every row is a stage `generation_jobs.progress_stage` actually carries, in
+   * the order they happen. The list this replaced ticked three rows from what
+   * the project already held — a saved concept, a saved audience, a chosen
+   * direction — which were green before generation started and described none
+   * of it.
    */
-  function activeStageLabel(): string {
-    if (job.phase === "retrying") return t("genRetryingLabel");
-    if (elapsed < 3 || !job.stage) return t("genBuilding");
-    if (job.stage === "queued") return t("genQueued");
-    if (job.stage === "preparing") return t("genPreparing");
-    if (job.stage === "saving") return t("genSaving");
-    return t("genGenerating");
-  }
+  const generationSteps: GenerationStep[] = generationProgress(job.stage, job.phase).map((row) => ({
+    label: t(row.labelKey as never),
+    state: row.state,
+  }));
+
+
 
   return (
     <BuildScreen
@@ -501,7 +493,14 @@ export function PreOutputWorkspace({
                     Until the row has been read this screen does not know which
                     of the two states it is in, and the honest thing to show for
                     a state you cannot name is nothing. */}
-                {job.loaded && !hasVersion && !job.active && !intake.step && (
+                {/* `job.phase !== "succeeded"` as well as `!hasVersion`, because
+                    the two are not simultaneous. A job goes succeeded the
+                    moment the row says so; `hasVersion` waits for the rebuilt
+                    project to come back from the server a second or more later.
+                    In that window every other term here held, and the card
+                    returned to offer creating an application that had just been
+                    created. The job row is the earlier and truer signal. */}
+                {job.loaded && !hasVersion && job.phase !== "succeeded" && !job.active && !intake.step && (
                   <div
                     className="rise rounded-[var(--r-lg)] border p-5"
                     style={{ borderColor: "var(--line-2)", background: "var(--surface)" }}

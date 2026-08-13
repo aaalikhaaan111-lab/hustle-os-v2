@@ -17,11 +17,14 @@
  * address, and the app inside has no way to reach the page hosting it.
  */
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { SANDBOX_ATTRIBUTE } from "@/lib/v2/app/sandbox";
 import { subscribePreview } from "@/lib/v2/app/protocol";
 import type { DeviceMode } from "@/lib/build/deviceWidths";
+
+/** How long after load to wait for `ready` before showing the app regardless. */
+const REVEAL_GRACE_MS = 2_000;
 
 export interface AppPreviewProps {
   document: string;
@@ -47,6 +50,23 @@ export function AppPreview({ document: srcDoc, device, title, onRuntimeErrors }:
   const ready = readyFor === srcDoc;
 
   /**
+   * Shown anyway, because a handshake that never arrives must not be forever.
+   *
+   * `ready` is one message, sent once. If it is ever missed — a bug here, a
+   * document that mounts without reaching the line that posts it — the overlay
+   * would sit over a working application indefinitely. This is the floor: once
+   * the document has loaded and a grace period has passed with no word, show
+   * the app rather than a claim that it is still starting.
+   */
+  const [revealedFor, setRevealedFor] = useState<string | null>(null);
+  const booting = !ready && revealedFor !== srcDoc;
+  const revealTimer = useRef<number | null>(null);
+
+  useEffect(() => () => {
+    if (revealTimer.current !== null) window.clearTimeout(revealTimer.current);
+  }, []);
+
+  /**
    * The window to listen on comes from the frame, never from `window`.
    *
    * `ViewportFrame` portals this component into a same-origin iframe, so the
@@ -54,12 +74,21 @@ export function AppPreview({ document: srcDoc, device, title, onRuntimeErrors }:
    * `window` never sees the message. See `subscribePreview`, which owns the
    * reasoning and the resolution.
    *
-   * The effect runs after refs are attached, so `frameRef.current` is the
-   * mounted element here. It re-subscribes when the document changes, because
-   * that is a different run of a different application and the previous run's
-   * listener has nothing left to hear.
+   * A LAYOUT effect, and that is the whole fix for a race this component lost.
+   *
+   * The generated entry posts `ready` synchronously, right after
+   * `createRoot().render()`. A passive `useEffect` runs after the browser has
+   * already been handed the `srcDoc`, so the sandbox could parse, execute and
+   * post before anyone was listening — and `ready` is sent once, so a missed
+   * one was missed forever. React flushes layout effects synchronously at the
+   * end of the same commit that sets the attribute, before the browser can run
+   * the document's scripts, so the listener is always in place first.
+   *
+   * It re-subscribes when the document changes, because that is a different run
+   * of a different application and the previous listener has nothing left to
+   * hear.
    */
-  useEffect(
+  useLayoutEffect(
     () => subscribePreview(frameRef.current, { onReady: () => setReadyFor(srcDoc), onRuntimeErrors }),
     [onRuntimeErrors, srcDoc],
   );
@@ -83,9 +112,18 @@ export function AppPreview({ document: srcDoc, device, title, onRuntimeErrors }:
         title={title}
         data-ready={ready ? "true" : "false"}
         data-device={device}
+        onLoad={() => {
+          // The document has parsed and its scripts have run. If `ready` was
+          // going to arrive it has by now or is microseconds away, so the grace
+          // period is short — long enough not to flicker, short enough that a
+          // broken handshake is not a wait.
+          if (revealTimer.current !== null) window.clearTimeout(revealTimer.current);
+          const forDocument = srcDoc;
+          revealTimer.current = window.setTimeout(() => setRevealedFor(forDocument), REVEAL_GRACE_MS);
+        }}
         className="h-full w-full border-0 bg-white"
       />
-      {!ready && (
+      {booting && (
         <div
           className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-center"
           style={{ background: "var(--surface)" }}

@@ -114,7 +114,10 @@ check(
 /* ── 5. a mounted frame that has not booted is not blank ─────────────────── */
 
 check("the booting overlay exists", /data-testid="app-preview-booting"/.test(appPreview));
-check("it covers the frame until ready", /\{!ready && \(/.test(appPreview));
+// `booting` is `!ready` plus the reveal floor — a missed message must not mean
+// a permanent overlay — so the condition is named rather than inline.
+check("it covers the frame until ready", /\{booting && \(/.test(appPreview));
+check("and booting means not-ready-and-not-revealed", /const booting = !ready && revealedFor !== srcDoc;/.test(appPreview));
 check("and says what is happening", /previewBootingTitle/.test(appPreview));
 
 /**

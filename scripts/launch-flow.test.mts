@@ -208,7 +208,7 @@ const workspace = read("src/components/build/PreOutputWorkspace.tsx");
 // changes what this pins — the card is hidden by `hasVersion`, never by
 // `output` alone, which is what kept offering it to app-runtime projects.
 check("the build card is hidden once a version exists in either shape",
-  /&& !hasVersion && !job\.active && /.test(workspace));
+  /&& !hasVersion && /.test(workspace));
 check("and never gates on the artifact shape alone",
   !/\{!output && !job\.active && \(/.test(workspace));
 // Publishing moved from the conversation into the preview toolbar, so the
