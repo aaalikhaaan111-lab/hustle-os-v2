@@ -33,6 +33,27 @@ import { parseModelJsonSafe } from "../json/modelJson";
 const DISCOVERY_TIMEOUT_MS = 45_000;
 const DISCOVERY_MAX_OUTPUT_TOKENS = 4_096;
 
+/**
+ * One retry, and only for a provider that said it was unavailable.
+ *
+ * A single 503 became a user-visible failure: production returned
+ * `Gemini is unavailable (503)` for a first discovery turn, and the Retry the
+ * person pressed 3.7 seconds later hit the same degraded window. Nothing in
+ * this path retried, so a transient outage read as "the creation assistant is
+ * unavailable".
+ *
+ * ONLY 5xx. A 429 means the account is over its allowance and asking again
+ * makes it worse; a 4xx means the request itself is wrong and will be wrong
+ * again; a timeout has already spent the person's patience. Those are answers,
+ * not accidents, and each is returned as it was.
+ *
+ * The delay is short and fixed. A longer backoff would be better for a server
+ * and worse for the person waiting on one turn of a conversation — and both
+ * attempts share the deadline below, so retrying cannot extend the worst case.
+ */
+const RETRY_ON: ReadonlySet<string> = new Set(["server_error"]);
+const RETRY_DELAY_MS = 600;
+
 export interface DiscoveryMessage {
   role: "user" | "assistant";
   content: string;
@@ -74,25 +95,38 @@ export async function requestDiscoveryTurn(input: {
   const controller = new AbortController();
   const deadline = setTimeout(() => controller.abort(), DISCOVERY_TIMEOUT_MS + 5_000);
 
+  const send = () => transport.send(
+    {
+      model: config.model,
+      system: input.system,
+      user,
+      timeoutMs: DISCOVERY_TIMEOUT_MS,
+      maxOutputTokens: DISCOVERY_MAX_OUTPUT_TOKENS,
+      /**
+       * The least reasoning the API offers, for the same reason the repair
+       * uses it: this turn asks one short structured question about what the
+       * person just said. The depth the model spends by default is latency a
+       * waiting user pays for.
+       */
+      thinkingLevel: "minimal",
+      label: "brief",
+    },
+    controller.signal,
+  );
+
   try {
-    const response = await transport.send(
-      {
-        model: config.model,
-        system: input.system,
-        user,
-        timeoutMs: DISCOVERY_TIMEOUT_MS,
-        maxOutputTokens: DISCOVERY_MAX_OUTPUT_TOKENS,
-        /**
-         * The least reasoning the API offers, for the same reason the repair
-         * uses it: this turn asks one short structured question about what the
-         * person just said. The depth the model spends by default is latency a
-         * waiting user pays for.
-         */
-        thinkingLevel: "minimal",
-        label: "brief",
-      },
-      controller.signal,
-    );
+    let response = await send();
+
+    /**
+     * The one retry. Quota is untouched by it: the caller reserves a discovery
+     * turn once, before this function is entered, so both attempts belong to
+     * the same reservation and one turn still costs one.
+     */
+    if (!response.ok && RETRY_ON.has(response.code) && !controller.signal.aborted) {
+      console.info("[ventrio-discovery]", JSON.stringify({ retrying: response.code, status: response.status }));
+      await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY_MS));
+      if (!controller.signal.aborted) response = await send();
+    }
 
     if (!response.ok) {
       /**
