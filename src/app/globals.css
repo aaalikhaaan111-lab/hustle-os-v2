@@ -1439,6 +1439,26 @@ body {
   color: var(--color-ink-muted);
 }
 
+/**
+ * On a phone the hint wraps to two lines instead of being cut off.
+ *
+ * This line is what distinguishes one proposed direction from another, so it
+ * is the information the choice is actually made on. One nowrap line fits on a
+ * wide row and clips to an ellipsis at 390px — which hides the difference at
+ * exactly the moment it matters. Two lines is still a bounded row (the rows
+ * stay the same height as each other) and still refuses to become a paragraph.
+ */
+@media (max-width: 767px) {
+  .choice-row-hint {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    white-space: normal;
+    text-overflow: clip;
+  }
+}
+
 .choice-row-aside {
   flex: 0 0 auto;
   align-self: center;

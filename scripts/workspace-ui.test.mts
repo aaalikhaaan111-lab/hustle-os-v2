@@ -146,7 +146,17 @@ check("nor snap horizontally", !/snap-x|snap-mandatory/.test(code(structuredChoi
 
 const css = read("src/app/globals.css");
 check("the row style is a single column", /\.choice-stack \{[\s\S]{0,120}flex-direction: column/.test(css));
-check("and the supporting line is one line", /\.choice-row-hint \{[\s\S]{0,220}white-space: nowrap/.test(css));
+check("and the supporting line is one line on a wide row", /\.choice-row-hint \{[\s\S]{0,220}white-space: nowrap/.test(css));
+/**
+ * ...and two on a phone. The hint is what separates one proposed direction
+ * from another, so clipping it to an ellipsis at 390px hides the difference at
+ * the moment the choice is made. Both halves are pinned: the row stays bounded
+ * on desktop, and stays readable on mobile.
+ */
+check(
+  "and wraps to two lines below md rather than clipping",
+  /@media \(max-width: 767px\)[\s\S]{0,320}\.choice-row-hint \{[\s\S]{0,220}line-clamp: 2/.test(css),
+);
 
 /* ── 6. analytics shows only what is measured ────────────────────────────── */
 
