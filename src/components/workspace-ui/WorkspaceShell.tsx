@@ -266,8 +266,22 @@ export function WorkspaceShell({
     );
   };
 
+  /**
+   * `h-dvh`, not `h-screen`.
+   *
+   * `100vh` on a mobile browser is the viewport with the URL bar HIDDEN, so
+   * while the bar is showing this sheet is taller than the visible area — and
+   * `overflow-hidden` means there is no scrolling to whatever fell off the
+   * bottom. What sits at the bottom is the composer, so the product's one input
+   * was off-screen and unreachable on a phone until the visitor happened to
+   * scroll enough of the page to retract the bar.
+   *
+   * `100dvh` tracks the viewport as the bar shows and hides, so the sheet is
+   * always the space that actually exists. Desktop is unchanged: with no
+   * dynamic browser chrome, dvh and vh resolve to the same number.
+   */
   return (
-    <div className="wsRoot flex h-screen w-full overflow-hidden" style={{ background: "var(--bg)" }}>
+    <div className="wsRoot flex h-dvh w-full overflow-hidden" style={{ background: "var(--bg)" }}>
       <aside
         className="ws-rail hidden shrink-0 flex-col overflow-hidden transition-[width] duration-[var(--t-ctl)] ease-[var(--ease)] md:flex"
         style={{ width: collapsed ? RAIL_NARROW : RAIL_WIDE }}
