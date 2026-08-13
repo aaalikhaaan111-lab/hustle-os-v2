@@ -15,7 +15,7 @@ const CONTACT_EMAIL = "founder@ventrio.org";
 const SOCIAL_LINKS = [
   { href: "https://instagram.com/ventrio.app", label: "Instagram", icon: IconInstagram },
   { href: "https://threads.net/@ventrio.app", label: "Threads", icon: IconThreads },
-  { href: "https://tiktok.com/@ventrio", label: "TikTok", icon: IconTikTok },
+  { href: "https://tiktok.com/@ventrio.app", label: "TikTok", icon: IconTikTok },
 ] as const;
 
 /**
@@ -82,8 +82,14 @@ export async function PublicFooter() {
         className="mx-auto w-full max-w-[1280px] border-t border-border/60 pt-10"
       >
       <div className="flex flex-col gap-10 md:flex-row md:justify-between">
-        {/* Who this is, in one line */}
-        <div className="max-w-xs">
+        {/* Who this is, in one line, and where to find us.
+            `-mt-1` on the wide layout only: the wordmark row is a 20px mark
+            beside 15px text, against 11px uppercase headings in the columns
+            opposite, so matching the container tops left this block sitting
+            visibly lower than the row it is meant to align with. The nudge is
+            optical, and it is skipped on the stacked layout where there is
+            nothing beside it to align to. */}
+        <div className="max-w-xs md:-mt-1">
           <Link
             href="/"
             aria-label={legalConfig.productName}
@@ -92,7 +98,23 @@ export async function PublicFooter() {
             <Wordmark className="h-5 w-5" />
             <span className="text-[15px] font-semibold text-ink">{legalConfig.productName}</span>
           </Link>
-          <p className="mt-3 text-[13px] leading-relaxed text-ink-muted">{t("blurb")}</p>
+          <p className="mt-2.5 text-[13px] leading-relaxed text-ink-muted">{t("blurb")}</p>
+          <ul className="-ml-1.5 mt-3 flex items-center gap-1" aria-label={t("socialLabel")}>
+            {SOCIAL_LINKS.map(({ href, label, icon: Icon }) => (
+              <li key={href}>
+                <a
+                  href={href}
+                  target="_blank"
+                  rel="noreferrer noopener"
+                  aria-label={label}
+                  title={label}
+                  className={`${linkClass} inline-flex h-8 w-8 items-center justify-center`}
+                >
+                  <Icon className="h-5 w-5" />
+                </a>
+              </li>
+            ))}
+          </ul>
         </div>
 
         {/* Four columns only while the nav has the container to itself. From md
@@ -145,25 +167,7 @@ export async function PublicFooter() {
 
       <div className="mt-10 flex flex-col-reverse gap-4 border-t border-border/60 pt-6 text-xs text-ink-muted sm:flex-row sm:items-center sm:justify-between">
         <p>{t("rights", { year, productName: legalConfig.productName })}</p>
-        <div className="flex items-center gap-4">
-          <ul className="flex items-center gap-1" aria-label={t("socialLabel")}>
-            {SOCIAL_LINKS.map(({ href, label, icon: Icon }) => (
-              <li key={href}>
-                <a
-                  href={href}
-                  target="_blank"
-                  rel="noreferrer noopener"
-                  aria-label={label}
-                  title={label}
-                  className={`${linkClass} inline-flex h-8 w-8 items-center justify-center`}
-                >
-                  <Icon className="h-[18px] w-[18px]" />
-                </a>
-              </li>
-            ))}
-          </ul>
-          <LanguageSwitcher />
-        </div>
+        <LanguageSwitcher />
       </div>
       </div>
     </footer>
