@@ -236,7 +236,13 @@ export function BuildScreen({
               It scrolls rather than wraps on a narrow screen: a toolbar that
               reflows to two rows pushes the preview down the page every time
               the viewport changes. */}
-          <div className="flex h-12 shrink-0 items-center gap-2 overflow-x-auto px-4">
+          <div className="flex h-12 shrink-0 items-center px-4">
+            {/* The part that may scroll: the title, the status, and the
+                controls you can do without for a moment. The outer row has no
+                gap of its own, so on a wide toolbar this sits flush against the
+                pinned group below and the desktop row is the one it always
+                was. */}
+            <div className="flex min-w-0 flex-1 items-center gap-2 overflow-x-auto">
             <span className="min-w-0 shrink-0 truncate text-[13px] font-semibold">{t("tabPreview")}</span>
             <span
               className="shrink-0 rounded-full px-2 py-[3px] text-[12px] font-semibold leading-none"
@@ -298,6 +304,19 @@ export function BuildScreen({
                 </>
               )}
 
+            </div>
+            </div>
+
+            {/* Pinned, and outside the scrolling region on purpose.
+                These two are the ones a narrow screen cannot afford to lose.
+                Publish is the point of the screen; Close is the only way back
+                to the conversation on a phone, where the preview REPLACES the
+                chat rather than sitting beside it (see `showChat` above). Both
+                used to sit last in a row that scrolled horizontally at 390px,
+                so both went off-screen — leaving no visible exit from the
+                preview. On desktop the row does not overflow, so nothing here
+                moves. */}
+            <div className="flex shrink-0 items-center gap-1">
               {/* Publishing, handed in by the screen that owns the action. */}
               {publishControl && (
                 <>
