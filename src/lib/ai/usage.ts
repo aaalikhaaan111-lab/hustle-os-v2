@@ -6,9 +6,11 @@ import { AI_USAGE_LIMITS, usageKeyFor, type AiUsageMetric } from "@/lib/ai/usage
 export {
   AI_USAGE_LIMITS,
   usageKeyFor,
+  usagePeriodFor,
   isDailyMetric,
   type AiUsageMetric,
   type LimitReachedInfo,
+  type UsagePeriod,
 } from "@/lib/ai/usageLimits";
 
 export type UsageReservation =

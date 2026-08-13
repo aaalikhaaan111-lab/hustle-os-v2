@@ -1037,7 +1037,7 @@ export type Database = {
           p_cutoff: string
           p_kind: string
           p_metric: string
-          p_metric_daily: boolean
+          p_metric_period: string
           p_project_id: string
           p_user_id: string
         }
@@ -1048,7 +1048,7 @@ export type Database = {
           p_cutoff: string
           p_kind: string
           p_metric: string
-          p_metric_daily: boolean
+          p_metric_period: string
           p_user_id: string
         }
         Returns: number

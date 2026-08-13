@@ -16,7 +16,7 @@
  */
 
 import { readFileSync } from "node:fs";
-import { AI_USAGE_LIMITS, isDailyMetric, usageKeyFor } from "../src/lib/ai/usageLimits";
+import { AI_USAGE_LIMITS, isDailyMetric, usageKeyFor, usagePeriodFor } from "../src/lib/ai/usageLimits";
 
 let passed = 0;
 const failures: string[] = [];
@@ -42,9 +42,17 @@ const day2 = new Date("2026-08-07T10:00:00Z");
 // Every allowance refills. Leaving any of them on a lifetime counter would
 // just move the wall: a person out of discovery turns cannot start another
 // conversation, however many generations they have left.
-check("first-version generation refills daily", isDailyMetric("first_version_generation"));
-check("editing an existing version refills too", isDailyMetric("project_edit"));
+//
+// They do not all refill at the same rate, and that is the point. Talking to
+// Ventrio costs a cheap conversation turn and refills daily; having it BUILD
+// something costs roughly $0.35 of provider spend, so three a day — ninety a
+// month — was a larger bill per free account than a subscriber pays. The
+// generation allowance is monthly; nothing else moved.
+check("first-version generation refills monthly", usagePeriodFor("first_version_generation") === "month");
+check("it is explicitly not daily", !isDailyMetric("first_version_generation"));
+check("editing an existing version refills daily", isDailyMetric("project_edit"));
 check("so do discovery turns", isDailyMetric("discovery_turn"));
+check("and no allowance is for life", usagePeriodFor("discovery_turn") !== "lifetime");
 check(
   "generating and editing remain separate allowances",
   usageKeyFor("first_version_generation", day1) !== usageKeyFor("project_edit", day1),
@@ -56,9 +64,13 @@ check("and is not unlimited", Number.isFinite(limit) && limit <= 25, String(limi
 
 // The number must come from configuration, not from a literal in the code —
 // and never from a temporary value someone left behind.
-check("the limit is read from the environment", /VENTRIO_FREE_GENERATIONS_PER_DAY/.test(usage));
+check("the limit is read from the environment", /VENTRIO_FREE_GENERATIONS_PER_MONTH/.test(usage));
 check("no temporary 99 was committed", !/first_version_generation:\s*99/.test(usage));
-check("there is a hard ceiling on the configured value", /MAX_FREE_GENERATIONS_PER_DAY/.test(usage));
+check("there is a hard ceiling on the configured value", /MAX_FREE_GENERATIONS_PER_MONTH/.test(usage));
+// The old per-day name must be gone rather than lingering as a variable nobody
+// reads: an operator who sets it would otherwise believe they had raised a
+// limit that never moved.
+check("the per-day environment variable is retired", !/VENTRIO_FREE_GENERATIONS_PER_DAY/.test(usage));
 check(
   "a bad value falls back rather than disabling metering",
   /!Number\.isFinite\(parsed\) \|\| parsed < 1/.test(usage),
@@ -66,15 +78,31 @@ check(
 
 /* ── 2. a day is a distinct ledger key ──────────────────────────────────── */
 
-check("a daily metric is keyed by day", usageKeyFor("first_version_generation", day1).endsWith("2026-08-06"));
+check("a daily metric is keyed by day", usageKeyFor("project_edit", day1).endsWith("2026-08-06"));
 check(
-  "a different day is a different key",
-  usageKeyFor("first_version_generation", day1) !== usageKeyFor("first_version_generation", day2),
+  "a monthly metric is keyed by month",
+  usageKeyFor("first_version_generation", day1) === "first_version_generation:2026-08",
+);
+check(
+  "a different day is the SAME monthly key",
+  usageKeyFor("first_version_generation", day1) === usageKeyFor("first_version_generation", day2),
+);
+check(
+  "a different month is a different key",
+  usageKeyFor("first_version_generation", day1)
+    !== usageKeyFor("first_version_generation", new Date("2026-09-01T00:00:00Z")),
 );
 check(
   "the same day is the same key regardless of time",
   usageKeyFor("first_version_generation", new Date("2026-08-06T23:59:59Z"))
     === usageKeyFor("first_version_generation", day1),
+);
+// A monthly key is a strict prefix of a daily one, so the two families can
+// never be mistaken for each other in the ledger.
+check(
+  "monthly and daily keys cannot collide",
+  usageKeyFor("first_version_generation", day1).length
+    < `first_version_generation:2026-08-06`.length,
 );
 check(
   "the key carries the day, not just the metric name",

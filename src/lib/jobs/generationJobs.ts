@@ -1,7 +1,7 @@
 import "server-only";
 
 import { createServiceClient } from "@/lib/supabase/public";
-import { AI_USAGE_LIMITS, isDailyMetric, usageKeyFor, type AiUsageMetric, type UsageReservation } from "@/lib/ai/usage";
+import { AI_USAGE_LIMITS, usagePeriodFor, usageKeyFor, type AiUsageMetric, type UsageReservation } from "@/lib/ai/usage";
 
 /**
  * Durable state for long-running AI generation.
@@ -516,7 +516,7 @@ export async function expireStaleForUser(
     p_user_id: userId,
     p_kind: KIND,
     p_metric: metric,
-    p_metric_daily: isDailyMetric(metric),
+    p_metric_period: usagePeriodFor(metric),
     p_cutoff: cutoff,
   });
   if (error) {
@@ -565,7 +565,7 @@ export async function expireStale(
     p_user_id: userId,
     p_kind: KIND,
     p_metric: metric,
-    p_metric_daily: isDailyMetric(metric),
+    p_metric_period: usagePeriodFor(metric),
     p_cutoff: cutoff,
   });
   if (error) {

@@ -24,7 +24,7 @@
  */
 
 import { readFileSync } from "node:fs";
-import { isDailyMetric, usageKeyFor, type AiUsageMetric } from "../src/lib/ai/usageLimits";
+import { usageKeyFor, usagePeriodFor, type AiUsageMetric } from "../src/lib/ai/usageLimits";
 
 let passed = 0;
 const failures: string[] = [];
@@ -35,7 +35,11 @@ function check(name: string, ok: boolean, detail = ""): void {
 
 const read = (path: string) => readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
 const jobs = read("src/lib/jobs/generationJobs.ts");
-const migration = read("supabase/migrations/20260811180000_fix_stale_release_daily_key.sql");
+// The current definition of the sweep functions. 20260811180000 taught them to
+// compose one key per job; this one taught them the metric's PERIOD, because
+// `first_version_generation` refills monthly and a hardcoded 'YYYY-MM-DD' would
+// refund a key nothing reads.
+const migration = read("supabase/migrations/20260814090000_usage_period_granularity.sql");
 const accounting = read("supabase/migrations/20260802212000_add_generation_job_usage_accounting.sql");
 
 /* ── 1. the callers pass a base metric, never a resolved key ─────────────── */
@@ -48,7 +52,9 @@ for (const call of sweepCalls) {
   const name = /expire_stale_generation_jobs_for_user/.test(call) ? "account sweep" : "project sweep";
   check(`${name} passes the base metric, not a resolved key`,
     /p_metric:\s*metric\b/.test(call) && !/p_metric:\s*usageKeyFor/.test(call), call.slice(0, 120));
-  check(`${name} says whether the metric is daily`, /p_metric_daily:\s*isDailyMetric\(metric\)/.test(call));
+  check(`${name} says which period the metric refills on`,
+    /p_metric_period:\s*usagePeriodFor\(metric\)/.test(call));
+  check(`${name} no longer passes the old daily boolean`, !/p_metric_daily/.test(call));
 }
 
 // The direct release keeps composing its key in TypeScript, from the job's own
@@ -61,46 +67,57 @@ check("and reads that timestamp from the job row",
 /* ── 2. the sweep's key and the reservation's key are the same key ───────── */
 
 check("the migration derives the key from the job's own reservation",
-  /usage_key_for_job\(p_metric,\s*p_metric_daily,\s*v_job\.usage_reserved_at\)/.test(migration));
+  /usage_key_for_job\(p_metric,\s*p_metric_period,\s*v_job\.usage_reserved_at\)/.test(migration));
 check("and neither sweep passes p_metric straight through any more",
   !/release_generation_job_usage\(\s*v_job\.id,\s*p_metric\s*\)/.test(migration));
 check("both sweeps were rewritten, not just one",
   (migration.match(/usage_key_for_job\(p_metric/g) ?? []).length === 2);
 // The old signatures are dropped so an un-updated caller fails loudly rather
 // than silently refunding the wrong key again — which is how this survived.
-check("the four-argument project sweep is dropped",
-  /drop function if exists public\.expire_stale_generation_jobs\(uuid, uuid, text, timestamptz, text\)/.test(migration));
-check("the four-argument account sweep is dropped",
-  /drop function if exists public\.expire_stale_generation_jobs_for_user\(uuid, text, timestamptz, text\)/.test(migration));
+check("the boolean project sweep is dropped",
+  /drop function if exists public\.expire_stale_generation_jobs\(uuid, uuid, text, text, boolean, timestamptz\)/.test(migration));
+check("the boolean account sweep is dropped",
+  /drop function if exists public\.expire_stale_generation_jobs_for_user\(uuid, text, text, boolean, timestamptz\)/.test(migration));
+check("and so is the boolean key helper",
+  /drop function if exists public\.usage_key_for_job\(text, boolean, timestamptz\)/.test(migration));
 
 /**
- * The SQL and the TypeScript must agree on what a day is.
+ * The SQL and the TypeScript must agree on what a period is.
  *
- * `usageKeyFor` takes `toISOString().slice(0, 10)`, which is UTC. The migration
- * takes `to_char((reserved_at at time zone 'UTC')::date, 'YYYY-MM-DD')`. Both
- * are the UTC calendar date; a mismatch here would refund a neighbouring day
- * and be invisible except to whoever lost the generation.
+ * `usageKeyFor` slices an ISO string — 10 characters for a day, 7 for a month,
+ * both UTC. The migration takes `to_char((reserved_at at time zone 'UTC')::date,
+ * …)` with the matching mask. A mismatch here would refund a neighbouring
+ * period and be invisible except to whoever lost the generation.
  */
-check("the migration composes the key in UTC",
+check("the migration composes a day key in UTC",
   /to_char\(\(p_reserved_at at time zone 'UTC'\)::date, 'YYYY-MM-DD'\)/.test(migration));
+check("and a month key in UTC",
+  /to_char\(\(p_reserved_at at time zone 'UTC'\)::date, 'YYYY-MM'\)/.test(migration));
 check("and joins it to the metric with a colon", /p_metric \|\| ':' \|\|/.test(migration));
 
 /** The TypeScript mirror of `usage_key_for_job`, for the model below. */
-function sqlUsageKeyForJob(metric: string, daily: boolean, reservedAt: Date | null): string {
-  if (!daily || reservedAt === null) return metric;
-  return `${metric}:${reservedAt.toISOString().slice(0, 10)}`;
+function sqlUsageKeyForJob(metric: string, period: string, reservedAt: Date | null): string {
+  if (reservedAt === null) return metric;
+  if (period === "day") return `${metric}:${reservedAt.toISOString().slice(0, 10)}`;
+  if (period === "month") return `${metric}:${reservedAt.toISOString().slice(0, 7)}`;
+  return metric;
 }
 
-for (const iso of [
-  "2026-08-11T15:51:08.834Z",
-  "2026-08-11T00:00:00.000Z",
-  "2026-08-11T23:59:59.999Z",
-  "2026-01-01T00:00:00.000Z",
-]) {
-  const at = new Date(iso);
-  check(`the sweep and the reservation agree on ${iso}`,
-    sqlUsageKeyForJob("first_version_generation", true, at)
-      === usageKeyFor("first_version_generation" as AiUsageMetric, at));
+// Both metrics, so the monthly one is not the only thing checked and a
+// regression that made everything monthly would still fail.
+for (const metric of ["first_version_generation", "project_edit"] as const) {
+  for (const iso of [
+    "2026-08-11T15:51:08.834Z",
+    "2026-08-11T00:00:00.000Z",
+    "2026-08-11T23:59:59.999Z",
+    "2026-01-01T00:00:00.000Z",
+    "2026-12-31T23:59:59.999Z",
+  ]) {
+    const at = new Date(iso);
+    check(`the sweep and the reservation agree for ${metric} on ${iso}`,
+      sqlUsageKeyForJob(metric, usagePeriodFor(metric), at)
+        === usageKeyFor(metric as AiUsageMetric, at));
+  }
 }
 
 /* ── 3. the release rules, modelled as the migration states them ─────────── */
@@ -156,7 +173,7 @@ class Ledger {
     for (const job of this.jobs.values()) {
       if (job.status !== "running") continue;
       job.status = "failed";
-      this.release(job.id, sqlUsageKeyForJob(metric, isDailyMetric(metric), job.reservedAt));
+      this.release(job.id, sqlUsageKeyForJob(metric, usagePeriodFor(metric), job.reservedAt));
       ended += 1;
     }
     return ended;
@@ -221,19 +238,32 @@ const DAY_KEY = usageKeyFor(METRIC, RESERVED_AT);
   check("leaving nothing charged", ledger.used(DAY_KEY) === 0);
 }
 
-/* a job that crossed midnight is refunded to the day it took from */
-{
+/**
+ * A job that crossed its period boundary is refunded to the period it took from.
+ *
+ * The original case was a generation reserved at 23:58 and swept after
+ * midnight. That boundary stopped being a boundary when generations went
+ * monthly — the same job now reserves and refunds inside one August key — so
+ * each metric is crossed at its OWN edge instead: month-end for the monthly
+ * allowance, midnight for the daily one. The invariant is unchanged and is the
+ * one the production incident was about: the refund lands on the period the
+ * unit was taken from, and the next period is never credited for it.
+ */
+for (const [metric, beforeIso, afterIso] of [
+  ["first_version_generation", "2026-08-31T23:58:00.000Z", "2026-09-01T00:03:00.000Z"],
+  ["project_edit", "2026-08-11T23:58:00.000Z", "2026-08-12T00:03:00.000Z"],
+] as const) {
   const ledger = new Ledger();
   ledger.jobs.set("j1", { id: "j1", status: "running", reservedAt: null, releasedAt: null });
-  const lateAt = new Date("2026-08-11T23:58:00.000Z");
-  ledger.reserve("j1", METRIC, lateAt, 5);
-  const yesterday = usageKeyFor(METRIC, lateAt);
-  const today = usageKeyFor(METRIC, new Date("2026-08-12T00:03:00.000Z"));
-  check("the two days are different keys", yesterday !== today);
+  const lateAt = new Date(beforeIso);
+  ledger.reserve("j1", metric, lateAt, 5);
+  const taken = usageKeyFor(metric, lateAt);
+  const next = usageKeyFor(metric, new Date(afterIso));
+  check(`${metric}: the two periods are different keys`, taken !== next, `${taken} vs ${next}`);
 
-  ledger.sweep(METRIC);
-  check("yesterday is refunded", ledger.used(yesterday) === 0);
-  check("and today was never credited", ledger.used(today) === 0);
+  ledger.sweep(metric);
+  check(`${metric}: the period it took from is refunded`, ledger.used(taken) === 0);
+  check(`${metric}: and the next period was never credited`, ledger.used(next) === 0);
 }
 
 /* a successful job keeps its unit */

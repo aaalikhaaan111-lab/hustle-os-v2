@@ -8,7 +8,16 @@
  */
 
 /**
- * Free first-version generations per account per UTC day.
+ * Free first-version generations per account per UTC MONTH.
+ *
+ * WHY THIS IS MONTHLY. It was three per day, which is up to ninety a month. A
+ * generation costs roughly $0.35 in provider spend, so one free account sitting
+ * on the cap could spend about $32 a month — more than a paying subscriber
+ * pays. The daily refill was written for a free tier whose cost was
+ * conversation; it does not survive a free tier whose cost is inference.
+ *
+ * Three a month is the same number a person sees on their first day, and the
+ * bound the business can actually carry: about $1.06 per free account.
  *
  * Configurable so the number can be tuned without a deploy, and so local and
  * preview environments can raise it for testing without anyone editing
@@ -19,15 +28,15 @@
  * of a typo here is unmetered paid generation. There is no value of this
  * variable that disables metering.
  */
-const DEFAULT_FREE_GENERATIONS_PER_DAY = 3;
-const MAX_FREE_GENERATIONS_PER_DAY = 25;
+const DEFAULT_FREE_GENERATIONS_PER_MONTH = 3;
+const MAX_FREE_GENERATIONS_PER_MONTH = 100;
 
-function freeGenerationsPerDay(): number {
-  const raw = process.env.VENTRIO_FREE_GENERATIONS_PER_DAY;
-  if (!raw) return DEFAULT_FREE_GENERATIONS_PER_DAY;
+function freeGenerationsPerMonth(): number {
+  const raw = process.env.VENTRIO_FREE_GENERATIONS_PER_MONTH;
+  if (!raw) return DEFAULT_FREE_GENERATIONS_PER_MONTH;
   const parsed = Number.parseInt(raw, 10);
-  if (!Number.isFinite(parsed) || parsed < 1) return DEFAULT_FREE_GENERATIONS_PER_DAY;
-  return Math.min(parsed, MAX_FREE_GENERATIONS_PER_DAY);
+  if (!Number.isFinite(parsed) || parsed < 1) return DEFAULT_FREE_GENERATIONS_PER_MONTH;
+  return Math.min(parsed, MAX_FREE_GENERATIONS_PER_MONTH);
 }
 
 // Durable, account-wide free-tier limits. Keyed by the same `metric` strings
@@ -36,30 +45,34 @@ function freeGenerationsPerDay(): number {
 // project id, so discarding/deleting a project cannot restore quota.
 export const AI_USAGE_LIMITS = {
   discovery_turn: 12,
-  first_version_generation: freeGenerationsPerDay(),
+  first_version_generation: freeGenerationsPerMonth(),
   project_edit: 5,
 } as const;
 
 export type AiUsageMetric = keyof typeof AI_USAGE_LIMITS;
 
+export type UsagePeriod = "day" | "month" | "lifetime";
+
 /**
  * Which metrics refill, and how often.
  *
- * All of them, daily. Every free allowance used to be for life: one generation,
- * twelve discovery messages, five edits — ever. Each was enforced and refunded
- * correctly; the defect was permanence. An account that used its twelve
- * discovery turns could never start another creation conversation, so raising
- * only the generation limit would have moved the wall rather than removed it.
- * That was found by running the flow: "Реши сам и начинай." came back with
- * "you have reached the free message limit (12) for this conversation" on an
- * account that still had generations left.
+ * Every free allowance used to be for life: one generation, twelve discovery
+ * messages, five edits — ever. Each was enforced and refunded correctly; the
+ * defect was permanence. An account that used its twelve discovery turns could
+ * never start another creation conversation, so raising only the generation
+ * limit would have moved the wall rather than removed it. That was found by
+ * running the flow: "Реши сам и начинай." came back with "you have reached the
+ * free message limit (12) for this conversation" on an account that still had
+ * generations left.
  *
- * One rule for the whole free tier — N per metric per UTC day — is also the
- * simplest thing to explain and the simplest thing to reason about.
+ * They then all became daily, which is right for the two that cost a
+ * conversation and wrong for the one that costs a generation — see the note on
+ * the monthly allowance above. So the period is per metric now: talking to
+ * Ventrio refills every day, and having it build something refills every month.
  */
-const USAGE_PERIOD: Record<AiUsageMetric, "day" | "lifetime"> = {
+const USAGE_PERIOD: Record<AiUsageMetric, UsagePeriod> = {
   discovery_turn: "day",
-  first_version_generation: "day",
+  first_version_generation: "month",
   project_edit: "day",
 };
 
@@ -78,8 +91,25 @@ const USAGE_PERIOD: Record<AiUsageMetric, "day" | "lifetime"> = {
  * after midnight would credit today for a unit it took yesterday.
  */
 export function usageKeyFor(metric: AiUsageMetric, at: Date = new Date()): string {
-  if (USAGE_PERIOD[metric] !== "day") return metric;
-  return `${metric}:${at.toISOString().slice(0, 10)}`;
+  const period = USAGE_PERIOD[metric];
+  if (period === "lifetime") return metric;
+  // `YYYY-MM-DD` for a day, `YYYY-MM` for a month. The two can never collide:
+  // a monthly key is a strict prefix of a daily one and is ten characters
+  // shorter, so yesterday's daily row and this month's monthly row are
+  // different keys even for the same metric.
+  return `${metric}:${at.toISOString().slice(0, period === "day" ? 10 : 7)}`;
+}
+
+/**
+ * How this metric's allowance refills.
+ *
+ * Exported because the database needs it too: the stale sweep composes one
+ * refund key per job from that job's own `usage_reserved_at`, so it has to be
+ * told the granularity rather than assume a day. See
+ * `usage_key_for_job(p_metric, p_metric_period, p_reserved_at)`.
+ */
+export function usagePeriodFor(metric: AiUsageMetric): UsagePeriod {
+  return USAGE_PERIOD[metric];
 }
 
 /** True when this metric's allowance refills rather than running out for good. */
