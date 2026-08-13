@@ -15,10 +15,27 @@
 -- So the boolean becomes the period. 'day' and 'month' compose a key, anything
 -- else is a lifetime metric and uses the bare name.
 --
--- The four- and five-argument signatures are dropped rather than left in place,
--- following the precedent of 20260811180000: a caller that has not been updated
--- fails loudly instead of silently refunding the wrong key, which is exactly
--- how the previous version of this bug survived unnoticed.
+-- THE BOOLEAN SIGNATURES ARE KEPT, which departs from the precedent of
+-- 20260811180000. That migration dropped the old signatures so an un-updated
+-- caller would fail loudly, and that was right there: the old callers were
+-- wrong and needed to stop.
+--
+-- Here they are not wrong, they are merely previous. A migration is applied
+-- before the deploy that uses it, so between the two there is a window in which
+-- the running production code still calls the boolean form. Dropping it would
+-- take the stale sweep out of service for the whole window — and the sweep is
+-- what frees an account whose generation crashed, so the symptom would be users
+-- blocked from generating with no way to clear it.
+--
+-- Postgres overloads on argument types, so both forms coexist: the deployed
+-- code keeps reserving and refunding daily keys consistently, and the new code
+-- reserves and refunds monthly ones consistently. Neither can see the other's
+-- keys, so neither can corrupt them.
+--
+-- This is the expand half of expand/contract. The contract half — dropping
+-- `p_metric_daily` — belongs in a separate migration AFTER the deploy lands,
+-- and should not be forgotten: leaving a boolean overload in place forever is
+-- how a future caller silently gets daily keys for a monthly metric.
 
 begin;
 
@@ -45,8 +62,6 @@ as $$
   end;
 $$;
 
-drop function if exists public.usage_key_for_job(text, boolean, timestamptz);
-drop function if exists public.expire_stale_generation_jobs(uuid, uuid, text, text, boolean, timestamptz);
 
 create or replace function public.expire_stale_generation_jobs(
   p_project_id uuid,
@@ -97,7 +112,6 @@ begin
 end;
 $$;
 
-drop function if exists public.expire_stale_generation_jobs_for_user(uuid, text, text, boolean, timestamptz);
 
 create or replace function public.expire_stale_generation_jobs_for_user(
   p_user_id uuid,

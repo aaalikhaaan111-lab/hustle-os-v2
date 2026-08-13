@@ -72,14 +72,21 @@ check("and neither sweep passes p_metric straight through any more",
   !/release_generation_job_usage\(\s*v_job\.id,\s*p_metric\s*\)/.test(migration));
 check("both sweeps were rewritten, not just one",
   (migration.match(/usage_key_for_job\(p_metric/g) ?? []).length === 2);
-// The old signatures are dropped so an un-updated caller fails loudly rather
-// than silently refunding the wrong key again — which is how this survived.
-check("the boolean project sweep is dropped",
-  /drop function if exists public\.expire_stale_generation_jobs\(uuid, uuid, text, text, boolean, timestamptz\)/.test(migration));
-check("the boolean account sweep is dropped",
-  /drop function if exists public\.expire_stale_generation_jobs_for_user\(uuid, text, text, boolean, timestamptz\)/.test(migration));
-check("and so is the boolean key helper",
-  /drop function if exists public\.usage_key_for_job\(text, boolean, timestamptz\)/.test(migration));
+/**
+ * The boolean signatures survive this migration, on purpose.
+ *
+ * 20260811180000 dropped its predecessors so an un-updated caller would fail
+ * loudly, which was right: those callers were wrong. These are not wrong, only
+ * previous. A migration lands before the deploy that uses it, and dropping the
+ * boolean form during that window would take the stale sweep out of service —
+ * the sweep being what frees an account whose generation crashed.
+ *
+ * Postgres overloads on argument type, so the two coexist and neither can see
+ * the other's keys. This is the expand half; the drop belongs in its own
+ * migration after the deploy.
+ */
+check("the expand migration drops nothing",
+  !/drop function/.test(migration));
 
 /**
  * The SQL and the TypeScript must agree on what a period is.
