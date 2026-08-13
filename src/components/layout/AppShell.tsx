@@ -41,7 +41,21 @@ export function AppShell({ children, isAuthenticated }: { children: ReactNode; i
       // ignore
     }
     const desktop = window.matchMedia("(min-width: 768px)").matches;
-    const next = stored !== null ? stored === "1" : desktop;
+    /**
+     * The stored preference is a DESKTOP preference, and only desktop reads it.
+     *
+     * The drawer is a side panel beside the page on a wide screen and a sheet
+     * over the whole page on a phone — so "open" does not mean the same thing
+     * in both places, and one stored flag cannot answer for both. It used to:
+     * opening the drawer once on a desktop wrote "1", and the next visit from a
+     * phone read that "1" and covered the page with a nav sheet before the
+     * visitor had touched anything.
+     *
+     * Mobile therefore always starts closed, which is the only sensible state
+     * for a sheet nobody has opened yet. Desktop keeps the preference, and
+     * still defaults to open when there is none.
+     */
+    const next = desktop ? (stored !== null ? stored === "1" : true) : false;
     // Deferred so the state updates happen outside the effect body.
     queueMicrotask(() => {
       setOpen(next);
