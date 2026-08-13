@@ -17,7 +17,16 @@ export default async function CookiesPage() {
   const tc = await getTranslations("common");
 
   const intro = t("intro", { productName: legalConfig.productName });
-  const sections = t.raw("sections") as { title: string; body: string }[];
+  // Resolved the same way as the other legal pages. This one passed its
+  // sections through untouched, so a `{productName}` inside a section body
+  // reached the page as literal braces.
+  const sections = (t.raw("sections") as { title: string; body: string }[]).map((section) => ({
+    title: section.title,
+    body: section.body
+      .replaceAll("{contactEmail}", legalConfig.contactEmail)
+      .replaceAll("{productName}", legalConfig.productName)
+      .replaceAll("{minimumAge}", String(legalConfig.minimumAge)),
+  }));
 
   return (
     <div className="mx-auto flex max-w-2xl flex-col gap-6 py-4 sm:py-6">

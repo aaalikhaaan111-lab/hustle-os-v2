@@ -1,27 +1,26 @@
 /**
- * Legal/operator configuration for public legal pages (Privacy, Terms, Cookies, Contact).
+ * Operator details for the public legal pages (Privacy, Terms, Cookies, AI
+ * Policy, Contact, Delete Account).
  *
- * IMPORTANT — PLACEHOLDER VALUES:
- * `operatorName`, `operatorCountry`, `operatorCity`, and `governingLaw` are NOT real
- * registered-business facts. Ventrio has not been confirmed as an incorporated legal
- * entity. These fields must be reviewed and completed by the product owner before the
- * legal pages are treated as final/production-accurate. Until then, the legal pages
- * render honest placeholder language (e.g. "operated by an individual / pre-incorporation
- * team") rather than falsely claiming incorporation.
+ * These are the values the pages render, so changing one changes what Ventrio
+ * publicly states about who operates it and under whose law. They were
+ * placeholders until 2026-08-13 and rendered visibly as
+ * "[OPERATOR NAME NOT YET CONFIRMED]" rather than guessing — the pages said
+ * nothing they could not back. The values below were supplied by the product
+ * owner.
+ *
+ * `contactEmail` appears on every legal page as the address for privacy
+ * requests, deletion requests and reports of harmful output. It has to stay a
+ * monitored inbox.
  */
 export const legalConfig = {
   productName: "Ventrio",
-  /** PLACEHOLDER — replace with the real legal operator name once decided (individual or registered entity). */
-  operatorName: "[OPERATOR NAME NOT YET CONFIRMED]",
-  /** PLACEHOLDER — country of operation/jurisdiction. */
-  operatorCountry: "[COUNTRY NOT YET CONFIRMED]",
-  /** PLACEHOLDER — city of operation, if relevant to the jurisdiction statement. */
-  operatorCity: "[CITY NOT YET CONFIRMED]",
-  /** PLACEHOLDER — must be a real, monitored inbox before launch. */
-  contactEmail: "support@ventrio.app",
+  operatorName: "Ventrio",
+  operatorCountry: "Kazakhstan",
+  operatorCity: "Pavlodar",
+  contactEmail: "founder@ventrio.org",
   minimumAge: 13,
-  /** PLACEHOLDER — set to the actual date these documents go live. */
-  effectiveDate: "2026-07-16",
-  /** PLACEHOLDER — governing law/jurisdiction for Terms of Use; requires a real business/legal decision. */
-  governingLaw: "[GOVERNING LAW / JURISDICTION NOT YET CONFIRMED]",
+  /** The date the current wording went live; update it when the text changes materially. */
+  effectiveDate: "2026-08-13",
+  governingLaw: "Laws of the Republic of Kazakhstan",
 } as const;
