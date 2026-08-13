@@ -228,8 +228,14 @@
 
 .footer footer {
   margin-top: 0;
-  border-color: var(--color-border);
   color: var(--color-ink-muted);
+}
+/* The rule the landing draws above its footer. It used to sit on the <footer>
+   element; the footer now bleeds full-width and holds its border on the inner
+   container, so the selector follows it there and the homepage keeps the
+   firmer line it was given. */
+.footer footer [data-footer-inner] {
+  border-color: var(--color-border);
 }
 
 .footer footer a:hover {

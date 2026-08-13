@@ -3,9 +3,20 @@ import { getTranslations } from "next-intl/server";
 import { LanguageSwitcher } from "@/components/layout/LanguageSwitcher";
 import { Wordmark } from "@/components/layout/Wordmark";
 import { legalConfig } from "@/config/legal";
+import { IconInstagram, IconThreads, IconTikTok } from "@/components/layout/SocialIcons";
 
 /** The one address we publish. Stated here so it lives in exactly one place. */
 const CONTACT_EMAIL = "founder@ventrio.org";
+
+/**
+ * The accounts that exist. Adding one here is the whole change — the row
+ * renders from this list, and an account we do not have simply is not in it.
+ */
+const SOCIAL_LINKS = [
+  { href: "https://instagram.com/ventrio.app", label: "Instagram", icon: IconInstagram },
+  { href: "https://threads.net/@ventrio.app", label: "Threads", icon: IconThreads },
+  { href: "https://tiktok.com/@ventrio", label: "TikTok", icon: IconTikTok },
+] as const;
 
 /**
  * The public footer, shared by the landing and every standalone page.
@@ -13,8 +24,14 @@ const CONTACT_EMAIL = "founder@ventrio.org";
  * Every destination is a route that exists or an anchor on the landing. The
  * in-page anchor is absolute (`/#how-it-works`) because this also renders on
  * /privacy, /login and the rest, where a bare `#how-it-works` would point at
- * nothing. No social links: none are configured, and an invented handle is
- * worse than an absent one.
+ * nothing.
+ *
+ * IT SETS ITS OWN WIDTH. The footer used to take whatever width its parent
+ * gave it, which was the landing's 1280px container on the homepage and a
+ * reading-measure `max-w-2xl` on the legal pages — where five link columns had
+ * to share 42rem and the row collapsed. The inner container below is the
+ * footer's own, so the layout is the same wherever it renders, and a page
+ * cannot squeeze it by nesting it in a narrower wrapper.
  */
 export async function PublicFooter() {
   const t = await getTranslations("footer");
@@ -53,7 +70,17 @@ export async function PublicFooter() {
     "rounded-sm text-ink-muted transition-colors hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent";
 
   return (
-    <footer className="mt-16 border-t border-border/60 pt-10 text-sm">
+    <footer className="mt-16 text-sm">
+      {/* The footer's own container, so it measures itself rather than
+          inheriting whatever column it was dropped into. A full-bleed was
+          tried first and is wrong here: it escapes the app shell's drawer
+          padding as well as the page's reading column, and clips the footer
+          under the open nav. Pages therefore hand the footer the width they
+          hand the landing, and this caps it. */}
+      <div
+        data-footer-inner
+        className="mx-auto w-full max-w-[1280px] border-t border-border/60 pt-10"
+      >
       <div className="flex flex-col gap-10 md:flex-row md:justify-between">
         {/* Who this is, in one line */}
         <div className="max-w-xs">
@@ -118,7 +145,26 @@ export async function PublicFooter() {
 
       <div className="mt-10 flex flex-col-reverse gap-4 border-t border-border/60 pt-6 text-xs text-ink-muted sm:flex-row sm:items-center sm:justify-between">
         <p>{t("rights", { year, productName: legalConfig.productName })}</p>
-        <LanguageSwitcher />
+        <div className="flex items-center gap-4">
+          <ul className="flex items-center gap-1" aria-label={t("socialLabel")}>
+            {SOCIAL_LINKS.map(({ href, label, icon: Icon }) => (
+              <li key={href}>
+                <a
+                  href={href}
+                  target="_blank"
+                  rel="noreferrer noopener"
+                  aria-label={label}
+                  title={label}
+                  className={`${linkClass} inline-flex h-8 w-8 items-center justify-center`}
+                >
+                  <Icon className="h-[18px] w-[18px]" />
+                </a>
+              </li>
+            ))}
+          </ul>
+          <LanguageSwitcher />
+        </div>
+      </div>
       </div>
     </footer>
   );

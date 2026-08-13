@@ -19,6 +19,7 @@ export default async function DeleteAccountPage() {
   const howToBody = t("howTo.body", { contactEmail: legalConfig.contactEmail });
 
   return (
+    <>
     <div className="mx-auto flex max-w-2xl flex-col gap-6 py-4 sm:py-6">
       <BackNav fallback="/profile" label={tc("back")} />
       <PageHeader title={t("pageTitle")} description={intro} />
@@ -51,7 +52,10 @@ export default async function DeleteAccountPage() {
 
       <p className="text-xs text-ink-muted">{t("limitationNote")}</p>
 
-      <PublicFooter />
     </div>
+      <div className="mx-auto w-[min(100%-2rem,1280px)]">
+        <PublicFooter />
+      </div>
+    </>
   );
 }

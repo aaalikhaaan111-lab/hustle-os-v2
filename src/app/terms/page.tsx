@@ -28,6 +28,7 @@ export default async function TermsPage() {
   }));
 
   return (
+    <>
     <div className="mx-auto flex max-w-2xl flex-col gap-6 py-4 sm:py-6">
       <BackNav fallback="/" label={tc("backToVentrio")} />
       <PageHeader title={t("pageTitle")} description={intro} />
@@ -37,7 +38,10 @@ export default async function TermsPage() {
         <br />
         {tCommon("contactCta", { email: legalConfig.contactEmail })}
       </p>
-      <PublicFooter />
     </div>
+      <div className="mx-auto w-[min(100%-2rem,1280px)]">
+        <PublicFooter />
+      </div>
+    </>
   );
 }

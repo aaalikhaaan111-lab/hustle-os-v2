@@ -16,6 +16,7 @@ export default async function ContactPage() {
   const tc = await getTranslations("common");
 
   return (
+    <>
     <div className="mx-auto flex max-w-2xl flex-col gap-6 py-4 sm:py-6">
       <BackNav fallback="/" label={tc("backToVentrio")} />
       <PageHeader title={t("pageTitle")} description={t("intro")} />
@@ -33,7 +34,10 @@ export default async function ContactPage() {
           <p className="mt-2 text-sm text-ink-secondary">{t("responseNote")}</p>
         </CardContent>
       </Card>
-      <PublicFooter />
     </div>
+      <div className="mx-auto w-[min(100%-2rem,1280px)]">
+        <PublicFooter />
+      </div>
+    </>
   );
 }

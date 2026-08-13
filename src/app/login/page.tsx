@@ -13,7 +13,7 @@ export default function LoginPage() {
         <LoginForm />
       </Suspense>
       {showDevAutoLogin && <DevAutoLoginButton />}
-      <div className="mx-auto w-full max-w-sm">
+      <div className="mx-auto w-[min(100%-2rem,1280px)]">
         <PublicFooter />
       </div>
     </>
