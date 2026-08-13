@@ -115,7 +115,12 @@ export function WorkspaceComposer({
           placeholder={placeholder}
           aria-label={ariaLabel ?? placeholder}
           aria-keyshortcuts="Enter"
-          className={`w-full resize-none bg-transparent pt-3.5 text-[15px] leading-[1.6] outline-none placeholder:text-[var(--ink-3)] disabled:opacity-60 ${
+          /* 16px below md, 15px from there up. iOS Safari zooms the whole page
+             when a focused field is under 16px, and this is the product's one
+             input — inside a sheet that is exactly the viewport tall, so the
+             zoom left the composer half off-screen with no obvious way back.
+             The type scale above md is unchanged. */
+          className={`w-full resize-none bg-transparent pt-3.5 text-[16px] leading-[1.6] outline-none placeholder:text-[var(--ink-3)] disabled:opacity-60 md:text-[15px] ${
             hasTools ? "px-4 pb-1" : "py-3.5 pl-4 pr-14"
           }`}
           onKeyDown={(event) => {

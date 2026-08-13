@@ -83,9 +83,18 @@
   border: none;
   background: transparent;
   padding: 0.6rem 0.65rem;
-  font-size: 15px;
+  /* 16px on phones: iOS Safari zooms the page when a focused field is smaller,
+     and this composer is the first thing a visitor types into. The 15px scale
+     returns from md up, so the desktop composer is unchanged. */
+  font-size: 16px;
   line-height: 1.6;
   color: var(--color-ink);
+}
+
+@media (min-width: 768px) {
+  .textarea {
+    font-size: 15px;
+  }
 }
 
 .textarea::placeholder {
