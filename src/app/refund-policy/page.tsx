@@ -13,19 +13,16 @@ import { legalConfig } from "@/config/legal";
  * `PageHeader`, `LegalSections` — so it inherits the type scale, the measure and
  * the footer without introducing a fourth way to lay out a document.
  *
- * Two values are page-local rather than read from `legalConfig`:
+ * `SUPPORT_EMAIL` is page-local rather than `legalConfig.contactEmail`
+ * (founder@), because refunds should reach a mailbox that stays answered as
+ * volume grows and Paddle checks the address on this page receives mail.
  *
- * `SUPPORT_EMAIL` is the billing address, and it is deliberately not
- * `legalConfig.contactEmail` (founder@). Refunds go to a mailbox that can stay
- * answered as volume grows, and Paddle checks that the address on this page
- * actually receives mail.
- *
- * `LAST_UPDATED` is this document's own date. The shared `effectiveDate` covers
- * the policies that shipped together on 2026-08-13; this one arrived later and
- * says so rather than backdating itself.
+ * The date line is this page's own message too, not the shared `legal.common`
+ * one. That string reads "Effective date: {date}" and is used verbatim by
+ * Privacy, Terms, Cookies and the AI Policy — rewording it to suit this page
+ * would silently change four documents that were reviewed as they are.
  */
 const SUPPORT_EMAIL = "support@ventrio.org";
-const LAST_UPDATED = "2026-08-14";
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("legal.refundPolicy");
@@ -53,7 +50,7 @@ export default async function RefundPolicyPage() {
         <PageHeader title={t("pageTitle")} description={intro} />
         <LegalSections sections={sections} />
         <p className="text-xs text-ink-muted">
-          {tCommon("lastUpdated", { date: LAST_UPDATED })}
+          {t("lastUpdated")}
           <br />
           {tCommon("contactCta", { email: SUPPORT_EMAIL })}
         </p>
