@@ -32,6 +32,7 @@ const PUBLIC_CONTENT_ROUTES = [
   "/who-its-for",
   "/contact",
   "/delete-account",
+  "/refund-policy",
 ];
 
 function matchesPrefix(pathname: string, prefixes: string[]) {

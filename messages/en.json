@@ -842,7 +842,8 @@
     "faq": "FAQ",
     "blurb": "Ventrio turns ideas into real digital products you can build, preview, and share.",
     "aiPolicy": "AI Policy",
-    "socialLabel": "Social"
+    "socialLabel": "Social",
+    "refundPolicy": "Refund Policy"
   },
   "legal": {
     "common": {
@@ -1034,6 +1035,28 @@
         {
           "title": "Reporting a problem",
           "body": "If generated output is harmful, infringing, or wrong in a way that matters, tell us at {contactEmail}."
+        }
+      ]
+    },
+    "refundPolicy": {
+      "pageTitle": "Refund Policy",
+      "intro": "{productName} provides AI-powered tools for creating websites and web applications through subscription plans.",
+      "sections": [
+        {
+          "title": "Refund Requests",
+          "body": "Customers may request a refund within 14 days of their purchase by contacting our support team.\n\nTo request a refund, please contact:\n{supportEmail}\n\nPlease include:\n• The email address associated with your {productName} account\n• Transaction details\n• The reason for your refund request"
+        },
+        {
+          "title": "Refund Eligibility",
+          "body": "Refund requests are reviewed individually. We aim to provide fair resolutions while protecting against abuse of our services."
+        },
+        {
+          "title": "Subscription Cancellation",
+          "body": "Customers can cancel their subscription at any time. Cancellation prevents future charges but does not automatically issue refunds for previous billing periods unless approved under this policy."
+        },
+        {
+          "title": "Contact",
+          "body": "For refund-related questions:\n{supportEmail}"
         }
       ]
     }

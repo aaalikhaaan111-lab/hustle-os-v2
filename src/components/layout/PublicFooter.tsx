@@ -60,6 +60,7 @@ export async function PublicFooter() {
         { href: "/privacy", label: t("privacy") },
         { href: "/terms", label: t("terms") },
         { href: "/cookies", label: t("cookies") },
+        { href: "/refund-policy", label: t("refundPolicy") },
         { href: "/ai-policy", label: t("aiPolicy") },
         { href: "/delete-account", label: t("deleteAccount") },
       ],
