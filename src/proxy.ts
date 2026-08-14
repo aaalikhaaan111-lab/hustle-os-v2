@@ -19,7 +19,7 @@ export async function proxy(request: NextRequest) {
 }
 
 /**
- * `api/queues/` is excluded deliberately.
+ * `api/queues/` and `api/webhooks/` are excluded deliberately.
  *
  * That route is called server-to-server by the queue, to run generation work.
  * Passing it through here would attach a Supabase session refresh and a
@@ -29,6 +29,6 @@ export async function proxy(request: NextRequest) {
  */
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|auth/callback|api/queues/|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    "/((?!_next/static|_next/image|favicon.ico|auth/callback|api/queues/|api/webhooks/|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };

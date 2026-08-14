@@ -31,14 +31,26 @@ export function buildCspHeader(nonce: string, isProd: boolean, pathname?: string
   const supabaseOrigin = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
   const isCodegenPreview = !isProd && pathname === CODEGEN_PREVIEW_PATH;
 
+  /**
+   * Paddle's overlay checkout, allowed on the one page that opens it.
+   *
+   * Scoped to /pricing rather than granted app-wide: the checkout iframe and
+   * its API calls are only ever needed where the button is, and a payments
+   * origin admitted to every page is a larger surface than the feature needs.
+   * `script-src` is untouched — Paddle.js is loaded by a nonced tag and
+   * `'strict-dynamic'` covers what it pulls in.
+   */
+  const isCheckout = pathname === "/pricing";
+  const paddle = isCheckout ? " https://*.paddle.com" : "";
+
   const directives = [
     `default-src 'self'`,
     `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${isProd ? "" : " 'unsafe-eval'"}`,
     `style-src 'self' 'unsafe-inline'`,
-    `img-src 'self' https://i.ytimg.com${isCodegenPreview ? " data:" : ""}`,
+    `img-src 'self' https://i.ytimg.com${isCodegenPreview ? " data:" : ""}${paddle}`,
     `font-src 'self'`,
-    `connect-src 'self'${supabaseOrigin ? ` ${supabaseOrigin}` : ""}`,
-    `frame-src ${isCodegenPreview ? "'self' " : ""}https://www.youtube.com`,
+    `connect-src 'self'${supabaseOrigin ? ` ${supabaseOrigin}` : ""}${paddle}`,
+    `frame-src ${isCodegenPreview ? "'self' " : ""}https://www.youtube.com${paddle}`,
     `object-src 'none'`,
     `base-uri 'self'`,
     `form-action 'self'`,

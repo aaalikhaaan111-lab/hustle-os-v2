@@ -238,6 +238,10 @@ export type Database = {
         Row: {
           created_at: string
           daily_minutes: number | null
+          paddle_customer_id: string | null
+          paddle_subscription_id: string | null
+          plan: string
+          subscription_status: string | null
           display_name: string | null
           id: string
           interests: string[] | null
@@ -248,6 +252,10 @@ export type Database = {
         Insert: {
           created_at?: string
           daily_minutes?: number | null
+          paddle_customer_id?: string | null
+          paddle_subscription_id?: string | null
+          plan?: string
+          subscription_status?: string | null
           display_name?: string | null
           id: string
           interests?: string[] | null
@@ -258,6 +266,10 @@ export type Database = {
         Update: {
           created_at?: string
           daily_minutes?: number | null
+          paddle_customer_id?: string | null
+          paddle_subscription_id?: string | null
+          plan?: string
+          subscription_status?: string | null
           display_name?: string | null
           id?: string
           interests?: string[] | null
