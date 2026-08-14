@@ -157,7 +157,10 @@ export function PublicationControls({
         {/* Errors are announced here rather than swallowed: the toolbar is
             where the action was taken, so it is where the answer belongs. */}
         {(notice || error) && (
-          <span role={error ? "alert" : "status"} className={cn("publication-message", error && "is-error")}>
+          <span
+            role={error ? "alert" : "status"}
+            className={cn("publication-message publication-message--inline", error && "is-error")}
+          >
             {error ?? notice}
           </span>
         )}

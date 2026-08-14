@@ -214,7 +214,8 @@
     "errorSlug": "A public address couldn't be reserved. Please try again.",
     "errorNotLive": "This project does not have a live version.",
     "errorUpdate": "The live version couldn't be updated. Please try again.",
-    "errorUnpublish": "The project couldn't be unpublished. Please try again."
+    "errorUnpublish": "The project couldn't be unpublished. Please try again.",
+    "errorPublishedLimit": "Your plan can have {limit} project published at a time. Unpublish that one, or upgrade to publish more."
   },
   "feedback": {
     "eyebrow": "Feedback loop",
@@ -1193,5 +1194,38 @@
     "previewUnavailableBody": "It is still saved. This workspace could not rebuild it, so nothing is shown rather than something wrong.",
     "previewBootingTitle": "Starting your app…",
     "usageUnavailable": "Not available"
+  },
+  "branding": {
+    "madeWith": "Made with Ventrio",
+    "remove": "Remove branding",
+    "upgradeTitle": "Removing Ventrio branding requires Pro",
+    "upgradeBody": "Pro and Studio publish without the badge. Free projects keep it.",
+    "viewPricing": "View pricing",
+    "close": "Close"
+  },
+  "pricing": {
+    "pageTitle": "Pricing",
+    "lead": "Start free. Upgrade when you are shipping more than one thing.",
+    "perMonth": "/month",
+    "currentPlan": "Your plan",
+    "billingSoon": "Billing is not connected yet — we will email you the moment it opens.",
+    "billingPending": "Upgrade pending",
+    "freeName": "Free",
+    "freeTagline": "Try the whole flow.",
+    "freeCta": "Start building",
+    "proName": "Pro",
+    "proTagline": "For people shipping regularly.",
+    "proCta": "Upgrade to Pro",
+    "studioName": "Studio",
+    "studioTagline": "For agencies, educators and heavy creators.",
+    "studioCta": "Upgrade to Studio",
+    "featureGenerations": "{count} generated applications per month",
+    "featurePublishOne": "1 published project",
+    "featurePublishMany": "Unlimited published projects",
+    "featureBrandingOn": "Ventrio branding on published projects",
+    "featureBrandingOff": "Remove Ventrio branding",
+    "featureSubdomain": "Project subdomain, e.g. your-idea.ventrio.org",
+    "featureDiscovery": "Product creation and idea discovery",
+    "note": "Every plan runs on the same generation pipeline. Limits are the difference."
   }
 }

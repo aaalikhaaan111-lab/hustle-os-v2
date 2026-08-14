@@ -469,9 +469,18 @@ export async function finishFailed(
 export async function reserveUsage(
   jobId: string,
   userId: string,
-  metric: AiUsageMetric
+  metric: AiUsageMetric,
+  /**
+   * The ceiling for this account, when it differs from the free allowance.
+   *
+   * Only generations vary by plan today, and only the caller knows the plan —
+   * this module has no session and must not grow one. Absent, the free
+   * allowance applies, which keeps every existing caller and the whole monthly
+   * key mechanism exactly as it was.
+   */
+  limitOverride?: number,
 ): Promise<UsageReservation> {
-  const limit = AI_USAGE_LIMITS[metric];
+  const limit = limitOverride ?? AI_USAGE_LIMITS[metric];
   const service = createServiceClient();
   const { data, error } = await service.rpc("reserve_generation_job_usage", {
     p_job_id: jobId,

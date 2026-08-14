@@ -2,11 +2,28 @@ import { createHash, randomBytes } from "node:crypto";
 
 export const PUBLIC_SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
-const RESERVED_SLUGS = new Set([
-  "admin", "api", "auth", "build", "challenges", "contact", "cookies",
-  "courses", "create", "dashboard", "delete-account", "first-session",
-  "login", "onboarding", "p", "privacy", "profile", "projects", "settings",
-  "signup", "terms", "workshops",
+/**
+ * Names a published project may never take.
+ *
+ * Two populations, both load-bearing. Route names (`app`, `login`, `dashboard`)
+ * would collide with Ventrio's own surfaces. Infrastructure names (`www`,
+ * `mail`, `mx`, `ns1`, `cdn`, `vercel`) matter because a slug is now also a
+ * subdomain — `www.ventrio.org` serving a stranger's application is the worst
+ * of them, and it was claimable before this list grew.
+ *
+ * Mirrored by a CHECK constraint on `project_publications.slug`. The database
+ * is the one that cannot be bypassed; this gives a better error, earlier.
+ */
+export const RESERVED_SLUGS: ReadonlySet<string> = new Set([
+  // Ventrio's own surfaces
+  "admin", "api", "app", "auth", "account", "billing", "blog", "build",
+  "challenges", "contact", "cookies", "courses", "create", "dashboard",
+  "delete-account", "docs", "first-session", "help", "login", "onboarding",
+  "p", "pay", "pricing", "privacy", "profile", "projects", "settings",
+  "signup", "status", "support", "terms", "workshops",
+  // Infrastructure and hosting
+  "assets", "cdn", "dev", "ftp", "imap", "mail", "mx", "ns1", "ns2", "pop",
+  "smtp", "staging", "static", "test", "vercel", "www",
 ]);
 
 const CYRILLIC: Record<string, string> = {
@@ -55,9 +72,15 @@ export function slugCollisionCandidate(base: string, projectId: string, attempt:
   return `${base.slice(0, Math.max(2, 59 - suffix.length)).replace(/-+$/g, "")}-${suffix}`;
 }
 
+/**
+ * A published slug is also a DNS label, so 63 is the ceiling, not 64.
+ *
+ * `[slug].ventrio.org` reuses this exact string (see publicUrl.ts). A 64-character
+ * slug is a fine path segment and an unreachable hostname.
+ */
 export function isPublicSlug(value: string): boolean {
   return value.length >= 2
-    && value.length <= 64
+    && value.length <= 63
     && PUBLIC_SLUG_PATTERN.test(value)
     && !RESERVED_SLUGS.has(value);
 }

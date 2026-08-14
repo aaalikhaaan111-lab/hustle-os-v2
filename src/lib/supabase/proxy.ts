@@ -2,6 +2,7 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import type { Database } from "@/types/supabase";
 import { getSiteUrl, isSafeRedirectPath } from "@/lib/site";
+import { slugFromHost } from "@/lib/publishing/publicUrl";
 
 const PROTECTED_PREFIXES = ["/create", "/projects", "/build", "/profile", "/dashboard", "/settings"];
 const AUTH_ROUTES = ["/login", "/signup"];
@@ -52,6 +53,30 @@ function hasAuthCookie(request: NextRequest): boolean {
 
 export async function updateSession(request: NextRequest) {
   const { pathname } = request.nextUrl;
+
+  /**
+   * `sat-prep.ventrio.org` is `/p/sat-prep`, served by the same deployment.
+   *
+   * A rewrite, not a redirect: the visitor keeps the subdomain in the address
+   * bar and the existing `/p/[slug]` route does the rendering, so there is one
+   * page, one sandbox and one set of security headers rather than two that can
+   * drift apart. Nothing is created per project — one wildcard DNS record and
+   * one Vercel domain cover every publication that will ever exist.
+   *
+   * It runs before the Supabase branch below, and returns without touching
+   * cookies, so a project host never carries a session. That is the point:
+   * auth cookies stay host-only to the apex and are never sent to a subdomain
+   * serving a stranger's application. `slugFromHost` rejects the apex, `www`,
+   * every other reserved name, nested labels and non-production hosts.
+   */
+  const projectSlug = slugFromHost(request.headers.get("host"));
+  if (projectSlug && !pathname.startsWith("/p/")) {
+    const requestHeaders = new Headers(request.headers);
+    requestHeaders.set("x-ventrio-public-route", "1");
+    const url = request.nextUrl.clone();
+    url.pathname = `/p/${projectSlug}`;
+    return NextResponse.rewrite(url, { request: { headers: requestHeaders } });
+  }
 
   // Public project pages are deliberately outside the authenticated product.
   // Skip the Supabase session refresh and mark the request so the root layout

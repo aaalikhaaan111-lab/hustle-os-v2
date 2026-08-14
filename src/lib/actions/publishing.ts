@@ -8,7 +8,8 @@ import { parseStage3ProjectState, sanitizeStage3Output } from "@/lib/build/stage
 import { loadProjectPublicationState, publicProjectCacheTag } from "@/lib/publishing/queries";
 import { hasUsableProjectName, slugCollisionCandidate, slugifyProjectName } from "@/lib/publishing/slug";
 import type { PublicationActionResult } from "@/lib/publishing/types";
-import { getSiteUrl } from "@/lib/site";
+import { publicProjectUrl } from "@/lib/publishing/publicUrl";
+import { getUserEntitlements } from "@/lib/billing/userPlan";
 import { getCurrentUser } from "@/lib/supabase/currentUser";
 import { createClient } from "@/lib/supabase/server";
 import { toJson } from "@/lib/supabase/json";
@@ -90,7 +91,7 @@ async function successResult(
   return {
     error: null,
     publication,
-    publicUrl: `${getSiteUrl()}/p/${slug}`,
+    publicUrl: publicProjectUrl(slug),
     message,
   };
 }
@@ -115,6 +116,27 @@ export async function publishProjectAction(projectId: string): Promise<Publicati
 
   if (existing?.is_published) {
     return successResult(projectId, existing.slug, t("alreadyLive"));
+  }
+
+  /**
+   * How many projects this account may have live at once.
+   *
+   * Server-side because a limit enforced in a button is not a limit — this
+   * action is reachable directly. Counted rather than stored, so raising the
+   * plan lifts the ceiling with no backfill and no per-user record to migrate:
+   * `maxPublishedProjects` becomes null and the branch stops applying. Projects
+   * already published are never touched by it, only the next one.
+   */
+  const entitlements = await getUserEntitlements(supabase, user.id);
+  if (entitlements.maxPublishedProjects !== null) {
+    const { count } = await supabase
+      .from("project_publications")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", user.id)
+      .eq("is_published", true);
+    if ((count ?? 0) >= entitlements.maxPublishedProjects) {
+      return failure(t("errorPublishedLimit", { limit: entitlements.maxPublishedProjects }));
+    }
   }
 
   if (existing) {

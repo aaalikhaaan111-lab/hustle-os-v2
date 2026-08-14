@@ -42,6 +42,7 @@ import { mergeCodegenState, type CodegenProjectState } from "@/lib/v2/codegen/pr
 import { appRuntimeEnabled, composeAppBrief } from "@/lib/v2/app/renderProject";
 import { readAppState } from "@/lib/v2/app/projectState";
 import { resolveGeminiConfig } from "@/lib/v2/gemini/config";
+import { getUserEntitlements } from "@/lib/billing/userPlan";
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const TOKEN_PATTERN = /^[a-zA-Z0-9_-]{8,80}$/;
@@ -469,7 +470,16 @@ export async function generateFirstVersionAction(
   // Reserved only once the job is genuinely ours, so a losing race never
   // spends quota — and reserved *through* the job, so the unit is recorded
   // against something durable rather than only in this request's memory.
-  const reservation = await reserveUsage(job.id, user.id, "first_version_generation");
+  // Plan-aware: free keeps the three-a-month allowance it already had, paid
+  // plans raise the ceiling. The period, the key and the refund path are
+  // untouched — only the number the reservation is checked against moves.
+  const planEntitlements = await getUserEntitlements(supabase, user.id);
+  const reservation = await reserveUsage(
+    job.id,
+    user.id,
+    "first_version_generation",
+    planEntitlements.generationsPerMonth,
+  );
   if (!reservation.allowed) {
     if (reservation.checkFailed) {
       await finishFailed(job.id, "usage_check_failed", "Usage check failed.");

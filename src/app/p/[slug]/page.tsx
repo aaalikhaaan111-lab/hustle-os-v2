@@ -6,6 +6,10 @@ import { PublicAppView } from "@/components/publishing/PublicAppView";
 import { getPublicProject } from "@/lib/publishing/queries";
 import { isPublicSlug } from "@/lib/publishing/slug";
 import { getSiteUrl } from "@/lib/site";
+import { canonicalProjectUrl } from "@/lib/publishing/publicUrl";
+import { brandingRequiredFor } from "@/lib/publishing/branding";
+import { VentrioBadge } from "@/components/publishing/VentrioBadge";
+import { getTranslations } from "next-intl/server";
 import { buildGeneratedApp } from "@/lib/v2/app/pipeline";
 
 /**
@@ -39,7 +43,15 @@ export async function generateMetadata({ params }: PublicProjectPageProps): Prom
   // this does not have to know which one it has.
   const title = publication.name;
   const description = publication.description;
-  const canonical = `${getSiteUrl()}/p/${publication.slug}`;
+  /**
+   * The subdomain is the canonical address.
+   *
+   * `/p/[slug]` still resolves and always will — links already shared must not
+   * rot — but pointing canonical at `[slug].ventrio.org` means search engines
+   * and share sheets converge on one URL instead of splitting between two that
+   * serve identical content.
+   */
+  const canonical = canonicalProjectUrl(publication.slug);
   return {
     title,
     description,
@@ -54,6 +66,19 @@ export default async function PublicProjectPage({ params }: PublicProjectPagePro
   if (!isPublicSlug(slug)) notFound();
   const publication = await getPublicProject(slug);
   if (!publication) notFound();
+
+  // Whose project this is decides whether it carries the badge, so it is read
+  // once here and used by whichever shape renders below.
+  const branding = await brandingRequiredFor(publication.slug);
+  const tBrand = await getTranslations({ locale: publication.locale, namespace: "branding" });
+  const badgeLabels = {
+    madeWith: tBrand("madeWith"),
+    remove: tBrand("remove"),
+    upgradeTitle: tBrand("upgradeTitle"),
+    upgradeBody: tBrand("upgradeBody"),
+    viewPricing: tBrand("viewPricing"),
+    close: tBrand("close"),
+  };
 
   if (publication.app) {
     /**
@@ -74,6 +99,7 @@ export default async function PublicProjectPage({ params }: PublicProjectPagePro
     return (
       <main className="public-project-page">
         <PublicAppView title={publication.name} document={built.document} />
+        {branding && <VentrioBadge labels={badgeLabels} pricingHref={`${getSiteUrl()}/pricing`} />}
       </main>
     );
   }
@@ -82,6 +108,7 @@ export default async function PublicProjectPage({ params }: PublicProjectPagePro
 
   return (
     <main className="public-project-page">
+      {branding && <VentrioBadge labels={badgeLabels} pricingHref={`${getSiteUrl()}/pricing`} />}
       <ProjectOutputRenderer
         projectKey={publication.slug}
         slug={publication.slug}
