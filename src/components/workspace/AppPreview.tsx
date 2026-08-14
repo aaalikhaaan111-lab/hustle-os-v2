@@ -17,10 +17,11 @@
  * address, and the app inside has no way to reach the page hosting it.
  */
 
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { SANDBOX_ATTRIBUTE } from "@/lib/v2/app/sandbox";
 import { subscribePreview } from "@/lib/v2/app/protocol";
+import { withLiveNonce } from "@/lib/workspace/previewNonce";
 import type { DeviceMode } from "@/lib/build/deviceWidths";
 
 /** How long after load to wait for `ready` before showing the app regardless. */
@@ -34,9 +35,16 @@ export interface AppPreviewProps {
   onRuntimeErrors?: (messages: string[]) => void;
 }
 
-export function AppPreview({ document: srcDoc, device, title, onRuntimeErrors }: AppPreviewProps) {
+export function AppPreview({ document: builtDocument, device, title, onRuntimeErrors }: AppPreviewProps) {
   const t = useTranslations("workspace");
   const frameRef = useRef<HTMLIFrameElement | null>(null);
+  /**
+   * The document this frame actually runs, which is the built one with the
+   * nonce corrected to the page's own. Everything below keys off it — readiness,
+   * the reveal floor, the message subscription — so the identity the component
+   * compares is the identity the sandbox was handed.
+   */
+  const srcDoc = useMemo(() => withLiveNonce(builtDocument), [builtDocument]);
   /**
    * Which document reported that it started, rather than a boolean.
    *
