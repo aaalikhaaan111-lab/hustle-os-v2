@@ -192,6 +192,25 @@ async function main(): Promise<void> {
  * work outstanding are read first and swept one at a time. There is no
  * all-accounts variant and this does not add one — it reuses the function the
  * web app already calls, which is what keeps the refund rules in one place.
+ *
+ * WHY THE STALENESS TEST BELOW IS NOT `heartbeat_at < cutoff`. That column is
+ * nullable, and in SQL `null < anything` is null, not true — so a row with no
+ * heartbeat is invisible to that filter. Every other place that answers this
+ * question falls back through the timestamps that are never null:
+ * `expire_stale_generation_jobs_for_user` uses
+ * `coalesce(heartbeat_at, started_at, created_at)`, and `isStale` in
+ * generationJobs.ts does the same. This query was the only one that did not,
+ * which meant the worker could pass over exactly the jobs the function it calls
+ * would have ended.
+ *
+ * No such row exists today: `claimJob` is the only insert and it always writes
+ * a heartbeat. So this is a latent disagreement rather than a live defect — but
+ * the whole point of this sweep is to be the thing that notices when something
+ * has gone wrong in a way nobody predicted, and a candidate query that is
+ * narrower than the function it feeds cannot do that job.
+ *
+ * Being over-inclusive here is free: the function re-checks the cutoff under a
+ * row lock and is the authority on what actually gets ended.
  */
 async function sweepAbandoned(): Promise<number> {
   const { createServiceClient } = await import("../src/lib/supabase/public");
@@ -202,7 +221,11 @@ async function sweepAbandoned(): Promise<number> {
     .select("user_id")
     .eq("kind", "first_version")
     .in("status", ["queued", "running"])
-    .lt("heartbeat_at", cutoff)
+    .or(
+      `heartbeat_at.lt.${cutoff},`
+      + `and(heartbeat_at.is.null,started_at.lt.${cutoff}),`
+      + `and(heartbeat_at.is.null,started_at.is.null,created_at.lt.${cutoff})`,
+    )
     .limit(50);
 
   const users = [...new Set((data ?? []).map((row) => row.user_id))];

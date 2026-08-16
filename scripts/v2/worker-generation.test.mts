@@ -100,6 +100,35 @@ check("a throwing job is left to the stale sweep", /job_threw/.test(workerSource
 check("and the worker sweeps abandoned jobs itself", /expireStaleForUser\(userId\)/.test(workerSource));
 check("draining lets the job in flight finish", /running = false;/.test(workerSource));
 
+/**
+ * THE SWEEP'S CANDIDATE QUERY MUST NOT BE NARROWER THAN THE FUNCTION IT FEEDS.
+ *
+ * `heartbeat_at` is nullable, and in SQL `null < cutoff` is null, not true — so
+ * a bare `.lt("heartbeat_at", …)` cannot see a row that has no heartbeat. Every
+ * other answer to "is this job stale" falls through the timestamps that are
+ * never null: the database function uses
+ * `coalesce(heartbeat_at, started_at, created_at)` and `isStale` mirrors it.
+ * The worker's query was the only one that did not, so it could pass over
+ * exactly the jobs `expire_stale_generation_jobs_for_user` would have ended.
+ *
+ * Not reachable today — `claimJob` is the only insert and always writes a
+ * heartbeat — which is why this is asserted rather than left to be noticed. The
+ * sweep exists to catch states nobody predicted; one that only looks where the
+ * predicted states are is not doing that.
+ */
+check("the sweep does not filter on heartbeat alone",
+  !/\.lt\("heartbeat_at", cutoff\)/.test(workerSource),
+  "a null heartbeat is invisible to that filter, and null is exactly the abandoned case");
+check("it falls back to started_at when there is no heartbeat",
+  /heartbeat_at\.is\.null,started_at\.lt\./.test(workerSource));
+check("and to created_at when there is neither",
+  /heartbeat_at\.is\.null,started_at\.is\.null,created_at\.lt\./.test(workerSource));
+check("which is the same fallback chain the database function applies",
+  /coalesce\(heartbeat_at, started_at, created_at\)/.test(
+    read("supabase/migrations/20260803120000_add_user_wide_stale_recovery.sql"),
+  ),
+  "if the function's rule changes, the query feeding it has to change with it");
+
 // Secrets are checked by name and never printed.
 check("the worker refuses to start without its configuration", /startup_failed/.test(workerSource));
 check("and logs only the names of what is missing", /log\("startup_failed", \{ missing \}\)/.test(workerSource));
