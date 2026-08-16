@@ -24,9 +24,10 @@ import { useEffect } from "react";
  * the composer sits above the keyboard and the conversation keeps the rest of
  * the space instead of being pushed out of it.
  *
- * `offsetTop` matters too: iOS scrolls the *visual* viewport within the layout
- * viewport, so without accounting for it a fixed shell drifts up behind the
- * keyboard by exactly that amount.
+ * Height only. An earlier version also published `offsetTop` and translated the
+ * frame by it — which moved the app during any drag with the keyboard open,
+ * because that value oscillates throughout a gesture. The frame is anchored to
+ * the layout viewport now, so there is nothing to compensate for.
  *
  * Set on the document element rather than passed through React so the value can
  * change at animation frequency while the keyboard slides, without re-rendering
@@ -45,7 +46,10 @@ export function useAppViewport(): void {
       // Rounded down: a fractional height leaves a sub-pixel gap that iOS
       // renders as a hairline of page showing under the shell.
       root.style.setProperty("--ventrio-app-height", `${Math.floor(viewport.height)}px`);
-      root.style.setProperty("--ventrio-app-offset", `${Math.round(viewport.offsetTop)}px`);
+      // `offsetTop` is deliberately NOT published any more. It was used to
+      // translate the frame, and because it oscillates during a drag with the
+      // keyboard open, that translation moved the app. The frame is anchored
+      // instead — see `.ventrio-app-frame`.
     };
 
     const schedule = () => {
@@ -64,7 +68,7 @@ export function useAppViewport(): void {
       // Handed back to the stylesheet's `100svh` fallback rather than left
       // pinned to whatever the last measurement happened to be.
       root.style.removeProperty("--ventrio-app-height");
-      root.style.removeProperty("--ventrio-app-offset");
+
     };
   }, []);
 }

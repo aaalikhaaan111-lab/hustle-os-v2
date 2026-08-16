@@ -680,25 +680,63 @@ function ToolbarMenu({
   items: Array<{ key: string; label: string; icon: ReactNode; onSelect?: () => void; href?: string }>;
 }) {
   const [open, setOpen] = useState(false);
-  const [spot, setSpot] = useState<{ top: number; right: number } | null>(null);
+  const [spot, setSpot] = useState<{ top: number; right: number; maxHeight: number } | null>(null);
   const trigger = useRef<HTMLButtonElement | null>(null);
+  const panel = useRef<HTMLDivElement | null>(null);
 
+  /**
+   * Placed against the VISIBLE viewport, and aware of its own height.
+   *
+   * The previous version clamped the menu's TOP edge to the bottom of the
+   * screen — which is not a constraint at all, because the menu has height. A
+   * trigger near the bottom put the top edge just inside the viewport and the
+   * remaining rows below it, off screen. That is the "leaves the viewport"
+   * report, and it survived being portalled because the portal fixed clipping,
+   * not arithmetic.
+   *
+   * It also measured `window.innerHeight`, which is the LAYOUT viewport: with
+   * the keyboard open or the URL bar showing, that is a taller box than the one
+   * the person can see.
+   *
+   * So: measure the panel, prefer below the trigger, flip above when it does
+   * not fit, and cap the height when it fits in neither — a menu that scrolls
+   * inside itself is finished; one that runs off the screen is not.
+   */
   const place = useCallback(() => {
     const node = trigger.current;
     if (!node) return;
+
     const rect = node.getBoundingClientRect();
+    const view = window.visualViewport;
+    const viewH = view?.height ?? window.innerHeight;
+    const viewW = view?.width ?? window.innerWidth;
+
     const GAP = 6;
     const MARGIN = 8;
+    // Before the first measurement the panel is not mounted; the estimate only
+    // has to be close enough to choose a side, and it is corrected on the next
+    // frame once the real height is known.
+    const height = panel.current?.offsetHeight ?? 200;
+
+    const below = viewH - rect.bottom - GAP - MARGIN;
+    const above = rect.top - GAP - MARGIN;
+    const openUp = below < height && above > below;
+
     setSpot({
-      top: Math.min(rect.bottom + GAP, window.innerHeight - MARGIN),
-      // Anchored to the trigger's right edge, but never past the screen edge.
-      right: Math.max(MARGIN, window.innerWidth - rect.right),
+      top: openUp
+        ? Math.max(MARGIN, rect.top - GAP - Math.min(height, above))
+        : Math.min(rect.bottom + GAP, Math.max(MARGIN, viewH - Math.min(height, below) - MARGIN)),
+      right: Math.max(MARGIN, viewW - rect.right),
+      maxHeight: Math.max(120, (openUp ? above : below)),
     });
   }, []);
 
   useEffect(() => {
     if (!open) return;
     place();
+    // Again on the next frame: the first call ran before the panel was mounted
+    // and had to estimate its height.
+    const settle = window.requestAnimationFrame(place);
     const close = () => setOpen(false);
     const onKey = (event: KeyboardEvent) => { if (event.key === "Escape") setOpen(false); };
     // `true` so a scroll inside the preview panel closes it too, not only one
@@ -707,6 +745,7 @@ function ToolbarMenu({
     window.addEventListener("resize", close);
     document.addEventListener("keydown", onKey);
     return () => {
+      window.cancelAnimationFrame(settle);
       window.removeEventListener("scroll", close, true);
       window.removeEventListener("resize", close);
       document.removeEventListener("keydown", onKey);
@@ -737,10 +776,12 @@ function ToolbarMenu({
           <div
             role="menu"
             aria-label={label}
-            className="lift-3 fixed z-[61] flex min-w-[224px] max-w-[calc(100vw-16px)] flex-col rounded-[var(--r-md)] border p-1"
+            ref={panel}
+            className="lift-3 fixed z-[61] flex min-w-[224px] max-w-[calc(100vw-16px)] flex-col overflow-y-auto overscroll-contain rounded-[var(--r-md)] border p-1"
             style={{
               top: spot.top,
               right: spot.right,
+              maxHeight: spot.maxHeight,
               borderColor: "var(--line)",
               background: "var(--surface)",
             }}

@@ -84,9 +84,30 @@ check("the menu escapes its clipping ancestors", /createPortal\(/.test(code));
 check("rendered into the document body", /document\.body,/.test(code));
 check("and it is no longer a details element", !/<details/.test(code));
 check("it is positioned from the trigger's measured rect", /getBoundingClientRect\(\)/.test(code));
+/**
+ * THE CLAMP HAD TO KNOW ITS OWN HEIGHT. The first version bounded the menu's
+ * TOP edge to the bottom of the screen, which is not a constraint: the menu has
+ * height, so a trigger near the bottom put the top edge just inside the viewport
+ * and every row below it off screen. That is why "leaves the viewport" survived
+ * being portalled — the portal fixed clipping, not arithmetic.
+ *
+ * It also measured `window.innerHeight`, the LAYOUT viewport, which with the
+ * keyboard open is a taller box than the one the person can see.
+ */
+check("it measures the visible viewport, not the layout one",
+  /window\.visualViewport/.test(code) && /view\?\.height \?\? window\.innerHeight/.test(code));
+check("it measures its own height", /panel\.current\?\.offsetHeight/.test(code));
+check("it opens upward when it does not fit below",
+  /const openUp = below < height && above > below/.test(code));
 check("clamped inside the viewport horizontally",
-  /Math\.max\(MARGIN, window\.innerWidth - rect\.right\)/.test(code));
-check("and vertically", /Math\.min\(rect\.bottom \+ GAP, window\.innerHeight - MARGIN\)/.test(code));
+  /Math\.max\(MARGIN, viewW - rect\.right\)/.test(code));
+check("and vertically, accounting for its height",
+  /viewH - Math\.min\(height, below\) - MARGIN/.test(code));
+check("and it scrolls inside itself rather than off the screen",
+  /maxHeight: spot\.maxHeight/.test(code) && /overflow-y-auto/.test(code));
+check("it re-places once its real height is known",
+  /requestAnimationFrame\(place\)/.test(code),
+  "the first call runs before the panel is mounted and has to estimate");
 check("it cannot exceed the screen width", /max-w-\[calc\(100vw-16px\)\]/.test(code));
 
 /* it goes away the four ways a person expects */

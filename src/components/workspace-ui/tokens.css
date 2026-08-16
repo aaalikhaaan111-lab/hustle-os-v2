@@ -308,18 +308,26 @@
    instead of one conversation". A calm surface and one hairline is enough to
    say "type here"; a glow says "this is a different thing". */
 
+/* Contained, not a slab.
+   -------------------------------------------------------------------------
+   This was a near-opaque white fill (0.86) over a 20px saturating backdrop
+   blur, with an inset highlight and a 30px drop shadow. Three things went
+   wrong with that on a phone. The blur forces a compositing layer the width of
+   the conversation, which is what made it read as "a large white surface"
+   rather than a field. The near-white fill on an almost-white canvas gave it no
+   edge, so it merged upward into the messages instead of sitting under them.
+   And the drop shadow spread over the last message, which is the "covers
+   conversation content" part.
+
+   A field should look like a field: one solid surface, one visible hairline, no
+   blur, and a shadow small enough to say "above" without reaching anything. */
 .wsRoot .ws-composer {
   position: relative;
   isolation: isolate;
   border: 1px solid var(--line-2);
   border-radius: var(--r-lg);
-  background: rgb(255 255 255 / 0.86);
-  -webkit-backdrop-filter: saturate(180%) blur(20px);
-  backdrop-filter: saturate(180%) blur(20px);
-  box-shadow:
-    inset 0 1px 0 rgb(255 255 255 / 0.95),
-    0 1px 2px rgb(14 16 22 / 0.04),
-    0 12px 30px -22px rgb(14 16 22 / 0.26);
+  background: var(--surface);
+  box-shadow: 0 1px 2px rgb(14 16 22 / 0.05);
   transition:
     border-color var(--t-ctl) var(--ease),
     box-shadow var(--t-ctl) var(--ease),
@@ -723,10 +731,31 @@
    and without it the shell stays full height while iOS scrolls the composer
    into view, pushing the conversation off the top. */
 .ventrio-app-frame {
+  /* Anchored, not translated.
+     ---------------------------------------------------------------------
+     This carried `transform: translateY(--ventrio-app-offset)` to compensate
+     for iOS scrolling the visual viewport inside the layout viewport. It was
+     the wrong tool twice over.
+
+     It MOVED THE APP. `offsetTop` oscillates while a drag is in progress with
+     the keyboard open, so the frame translated with every gesture — which is
+     precisely the "aggressive dragging can still move/break the app frame"
+     that came back from the device. The compensation was the bug.
+
+     And a transform makes `position: fixed` descendants resolve against the
+     transformed element rather than the viewport, so it silently re-based every
+     fixed child inside the shell — including the mobile nav drawer, which is
+     `fixed inset-0`.
+
+     Anchoring the frame to the layout viewport instead needs no compensation:
+     it cannot drift, because it is not positioned relative to anything that
+     moves. The visual-viewport HEIGHT still does the real work of keeping the
+     composer above the keyboard. */
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
   height: var(--ventrio-app-height, 100svh);
-  /* iOS scrolls the visual viewport within the layout viewport; without this
-     the shell drifts up behind the keyboard by exactly that amount. */
-  transform: translateY(var(--ventrio-app-offset, 0px));
 }
 
 @supports not (height: 100svh) {

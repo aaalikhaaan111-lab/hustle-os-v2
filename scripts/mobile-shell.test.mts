@@ -56,12 +56,36 @@ check("and the shell still clips its own overflow", /overflow-hidden/.test(shell
 check("the visual viewport is measured", /window\.visualViewport/.test(hook),
   "svh and dvh both describe the layout viewport, which a keyboard does not change");
 check("its height is published to the shell", /--ventrio-app-height/.test(hook) && /--ventrio-app-height/.test(tokens));
-check("and its offset too", /--ventrio-app-offset/.test(hook) && /--ventrio-app-offset/.test(tokens),
-  "iOS scrolls the visual viewport inside the layout viewport; ignoring it makes a fixed shell drift behind the keyboard");
+/**
+ * The offset is deliberately NOT used. Translating the frame by it moved the
+ * app during any drag with the keyboard open, because the value oscillates
+ * throughout a gesture — and a transform additionally re-bases every
+ * `position: fixed` descendant, including the mobile nav drawer. The frame is
+ * anchored instead, so there is nothing to compensate for.
+ */
+// Scoped to the frame's own rule, with comments stripped: other components
+// translate legitimately, and the rule's own comment explains what it no longer
+// does — matching either would pass the check by describing it.
+const cssCode = tokens.replace(/\/\*[\s\S]*?\*\//g, "");
+const frameRule = cssCode.split(".ventrio-app-frame {")[1]?.split("}")[0] ?? "";
+check("the frame is not translated", !/transform/.test(frameRule),
+  "the compensation was itself the thing that moved the app");
+check("it is anchored to the viewport instead", /position: fixed/.test(frameRule));
+check("and no offset is published", !/--ventrio-app-offset/.test(hook));
 check("both resize and scroll are observed", /"resize", schedule/.test(hook) && /"scroll", schedule/.test(hook));
 check("updates are coalesced to a frame", /requestAnimationFrame/.test(hook),
   "the keyboard slides, so this fires continuously");
-check("the properties are released on unmount", /removeProperty\("--ventrio-app-height"\)/.test(hook));
+check("the property is released on unmount", /removeProperty\("--ventrio-app-height"\)/.test(hook));
+
+/* ── the composer is a field, not a slab ─────────────────────────────────── */
+
+check("the composer does not force a compositing layer",
+  !/backdrop-filter/.test(cssCode.split(".wsRoot .ws-composer {")[1]?.split("}")[0] ?? ""),
+  "a 20px blur the width of the conversation is what read as a large white surface");
+check("it has a solid surface with a visible edge",
+  /background: var\(--surface\)/.test(cssCode.split(".wsRoot .ws-composer {")[1]?.split("}")[0] ?? ""));
+check("and no shadow that reaches the last message",
+  !/30px/.test(cssCode.split(".wsRoot .ws-composer {")[1]?.split("}")[0] ?? ""));
 check("an engine without visualViewport degrades to the CSS fallback",
   /if \(!viewport\) return;/.test(hook));
 check("the shell installs the hook", /useAppViewport\(\)/.test(shellCode));
