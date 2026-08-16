@@ -300,28 +300,13 @@
   position: relative;
 }
 
-.wsRoot .ws-composer-shell::before {
-  content: "";
-  position: absolute;
-  inset: -22px 0 -16px;
-  border-radius: 32px;
-  pointer-events: none;
-  background: radial-gradient(72% 120% at 50% 108%, rgb(107 100 242 / 0.13), transparent 68%);
-  opacity: 0.5;
-  transform: scale(0.98);
-  transition:
-    opacity 360ms var(--ease),
-    transform 360ms var(--ease);
-}
-
-.wsRoot .ws-composer-shell:hover::before {
-  opacity: 0.75;
-}
-
-.wsRoot .ws-composer-shell:focus-within::before {
-  opacity: 1;
-  transform: scale(1);
-}
+/* The composer is part of the conversation, not an object floating over it.
+   -------------------------------------------------------------------------
+   There was a radial purple glow behind it, growing on hover and focus. It was
+   the single strongest reason the composer read as a separate piece of UI —
+   real-device QA: "suggestions/composer/chat still feel like separate pieces
+   instead of one conversation". A calm surface and one hairline is enough to
+   say "type here"; a glow says "this is a different thing". */
 
 .wsRoot .ws-composer {
   position: relative;
@@ -746,4 +731,35 @@
 
 @supports not (height: 100svh) {
   .ventrio-app-frame { height: var(--ventrio-app-height, 100vh); }
+}
+
+/* The page cannot move. Only the conversation can.
+   -------------------------------------------------------------------------
+   Real-device QA: "the whole page still scrolls/bounces and can move outside
+   the usable viewport". That is the document rubber-banding underneath a shell
+   that is already the right height — the shell was fixed, the page under it was
+   not, so a drag anywhere moved the whole app and revealed background.
+
+   `overscroll-behavior: none` stops the chain at the document, so a scroll that
+   reaches the end of the conversation does not continue into the page. Locking
+   the body removes the scroll container entirely on workspace routes: there is
+   exactly one scrolling element, and it is inside the frame. */
+html:has(.ventrio-app-frame),
+body:has(.ventrio-app-frame) {
+  height: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
+  /* iOS honours this on the scroller, not the document, so it is set on both. */
+  -webkit-overflow-scrolling: auto;
+  /* A drag that starts on chrome rather than the conversation must do nothing
+     rather than pan the page. */
+  touch-action: pan-y;
+}
+
+/* Every scroller inside the frame keeps its own chain to itself, so reaching
+   the top of the conversation never starts dragging the app. */
+.ventrio-app-frame [data-scroll],
+.ventrio-app-frame .overflow-y-auto,
+.ventrio-app-frame .overflow-auto {
+  overscroll-behavior: contain;
 }

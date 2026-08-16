@@ -120,8 +120,8 @@ export function WorkspaceComposer({
              input — inside a sheet that is exactly the viewport tall, so the
              zoom left the composer half off-screen with no obvious way back.
              The type scale above md is unchanged. */
-          className={`w-full resize-none bg-transparent pt-3.5 text-[16px] leading-[1.6] outline-none placeholder:text-[var(--ink-3)] disabled:opacity-60 md:text-[15px] ${
-            hasTools ? "px-4 pb-1" : "py-3.5 pl-4 pr-14"
+          className={`w-full resize-none bg-transparent pt-2.5 text-[16px] leading-[1.45] outline-none placeholder:text-[var(--ink-3)] disabled:opacity-60 md:text-[15px] ${
+            hasTools ? "px-3.5 pb-0.5" : "py-2.5 pl-3.5 pr-12"
           }`}
           onKeyDown={(event) => {
             if (event.key === "Enter" && !event.shiftKey) {
@@ -131,7 +131,7 @@ export function WorkspaceComposer({
           }}
         />
 
-        <div className={hasTools ? "flex h-11 items-center gap-1 px-2.5 pb-1.5" : "contents"}>
+        <div className={hasTools ? "flex h-9 items-center gap-1 px-2 pb-1" : "contents"}>
           {voice && (
             <VentrioButton
               variant="composer"

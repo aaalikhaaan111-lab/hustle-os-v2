@@ -201,12 +201,22 @@ function runFlow(idea: string, picks: (string | null)[]) {
     /<NextIntlClientProvider locale=\{props\.projectLocale\}/.test(page));
   check("…loading that locale's messages", /messages\/\$\{props\.projectLocale\}\.json/.test(page));
 
-  // Both suggestion chips and intake labels resolve through the same provider,
-  // so scoping it covers them together — that is the point of fixing it there
-  // rather than per-component.
+  /**
+   * The workspace's labels resolve through that same provider, which is the
+   * point of scoping it there rather than per-component.
+   *
+   * This used to witness the property with the standing suggestion chips. Those
+   * are gone — three fixed phrases that sat above the composer for the life of
+   * a project, which real-device QA called static, irrelevant clutter — so the
+   * witness is now the workspace's own translators, which cannot disappear
+   * without the screen losing its words entirely.
+   */
   const workspace = readFileSync(
     new URL("../src/components/build/PreOutputWorkspace.tsx", import.meta.url), "utf8");
-  check("chips resolve through the provider", /suggestions = output/.test(workspace));
+  check("workspace labels resolve through the provider",
+    /useTranslations\("stage3"\)/.test(workspace) && /useTranslations\("workspace"\)/.test(workspace));
+  check("and no standing suggestion row remains",
+    !/suggestions = output/.test(workspace));
   check("intake labels resolve through the provider", /tb\(intake\.step\.titleKey/.test(workspace));
 }
 

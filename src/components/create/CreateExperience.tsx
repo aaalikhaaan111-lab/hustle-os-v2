@@ -431,10 +431,9 @@ export function CreateExperience({ userId, initialDraft }: CreateExperienceProps
 
   return (
     <div className={cn("creation-canvas relative flex h-full min-h-0 flex-col", started && "is-started", turn?.transition === "focus" && "is-focused")}>
-      <div aria-hidden className="creation-focus-field" />
 
       <div ref={scrollRef} className="relative z-10 min-h-0 flex-1 overflow-y-auto overscroll-contain">
-        <div className={cn("mx-auto flex min-h-full w-full max-w-[760px] flex-col px-4 sm:px-7", started ? "py-8 sm:py-12" : "py-7 sm:py-10")}>
+        <div className={cn("mx-auto flex min-h-full w-full max-w-[720px] flex-col px-3.5 sm:px-7", started ? "py-5 sm:py-10" : "py-5 sm:py-9")}>
           {!started ? (
             /* The empty state, as software rather than marketing.
                This was a landing page inside the product: an "IDEA →
@@ -446,21 +445,35 @@ export function CreateExperience({ userId, initialDraft }: CreateExperienceProps
                What remains is the question, the composer, and the five starting
                points as chips: the same guidance for a first-time user, at the
                weight of a suggestion rather than a billboard. */
-            <section className="flex w-full flex-col gap-4">
-              <h1 className="text-[21px] font-semibold leading-snug text-ink sm:text-[23px]">
-                {t("emptyPrompt")}
-              </h1>
-              <p className="text-[14.5px] leading-6 text-ink-secondary">{t("emptyHint")}</p>
+            /* The empty state IS the conversation's first turn.
+               It was a hero, then a heading over a hint over a row of chips —
+               which real-device QA still called empty, generic and visually
+               weak, because it was a form waiting to be filled rather than
+               something that had said anything.
+               It now renders in exactly the language every assistant turn uses:
+               same measure, same size, same rhythm. Ventrio opens by asking,
+               the chips are that turn's own suggestions, and the person answers
+               in the composer below. From the first pixel there is one
+               conversation rather than a screen that becomes one. */
+            <section className="flex w-full flex-col gap-3">
+              <div className="animate-message-in flex flex-col gap-2.5">
+                <p className="text-[17px] font-semibold leading-[1.4] text-ink">{t("emptyPrompt")}</p>
+                <p className="text-[15px] leading-[1.6] text-ink-secondary">{t("emptyHint")}</p>
+              </div>
 
-              <div className="flex flex-wrap gap-2 pt-1">
+              {/* This turn's suggestions, and the only ones on the screen.
+                  They belong to the opening question, so they disappear the
+                  moment the conversation starts — unlike the three standing
+                  buttons that used to sit above the composer forever. */}
+              <div className="animate-message-in flex flex-wrap gap-2 pt-0.5">
                 {STARTING_POINTS.map((point) => (
                   <button
                     key={point.id}
                     type="button"
                     disabled={isSending || creating}
                     onClick={() => pickStartingPoint(point)}
-                    className="min-h-[40px] rounded-full border px-3.5 text-[14px] font-medium transition-colors disabled:opacity-50"
-                    style={{ borderColor: "var(--line)", background: "var(--surface)", color: "var(--ink-2)" }}
+                    className="min-h-[38px] rounded-full border px-3.5 text-[14px] font-medium transition-colors disabled:opacity-50"
+                    style={{ borderColor: "var(--line-2)", background: "var(--surface)", color: "var(--ink-2)" }}
                   >
                     {t(point.labelKey)}
                   </button>

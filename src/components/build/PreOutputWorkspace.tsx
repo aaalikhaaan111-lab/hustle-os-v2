@@ -205,9 +205,21 @@ export function PreOutputWorkspace({
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [messages, isSending, isGenerating, output]);
 
-  const suggestions = output
-    ? [t("editPremium"), t("editAudience"), t("editCta")]
-    : [t("sharpenDirection"), t("whoFirst"), t("firstVersionCouldBe")];
+  /**
+   * There are no standing suggestions any more.
+   *
+   * Three fixed phrases sat above the composer for the entire life of a
+   * project — "Help me sharpen this direction", "Who should this be for
+   * first?", "What could the first version become?" before a version existed,
+   * and three edit prompts after. They never changed, so they were never about
+   * what had just been said; real-device QA called them static, irrelevant
+   * clutter, and they were. A row of buttons that is always there is furniture,
+   * not a suggestion.
+   *
+   * The assistant already proposes concrete next steps inside the conversation
+   * when it has one to make. That is where a contextual action belongs, and it
+   * is the only place one appears now.
+   */
 
   // The words the intake reasons about. The saved concept is the user's own
   // description; `direction` is what the create flow already distilled from it.
@@ -696,23 +708,8 @@ export function PreOutputWorkspace({
               </div>
             </div>
 
-            <div className="shrink-0 px-5 pb-5 pt-2 sm:px-8 sm:pb-7">
+            <div className="shrink-0 px-3.5 pb-3 pt-1.5 sm:px-8 sm:pb-6">
               <div className="mx-auto w-full" style={{ maxWidth: measure }}>
-                <div className="mb-2 flex flex-wrap gap-2" hidden={!!intake.step}>
-                  {suggestions.map((suggestion) => (
-                    <VentrioButton
-                      key={suggestion}
-                      variant="secondary"
-                      size="sm"
-                      shape="pill"
-                      disabled={busy}
-                      onClick={() => submit(suggestion)}
-                      weight="medium"
-                    >
-                      {suggestion}
-                    </VentrioButton>
-                  ))}
-                </div>
                 {note && (
                   <p className="mb-1.5 text-[13px]" role="status" style={{ color: "var(--warn)" }}>
                     {note}
