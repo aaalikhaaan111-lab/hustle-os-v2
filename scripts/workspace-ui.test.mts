@@ -136,7 +136,21 @@ check(
 check("the proposal renders as a stack", /className="choice-stack"/.test(createExperience));
 check("with one row component per direction", /<DirectionRow/.test(createExperience));
 check("and the large card is gone", !/direction-card|DirectionCard/.test(createCode));
-check("discovery choices stack too", (createExperience.match(/choice-stack/g) ?? []).length >= 3, "expected three stacked surfaces");
+/**
+ * Two stacked surfaces now, not three: the proposal and the discovery choices.
+ *
+ * The third was the empty state's five starting points, which were full-width
+ * rows under a marketing hero. The hero is gone — it was a landing page inside
+ * the product — and the starting points are chips in the conversation flow, at
+ * the weight of a suggestion. The rule they existed to satisfy still holds and
+ * is asserted below: nothing on this screen is a column grid on a phone.
+ */
+check("discovery choices stack too", (createExperience.match(/choice-stack/g) ?? []).length >= 2, "expected two stacked surfaces");
+check("the empty state offers chips, not a hero",
+  /emptyPrompt/.test(createCode) && /flex flex-wrap gap-2/.test(createCode));
+check("and the marketing hero is gone",
+  !/openingSignal/.test(createCode) && !/clamp\(2\.35rem/.test(createCode),
+  "an 83px display headline and an eyebrow are an advertisement for a product already open");
 
 // The compact intake was a sideways filmstrip; options off-screen are options
 // nobody knows about.

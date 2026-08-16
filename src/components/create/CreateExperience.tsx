@@ -434,36 +434,36 @@ export function CreateExperience({ userId, initialDraft }: CreateExperienceProps
       <div aria-hidden className="creation-focus-field" />
 
       <div ref={scrollRef} className="relative z-10 min-h-0 flex-1 overflow-y-auto overscroll-contain">
-        <div className={cn("mx-auto flex min-h-full w-full max-w-[760px] flex-col px-4 sm:px-7", started ? "py-8 sm:py-12" : "justify-center py-9 sm:py-14")}>
+        <div className={cn("mx-auto flex min-h-full w-full max-w-[760px] flex-col px-4 sm:px-7", started ? "py-8 sm:py-12" : "py-7 sm:py-10")}>
           {!started ? (
-            <section className="emergence mx-auto flex w-full flex-col items-center text-center">
-              <p className="mb-4 text-xs font-medium tracking-[0.18em] text-accent/80">
-                {t("openingSignal")}
-              </p>
-              <h1 className="ventrio-display max-w-[720px] text-balance text-[clamp(2.35rem,8vw,5.2rem)] leading-[0.96] text-ink">
-                {t("headline")}
+            /* The empty state, as software rather than marketing.
+               This was a landing page inside the product: an "IDEA →
+               POSSIBILITY" eyebrow, a headline at clamp(2.35rem, 8vw, 5.2rem)
+               — up to 83px, in the display face — a subhead, and five full-width
+               rows. On a phone that is a hero to scroll past before the one
+               thing you came to do, and it reads as an advertisement for a
+               product you have already opened.
+               What remains is the question, the composer, and the five starting
+               points as chips: the same guidance for a first-time user, at the
+               weight of a suggestion rather than a billboard. */
+            <section className="flex w-full flex-col gap-4">
+              <h1 className="text-[21px] font-semibold leading-snug text-ink sm:text-[23px]">
+                {t("emptyPrompt")}
               </h1>
-              <p className="mt-5 max-w-xl text-pretty text-[15px] leading-7 text-ink-secondary sm:text-base">
-                {t("subhead")}
-              </p>
+              <p className="text-[14.5px] leading-6 text-ink-secondary">{t("emptyHint")}</p>
 
-              {/* Five stacked rows, not a five-column strip. At the width a
-                  phone actually has, five columns were five slivers. */}
-              <div className="choice-stack mt-9 w-full">
-                {STARTING_POINTS.map((point, index) => (
-                  <div key={point.id} className="choice-row-wrap" style={{ animationDelay: `${index * 45}ms` }}>
-                    <button
-                      type="button"
-                      disabled={isSending || creating}
-                      onClick={() => pickStartingPoint(point)}
-                      className="choice-row"
-                    >
-                      <span className="choice-row-text">
-                        <span className="choice-row-title">{t(point.labelKey)}</span>
-                        <span className="choice-row-hint">{t(point.detailKey)}</span>
-                      </span>
-                    </button>
-                  </div>
+              <div className="flex flex-wrap gap-2 pt-1">
+                {STARTING_POINTS.map((point) => (
+                  <button
+                    key={point.id}
+                    type="button"
+                    disabled={isSending || creating}
+                    onClick={() => pickStartingPoint(point)}
+                    className="min-h-[40px] rounded-full border px-3.5 text-[14px] font-medium transition-colors disabled:opacity-50"
+                    style={{ borderColor: "var(--line)", background: "var(--surface)", color: "var(--ink-2)" }}
+                  >
+                    {t(point.labelKey)}
+                  </button>
                 ))}
               </div>
             </section>

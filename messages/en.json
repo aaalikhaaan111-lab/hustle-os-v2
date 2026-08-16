@@ -113,7 +113,9 @@
     "fallbackAssumption": "The creation conversation did not happen: the audience, the motivation and the first experience are assumed from the idea as written and are not confirmed.",
     "progressPreparing": "Preparing the project…",
     "progressBuilding": "Building the application…",
-    "progressOpening": "Opening your workspace…"
+    "progressOpening": "Opening your workspace…",
+    "emptyPrompt": "What do you want to build?",
+    "emptyHint": "Describe it in your own words — a hobby, a skill, a problem, or something you already sell."
   },
   "stage3": {
     "errorInvalid": "That project request was invalid. Please try again.",
