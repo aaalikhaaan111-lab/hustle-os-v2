@@ -59,9 +59,12 @@ check(
 // viewport it was given — it renders an opaque-origin document whose height and
 // breakpoints it cannot measure from outside. Both forms must still go through
 // the frame; a preview rendered beside it would be the original bug again.
+// `effectiveDevice`, not `device`: a phone previews as a phone regardless of
+// the toggle, which is hidden there anyway. The property — that the chosen
+// viewport reaches a preview that measures itself — is unchanged.
 check(
   "the device is passed to a function-form preview",
-  /typeof preview === "function" \? preview\(device\)/.test(buildScreen),
+  /typeof preview === "function" \? preview\(effectiveDevice\)/.test(buildScreen),
 );
 
 // The exact shape of the bug: a width derived from `device` applied as a CSS
@@ -126,7 +129,7 @@ check(
 // re-measure; without it the iframe keeps the previous document's layout.
 check(
   "the frame remounts when the device changes",
-  /key=\{`\$\{reloadKey\}-\$\{device\}`\}/.test(buildScreen),
+  /key=\{`\$\{reloadKey\}-\$\{effectiveDevice\}`\}/.test(buildScreen),
 );
 
 // All three modes must be reachable from the rail, or tablet is dead code.

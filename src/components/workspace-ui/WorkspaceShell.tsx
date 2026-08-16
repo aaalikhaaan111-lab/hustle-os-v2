@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useState, useSyncExternalStore, type ReactNode } from "react";
+import { useAppViewport } from "@/lib/workspace/useAppViewport";
 import {
   IconAnalytics,
   IconBack,
@@ -81,6 +82,10 @@ export function WorkspaceShell({
   actions,
   children,
 }: WorkspaceShellProps) {
+  // The shell tracks the visible viewport, so the keyboard cannot push the
+  // conversation off the top. See the hook for why svh alone is not enough.
+  useAppViewport();
+
   const t = useTranslations("workspace");
   const pathname = usePathname();
   const narrow = useSyncExternalStore(
@@ -267,21 +272,26 @@ export function WorkspaceShell({
   };
 
   /**
-   * `h-dvh`, not `h-screen`.
+   * Sized from the VISUAL viewport, not `h-dvh` and not `h-screen`.
    *
-   * `100vh` on a mobile browser is the viewport with the URL bar HIDDEN, so
-   * while the bar is showing this sheet is taller than the visible area — and
-   * `overflow-hidden` means there is no scrolling to whatever fell off the
-   * bottom. What sits at the bottom is the composer, so the product's one input
-   * was off-screen and unreachable on a phone until the visitor happened to
-   * scroll enough of the page to retract the bar.
+   * `100vh` is the viewport with the URL bar HIDDEN, so on a phone it is taller
+   * than the screen and the bottom of the shell sits under the browser chrome.
    *
-   * `100dvh` tracks the viewport as the bar shows and hides, so the sheet is
-   * always the space that actually exists. Desktop is unchanged: with no
-   * dynamic browser chrome, dvh and vh resolve to the same number.
+   * `100dvh` was the previous fix and traded one problem for another: it tracks
+   * the bar as it collapses and expands, so the shell resized on every scroll
+   * gesture — the layout "jumping" that was reported.
+   *
+   * `100svh` is the stable one, and it is the fallback here. On top of it,
+   * `useAppViewport` publishes the visual viewport's height, which is the only
+   * thing that reacts to the keyboard: without it the shell stays full height,
+   * iOS scrolls the composer into view, and the conversation is pushed off the
+   * top — a screen that is mostly composer, which is what a real iPhone showed.
    */
   return (
-    <div className="wsRoot flex h-dvh w-full overflow-hidden" style={{ background: "var(--bg)" }}>
+    <div
+      className="wsRoot ventrio-app-frame flex w-full overflow-hidden"
+      style={{ background: "var(--bg)" }}
+    >
       <aside
         className="ws-rail hidden shrink-0 flex-col overflow-hidden transition-[width] duration-[var(--t-ctl)] ease-[var(--ease)] md:flex"
         style={{ width: collapsed ? RAIL_NARROW : RAIL_WIDE }}

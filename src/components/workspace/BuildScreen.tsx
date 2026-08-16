@@ -172,7 +172,18 @@ export function BuildScreen({
     () => true
   );
   const [fullScreen, setFullScreen] = useState(false);
+  /**
+   * A phone previews as a phone.
+   *
+   * This defaulted to `"desktop"`, so someone on an iPhone opened their app
+   * rendered at a desktop width and scaled down — small text, a layout they
+   * were not going to ship to a phone anyway, and no indication that the
+   * viewport was a choice. The device toggles are hidden on narrow screens
+   * (a phone IS the mobile viewport), which made the wrong default permanent
+   * there rather than merely wrong.
+   */
   const [device, setDevice] = useState<DeviceMode>("desktop");
+  const effectiveDevice: DeviceMode = narrow ? "mobile" : device;
   const [reloadKey, setReloadKey] = useState(0);
   const [copied, setCopied] = useState<"done" | "failed" | null>(null);
 
@@ -453,13 +464,13 @@ export function BuildScreen({
             {hasOutput ? (
               <div className="flex w-full justify-center">
                 <ViewportFrame
-                  key={`${reloadKey}-${device}`}
-                  width={DEVICE_WIDTHS[device]}
+                  key={`${reloadKey}-${effectiveDevice}`}
+                  width={DEVICE_WIDTHS[effectiveDevice]}
                   title={t("previewRegion")}
                   className="lift-2 rounded-[var(--r-xl)] border"
                   style={{ borderColor: "var(--line)", background: "var(--surface)" }}
                 >
-                  {typeof preview === "function" ? preview(device) : preview}
+                  {typeof preview === "function" ? preview(effectiveDevice) : preview}
                 </ViewportFrame>
               </div>
             ) : (

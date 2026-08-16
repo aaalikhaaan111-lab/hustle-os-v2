@@ -17,11 +17,11 @@
   --rail: #eef1f6;
 
   --ink: #0e1016;
-  --ink-2: #454b57;
-  --ink-3: #6e7482;
+  --ink-2: #3c424e;
+  --ink-3: #5b6170;  /* small print was failing contrast against --raised */
 
-  --line: #e8ebf1;
-  --line-2: #dbdfe8;
+  --line: #dde1ea;  /* a border on white has to be visible to be a border */
+  --line-2: #c8cedb;  /* the stronger line was barely stronger */
   /* Borders on intelligent surfaces carry a trace of the mark. */
   --line-accent: #dcd9fb;
 
@@ -725,4 +725,25 @@
 .wsRoot .ws-nav[aria-current],
 .wsRoot .ws-nav[aria-current]:hover {
   color: var(--accent);
+}
+
+/* The app frame.
+   -------------------------------------------------------------------------
+   `100svh` is the stable fallback: it is the viewport measured with the URL bar
+   showing, so it does not change as the bar collapses — which is what made the
+   previous `100dvh` shell resize on every scroll gesture.
+
+   `--ventrio-app-height` overrides it with the VISUAL viewport, published by
+   `useAppViewport`. That is the only measurement that reacts to the keyboard,
+   and without it the shell stays full height while iOS scrolls the composer
+   into view, pushing the conversation off the top. */
+.ventrio-app-frame {
+  height: var(--ventrio-app-height, 100svh);
+  /* iOS scrolls the visual viewport within the layout viewport; without this
+     the shell drifts up behind the keyboard by exactly that amount. */
+  transform: translateY(var(--ventrio-app-offset, 0px));
+}
+
+@supports not (height: 100svh) {
+  .ventrio-app-frame { height: var(--ventrio-app-height, 100vh); }
 }
