@@ -44,6 +44,66 @@ export interface RuntimeErrorPayload {
   stack: string;
 }
 
+/**
+ * Whose failure this is.
+ *
+ * The distinction is not cosmetic. "Ventrio could not run your app" and "your
+ * app has a bug" call for opposite responses — the first is ours to fix and
+ * retrying may help, the second is the person's and retrying will not. One
+ * sentence for both is how a delivery failure can spend rounds looking like a
+ * generated-code problem.
+ *
+ * `runtime` means the app never got the chance to run: the module graph did not
+ * resolve, a bare specifier was missing from the import map, the bundle did not
+ * parse. Those are Ventrio's bytes and Ventrio's import map. Everything else is
+ * attributed to the app, which is the safe default — calling a generated bug
+ * ours is a smaller error than calling ours theirs.
+ */
+export type RuntimeFailureOrigin = "runtime" | "app";
+
+/**
+ * The signatures a module-graph failure produces, across engines.
+ *
+ * Chrome, Firefox and WebKit word these differently and none is catchable in
+ * the app's own code — the graph dies before its first line — so matching the
+ * text is the only signal available. Kept narrow deliberately: anything not
+ * clearly a delivery failure belongs to the app.
+ */
+const RUNTIME_DELIVERY_FAILURE = new RegExp([
+  "failed to resolve module specifier",
+  "failed to fetch dynamically imported module",
+  "error resolving module specifier",
+  "importing a module script failed",
+  "failed to load module script",
+  "unable to resolve specifier",
+  "does not provide an export named",
+  "import map",
+].join("|"), "i");
+
+export function runtimeFailureOrigin(payload: RuntimeErrorPayload): RuntimeFailureOrigin {
+  if (RUNTIME_DELIVERY_FAILURE.test(payload.message)) return "runtime";
+  // The document's watchdog fires when the code loaded but nothing rendered.
+  // Nothing at that point distinguishes "Ventrio shipped a broken bundle" from
+  // "the app rendered nothing", so it stays with the app.
+  return "app";
+}
+
+/**
+ * The same question, asked of `RuntimeErrorLog.describe()` output.
+ *
+ * The workspace and the published page both receive formatted strings rather
+ * than payloads, and both need to say whose failure it was. Sharing this is the
+ * point: two copies of the pattern would answer differently the first time
+ * either was edited, and a visitor and an owner would be told different things
+ * about the same failure.
+ *
+ * One delivery failure anywhere in the log decides it. If the module graph did
+ * not resolve, whatever else was reported is downstream of that.
+ */
+export function describedFailureOrigin(messages: readonly string[]): RuntimeFailureOrigin {
+  return messages.some((message) => RUNTIME_DELIVERY_FAILURE.test(message)) ? "runtime" : "app";
+}
+
 const MAX_MESSAGE_CHARS = 2_000;
 const MAX_STACK_CHARS = 4_000;
 const MAX_KIND_CHARS = 40;

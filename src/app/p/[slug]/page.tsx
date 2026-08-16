@@ -98,7 +98,7 @@ export default async function PublicProjectPage({ params }: PublicProjectPagePro
 
     return (
       <main className="public-project-page">
-        <PublicAppView title={publication.name} document={built.document} />
+        <PublicAppView title={publication.name} document={built.document} locale={publication.locale} />
         {branding && <VentrioBadge labels={badgeLabels} pricingHref={`${getSiteUrl()}/pricing`} />}
       </main>
     );

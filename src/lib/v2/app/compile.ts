@@ -104,11 +104,49 @@ window.addEventListener("unhandledrejection", (e) => report("unhandledrejection"
 
 const node = document.getElementById("root");
 try {
-  createRoot(node).render(<StrictMode><App /></StrictMode>);
-  window.parent.postMessage({ source: "ventrio-preview", version: 1, type: "ready", payload: {} }, "*");
+  // React 19 reports render failures through these rather than by throwing from
+  // render(), so without them a component that dies on its first pass produces
+  // only an anonymous window error with no React context attached.
+  const root = createRoot(node, {
+    onUncaughtError: (error) => report("render", error && error.message, error && error.stack),
+    onCaughtError: (error) => report("boundary", error && error.message, error && error.stack),
+  });
+  root.render(<StrictMode><App /></StrictMode>);
 } catch (error) {
   report("mount", error && error.message, error && error.stack);
 }
+
+/**
+ * Readiness is announced when something is actually on screen.
+ *
+ * It used to be posted on the line after render(). React 19 renders
+ * concurrently: render() returns before anything is committed, and it does not
+ * throw when a component does — so an app that crashed on its first pass still
+ * announced itself ready, the host cleared its boot overlay, and the person was
+ * left looking at a white rectangle with nothing to explain it. That was the
+ * visible half of the "/" URL failure, and it would have made any other
+ * first-render crash look the same way.
+ *
+ * Polled a frame at a time rather than hooked to a commit callback, because the
+ * tree is the model's and may render asynchronously. The ceiling is about a
+ * second; past that the host's own reveal floor takes over and the document's
+ * watchdog reports an app that never started.
+ */
+let __frames = 0;
+function __announce() {
+  if (node && node.childElementCount > 0) {
+    window.__ventrioReady = true;
+    if (typeof window.__ventrioStarted === "function") window.__ventrioStarted();
+    try {
+      window.parent.postMessage({ source: "ventrio-preview", version: 1, type: "ready", payload: {} }, "*");
+    } catch (_) { /* the host may be gone; never throw from here */ }
+    return;
+  }
+  __frames += 1;
+  if (__frames > 60) return;
+  requestAnimationFrame(__announce);
+}
+requestAnimationFrame(__announce);
 `;
 }
 

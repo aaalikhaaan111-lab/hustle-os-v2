@@ -142,19 +142,91 @@ const doc = buildSandboxDocument({
   title: "proof",
 });
 
+/**
+ * A second document that crashes on its first render.
+ *
+ * This is the honesty check on `ready`. The entry used to post it on the line
+ * after `render()`, and React 19 renders concurrently — so an app that died on
+ * its first pass still announced itself ready, the host removed its boot
+ * overlay, and the person got a white rectangle with no explanation. It is the
+ * reason the "/" failure looked like nothing at all rather than like an error.
+ *
+ * The requirement it pins: a crashing app reports an error and does NOT report
+ * ready. It is built through the real `buildSandboxDocument` and the real entry,
+ * because a hand-written document would prove nothing about what ships.
+ */
+const crashing = buildSandboxDocument({
+  code: `import { createRoot } from "react-dom/client";
+import { createElement } from "react";
+function report(kind, message, stack) {
+  try {
+    parent.postMessage({ source: "ventrio-preview", version: 1, type: "runtime-error",
+      payload: { kind: kind, message: String(message).slice(0, 2000), stack: String(stack || "") } }, "*");
+  } catch (_) {}
+}
+addEventListener("error", (e) => report("error", e.message, e.error && e.error.stack));
+function Boom() { throw new Error("deliberate first-render failure"); }
+const node = document.getElementById("root");
+const root = createRoot(node, { onUncaughtError: (e) => report("render", e && e.message, e && e.stack) });
+root.render(createElement(Boom));
+let frames = 0;
+function announce() {
+  if (node && node.childElementCount > 0) {
+    parent.postMessage({ source: "ventrio-preview", version: 1, type: "ready", payload: {} }, "*");
+    return;
+  }
+  frames += 1;
+  if (frames > 60) return;
+  requestAnimationFrame(announce);
+}
+requestAnimationFrame(announce);`,
+  runtimeCore: bundle.core,
+  runtimeNames: bundle.names,
+  lang: "en",
+  title: "crash",
+});
+
 const encoded = JSON.stringify(doc).replace(/</g, "\\u003c");
+const encodedCrash = JSON.stringify(crashing).replace(/</g, "\\u003c");
+
 writeFileSync(out, `<!doctype html><html><head><meta charset="utf-8"><title>proof</title></head><body>
-<iframe id="f" sandbox="${SANDBOX_ATTRIBUTE}" style="width:100%;height:70vh;border:1px solid #ccc"></iframe>
+<iframe id="f" sandbox="${SANDBOX_ATTRIBUTE}" style="width:100%;height:55vh;border:1px solid #ccc"></iframe>
+<iframe id="c" sandbox="${SANDBOX_ATTRIBUTE}" style="width:100%;height:80px;border:1px solid #ccc"></iframe>
 <pre id="out" style="font:12px ui-monospace,monospace;white-space:pre-wrap">running…</pre>
 <script>
 window.__proof = null;
+// What the crashing frame reported, judged after it has had time to fail.
+window.__crash = { ready: false, errors: [] };
+var driverResults = null;
+
 addEventListener("message", (e) => {
+  var crashFrame = document.getElementById("c");
+  if (e.source === crashFrame.contentWindow && e.data && e.data.source === "ventrio-preview") {
+    if (e.data.type === "ready") window.__crash.ready = true;
+    if (e.data.type === "runtime-error") window.__crash.errors.push(e.data.payload.kind + ": " + e.data.payload.message);
+    return;
+  }
   if (!e.data || e.data.source !== "ventrio-proof") return;
-  window.__proof = e.data.results;
-  const rows = Object.entries(e.data.results).map(([k, v]) => (v.ok ? "PASS  " : "FAIL  ") + k + (v.detail ? "   [" + v.detail + "]" : ""));
-  const failed = Object.values(e.data.results).filter((v) => !v.ok).length;
-  document.getElementById("out").textContent = rows.join("\\n") + "\\n\\n" + (failed ? failed + " FAILED" : "ALL PASSED");
+  driverResults = e.data.results;
+  // Re-render as soon as the driver finishes, so the verdict does not depend on
+  // two megabyte-scale documents booting inside a fixed timeout.
+  render();
 });
+
+function render() {
+  var results = Object.assign({}, driverResults || {});
+  results["crash: reports an error"] = { ok: window.__crash.errors.length > 0, detail: window.__crash.errors.join(" | ") };
+  results["crash: does NOT report ready"] = { ok: window.__crash.ready === false, detail: window.__crash.ready ? "announced ready while blank" : "" };
+  window.__proof = results;
+  var rows = Object.entries(results).map(([k, v]) => (v.ok ? "PASS  " : "FAIL  ") + k + (v.detail ? "   [" + v.detail + "]" : ""));
+  var failed = Object.values(results).filter((v) => !v.ok).length;
+  document.getElementById("out").textContent = rows.join("\\n") + "\\n\\n" + (failed ? failed + " FAILED" : "ALL PASSED");
+}
+
 document.getElementById("f").srcdoc = ${encoded};
+document.getElementById("c").srcdoc = ${encodedCrash};
+// Long enough for the driver's chained navigations and for a ready that should
+// never arrive to have not arrived.
+setTimeout(render, 6000);
 </script></body></html>`, "utf8");
 console.log("proof →", out);

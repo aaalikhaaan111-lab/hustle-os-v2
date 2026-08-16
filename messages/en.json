@@ -215,7 +215,13 @@
     "errorNotLive": "This project does not have a live version.",
     "errorUpdate": "The live version couldn't be updated. Please try again.",
     "errorUnpublish": "The project couldn't be unpublished. Please try again.",
-    "errorPublishedLimit": "Your plan can have {limit} project published at a time. Unpublish that one, or upgrade to publish more."
+    "errorPublishedLimit": "Your plan can have {limit} project published at a time. Unpublish that one, or upgrade to publish more.",
+    "appLoading": "Starting the app…",
+    "appFailedTitle": "This app ran into a problem",
+    "appFailedBody": "Something in the app stopped it from loading. Reloading sometimes helps. If it keeps happening, the person who published it will need to fix it.",
+    "appRuntimeFailedTitle": "Ventrio could not load this app",
+    "appRuntimeFailedBody": "The app itself is fine — Ventrio failed to deliver it. This is on our side, and reloading usually works.",
+    "appReload": "Reload"
   },
   "feedback": {
     "eyebrow": "Feedback loop",
