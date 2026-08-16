@@ -93,6 +93,39 @@ export function useFirstVersionJob(projectId: string, hasOutput: boolean): First
     return () => window.clearInterval(id);
   }, [inFlight, refresh]);
 
+  /**
+   * Catch up the moment the tab comes back, because on a phone it will have left.
+   *
+   * A generation takes two to four minutes and nobody watches a progress bar for
+   * that long — they switch apps. iOS then throttles the timer to nothing and
+   * may suspend the page outright, so the interval above is not a promise that
+   * anything is being polled. It can also restore the page from the back/forward
+   * cache, where effects do not re-run and `setInterval` resumes having missed
+   * the entire generation.
+   *
+   * This is what makes the mobile flow recover: on returning to the tab, ask
+   * once, immediately, rather than waiting for a timer that may never fire.
+   * `pageshow` is listed separately because `visibilitychange` does not fire for
+   * a bfcache restore.
+   *
+   * Not gated on `inFlight`: the whole point is that this tab's idea of what is
+   * in flight may be minutes stale.
+   */
+  useEffect(() => {
+    if (hasOutput) return;
+    const catchUp = () => {
+      if (document.visibilityState === "visible") refresh();
+    };
+    document.addEventListener("visibilitychange", catchUp);
+    window.addEventListener("pageshow", catchUp);
+    window.addEventListener("focus", catchUp);
+    return () => {
+      document.removeEventListener("visibilitychange", catchUp);
+      window.removeEventListener("pageshow", catchUp);
+      window.removeEventListener("focus", catchUp);
+    };
+  }, [hasOutput, refresh]);
+
   const markStarting = useCallback((retry = false) => {
     setLocal(retry ? "retrying" : "creating_job");
   }, []);

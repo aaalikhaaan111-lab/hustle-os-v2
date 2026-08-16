@@ -156,9 +156,15 @@ check(
 );
 // It must still not *auto-open* an empty panel — the conversation keeps the
 // screen until there is something to show, unless the person says otherwise.
+// `justGenerated` is the one addition, and it can only be true once a
+// generation has actually landed, so an empty panel is still never opened.
 check(
   "an empty panel does not open itself",
-  /override \?\? \(hasOutput && storedOpen\)/.test(buildScreen),
+  /override \?\? \(justGenerated \|\| \(hasOutput && storedOpen\)\)/.test(buildScreen),
+);
+check(
+  "and the automatic open requires a generation that just arrived",
+  /generationArrivedSnapshot/.test(buildScreen),
 );
 check("the empty panel explains itself", /previewEmptyTitle/.test(buildScreen));
 check("a running build says so", /previewGeneratingTitle/.test(buildScreen));

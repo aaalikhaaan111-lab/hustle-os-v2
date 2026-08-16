@@ -199,8 +199,18 @@ check("and it hands back the job already running, not a new one",
 const workspaceSource = read("src/components/build/PreOutputWorkspace.tsx");
 check("the workspace refreshes when the run succeeds",
   /job\.phase !== "succeeded"/.test(workspaceSource) && /router\.refresh\(\)/.test(workspaceSource));
-check("and only once per project, so a failure cannot loop",
-  /refreshedForJob\.current === projectId/.test(workspaceSource));
+/**
+ * Bounded rather than one-shot. A single refresh was terminal when it landed in
+ * the gap between the worker writing the application and finishing the job row:
+ * it came back with nothing and nothing ever tried again, which is how a
+ * finished generation left an empty workspace on a phone. The original concern
+ * — that an unguarded effect loops on the failure path — is still enforced,
+ * just by a counter instead of a latch.
+ */
+check("the refresh retries, so the worker's write gap is survivable",
+  /MAX_ARRIVAL_REFRESHES/.test(workspaceSource) && /ARRIVAL_RETRY_MS/.test(workspaceSource));
+check("and is bounded, so a failure cannot loop",
+  /refreshAttempts\.current >= MAX_ARRIVAL_REFRESHES/.test(workspaceSource));
 const pollSource = read("src/lib/workspace/useFirstVersionJob.ts");
 check("polling recovers a run this tab did not start", /Read once on mount/.test(pollSource));
 check("and keeps polling only while something is in flight", /if \(!inFlight\) return;/.test(pollSource));

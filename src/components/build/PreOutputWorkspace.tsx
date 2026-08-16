@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { markGenerationArrived } from "@/lib/workspace/generationHandoff";
 import { useLocale, useTranslations } from "next-intl";
 import type { AssistantMessage } from "@/lib/actions/assistant";
 import { sendAssistantMessage } from "@/lib/actions/assistant";
@@ -75,6 +76,17 @@ interface ChatMessage {
  * do next sits inside the conversation as a card rather than as a second column
  * standing empty. The preview panel appears only once real output exists.
  */
+/**
+ * How many times to re-ask the server for a finished generation's result.
+ *
+ * The application and the job row are written by the worker in separate
+ * statements, so a refresh can land in the gap and come back with nothing.
+ * Three attempts across a few seconds covers that without becoming a loop on
+ * the failure path.
+ */
+const MAX_ARRIVAL_REFRESHES = 3;
+const ARRIVAL_RETRY_MS = 1500;
+
 export function PreOutputWorkspace({
   projectId,
   projectName,
@@ -149,12 +161,33 @@ export function PreOutputWorkspace({
    * new props are two renders apart: keying off state alone would fire a second
    * refresh in the gap and, on the failure path, forever.
    */
-  const refreshedForJob = useRef<string | null>(null);
+  /**
+   * BOUNDED RETRIES, NOT ONE SHOT. This used to fire exactly once per mount,
+   * guarded by the project id. That is terminal if the single refresh lands
+   * before the new props are readable — the worker writes the application and
+   * finishes the job row separately, and a refresh arriving in that gap comes
+   * back still saying `awaitingFirstVersion`, after which nothing ever tried
+   * again. The person was left on a finished generation with an empty
+   * workspace, which is the reported bug: they had to reopen the project by
+   * hand to see their own result.
+   *
+   * Still bounded, because the original concern was right — an unguarded effect
+   * would refresh forever on the failure path. A few spaced attempts cover the
+   * write gap without becoming a loop.
+   */
+  const refreshAttempts = useRef(0);
   useEffect(() => {
     if (hasVersion || job.phase !== "succeeded") return;
-    if (refreshedForJob.current === projectId) return;
-    refreshedForJob.current = projectId;
-    router.refresh();
+    if (refreshAttempts.current >= MAX_ARRIVAL_REFRESHES) return;
+
+    // Recorded before the refresh, because this component is unmounted by it.
+    // `BuildScreen` reads the marker on the other side and opens the preview.
+    markGenerationArrived(projectId);
+
+    const attempt = refreshAttempts.current;
+    refreshAttempts.current = attempt + 1;
+    const timer = window.setTimeout(() => router.refresh(), attempt === 0 ? 0 : ARRIVAL_RETRY_MS);
+    return () => window.clearTimeout(timer);
   }, [hasVersion, job.phase, projectId, router]);
 
   // A job in flight counts as busy even when this tab did not start it — after
@@ -355,6 +388,7 @@ export function PreOutputWorkspace({
 
   return (
     <BuildScreen
+      projectId={projectId}
       /**
        * The panel says what this screen knows, and no more.
        *

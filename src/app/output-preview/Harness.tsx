@@ -55,6 +55,7 @@ export function Harness({
     return (
       <div className="wsRoot h-screen w-full overflow-hidden" style={{ background: "var(--bg)" }}>
       <BuildScreen
+      projectId="output-preview-harness"
         chat={() => (
           <div className="min-h-0 flex-1 overflow-y-auto">
             <div className="mx-auto flex w-full flex-col gap-7 px-5 py-8 sm:px-8" style={{ maxWidth: 820 }}>
@@ -90,6 +91,7 @@ export function Harness({
     return (
       <div className="wsRoot h-screen w-full overflow-hidden" style={{ background: "var(--bg)" }}>
       <BuildScreen
+      projectId="output-preview-harness"
         chat={() => (
           <div style={{ padding: 24, font: "14px system-ui" }}>chat stand-in</div>
         )}

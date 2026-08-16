@@ -120,6 +120,7 @@ export function WorkspaceView(props: WorkspaceViewProps) {
 
   return (
     <BuildScreen
+      projectId={props.projectId}
       /**
        * Explicit, never the default. This screen used to pass nothing and take
        * `"empty"`, so a stored version that would not recompile was reported as

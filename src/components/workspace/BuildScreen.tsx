@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState, useSyncExternalStore, type ReactNode } from "react";
+import { generationArrivedSnapshot } from "@/lib/workspace/generationHandoff";
 import { useTranslations } from "next-intl";
 import {
   IconChat,
@@ -50,6 +51,14 @@ export interface BuildChatContext {
 }
 
 export interface BuildScreenProps {
+  /**
+   * Which project this screen is showing.
+   *
+   * Used only to consume the "a generation just arrived" marker, which is
+   * per-project so a finished generation cannot open the preview on a different
+   * project the person opened in the meantime.
+   */
+  projectId: string;
   /**
    * The conversation. It is told whether it is sharing the screen (so it can set
    * its reading measure) and how to open the preview, so the approved "first
@@ -131,6 +140,7 @@ export function BuildScreen({
   shareUrl = null,
   publishControl = null,
   runtimeErrors = [],
+  projectId,
 }: BuildScreenProps) {
   const t = useTranslations("workspace");
   // Whether real output exists — which decides only whether the panel opens by
@@ -162,10 +172,34 @@ export function BuildScreen({
   const [reloadKey, setReloadKey] = useState(0);
   const [copied, setCopied] = useState<"done" | "failed" | null>(null);
 
-  // An explicit choice always wins. Without one, the panel opens by itself only
-  // when there is something in it: the conversation keeps the screen while the
-  // first version is still an idea, but the control to look is always there.
-  const previewOpen = override ?? (hasOutput && storedOpen);
+  /**
+   * A generation that just finished opens the preview, whatever the preference.
+   *
+   * `storedOpen` remembers that the person once closed the panel — which on a
+   * phone they very likely did, because there the preview replaces the
+   * conversation rather than sitting beside it. Honouring that after a
+   * generation means the result of the thing they waited three minutes for does
+   * not appear, which is the reported failure: the workspace stayed on the chat
+   * and they had to reopen the project from Projects to see their own result.
+   *
+   * Read once and consumed, so this is a single automatic open for the
+   * generation that just landed, not a permanent override of the preference. The
+   * marker is set by `PreOutputWorkspace` before the refresh that unmounts it —
+   * the two halves of this transition are different components, so it cannot be
+   * passed down. See `generationHandoff.ts`.
+   */
+  const justGenerated = useSyncExternalStore(
+    () => () => {},
+    () => generationArrivedSnapshot(projectId),
+    () => false,
+  );
+
+  // An explicit choice still wins — including closing it again straight away —
+  // but a generation that just arrived beats a preference set minutes ago.
+  // Without either, the panel opens by itself only when there is something in
+  // it: the conversation keeps the screen while the first version is still an
+  // idea, but the control to look is always there.
+  const previewOpen = override ?? (justGenerated || (hasOutput && storedOpen));
 
   const changePreviewOpen = useCallback((next: boolean) => {
     setOverride(next);
