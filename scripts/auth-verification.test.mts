@@ -232,7 +232,22 @@ check("the error shown is the current one", /result\?\.status === "error"/.test(
 check("the login form recognises an unconfirmed address",
   /state\.code === "email_not_confirmed"/.test(loginForm));
 check("and routes to the resend screen", /ConfirmEmailPending/.test(loginForm));
-check("carrying the address it was given", /email=\{email\}/.test(loginForm));
+/**
+ * The address comes from the ACTION, not from client state.
+ *
+ * Client state would have to track an input that a password manager can fill
+ * without React hearing about it — and React resets the form after a server
+ * action anyway, so the state is empty exactly when it is needed. Observed
+ * live: the routing silently did not happen. The server has the one copy that
+ * is guaranteed correct, because it is the copy it authenticated with.
+ */
+check("carrying the address the server was given", /state\.email/.test(loginForm));
+check("the login form holds no email state of its own",
+  !/useState/.test(loginForm),
+  "a controlled login field diverges from what a password manager filled in");
+check("the action returns it only for an unconfirmed address",
+  /code === "email_not_confirmed" \? email : null/.test(actionsCode),
+  "returning it for other failures would echo an address back for no reason");
 check("that screen knows which way the person arrived", /reason="unconfirmed_login"/.test(loginForm));
 check("and says something true for that case",
   /reason === "unconfirmed_login"/.test(pendingCode),

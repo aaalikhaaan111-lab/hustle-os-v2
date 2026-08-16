@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState, useState } from "react";
+import { useActionState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/Button";
@@ -18,21 +18,23 @@ export function LoginForm() {
   const t = useTranslations("auth");
   const tCommon = useTranslations("common");
   const [state, formAction, isPending] = useActionState(loginAction, initialState);
-  /**
-   * Kept so an unconfirmed address has somewhere to go. The action knows the
-   * address but a failed login returns no data, and this is exactly the person
-   * who never received the first link — leaving them on a red line reading "not
-   * confirmed", with no way to request another, is the dead end that made "no
-   * email arrives" unrecoverable rather than merely annoying.
-   */
-  const [email, setEmail] = useState("");
   const searchParams = useSearchParams();
   const oauthErrorCode = searchParams.get("error");
   const oauthError = oauthErrorCode ? t("googleSignInFailed") : null;
   const displayError = state.error || oauthError;
 
-  if (state.code === "email_not_confirmed" && email) {
-    return <ConfirmEmailPending email={email} reason="unconfirmed_login" />;
+  /**
+   * An unconfirmed address is no longer a dead end: it used to be a red line
+   * saying "not confirmed" with no way to request another link, shown to
+   * precisely the person who never received the first one.
+   *
+   * The address comes back from the ACTION rather than from client state. State
+   * here would have to track an input a password manager can fill without React
+   * hearing about it, and React resets the form after the action anyway — so the
+   * one value guaranteed to be right is the one the server was given.
+   */
+  if (state.code === "email_not_confirmed" && state.email) {
+    return <ConfirmEmailPending email={state.email} reason="unconfirmed_login" />;
   }
   // Set by the proxy when an auth-required page redirected here — carried
   // through both sign-in paths so a successful login returns the visitor to
@@ -70,8 +72,6 @@ export function LoginForm() {
                 type="email"
                 autoComplete="email"
                 required
-                value={email}
-                onChange={(event) => setEmail(event.target.value)}
                 placeholder={t("emailPlaceholder")}
               />
             </Field>

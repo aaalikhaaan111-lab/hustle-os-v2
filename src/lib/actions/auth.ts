@@ -16,6 +16,18 @@ export interface AuthActionState {
   error: string | null;
   /** The closed-set reason, so the interface can act on it, not just print it. */
   code: AuthFailure | null;
+  /**
+   * The address the attempt used, returned ONLY for `email_not_confirmed`.
+   *
+   * So the form can offer a new confirmation link without depending on client
+   * state staying in step with the input — which it does not when a password
+   * manager fills the field, and which React then wipes when it resets the form
+   * after the action.
+   *
+   * Not an enumeration channel: this code is reached only when the credentials
+   * were correct, and the value is the one the person just typed.
+   */
+  email?: string | null;
 }
 
 export interface SignupActionState extends AuthActionState {
@@ -107,7 +119,11 @@ export async function loginAction(
     // an unconfirmed address is a dead end without a route to a new link, which
     // is the state a beta user reaches after never receiving the first one.
     const { code } = mapAuthError(error);
-    return { error: await describeFailure(code), code };
+    return {
+      error: await describeFailure(code),
+      code,
+      email: code === "email_not_confirmed" ? email : null,
+    };
   }
 
   await syncLocaleCookieAfterLogin(supabase, data.user.id);
