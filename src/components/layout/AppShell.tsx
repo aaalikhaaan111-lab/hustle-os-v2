@@ -1,78 +1,33 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import type { ReactNode } from "react";
 import { usePathname } from "next/navigation";
-import { BackgroundBlobs } from "@/components/layout/BackgroundBlobs";
-import { NavDrawer } from "@/components/layout/NavDrawer";
+import { StudioTopBar } from "@/components/layout/StudioTopBar";
 import { RoutePrefetcher } from "@/components/layout/RoutePrefetcher";
-import { cn } from "@/lib/utils";
 
-const NAV_OPEN_KEY = "ventrio:nav-open";
-
-// One light shell for every live surface: a calm background, the right-side
-// NavDrawer (open by default on desktop, a sheet on mobile), and the page.
-//
-// The public landing is the exception. It carries its own floating dock, and
-// that dock is the only navigation it should have — mounting the drawer here
-// too would put a second, detached nav button on top of it (and shift the
-// page with the drawer's padding).
+/**
+ * One shell for every live surface outside the workspace.
+ *
+ * The drawer is gone, and with it the stored open/closed preference, the
+ * desktop-vs-phone reconciliation that preference needed, and the floating
+ * circular trigger. Navigation is a top bar that shows its destinations —
+ * see `StudioTopBar`.
+ *
+ * Two routes opt out. The public landing carries its own dock and is frozen.
+ * The workspace carries its own rail and header, and mounting a second
+ * navigation over it would put two unrelated navs on one screen.
+ */
 export function AppShell({ children, isAuthenticated }: { children: ReactNode; isAuthenticated: boolean }) {
-  const [open, setOpen] = useState(false);
-  const [ready, setReady] = useState(false);
   const pathname = usePathname();
   const isLanding = pathname === "/";
-  // The project workspace carries its own rail and top bar. Mounting the drawer
-  // over it would put a second, unrelated navigation on the same screen.
   const isWorkspace =
     pathname === "/dashboard" ||
     pathname === "/projects" ||
     pathname.startsWith("/projects/") ||
     pathname === "/create" ||
     pathname === "/settings" ||
-    // The design lab renders its own complete application frame; the drawer
-    // would sit on top of the prototype being reviewed.
+    // The design lab renders its own complete application frame.
     pathname === "/workspace-lab";
-
-  useEffect(() => {
-    let stored: string | null = null;
-    try {
-      stored = window.localStorage.getItem(NAV_OPEN_KEY);
-    } catch {
-      // ignore
-    }
-    const desktop = window.matchMedia("(min-width: 768px)").matches;
-    /**
-     * The stored preference is a DESKTOP preference, and only desktop reads it.
-     *
-     * The drawer is a side panel beside the page on a wide screen and a sheet
-     * over the whole page on a phone — so "open" does not mean the same thing
-     * in both places, and one stored flag cannot answer for both. It used to:
-     * opening the drawer once on a desktop wrote "1", and the next visit from a
-     * phone read that "1" and covered the page with a nav sheet before the
-     * visitor had touched anything.
-     *
-     * Mobile therefore always starts closed, which is the only sensible state
-     * for a sheet nobody has opened yet. Desktop keeps the preference, and
-     * still defaults to open when there is none.
-     */
-    const next = desktop ? (stored !== null ? stored === "1" : true) : false;
-    // Deferred so the state updates happen outside the effect body.
-    queueMicrotask(() => {
-      setOpen(next);
-      setReady(true);
-    });
-  }, []);
-
-  const changeOpen = (next: boolean) => {
-    setOpen(next);
-    try {
-      window.localStorage.setItem(NAV_OPEN_KEY, next ? "1" : "0");
-    } catch {
-      // ignore
-    }
-  };
-
-  const drawerOpen = ready && open;
 
   if (isLanding || isWorkspace) {
     return (
@@ -84,17 +39,9 @@ export function AppShell({ children, isAuthenticated }: { children: ReactNode; i
   }
 
   return (
-    <div className="relative min-h-screen">
-      <BackgroundBlobs />
-      <NavDrawer isAuthenticated={isAuthenticated} open={drawerOpen} onOpenChange={changeOpen} />
-      <main
-        className={cn(
-          "relative z-10 min-h-screen transition-[padding] duration-300 ease-out",
-          drawerOpen && "md:pr-[19rem]"
-        )}
-      >
-        {children}
-      </main>
+    <div className="studio studio-room relative flex min-h-screen flex-col">
+      <StudioTopBar isAuthenticated={isAuthenticated} />
+      <main className="relative flex-1">{children}</main>
       <RoutePrefetcher isAuthenticated={isAuthenticated} />
     </div>
   );

@@ -81,7 +81,7 @@ export default async function ProjectAnalyticsPage({ params }: AnalyticsPageProp
               <Metric label={t("metricLastActivity")} value={day(analytics.lastResponseAt)} />
               <Metric label={t("metricSince")} value={day(analytics.publishedAt)} />
             </div>
-            <p className="mt-4 text-[13px] leading-relaxed" style={{ color: "var(--ink-3)" }}>
+            <p className="mt-4 text-[13px] leading-relaxed" style={{ color: "var(--color-ink-muted)" }}>
               {t("analyticsScopeNote")}
             </p>
           </>
@@ -107,12 +107,12 @@ function Metric({ label, value }: { label: string; value: string }) {
   return (
     <div
       className="rounded-[var(--r-lg)] border p-4"
-      style={{ borderColor: "var(--line)", background: "var(--surface)" }}
+      style={{ borderColor: "var(--color-border)", background: "var(--color-surface)" }}
     >
-      <p className="text-[12px] font-semibold uppercase tracking-[0.08em]" style={{ color: "var(--ink-3)" }}>
+      <p className="text-[12px] font-semibold uppercase tracking-[0.08em]" style={{ color: "var(--color-ink-muted)" }}>
         {label}
       </p>
-      <p className="mt-1.5 text-[26px] font-semibold leading-none tabular-nums" style={{ color: "var(--ink)" }}>
+      <p className="mt-1.5 text-[26px] font-semibold leading-none tabular-nums" style={{ color: "var(--color-ink)" }}>
         {value}
       </p>
     </div>
@@ -133,19 +133,19 @@ function EmptyState({
   return (
     <div
       className="rounded-[var(--r-lg)] border p-8 text-center"
-      style={{ borderColor: "var(--line)", background: "var(--surface)" }}
+      style={{ borderColor: "var(--color-border)", background: "var(--color-surface)" }}
     >
       <span
         aria-hidden
         className="mx-auto mb-3 block h-9 w-9 rounded-full border-2 border-dashed"
-        style={{ borderColor: "var(--line-2)" }}
+        style={{ borderColor: "var(--color-border-strong)" }}
       />
-      <p className="text-[15px] font-semibold" style={{ color: "var(--ink)" }}>{title}</p>
-      <p className="mx-auto mt-1.5 max-w-[46ch] text-[14px] leading-relaxed" style={{ color: "var(--ink-2)" }}>
+      <p className="text-[15px] font-semibold" style={{ color: "var(--color-ink)" }}>{title}</p>
+      <p className="mx-auto mt-1.5 max-w-[46ch] text-[14px] leading-relaxed" style={{ color: "var(--color-ink-secondary)" }}>
         {body}
       </p>
       <div className="mt-4 flex justify-center">{action}</div>
-      <p className="mx-auto mt-6 max-w-[52ch] text-[12.5px] leading-relaxed" style={{ color: "var(--ink-3)" }}>
+      <p className="mx-auto mt-6 max-w-[52ch] text-[12.5px] leading-relaxed" style={{ color: "var(--color-ink-muted)" }}>
         {note}
       </p>
     </div>

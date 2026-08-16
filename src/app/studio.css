@@ -1,0 +1,601 @@
+/* =========================================================================
+   VENTRIO STUDIO
+   The platform's visual system. Everything the signed-in product renders.
+
+   WHAT THIS REPLACES, and why it is a different design rather than a tidier
+   one. The product was a light grey desk (#f4f6f9) with a white rounded
+   "sheet" laid on it, a translucent glass rail, violet blooms behind the
+   corners, and a card around most things. It was competent and it was
+   anonymous: the same shape as every SaaS dashboard template, and the
+   chrome was the brightest thing on screen.
+
+   The studio inverts that. The room is dark and quiet; the work is lit.
+   A person using Ventrio is making an application, and the application —
+   the preview, the conversation, the thing they typed — should be the only
+   bright object in the room. Chrome is near-black, separated by hairlines
+   rather than by shadows, and carries no colour of its own.
+
+   THREE RULES THIS FILE ENFORCES.
+
+   1. NO CARDS. A card inside a card inside a sheet is how the old design
+      said "these things are related". Space and one hairline say it better,
+      and they do not stack up into a page of nested boxes.
+   2. NO DECORATIVE COLOUR. One accent, for the thing to do next and the
+      place you are. Blooms, sheens, glows and gradients are gone.
+   3. TYPE CARRIES THE HIERARCHY. Four steps, a wide range between them,
+      and real editorial sizes at the top. The old scale ran 13px–17px and
+      leaned on weight and colour to differentiate — which is why every
+      screen read as one undifferentiated grey.
+
+   Scoped to `.studio` so none of it can reach the public landing page,
+   which is frozen and light. Tailwind's `@theme` utilities compile to
+   `var(--color-*)` references, so redefining those variables inside this
+   scope re-skins every shared component without touching a single one.
+   ========================================================================= */
+
+.studio {
+  /* ── The room ─────────────────────────────────────────────────────────
+     Four steps of near-black, all slightly cool. `canvas` is the room,
+     `surface` is a panel in it, `elevated` is a panel on a panel, `hover`
+     is feedback. Anything needing a fifth step is over-nested. */
+  --color-canvas: #08080b;
+  --color-surface: #0f1014;
+  --color-surface-elevated: #16171d;
+  --color-surface-hover: #1c1e25;
+
+  /* Hairlines, not shadows. On a dark ground a shadow is invisible, so
+     depth has to come from a lighter edge — which is also more honest,
+     because nothing here is actually floating. */
+  --color-border: #23252e;
+  --color-border-strong: #33363f;
+
+  /* Measured against --color-surface: 17.4 / 8.5 / 5.4. The muted step is
+     deliberately well clear of 4.5 because it still has to hold up on
+     --color-surface-hover, where it drops to 4.7. */
+  --color-ink: #f4f5f7;
+  --color-ink-secondary: #a8adb9;
+  --color-ink-muted: #828997;
+
+  /* One accent. Brightened from the light theme's #5a51e8, which turns to
+     mud on a dark ground — a colour that carries text on white is not the
+     same colour that carries it on near-black. 5.8:1 on a panel.
+
+     Its foreground is DARK, not white: white on this violet is 3.27:1 and
+     fails. A pale button with a near-black label is also simply the better
+     object — it reads as a lit key rather than a coloured rectangle. */
+  --color-accent: #8b7cff;
+  --color-accent-hover: #a093ff;
+  --color-accent-foreground: #0b0a14;
+  --color-accent-soft: rgb(139 124 255 / 0.14);
+  --color-accent-line: rgb(139 124 255 / 0.32);
+
+  --color-success: #4ade80;
+  --color-success-soft: rgb(74 222 128 / 0.12);
+  --color-warning: #fbbf24;
+  --color-warning-soft: rgb(251 191 36 / 0.12);
+  --color-danger: #ff6b6b;
+  --color-danger-soft: rgb(255 107 107 / 0.12);
+
+  /* ── Geometry ─────────────────────────────────────────────────────────
+     Tighter than before. The old scale topped out at 22px, which on a
+     full-width panel reads as a rounded box rather than as an edge. */
+  --r-xs: 6px;
+  --r-sm: 9px;
+  --r-md: 12px;
+  --r-lg: 16px;
+  --r-full: 999px;
+
+  /* One ease, and it is quick. The old 220/300ms transitions on layout
+     made the product feel like it was thinking about whether to move. */
+  --ease: cubic-bezier(0.32, 0.72, 0, 1);
+  --t-fast: 120ms;
+  --t-base: 180ms;
+  --t-slow: 280ms;
+
+  /* Geist, not Helvetica Neue. The font was already loaded and paid for by
+     `next/font` and the workspace was overriding it back to a system
+     grotesk, which is most of why the product looked like a template. */
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+  font-feature-settings: "cv11", "ss01";
+  font-variant-ligatures: common-ligatures;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+
+  color: var(--color-ink);
+  background: var(--color-canvas);
+}
+
+/* The room has one light source: a single cool wash from the top, far too
+   faint to read as a gradient. It exists so a full-bleed dark screen is not
+   a flat black rectangle, which is the one thing that makes dark UI look
+   cheap rather than deep. */
+.studio-room {
+  background:
+    radial-gradient(120rem 48rem at 50% -20rem, rgb(139 124 255 / 0.05), transparent 70%),
+    var(--color-canvas);
+}
+
+.studio ::selection {
+  background: rgb(139 124 255 / 0.28);
+  color: var(--color-ink);
+}
+
+.studio :focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+  border-radius: var(--r-xs);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   TYPE
+   Four steps. The gap between them is the hierarchy — the old scale put
+   its title at 17px and its body at 15px, a difference nobody can see, so
+   every screen had to fall back on weight and colour to say what mattered.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.s-display {
+  font-size: 2rem;
+  line-height: 1.08;
+  font-weight: 500;
+  letter-spacing: -0.035em;
+  color: var(--color-ink);
+  text-wrap: balance;
+}
+
+.s-title {
+  font-size: 1.1875rem;
+  line-height: 1.3;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  color: var(--color-ink);
+}
+
+.s-body {
+  font-size: 0.9375rem;
+  line-height: 1.6;
+  font-weight: 400;
+  color: var(--color-ink-secondary);
+}
+
+.s-meta {
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  font-weight: 450;
+  color: var(--color-ink-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+@media (min-width: 768px) {
+  .s-display { font-size: 2.75rem; }
+}
+
+/* The assistant's opening question.
+ *
+ * DELIBERATELY SMALLER THAN `s-display`, and the reason is a finding this
+ * product already paid for once. `/create` used to open with a marketing hero
+ * — `clamp(2.35rem, 5vw, 3rem)` in the display face, a signal dot, and five
+ * bordered starting-point cards under it. It was removed as "a landing page
+ * inside the product", and the opening was set at 17px instead.
+ *
+ * 17px was too quiet: it made the first screen of the product read as a form
+ * label. But the fix is not to put the hero back. This is the size of someone
+ * ASKING something — larger than body, well short of a masthead — and it
+ * carries no eyebrow, no decoration and no signal dot. It is the first turn of
+ * the conversation, set so it reads as the subject of the screen.
+ */
+.s-opening {
+  font-size: 1.5rem;
+  line-height: 1.28;
+  font-weight: 500;
+  letter-spacing: -0.025em;
+  color: var(--color-ink);
+  text-wrap: balance;
+}
+
+@media (min-width: 768px) {
+  .s-opening { font-size: 1.75rem; }
+}
+
+/* An eyebrow, used once per screen at most. Uppercase and tracked out —
+   the one place the system permits it, because it is a label for a region
+   rather than something anyone reads as prose. */
+.s-eyebrow {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-ink-muted);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   SURFACES
+   Two, and neither has a shadow.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.s-panel {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--r-lg);
+}
+
+/* A region that is part of the room rather than an object in it: no border,
+   no radius, just a different tone. Used for the rail, the toolbar and the
+   composer dock — the parts that are frame. */
+.s-inset {
+  background: var(--color-surface);
+}
+
+/* The hairline that does the work cards used to do. */
+.s-rule {
+  border-color: var(--color-border);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   ROWS
+   The product is mostly lists — projects, messages, settings, menu items.
+   One row treatment, everywhere.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.s-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.875rem;
+  border-radius: var(--r-md);
+  transition:
+    background-color var(--t-fast) var(--ease),
+    color var(--t-fast) var(--ease);
+}
+
+@media (hover: hover) {
+  .s-row:hover { background: var(--color-surface-hover); }
+}
+
+.s-row:active { background: var(--color-surface-hover); }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   NAVIGATION
+   Desktop is a slim icon rail. Mobile is a bottom tab bar, not a hamburger
+   drawer — a drawer hides the whole product behind one unlabelled button,
+   and on a phone the destinations are few enough to simply show.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.s-nav-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  color: var(--color-ink-muted);
+  transition:
+    color var(--t-fast) var(--ease),
+    background-color var(--t-fast) var(--ease);
+}
+
+@media (hover: hover) {
+  .s-nav-item:hover { color: var(--color-ink); background: var(--color-surface-hover); }
+}
+
+.s-nav-item[aria-current] { color: var(--color-ink); }
+
+/* Where you are is marked by a short accent bar on the edge, not by a
+   filled pill. The bar is 2px and the only accent-coloured thing in the
+   chrome, which is what makes it findable at a glance. */
+.s-nav-item[aria-current]::before {
+  content: "";
+  position: absolute;
+  left: -0.5rem;
+  top: 50%;
+  height: 1.125rem;
+  width: 2px;
+  border-radius: var(--r-full);
+  background: var(--color-accent);
+  transform: translateY(-50%);
+}
+
+/* On the bottom bar the marker moves to the top edge and goes horizontal. */
+.s-tab[aria-current]::before {
+  left: 50%;
+  top: 0;
+  height: 2px;
+  width: 1.25rem;
+  transform: translateX(-50%);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   CONTROLS
+   One button, three intents. The old system had a primary with a moving
+   conic-gradient border, a gradient fill, an inset highlight and a cast
+   shadow — five effects to say "press me".
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.s-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  height: 2.375rem;
+  padding: 0 0.9375rem;
+  border: 1px solid transparent;
+  border-radius: var(--r-sm);
+  font-size: 0.875rem;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background-color var(--t-fast) var(--ease),
+    border-color var(--t-fast) var(--ease),
+    color var(--t-fast) var(--ease),
+    opacity var(--t-fast) var(--ease);
+}
+
+.s-btn:disabled { opacity: 0.38; cursor: default; }
+
+.s-btn--primary {
+  background: var(--color-accent);
+  color: var(--color-accent-foreground);
+  font-weight: 560;
+}
+@media (hover: hover) {
+  .s-btn--primary:not(:disabled):hover { background: var(--color-accent-hover); }
+}
+
+.s-btn--secondary {
+  background: var(--color-surface-elevated);
+  border-color: var(--color-border-strong);
+  color: var(--color-ink);
+}
+@media (hover: hover) {
+  .s-btn--secondary:not(:disabled):hover { background: var(--color-surface-hover); }
+}
+
+.s-btn--ghost { background: transparent; color: var(--color-ink-secondary); }
+@media (hover: hover) {
+  .s-btn--ghost:not(:disabled):hover { background: var(--color-surface-hover); color: var(--color-ink); }
+}
+
+/* Icon-only. 40px by default and 44 under a thumb, because an icon has no
+   text edge to aim at. */
+.s-btn--icon { width: 2.375rem; padding: 0; }
+
+@media (pointer: coarse) {
+  .s-btn { height: 2.75rem; }
+  .s-btn--icon { width: 2.75rem; }
+}
+
+/* ── Fields ───────────────────────────────────────────────────────────── */
+.s-field {
+  width: 100%;
+  min-height: 2.875rem;
+  padding: 0.625rem 0.875rem;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--r-md);
+  background: var(--color-surface);
+  color: var(--color-ink);
+  /* 16px on every screen: below it, iOS zooms on focus and does not zoom
+     back out. */
+  font-size: 1rem;
+  transition: border-color var(--t-fast) var(--ease), background-color var(--t-fast) var(--ease);
+}
+.s-field::placeholder { color: var(--color-ink-muted); }
+.s-field:focus {
+  outline: none;
+  border-color: var(--color-accent);
+  background: var(--color-surface-elevated);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   THE COMPOSER
+   A field on the floor of the room, not an object floating in front of it.
+   See Composer.tsx for the seven effects this replaces.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.s-composer {
+  display: flex;
+  flex-direction: column;
+  padding: 0.625rem 0.75rem 0.625rem;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--r-lg);
+  background: var(--color-surface);
+  transition: border-color var(--t-base) var(--ease), background-color var(--t-base) var(--ease);
+}
+
+.s-composer:focus-within {
+  border-color: var(--color-accent);
+  background: var(--color-surface-elevated);
+}
+
+.s-composer[data-state="disabled"] { opacity: 0.6; }
+
+.s-composer textarea::placeholder { color: var(--color-ink-muted); }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   THE ARTIFACT
+   The generated application is the one bright object in a dark room. It is
+   given a real edge and a real shadow — the only shadow in the system —
+   because unlike everything else it genuinely IS floating above the room,
+   and because the contrast is the whole point of the studio idea.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.s-artifact {
+  background: #ffffff;
+  border-radius: var(--r-lg);
+  box-shadow:
+    0 0 0 1px rgb(255 255 255 / 0.08),
+    0 24px 70px -28px rgb(0 0 0 / 0.9);
+  overflow: hidden;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   MOTION
+   Short, and only on arrival. Nothing loops except the one indicator that
+   marks work genuinely in progress.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.s-enter { animation: s-enter var(--t-slow) var(--ease) both; }
+@keyframes s-enter {
+  from { opacity: 0; transform: translateY(6px); }
+}
+
+.s-fade { animation: s-fade var(--t-base) var(--ease) both; }
+@keyframes s-fade {
+  from { opacity: 0; }
+}
+
+/* The single looping element in the product: three dots while the model is
+   actually producing something. */
+.s-thinking span {
+  display: inline-block;
+  width: 4px;
+  height: 4px;
+  border-radius: var(--r-full);
+  background: var(--color-accent);
+  animation: s-thinking 1.4s var(--ease) infinite;
+}
+.s-thinking span:nth-child(2) { animation-delay: 0.16s; }
+.s-thinking span:nth-child(3) { animation-delay: 0.32s; }
+@keyframes s-thinking {
+  0%, 60%, 100% { opacity: 0.25; transform: translateY(0); }
+  30% { opacity: 1; transform: translateY(-3px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .studio *,
+  .studio *::before,
+  .studio *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   THE APP FRAME
+   Unchanged in behaviour from the light design, and deliberately so: the
+   reasoning behind it was device-verified and is not a styling decision.
+   `100svh` is stable where `100dvh` tracked the URL bar and resized the
+   layout on every scroll; `--ventrio-app-height` overrides it with the
+   visual viewport, which is the only measurement a keyboard changes.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.studio-frame {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: var(--ventrio-app-height, 100svh);
+}
+
+@supports not (height: 100svh) {
+  .studio-frame { height: var(--ventrio-app-height, 100vh); }
+}
+
+html:has(.studio-frame),
+body:has(.studio-frame) {
+  height: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
+  touch-action: pan-y;
+  background: #08080b;
+}
+
+.studio-frame [data-scroll],
+.studio-frame .overflow-y-auto,
+.studio-frame .overflow-auto {
+  overscroll-behavior: contain;
+}
+
+/* Scrollbars belong to the room, not to the operating system. */
+.studio *::-webkit-scrollbar { width: 10px; height: 10px; }
+.studio *::-webkit-scrollbar-track { background: transparent; }
+.studio *::-webkit-scrollbar-thumb {
+  background: var(--color-border-strong);
+  border: 3px solid transparent;
+  background-clip: content-box;
+  border-radius: var(--r-full);
+}
+.studio *::-webkit-scrollbar-thumb:hover { background-color: #4a4e59; background-clip: content-box; }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   UTILITIES CARRIED OVER FROM `workspace-ui/tokens.css`, WHICH IS RETIRED.
+
+   That file held a SECOND PALETTE — a full set of colours scoped to `.wsRoot`
+   — alongside a handful of animation and elevation utilities. The palette is
+   what made the product look like two products, and it is gone: every colour
+   now comes from one place, the block at the top of this file.
+
+   These are the utilities that survived, because they are behaviour rather
+   than colour and are used across the workspace. They are redefined here in
+   the studio's terms rather than carried over as they were.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* Arrival. Three names for the same short movement, kept distinct because the
+   call sites mean different things by them: a page, a conversation turn, a
+   block of content. */
+.studio .ws-page,
+.studio .ws-turn,
+.studio .rise {
+  animation: s-enter var(--t-slow) var(--ease) both;
+}
+
+.studio .pop {
+  animation: s-fade var(--t-base) var(--ease) both;
+}
+
+/* The one elevation. On a dark ground a cast shadow is nearly invisible, so a
+   floating panel is separated by a lighter EDGE plus enough shadow to darken
+   what is behind it. Used by menus and popovers — the only things in the
+   product that genuinely float. */
+.studio .lift,
+.studio .lift-2,
+.studio .lift-3 {
+  box-shadow:
+    0 0 0 1px rgb(255 255 255 / 0.04),
+    0 16px 48px -16px rgb(0 0 0 / 0.8);
+}
+
+/* Something is genuinely in progress. */
+.studio .ai-pending {
+  animation: s-breathe 2.4s var(--ease) infinite;
+}
+@keyframes s-breathe {
+  0%, 100% { opacity: 0.4; transform: scale(0.88); }
+  50% { opacity: 1; transform: scale(1); }
+}
+
+/* The sheen is deliberately inert. It swept a light band across a surface
+   every 3.2 seconds forever, which on a dark ground reads as a rendering
+   fault rather than as activity. The class is kept so call sites need not
+   change; it simply no longer draws anything. */
+.studio .ai-sheen::after { content: none; }
+
+/* The portalled tooltip. Rendered on <body> so the rail's overflow cannot clip
+   it, which is why this selector is not scoped to `.studio`. */
+.ws-tip-pop {
+  position: fixed;
+  z-index: 200;
+  pointer-events: none;
+  white-space: nowrap;
+  padding: 5px 9px;
+  border-radius: 8px;
+  border: 1px solid #33363f;
+  background: #16171d;
+  color: #f4f5f7;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.2;
+  box-shadow: 0 12px 32px -12px rgb(0 0 0 / 0.9);
+  animation: s-fade 140ms cubic-bezier(0.32, 0.72, 0, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ws-tip-pop { animation: none; }
+}
+
+/* `.wsRoot` is an alias of `.studio`, for the two internal preview harnesses
+   (`/output-preview`, `/intake-preview`) that mount workspace components
+   outside the shell. They are development routes; aliasing costs one selector
+   and avoids editing them into a shape nobody reviews. */
+.wsRoot {
+  color: var(--color-ink);
+  background: var(--color-canvas);
+}

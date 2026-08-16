@@ -3,7 +3,6 @@
 import { useEffect, useRef, type ReactNode, type RefObject } from "react";
 import { IconMic, IconSend } from "./parts";
 import type { VoiceState } from "@/lib/workspace/useVoiceInput";
-import { VentrioButton } from "@/components/ui/VentrioButton";
 
 export interface WorkspaceComposerProps {
   value: string;
@@ -18,26 +17,15 @@ export interface WorkspaceComposerProps {
   sending?: boolean;
   maxLength?: number;
   maxHeight?: number;
-  /**
-   * Controls that belong to the composer rather than to the message — the usage
-   * menu lives here. Limits are no longer printed under every input; they are
-   * one click away instead.
-   */
+  /** Controls that belong to the composer rather than to the message. */
   settings?: ReactNode;
   /** Replaces the hint while dictation is running. */
   listeningLabel: string;
-  /**
-   * Shown only in the send control's tooltip. The keyboard behaviour is real;
-   * printing it permanently beside the input is what made the composer read as
-   * a developer tool rather than a place to write.
-   */
   keyboardHint?: string;
-  /** Lets the caller focus the input — /create focuses it when refining. */
   textareaRef?: RefObject<HTMLTextAreaElement | null>;
   voice?: {
     supported: boolean;
     listening: boolean;
-    /** Drives the composer edge and the inline message; see useVoiceInput. */
     state: VoiceState;
     onToggle: () => void;
     label: string;
@@ -45,17 +33,29 @@ export interface WorkspaceComposerProps {
     requestingLabel: string;
     listeningLabel: string;
   };
-  /** True while the model is producing something, so the edge can react. */
+  /** True while the model is producing something. */
   generating?: boolean;
 }
 
 /**
- * The workspace composer.
+ * The composer.
  *
- * It owns no submission logic of its own — the surface that renders it already
- * knows how to talk to the assistant, and duplicating that here is how two
- * chat implementations start to drift apart. This is the input, the dictation
- * control, one quiet line of status, and the send key.
+ * WHAT IT WAS. A white rounded box with a 1px border, a drop shadow, a
+ * near-opaque fill over a 20px saturating backdrop blur, and — around all of
+ * it — a conic-gradient pseudo-element masked to a 1px ring, animating its
+ * angle forever at four different speeds depending on state. On focus it lifted
+ * a pixel, dropped its border, and grew two stacked accent rings and a 46px
+ * coloured shadow. Seven effects, on the one surface a person needs to be able
+ * to think next to.
+ *
+ * WHAT IT IS. A field on the floor of the room. One tone lighter than the
+ * canvas, one hairline, and a top edge that runs the full width so it reads as
+ * the bottom of the conversation rather than as an object floating in front of
+ * it. Focus changes the hairline to the accent. That is the whole treatment.
+ *
+ * The send key is the only accented thing, and it only becomes accented once
+ * there is something to send — so the brightest pixel on the screen is always
+ * the next action.
  */
 export function WorkspaceComposer({
   value,
@@ -67,7 +67,7 @@ export function WorkspaceComposer({
   disabled,
   sending,
   maxLength = 2000,
-  maxHeight = 180,
+  maxHeight = 200,
   settings,
   listeningLabel,
   keyboardHint,
@@ -78,8 +78,6 @@ export function WorkspaceComposer({
   const innerRef = useRef<HTMLTextAreaElement>(null);
   const ref = textareaRef ?? innerRef;
 
-  // Grows with what is being written, up to a cap, so a long thought is
-  // readable without the composer eating the conversation.
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
@@ -88,94 +86,84 @@ export function WorkspaceComposer({
   }, [value, maxHeight, ref]);
 
   const canSend = !disabled && value.trim().length > 0;
-  // /create has neither dictation nor a usage menu, so a full control row there
-  // would be an empty strip with one button in it. Without tools the send key
-  // sits inside the input instead.
-  const hasTools = Boolean(voice || settings);
 
   return (
-    <div className="ws-composer-shell">
-      <form
-        className="ws-composer ws-edge"
-        data-state={
-          disabled ? "disabled" : voice?.listening ? "listening" : generating ? "generating" : undefined
-        }
-        onSubmit={(event) => {
-          event.preventDefault();
-          if (canSend) onSend();
+    <form
+      className="s-composer"
+      data-state={disabled ? "disabled" : voice?.listening ? "listening" : generating ? "generating" : undefined}
+      onSubmit={(event) => {
+        event.preventDefault();
+        if (canSend) onSend();
+      }}
+    >
+      <textarea
+        ref={ref}
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        disabled={disabled}
+        rows={1}
+        maxLength={maxLength}
+        placeholder={placeholder}
+        aria-label={ariaLabel ?? placeholder}
+        aria-keyshortcuts="Enter"
+        /* 16px on every screen. Below it iOS zooms the page on focus, and this
+           input sits inside a frame that is exactly the viewport tall, so the
+           zoom leaves the composer half off-screen with no way back. */
+        className="w-full resize-none bg-transparent px-1 pt-1 text-[16px] leading-[1.5] outline-none disabled:opacity-60"
+        style={{ color: "var(--color-ink)" }}
+        onKeyDown={(event) => {
+          if (event.key === "Enter" && !event.shiftKey) {
+            event.preventDefault();
+            if (canSend) onSend();
+          }
         }}
-      >
-        <textarea
-          ref={ref}
-          value={value}
-          onChange={(event) => onChange(event.target.value)}
-          disabled={disabled}
-          rows={1}
-          maxLength={maxLength}
-          placeholder={placeholder}
-          aria-label={ariaLabel ?? placeholder}
-          aria-keyshortcuts="Enter"
-          /* 16px below md, 15px from there up. iOS Safari zooms the whole page
-             when a focused field is under 16px, and this is the product's one
-             input — inside a sheet that is exactly the viewport tall, so the
-             zoom left the composer half off-screen with no obvious way back.
-             The type scale above md is unchanged. */
-          className={`w-full resize-none bg-transparent pt-2.5 text-[16px] leading-[1.45] outline-none placeholder:text-[var(--ink-3)] disabled:opacity-60 md:text-[15px] ${
-            hasTools ? "px-3.5 pb-0.5" : "py-2.5 pl-3.5 pr-12"
-          }`}
-          onKeyDown={(event) => {
-            if (event.key === "Enter" && !event.shiftKey) {
-              event.preventDefault();
-              if (canSend) onSend();
-            }
-          }}
-        />
+      />
 
-        <div className={hasTools ? "flex h-9 items-center gap-1 px-2 pb-1" : "contents"}>
-          {voice && (
-            <VentrioButton
-              variant="composer"
-              size="md"
-              on={voice.listening}
-              disabled={disabled || !voice.supported}
-              onClick={voice.supported ? voice.onToggle : undefined}
-              label={voice.supported ? voice.label : voice.unsupportedLabel}
-            >
-              <IconMic className="h-[18px] w-[18px]" />
-            </VentrioButton>
-          )}
-
-          {settings}
-
-          {voice?.listening && (
-            <span className="flex items-center gap-1.5 text-[13px] font-medium" style={{ color: "var(--accent-ink)" }}>
-              <span className="ai-pending h-1.5 w-1.5 rounded-full" style={{ background: "var(--accent)" }} />
-              {listeningLabel}
-            </span>
-          )}
-
-          <VentrioButton
-            variant="primary"
-            size="md"
-            shape="circle"
-            type="submit"
-            disabled={!canSend}
-            className={hasTools ? "ml-auto" : undefined}
-            style={hasTools ? undefined : { position: "absolute", right: 10, bottom: 10 }}
-            label={sendLabel}
-            title={keyboardHint ? `${sendLabel} · ${keyboardHint}` : sendLabel}
+      <div className="flex items-center gap-1 pt-1">
+        {voice && (
+          <button
+            type="button"
+            disabled={disabled || !voice.supported}
+            onClick={voice.supported ? voice.onToggle : undefined}
+            aria-label={voice.supported ? voice.label : voice.unsupportedLabel}
+            aria-pressed={voice.listening}
+            className="s-btn s-btn--ghost s-btn--icon h-9 w-9"
+            style={voice.listening ? { color: "var(--color-accent)" } : undefined}
           >
-            {sending ? (
-              <span
-                className="block h-[18px] w-[18px] animate-spin rounded-full border-2 border-white/35 border-t-white"
-                aria-hidden
-              />
-            ) : (
-              <IconSend className="h-[18px] w-[18px]" />
-            )}
-          </VentrioButton>
-        </div>
-      </form>
-    </div>
+            <IconMic className="h-[18px] w-[18px]" />
+          </button>
+        )}
+
+        {settings}
+
+        {voice?.listening && (
+          <span className="flex items-center gap-1.5 text-[13px] font-medium" style={{ color: "var(--color-accent)" }}>
+            <span className="s-thinking flex items-center gap-1" aria-hidden>
+              <span />
+              <span />
+              <span />
+            </span>
+            {listeningLabel}
+          </span>
+        )}
+
+        <button
+          type="submit"
+          disabled={!canSend}
+          aria-label={sendLabel}
+          title={keyboardHint ? `${sendLabel} · ${keyboardHint}` : sendLabel}
+          className="s-btn s-btn--primary s-btn--icon ml-auto h-9 w-9 rounded-[var(--r-sm)]"
+        >
+          {sending ? (
+            <span
+              className="block h-[16px] w-[16px] animate-spin rounded-full border-2 border-current border-t-transparent opacity-70"
+              aria-hidden
+            />
+          ) : (
+            <IconSend className="h-[17px] w-[17px]" />
+          )}
+        </button>
+      </div>
+    </form>
   );
 }

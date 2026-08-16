@@ -20,7 +20,8 @@
   "nav": {
     "create": "Создать",
     "projects": "Проекты",
-    "profile": "Профиль"
+    "profile": "Профиль",
+    "pricing": "Тарифы"
   },
   "projects": {
     "eyebrow": "Ваши работы",
@@ -1269,6 +1270,11 @@
     "featureBrandingOff": "Без плашки Ventrio",
     "featureSubdomain": "Поддомен проекта, например your-idea.ventrio.org",
     "featureDiscovery": "Создание продукта и подбор идеи",
-    "note": "Все тарифы используют один и тот же конвейер генерации. Отличаются только лимиты."
+    "note": "Все тарифы используют один и тот же конвейер генерации. Отличаются только лимиты.",
+    "rowGenerations": "Генерации",
+    "rowPublished": "Опубликованные проекты",
+    "rowBranding": "Плашка Ventrio",
+    "rowSubdomain": "Поддомен проекта",
+    "rowDiscovery": "Подбор идеи"
   }
 }

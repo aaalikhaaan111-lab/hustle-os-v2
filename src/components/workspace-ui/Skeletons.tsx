@@ -1,14 +1,18 @@
 import type { CSSProperties } from "react";
 
 /**
- * Loading placeholders in the workspace's own visual language.
+ * Loading placeholders, shaped like the thing that replaces them.
  *
- * The product has two surfaces with separate tokens. Outer pages use the app
- * palette and are served by `components/ui/Skeleton.tsx`. Everything inside
- * `WorkspaceShell` uses `workspace-ui/tokens.css`, so these borrow that set —
- * the same `--r-*` radii, the same `--line` borders and the same `--surface`
- * the real cards sit on. A placeholder drawn in the other palette reads as a
- * different product for the half-second it is up.
+ * There is one palette now, so there is no longer a second set of tokens for
+ * these to borrow — `--color-*` is the same inside the workspace and out.
+ *
+ * What DID need fixing is the shapes. These were drawn to match bordered cards
+ * on a white sheet, and the screens they stand in for have no cards: the
+ * heading is display type, the lists are hairline-separated rows, and the
+ * active project is an artifact beside a column of metadata. A placeholder in
+ * the previous layout does not just look wrong for half a second — it reflows
+ * the entire page at the moment the data lands, which is the one thing a
+ * skeleton exists to prevent.
  *
  * The only motion is `animate-pulse-soft`, which is the pulse the rest of the
  * app already uses; nothing here introduces a new animation.
@@ -18,7 +22,7 @@ import type { CSSProperties } from "react";
  * layout holding still that makes the wait read as loading rather than broken.
  */
 
-const fill: CSSProperties = { background: "var(--raised)" };
+const fill: CSSProperties = { background: "var(--color-surface-elevated)" };
 
 /** One placeholder block. Size it with `className`. */
 export function WsBlock({ className = "", radius = "var(--r-xs)" }: { className?: string; radius?: string }) {
@@ -28,23 +32,22 @@ export function WsBlock({ className = "", radius = "var(--r-xs)" }: { className?
 /** The heading block every workspace page opens with, matching `PageHeading`. */
 export function WsHeadingSkeleton({ action = false }: { action?: boolean }) {
   return (
-    <div className="flex flex-wrap items-start justify-between gap-3">
+    <div className="flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
       <div className="min-w-0 flex-1">
-        <WsBlock className="h-[26px] w-52 max-w-full" />
-        <WsBlock className="mt-2.5 h-[14px] w-72 max-w-full" />
+        <WsBlock className="h-[11px] w-24" />
+        {/* The display step: 32px on a phone, 44px from md. */}
+        <WsBlock className="mt-3 h-[38px] w-72 max-w-full sm:h-[48px]" />
+        <WsBlock className="mt-4 h-[15px] w-80 max-w-full" />
       </div>
-      {action && <WsBlock className="h-9 w-36 shrink-0" radius="var(--r-md)" />}
+      {action && <WsBlock className="h-[38px] w-36 shrink-0" radius="var(--r-sm)" />}
     </div>
   );
 }
 
-/** A bordered card on the workspace surface. */
+/** A block separated by a hairline, which is what cards became. */
 export function WsCardSkeleton({ className = "", children }: { className?: string; children?: React.ReactNode }) {
   return (
-    <div
-      className={`rounded-[var(--r-lg)] border p-4 ${className}`}
-      style={{ borderColor: "var(--line)", background: "var(--surface)" }}
-    >
+    <div className={`border-t py-4 ${className}`} style={{ borderColor: "var(--color-border)" }}>
       {children}
     </div>
   );
@@ -63,12 +66,13 @@ export function WsMetricSkeleton() {
 /** One row of the projects list, matching the real row's rhythm. */
 export function WsRowSkeleton() {
   return (
-    <li className="flex items-start gap-3 px-3 py-4">
-      <WsBlock className="mt-[7px] h-2 w-2 shrink-0" radius="9999px" />
+    <li className="flex items-center gap-4 border-b py-5 pl-4" style={{ borderColor: "var(--color-border)" }}>
       <div className="min-w-0 flex-1">
-        <WsBlock className="h-[15px] w-48 max-w-full" />
-        <WsBlock className="mt-2 h-[13px] w-64 max-w-full" />
+        {/* 19px name, then the metadata line — the index row's real rhythm. */}
+        <WsBlock className="h-[19px] w-56 max-w-full" />
+        <WsBlock className="mt-2.5 h-[13px] w-72 max-w-full" />
       </div>
+      <WsBlock className="h-[13px] w-14 shrink-0" />
     </li>
   );
 }

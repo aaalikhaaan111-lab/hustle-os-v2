@@ -118,8 +118,8 @@ export function LanguageSwitcher({
               <span
                 className="grid h-5 w-5 shrink-0 place-items-center rounded-full"
                 style={{
-                  background: isActive ? "var(--accent)" : "transparent",
-                  boxShadow: isActive ? "none" : "inset 0 0 0 1.5px var(--line-2)",
+                  background: isActive ? "var(--color-accent)" : "transparent",
+                  boxShadow: isActive ? "none" : "inset 0 0 0 1.5px var(--color-border-strong)",
                   color: "#fff",
                 }}
                 aria-hidden
@@ -139,7 +139,7 @@ export function LanguageSwitcher({
               </span>
               {label(option)}
               {isActive && (
-                <span className="ml-auto text-[13px] font-normal" style={{ color: "var(--ink-3)" }}>
+                <span className="ml-auto text-[13px] font-normal" style={{ color: "var(--color-ink-muted)" }}>
                   {t("languageInUse")}
                 </span>
               )}

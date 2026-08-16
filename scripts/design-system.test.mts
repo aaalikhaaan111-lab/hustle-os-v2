@@ -4,15 +4,27 @@
  *   npx tsx --conditions=react-server scripts/design-system.test.mts
  *
  * WHY "DIFFERENT GENERATIONS OF THE PRODUCT" WAS LITERALLY TRUE. Ventrio ran
- * two palettes. `globals.css @theme` had a #5d6bff accent, #1a1c28 ink, #e6e8f0
- * borders and a 20/28px radius pair; `workspace-ui/tokens.css` had #6b64f2,
- * #0e1016, #dde1ea and 18/22px — and because the second was scoped to `.wsRoot`,
- * Pricing, Projects, the nav drawer and every auth screen rendered in the first
- * while the workspace rendered in the second.
+ * two palettes. `globals.css @theme` had a #5d6bff accent, #1a1c28 ink and
+ * #e6e8f0 borders; `workspace-ui/tokens.css` had #6b64f2, #0e1016 and #dde1ea —
+ * and because the second was scoped to `.wsRoot`, Pricing, Projects, the nav
+ * drawer and every auth screen rendered in the first while the workspace
+ * rendered in the second. It was not old components versus new ones; it was
+ * components obeying two different sets of numbers.
  *
- * So it was not old components versus new ones. It was components obeying two
- * different sets of numbers, which no amount of restyling one at a time would
- * ever reconcile. This file holds them together.
+ * THIS FILE NO LONGER CHECKS THAT THE TWO AGREE, because there is no longer a
+ * second one. `workspace-ui/tokens.css` is deleted and the platform's palette
+ * lives once, in `.studio`. What is asserted instead is the invariant that
+ * replaced parity:
+ *
+ *   - the platform palette is defined in exactly one place;
+ *   - it is legible (measured, not asserted by eye);
+ *   - the type scale is short and nothing redefines a step ad hoc;
+ *   - the shared primitives read the palette rather than carrying colours.
+ *
+ * `@theme` in globals.css is still LIGHT and is deliberately left alone: it is
+ * what the frozen public landing page renders in. The platform overrides those
+ * same custom properties inside `.studio`, which is why re-skinning the whole
+ * product did not require editing a single shared component.
  *
  * Offline. Whether it looks premium is a real-device judgement.
  */
@@ -38,41 +50,76 @@ const nocode = (s: string) =>
   s.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "").replace(/\{\/\*[\s\S]*?\*\/\}/g, "");
 
 const globals = nocss(read("src/app/globals.css"));
-const tokens = nocss(read("src/components/workspace-ui/tokens.css"));
+const tokens = nocss(read("src/app/studio.css"));
 
-/* ── the two palettes are one palette ────────────────────────────────────── */
+/* ── there is exactly one platform palette ──────────────────────────────── */
 
-const themeBlock = globals.split("@theme {")[1]?.split("\n}")[0] ?? "";
-const wsBlock = tokens.split(".wsRoot {")[1]?.split("\n}")[0] ?? "";
+const studioBlock = tokens.split(".studio {")[1]?.split("\n}")[0] ?? "";
 
 const pick = (block: string, name: string) =>
   (block.match(new RegExp(`${name}:\\s*(#[0-9a-fA-F]{6})`)) ?? [])[1]?.toLowerCase();
 
-for (const [themeName, wsName, label] of [
-  ["--color-accent", "--accent", "accent"],
-  ["--color-ink", "--ink", "ink"],
-  ["--color-ink-secondary", "--ink-2", "secondary ink"],
-  ["--color-ink-muted", "--ink-3", "muted ink"],
-  ["--color-border", "--line", "border"],
-  ["--color-border-strong", "--line-2", "strong border"],
-  ["--color-canvas", "--bg", "canvas"],
-  ["--color-surface", "--surface", "surface"],
-] as const) {
-  const a = pick(themeBlock, themeName);
-  const b = pick(wsBlock, wsName);
-  check(`${label} is the same colour on both sides`, !!a && a === b, `${a} vs ${b}`);
+check("the studio defines the platform palette", studioBlock.length > 0);
+for (const name of [
+  "--color-canvas",
+  "--color-surface",
+  "--color-surface-elevated",
+  "--color-surface-hover",
+  "--color-border",
+  "--color-border-strong",
+  "--color-ink",
+  "--color-ink-secondary",
+  "--color-ink-muted",
+  "--color-accent",
+  "--color-accent-hover",
+  "--color-accent-foreground",
+]) {
+  check(`${name} is defined once, in .studio`, !!pick(studioBlock, name), "missing");
 }
 
-check("the retired accent is gone from the theme", !/#5d6bff/.test(themeBlock));
+/**
+ * The second palette is GONE, not merely agreed with. A file that defines a
+ * competing set of colours is the failure mode this whole exercise was about,
+ * so its absence is the assertion.
+ */
+let secondPaletteExists = true;
+try {
+  read("src/components/workspace-ui/tokens.css");
+} catch {
+  secondPaletteExists = false;
+}
+check("the second palette no longer exists", !secondPaletteExists,
+  "workspace-ui/tokens.css defined a full competing colour set scoped to .wsRoot");
+
 check("and there is no second brand colour",
-  !/--color-accent-2/.test(themeBlock),
+  !/--color-accent-2/.test(studioBlock),
   "a product with two brand colours reads as a product with none");
+
+/**
+ * The platform must not paint itself with literal colours. A hex in a component
+ * is a value that cannot follow the palette, and enough of them is a second
+ * palette growing back one declaration at a time.
+ *
+ * The generated-app runtime is excluded: those fixtures describe the visitor's
+ * application, which has its own design and must not inherit Ventrio's.
+ */
+const painted: string[] = [];
+for (const file of [
+  "src/components/workspace-ui/WorkspaceShell.tsx",
+  "src/components/workspace-ui/Composer.tsx",
+  "src/components/workspace/ProjectsScreen.tsx",
+  "src/components/workspace/OverviewScreen.tsx",
+  "src/components/build/ConversationTurn.tsx",
+  "src/components/layout/StudioTopBar.tsx",
+]) {
+  if (/#[0-9a-fA-F]{6}\b/.test(nocode(read(file)))) painted.push(file);
+}
+check("no platform screen hardcodes a colour", painted.length === 0, painted.join(", "));
 
 /* ── one radius scale ────────────────────────────────────────────────────── */
 
-check("shared radii match the workspace's surface radii",
-  /--radius-lg:\s*16px/.test(themeBlock) && /--radius-xl:\s*22px/.test(themeBlock),
-  "20px/28px made shared components visibly softer than workspace ones beside them");
+check("the studio defines one radius scale",
+  /--r-sm:\s*9px/.test(studioBlock) && /--r-md:\s*12px/.test(studioBlock) && /--r-lg:\s*16px/.test(studioBlock));
 
 /* ── one type scale, and it is short ─────────────────────────────────────── */
 
@@ -122,10 +169,28 @@ check("and have no drop shadow", !/shadow-\[/.test(card));
 
 /* ── touch targets on the surfaces a phone actually uses ─────────────────── */
 
-check("the tap floor exists", /\.v-tap\s*\{/.test(globals) || /\.v-tap\b/.test(globals));
-const drawer = nocode(read("src/components/layout/NavDrawer.tsx"));
-check("drawer rows meet it", /v-tap/.test(drawer));
-check("and the drawer close control is not a 32px circle", !/h-8 w-8 items-center justify-center rounded-full/.test(drawer));
+/**
+ * THE DRAWER IS GONE, so the checks that guarded its row heights are too.
+ *
+ * On a phone the whole product used to hide behind one unlabelled hamburger
+ * that opened a sheet over the page. It is a bottom tab bar now — four
+ * destinations, shown rather than disclosed — so what has to clear the touch
+ * floor is the tab, and the tab is what is measured.
+ */
+const shell = nocode(read("src/components/workspace-ui/WorkspaceShell.tsx"));
+check("the phone navigation is a tab bar, not a drawer",
+  /s-tab/.test(shell) && !/drawerOpen/.test(shell) && !/ws-scrim/.test(shell));
+check("its tabs clear the touch floor", /min-h-\[52px\]/.test(shell));
+check("and every tab carries a word", /text-\[10\.5px\] font-medium/.test(shell));
+
+/**
+ * The touch floor itself moved from a viewport query to a POINTER query. A
+ * narrow window on a laptop is still a mouse and does not need 44px of button;
+ * a wide tablet is a thumb and does.
+ */
+const buttonCss = nocss(read("src/components/ui/VentrioButton.css"));
+check("the touch floor is keyed on the pointer", /@media \(pointer: coarse\)/.test(buttonCss));
+check("and raises icon-only controls to 44px", /width: 44px;\s*\n\s*height: 44px;/.test(buttonCss));
 
 /* ── publish feedback cannot move the toolbar ────────────────────────────── */
 
@@ -161,17 +226,61 @@ const contrast = (a: string, b: string) => {
   return (x + 0.05) / (y + 0.05);
 };
 
-const accent = pick(themeBlock, "--color-accent")!;
-const accentFg = pick(themeBlock, "--color-accent-foreground")!;
-const accentSoft = pick(themeBlock, "--color-accent-soft")!;
-const surfaceHex = pick(themeBlock, "--color-surface")!;
+const accent = pick(studioBlock, "--color-accent")!;
+const accentFg = pick(studioBlock, "--color-accent-foreground")!;
+const surfaceHex = pick(studioBlock, "--color-surface")!;
+const canvasHex = pick(studioBlock, "--color-canvas")!;
+const inkHex = pick(studioBlock, "--color-ink")!;
+const ink2Hex = pick(studioBlock, "--color-ink-secondary")!;
+const ink3Hex = pick(studioBlock, "--color-ink-muted")!;
+const borderHex = pick(studioBlock, "--color-border")!;
+const hoverHex = pick(studioBlock, "--color-surface-hover")!;
 
+/**
+ * `--color-accent-soft` is a translucent tint, not a hex, so it has to be
+ * COMPOSITED against the surface it sits on before it can be measured. Reading
+ * the alpha off the declaration keeps the test honest if the tint is retuned.
+ */
+const softAlpha = Number(
+  (studioBlock.match(/--color-accent-soft:\s*rgb\([^/]+\/\s*([\d.]+)\s*\)/) ?? [])[1] ?? "0",
+);
+const over = (fg: string, bg: string, alpha: number) => {
+  const [f, b] = [parseInt(fg.slice(1), 16), parseInt(bg.slice(1), 16)];
+  const mix = (shift: number) => {
+    const a = (f >> shift) & 255;
+    const c = (b >> shift) & 255;
+    return Math.round(a * alpha + c * (1 - alpha));
+  };
+  return `#${[16, 8, 0].map((sh) => mix(sh).toString(16).padStart(2, "0")).join("")}`;
+};
+const accentSoftOnSurface = over(accent, surfaceHex, softAlpha);
+
+check("the soft tint has a real alpha", softAlpha > 0, String(softAlpha));
+check("body text is legible", contrast(inkHex, surfaceHex) >= 7, contrast(inkHex, surfaceHex).toFixed(2));
+check("secondary text passes AA", contrast(ink2Hex, surfaceHex) >= 4.5, contrast(ink2Hex, surfaceHex).toFixed(2));
+check("muted text passes AA on a surface",
+  contrast(ink3Hex, surfaceHex) >= 4.5, contrast(ink3Hex, surfaceHex).toFixed(2));
+check("and still passes on a hovered row",
+  contrast(ink3Hex, hoverHex) >= 4.5, contrast(ink3Hex, hoverHex).toFixed(2),
+);
+check("a hairline is visible against a panel",
+  contrast(borderHex, surfaceHex) >= 1.15,
+  `${contrast(borderHex, surfaceHex).toFixed(3)} — on a dark ground the edge must be LIGHTER than the panel`);
+
+/**
+ * The accent has to carry text in BOTH directions: as a fill behind the button
+ * label, and as text itself. Passing one way says nothing about the other —
+ * white on this violet is 3.27:1 and fails, which is why the button label is
+ * near-black rather than white.
+ */
 check("a primary button label is legible on the accent",
   contrast(accentFg, accent) >= 4.5, contrast(accentFg, accent).toFixed(2));
 check("accent text is legible on a surface",
   contrast(accent, surfaceHex) >= 4.5, contrast(accent, surfaceHex).toFixed(2));
-check("and an accent badge is legible on the soft tint",
-  contrast(accent, accentSoft) >= 4.5, contrast(accent, accentSoft).toFixed(2));
+check("accent text is legible on the canvas",
+  contrast(accent, canvasHex) >= 4.5, contrast(accent, canvasHex).toFixed(2));
+check("and on the soft tint, composited",
+  contrast(accent, accentSoftOnSurface) >= 4.5, contrast(accent, accentSoftOnSurface).toFixed(2));
 
 /* ── the shared primitives obey the same system ──────────────────────────── */
 

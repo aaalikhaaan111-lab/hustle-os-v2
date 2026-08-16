@@ -15,13 +15,14 @@ export default function ProjectsLoading() {
       <PageBody>
         <WsHeadingSkeleton action />
 
-        {/* The search field and view toggle above the list. */}
-        <div className="mt-7 flex flex-wrap items-center gap-2">
-          <WsBlock className="h-10 min-w-[200px] flex-1 sm:max-w-[280px] sm:flex-none" radius="var(--r-md)" />
-          <WsBlock className="h-10 w-[92px]" radius="var(--r-md)" />
+        {/* The search field and filter sit on a hairline now, not in boxes. */}
+        <div className="mt-10 flex flex-wrap items-center gap-x-6 gap-y-3 border-b pb-3"
+             style={{ borderColor: "var(--color-border)" }}>
+          <WsBlock className="h-[15px] min-w-[160px] flex-1 sm:max-w-[240px] sm:flex-none" />
+          <WsBlock className="h-[15px] w-[140px]" />
         </div>
 
-        <ul className="mt-5 flex flex-col">
+        <ul className="mt-1 flex flex-col">
           {[0, 1, 2, 3].map((i) => (
             <WsRowSkeleton key={i} />
           ))}

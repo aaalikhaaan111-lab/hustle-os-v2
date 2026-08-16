@@ -213,20 +213,31 @@ export const IconMinimize = ({ className }: IconProps) => (
 
 /* ── Shared primitives ──────────────────────────────────────────────────── */
 
-const STATE_STYLE: Record<ProjectState, { key: "statusDraft" | "statusPublished" | "statusProposal"; fg: string; bg: string }> = {
-  draft: { key: "statusDraft", fg: "var(--ink-2)", bg: "var(--sunken)" },
-  published: { key: "statusPublished", fg: "var(--ok)", bg: "var(--ok-soft)" },
-  proposal: { key: "statusProposal", fg: "var(--accent-ink)", bg: "var(--accent-soft)" },
+const STATE_STYLE: Record<ProjectState, { key: "statusDraft" | "statusPublished" | "statusProposal"; fg: string }> = {
+  draft: { key: "statusDraft", fg: "var(--color-ink-muted)" },
+  published: { key: "statusPublished", fg: "var(--color-success)" },
+  proposal: { key: "statusProposal", fg: "var(--color-accent)" },
 };
 
+/**
+ * State, said with a dot and a word.
+ *
+ * It was a filled capsule — coloured background, coloured text, semibold, in
+ * the middle of a row that also held the project's own accent colour and its
+ * name. Three coloured objects competing on one line, and the loudest of them
+ * was the least important. A 5px dot and the word in that colour carries the
+ * same information at a fraction of the weight, and sits down inside the
+ * metadata line where it belongs.
+ */
 export function StatusPill({ state }: { state: ProjectState }) {
   const t = useTranslations("workspace");
   const style = STATE_STYLE[state];
   return (
     <span
-      className="inline-flex shrink-0 items-center rounded-full px-2 py-[3px] text-[12px] font-semibold leading-none"
-      style={{ color: style.fg, background: style.bg }}
+      className="inline-flex shrink-0 items-center gap-1.5 text-[13px] font-medium leading-none"
+      style={{ color: style.fg }}
     >
+      <span aria-hidden className="h-[5px] w-[5px] rounded-full" style={{ background: "currentColor" }} />
       {t(style.key)}
     </span>
   );
@@ -319,7 +330,7 @@ export function ProductPreview({
 }) {
   const u = density === "lg" ? 1 : density === "sm" ? 0.42 : 0.26;
   const px = (n: number) => `${Math.max(1, Math.round(n * u))}px`;
-  const bar = (w: string, h: number, tone = "var(--line-2)") => (
+  const bar = (w: string, h: number, tone = "var(--color-border-strong)") => (
     <span style={{ display: "block", width: w, height: px(h), borderRadius: px(h), background: tone }} />
   );
 
@@ -350,7 +361,7 @@ export function ProductPreview({
 
       <div className="flex flex-col" style={{ gap: px(7) }}>
         {bar("62%", 9)}
-        {bar("42%", 7, "var(--line)")}
+        {bar("42%", 7, "var(--color-border)")}
       </div>
 
       <div
@@ -376,16 +387,16 @@ export function ProductPreview({
                 gap: px(10),
                 padding: px(12),
                 borderRadius: px(7),
-                border: `${px(1)} solid ${i === 1 && highlight ? project.accent : "var(--line)"}`,
+                border: `${px(1)} solid ${i === 1 && highlight ? project.accent : "var(--color-border)"}`,
                 background: i === 1 && highlight ? `${project.accent}0d` : "transparent",
                 transition: "border-color 240ms ease, background 240ms ease",
               }}
             >
               <div className="flex flex-col" style={{ gap: px(5) }}>
                 {bar(px(84), 7)}
-                {bar(px(54), 5, "var(--line)")}
+                {bar(px(54), 5, "var(--color-border)")}
               </div>
-              {bar(px(38), 12, "var(--line)")}
+              {bar(px(38), 12, "var(--color-border)")}
             </div>
           ))}
         </div>
@@ -395,8 +406,8 @@ export function ProductPreview({
         <div className="flex flex-col" style={{ gap: px(9) }}>
           {[0, 1].map((i) => (
             <div key={i} className="flex flex-col" style={{ gap: px(5) }}>
-              {bar(px(52), 5, "var(--line)")}
-              <div style={{ height: px(22), borderRadius: px(6), border: `${px(1)} solid var(--line)` }} />
+              {bar(px(52), 5, "var(--color-border)")}
+              <div style={{ height: px(22), borderRadius: px(6), border: `${px(1)} solid var(--color-border)` }} />
             </div>
           ))}
         </div>
@@ -406,8 +417,8 @@ export function ProductPreview({
         <div className="grid grid-cols-3" style={{ gap: px(8) }}>
           {[0, 1, 2, 3, 4, 5].map((i) => (
             <div key={i} className="flex flex-col" style={{ gap: px(5) }}>
-              <div style={{ height: px(34), borderRadius: px(6), background: "var(--sunken)" }} />
-              {bar("80%", 5, "var(--line)")}
+              <div style={{ height: px(34), borderRadius: px(6), background: "var(--color-surface-hover)" }} />
+              {bar("80%", 5, "var(--color-border)")}
             </div>
           ))}
         </div>
@@ -415,12 +426,12 @@ export function ProductPreview({
 
       {project.shape === "directory" && (
         <div className="flex flex-col" style={{ gap: px(8) }}>
-          <div style={{ height: px(46), borderRadius: px(7), background: "var(--sunken)" }} />
+          <div style={{ height: px(46), borderRadius: px(7), background: "var(--color-surface-hover)" }} />
           <div className="flex" style={{ gap: px(8) }}>
             {[0, 1, 2].map((i) => (
               <div key={i} className="flex-1 flex-col" style={{ display: "flex", gap: px(4) }}>
-                {bar("100%", 6, "var(--line)")}
-                {bar("64%", 5, "var(--line)")}
+                {bar("100%", 6, "var(--color-border)")}
+                {bar("64%", 5, "var(--color-border)")}
               </div>
             ))}
           </div>

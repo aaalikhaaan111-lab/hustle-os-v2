@@ -25,7 +25,7 @@ export function GenerationSteps({ title, steps }: { title: string; steps: Genera
   return (
     <div
       className="ai-sheen rise rounded-[var(--r-lg)] border p-5"
-      style={{ borderColor: "var(--line-accent)", background: "var(--accent-soft)" }}
+      style={{ borderColor: "var(--color-accent-line)", background: "var(--color-accent-soft)" }}
       role="status"
       aria-live="polite"
     >
@@ -43,7 +43,7 @@ export function GenerationSteps({ title, steps }: { title: string; steps: Genera
               {step.state === "done" && (
                 <span
                   className="grid h-[18px] w-[18px] place-items-center rounded-full"
-                  style={{ background: "var(--accent)", color: "#fff" }}
+                  style={{ background: "var(--color-accent)", color: "#fff" }}
                 >
                   <IconCheck className="h-3 w-3" />
                 </span>
@@ -54,13 +54,13 @@ export function GenerationSteps({ title, steps }: { title: string; steps: Genera
                     className="ai-pending absolute h-[18px] w-[18px] rounded-full"
                     style={{ background: "rgb(107 100 242 / 0.22)" }}
                   />
-                  <span className="h-2 w-2 rounded-full" style={{ background: "var(--accent)" }} />
+                  <span className="h-2 w-2 rounded-full" style={{ background: "var(--color-accent)" }} />
                 </>
               )}
               {step.state === "waiting" && (
                 <span
                   className="h-[14px] w-[14px] rounded-full border"
-                  style={{ borderColor: "var(--line-2)" }}
+                  style={{ borderColor: "var(--color-border-strong)" }}
                 />
               )}
             </span>
@@ -68,7 +68,7 @@ export function GenerationSteps({ title, steps }: { title: string; steps: Genera
             <span
               className="text-[14px] leading-snug"
               style={{
-                color: step.state === "waiting" ? "var(--ink-3)" : "var(--ink)",
+                color: step.state === "waiting" ? "var(--color-ink-muted)" : "var(--color-ink)",
                 fontWeight: step.state === "active" ? 600 : 400,
               }}
             >
@@ -97,7 +97,7 @@ export function GenerationSteps({ title, steps }: { title: string; steps: Genera
                 style={{
                   top: "18px",
                   height: "calc(100% - 6px)",
-                  background: step.state === "done" ? "var(--accent-pale)" : "var(--line-2)",
+                  background: step.state === "done" ? "var(--color-accent-line)" : "var(--color-border-strong)",
                 }}
               />
             )}

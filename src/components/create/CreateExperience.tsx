@@ -21,6 +21,7 @@ import { WorkspaceComposer } from "@/components/workspace-ui/Composer";
 import { VentrioButton } from "@/components/ui/VentrioButton";
 import { useVoiceInput, voiceErrorKey } from "@/lib/workspace/useVoiceInput";
 import { cn } from "@/lib/utils";
+import { UserTurn } from "@/components/build/ConversationTurn";
 
 const STARTING_POINTS: {
   id: CreationStartingPoint;
@@ -455,26 +456,43 @@ export function CreateExperience({ userId, initialDraft }: CreateExperienceProps
                the chips are that turn's own suggestions, and the person answers
                in the composer below. From the first pixel there is one
                conversation rather than a screen that becomes one. */
-            <section className="flex w-full flex-col gap-3">
-              <div className="animate-message-in flex flex-col gap-2.5">
-                <p className="text-[17px] font-semibold leading-[1.4] text-ink">{t("emptyPrompt")}</p>
-                <p className="text-[15px] leading-[1.6] text-ink-secondary">{t("emptyHint")}</p>
+            /* THE OPENING OF THE PRODUCT, and now it is sized like one.
+               The question was 17px semibold with a 15px hint under it, which
+               is the size of a form label — on the screen a person reaches
+               first, after deciding to make something. It is display type now,
+               centred in the empty conversation, and it is the only thing on
+               the screen until they answer.
+
+               The starting points are lines, not capsules. A row of pills reads
+               as a filter bar — a set of ways to narrow something that is
+               already there — and these are openings. */
+            <section className="flex w-full flex-col gap-8 pt-4">
+              <div className="s-enter flex flex-col gap-4">
+                <p className="s-opening max-w-[20ch]">{t("emptyPrompt")}</p>
+                <p className="s-body max-w-md">{t("emptyHint")}</p>
               </div>
 
               {/* This turn's suggestions, and the only ones on the screen.
                   They belong to the opening question, so they disappear the
                   moment the conversation starts — unlike the three standing
                   buttons that used to sit above the composer forever. */}
-              <div className="animate-message-in flex flex-wrap gap-2 pt-0.5">
+              <div className="s-enter flex flex-col items-start gap-0.5">
                 {STARTING_POINTS.map((point) => (
                   <button
                     key={point.id}
                     type="button"
                     disabled={isSending || creating}
                     onClick={() => pickStartingPoint(point)}
-                    className="min-h-[38px] rounded-full border px-3.5 text-[14px] font-medium transition-colors disabled:opacity-50"
-                    style={{ borderColor: "var(--line-2)", background: "var(--surface)", color: "var(--ink-2)" }}
+                    className="group -mx-2 flex min-h-[44px] w-full items-center gap-3 rounded-[var(--r-md)] px-2 text-left text-[15px] transition-colors disabled:opacity-50"
+                    style={{ color: "var(--color-ink-secondary)", transitionDuration: "var(--t-fast)" }}
                   >
+                    <span
+                      aria-hidden
+                      className="text-[13px] transition-transform group-hover:translate-x-0.5"
+                      style={{ color: "var(--color-accent)" }}
+                    >
+                      →
+                    </span>
                     {t(point.labelKey)}
                   </button>
                 ))}
@@ -489,14 +507,7 @@ export function CreateExperience({ userId, initialDraft }: CreateExperienceProps
                 {messages.map((message, index) => {
                   const isLatestAssistant = message.role === "assistant" && index === messages.length - 1;
                   return message.role === "user" ? (
-                    <div key={index} className="animate-message-in flex justify-end">
-                      <div
-                        className="max-w-[86%] whitespace-pre-wrap rounded-[var(--r-lg)] px-3.5 py-2.5 text-[15px] leading-[1.6]"
-                        style={{ background: "var(--sunken)" }}
-                      >
-                        {message.content}
-                      </div>
-                    </div>
+                    <UserTurn key={index}>{message.content}</UserTurn>
                   ) : (
                     <div key={index} className="animate-message-in flex max-w-[720px] flex-col gap-2.5">
                       {/* A message, at message size.
@@ -597,7 +608,7 @@ export function CreateExperience({ userId, initialDraft }: CreateExperienceProps
           the two are different neutrals and the seam shows. */}
       <div
         className="relative z-20 shrink-0 px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-6 sm:px-7 md:pb-5"
-        style={{ background: "linear-gradient(to top, var(--canvas) 68%, transparent)" }}
+        style={{ background: "linear-gradient(to top, var(--color-canvas) 68%, transparent)" }}
       >
         <div className="mx-auto w-full max-w-[704px]">
           {showChoices && <p className="mb-2 px-1 text-xs text-ink-muted">{t("orType")}</p>}
@@ -666,7 +677,7 @@ export function CreateExperience({ userId, initialDraft }: CreateExperienceProps
             {voice.listening ? tb("voiceListening") : ""}
           </p>
           {voice.error && (
-            <p role="alert" className="mt-1.5 px-1 text-[13px]" style={{ color: "var(--warn)" }}>
+            <p role="alert" className="mt-1.5 px-1 text-[13px]" style={{ color: "var(--color-warning)" }}>
               {tb(voiceErrorKey(voice.error) as never)}
             </p>
           )}

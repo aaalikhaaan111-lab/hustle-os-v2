@@ -257,7 +257,7 @@ export function BuildScreen({
       {narrow && hasOutput && (
         <div
           className="flex shrink-0 items-center justify-center border-b px-3 py-2"
-          style={{ borderColor: "var(--line)", background: "var(--surface)" }}
+          style={{ borderColor: "var(--color-border)", background: "var(--color-surface)" }}
         >
           <ModeSwitch
             mode={previewOpen ? "preview" : "chat"}
@@ -271,7 +271,7 @@ export function BuildScreen({
       <div className="relative flex min-h-0 flex-1 overflow-hidden">
       {showChat && (
         <div
-          className="flex min-h-0 min-w-0 flex-col transition-[flex-basis] duration-[var(--t-layout)] ease-[var(--ease)]"
+          className="flex min-h-0 min-w-0 flex-col transition-[flex-basis] duration-[var(--t-slow)] ease-[var(--ease)]"
           style={{ flex: previewOpen && !narrow ? "0 0 41%" : "1 1 100%" }}
         >
           {chat({
@@ -285,8 +285,8 @@ export function BuildScreen({
       {previewOpen && (
         <section
           aria-label={t("previewRegion")}
-          className="rise flex min-h-0 min-w-0 flex-1 flex-col rounded-r-[inherit] border-l"
-          style={{ borderColor: "var(--line)", background: "var(--raised)" }}
+          className="s-fade flex min-h-0 min-w-0 flex-1 flex-col border-l"
+          style={{ borderColor: "var(--color-border)", background: "var(--color-canvas)" }}
         >
           {/* ── The preview toolbar ──────────────────────────────────────
               Everything that acts on the generated product lives here, above
@@ -306,15 +306,18 @@ export function BuildScreen({
                 pinned group below and the desktop row is the one it always
                 was. */}
             <div className={cn("flex min-w-0 flex-1 items-center gap-2", narrow ? "overflow-hidden" : "overflow-x-auto")}>
-            <span className="min-w-0 shrink-0 truncate text-[13px] font-semibold">{t("tabPreview")}</span>
+            {/* The toolbar names the thing it acts on, and says whether that
+                thing is live. The capsule is gone: the project's state is
+                already stated in the header two rows above, and a filled green
+                pill repeating it made the loudest object in the toolbar the one
+                piece of information that was already on screen. A dot and a
+                word, in the metadata voice. */}
+            <span className="min-w-0 shrink-0 truncate text-[13px] font-medium">{t("tabPreview")}</span>
             <span
-              className="shrink-0 rounded-full px-2 py-[3px] text-[12px] font-semibold leading-none"
-              style={
-                published
-                  ? { background: "var(--ok-soft)", color: "var(--ok)" }
-                  : { background: "var(--accent-soft)", color: "var(--accent-ink)" }
-              }
+              className="flex shrink-0 items-center gap-1.5 text-[13px] font-medium leading-none"
+              style={{ color: published ? "var(--color-success)" : "var(--color-ink-muted)" }}
             >
+              <span aria-hidden className="h-[5px] w-[5px] rounded-full" style={{ background: "currentColor" }} />
               {published ? t("statusLive") : t("statusDraft")}
             </span>
 
@@ -443,14 +446,14 @@ export function BuildScreen({
               <div
                 role="alert"
                 className="mx-auto mb-3 w-full max-w-[720px] rounded-[var(--r-md)] border p-3"
-                style={{ borderColor: "var(--warn)", background: "var(--surface)" }}
+                style={{ borderColor: "var(--color-warning)", background: "var(--color-warning-soft)" }}
               >
-                <p className="text-[13px] font-semibold" style={{ color: "var(--warn)" }}>
+                <p className="text-[13px] font-semibold" style={{ color: "var(--color-warning)" }}>
                   {t("previewRuntimeErrorTitle")}
                 </p>
                 <ul className="mt-1 space-y-0.5">
                   {runtimeErrors.slice(0, 3).map((message) => (
-                    <li key={message} className="truncate font-mono text-[11.5px]" style={{ color: "var(--ink-2)" }}>
+                    <li key={message} className="truncate font-mono text-[11.5px]" style={{ color: "var(--color-ink-secondary)" }}>
                       {message}
                     </li>
                   ))}
@@ -463,12 +466,18 @@ export function BuildScreen({
 
             {hasOutput ? (
               <div className="flex w-full justify-center">
+                {/* The generated application is the one lit object in a dark
+                    room, and the only thing in the system carrying a real
+                    shadow — because unlike every other surface it genuinely is
+                    floating above the room, and that contrast is the whole
+                    point of the studio. It used to be a white panel with a grey
+                    hairline on a grey panel, which is why it never read as the
+                    subject of the screen it is the subject of. */}
                 <ViewportFrame
                   key={`${reloadKey}-${effectiveDevice}`}
                   width={DEVICE_WIDTHS[effectiveDevice]}
                   title={t("previewRegion")}
-                  className="lift-2 rounded-[var(--r-xl)] border"
-                  style={{ borderColor: "var(--line)", background: "var(--surface)" }}
+                  className="s-artifact"
                 >
                   {typeof preview === "function" ? preview(effectiveDevice) : preview}
                 </ViewportFrame>
@@ -494,8 +503,8 @@ export function BuildScreen({
           toolbar. */}
       <div className="pointer-events-none absolute inset-y-0 right-4 z-20 hidden items-center lg:flex">
         <div
-          className="lift-3 pointer-events-auto flex flex-col gap-1 rounded-[var(--r-md)] border p-1.5"
-          style={{ borderColor: "var(--line)", background: "var(--surface)" }}
+          className="pointer-events-auto flex flex-col gap-1 rounded-[var(--r-md)] border p-1"
+          style={{ borderColor: "var(--color-border)", background: "var(--color-surface-elevated)" }}
         >
           <RailButton
             label={t("focusChat")}
@@ -517,11 +526,15 @@ export function BuildScreen({
 
       {copied && (
         <div
-          className="pop lift-3 pointer-events-none absolute bottom-5 left-1/2 z-30 max-w-[min(92%,420px)] -translate-x-1/2 rounded-[var(--r-md)] px-3.5 py-2 text-center text-[13px] font-medium text-white"
+          className="s-fade pointer-events-none absolute bottom-5 left-1/2 z-30 max-w-[min(92%,420px)] -translate-x-1/2 rounded-[var(--r-md)] border px-3.5 py-2 text-center text-[13px] font-medium"
           // A failure is not a status update, and a screen reader should not
           // have to wait its turn to hear that nothing was copied.
           role={copied === "failed" ? "alert" : "status"}
-          style={{ background: copied === "failed" ? "var(--warn)" : "var(--ink)" }}
+          style={{
+            background: "var(--color-surface-elevated)",
+            borderColor: copied === "failed" ? "var(--color-warning)" : "var(--color-border-strong)",
+            color: copied === "failed" ? "var(--color-warning)" : "var(--color-ink)",
+          }}
         >
           {copied === "failed" ? t("previewLinkCopyFailed") : t("previewLinkCopied")}
         </div>
@@ -579,14 +592,14 @@ function PreviewPlaceholder({
           (status === "generating" || status === "loading") && "ai-pending"
         )}
         style={{
-          borderColor: status === "failed" || status === "unavailable" ? "var(--warn)" : "var(--line-2)",
+          borderColor: status === "failed" || status === "unavailable" ? "var(--color-warning)" : "var(--color-border-strong)",
           borderStyle: status === "empty" ? "dashed" : "solid",
         }}
       />
-      <p className="text-[15px] font-semibold" style={{ color: "var(--ink)" }}>
+      <p className="text-[15px] font-semibold" style={{ color: "var(--color-ink)" }}>
         {t(copy[0])}
       </p>
-      <p className="text-[13px] leading-relaxed" style={{ color: "var(--ink-3)" }}>
+      <p className="text-[13px] leading-relaxed" style={{ color: "var(--color-ink-muted)" }}>
         {t(copy[1])}
       </p>
       {showRetry && (
@@ -764,7 +777,7 @@ function ToolbarMenu({
         aria-expanded={open}
         onClick={() => setOpen((value) => !value)}
         className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[var(--r-sm)]"
-        style={{ color: "var(--ink-2)" }}
+        style={{ color: "var(--color-ink-secondary)" }}
       >
         <span aria-hidden className="text-[20px] leading-none">⋯</span>
       </button>
@@ -782,8 +795,8 @@ function ToolbarMenu({
               top: spot.top,
               right: spot.right,
               maxHeight: spot.maxHeight,
-              borderColor: "var(--line)",
-              background: "var(--surface)",
+              borderColor: "var(--color-border)",
+              background: "var(--color-surface)",
             }}
           >
             {items.map((item) =>
@@ -796,7 +809,7 @@ function ToolbarMenu({
                   rel="noreferrer"
                   onClick={() => setOpen(false)}
                   className="flex min-h-[44px] items-center gap-3 rounded-[var(--r-sm)] px-3 text-[14.5px] font-medium"
-                  style={{ color: "var(--ink)" }}
+                  style={{ color: "var(--color-ink)" }}
                 >
                   {item.icon}
                   {item.label}
@@ -808,7 +821,7 @@ function ToolbarMenu({
                   type="button"
                   onClick={() => { item.onSelect?.(); setOpen(false); }}
                   className="flex min-h-[44px] items-center gap-3 rounded-[var(--r-sm)] px-3 text-left text-[14.5px] font-medium"
-                  style={{ color: "var(--ink)" }}
+                  style={{ color: "var(--color-ink)" }}
                 >
                   {item.icon}
                   {item.label}
@@ -850,7 +863,7 @@ function ModeSwitch({
       role="tablist"
       aria-label={`${chatLabel} / ${previewLabel}`}
       className="flex shrink-0 rounded-[var(--r-md)] p-0.5"
-      style={{ background: "var(--sunken)" }}
+      style={{ background: "var(--color-surface-hover)" }}
     >
       {(["chat", "preview"] as const).map((value) => (
         <button
@@ -865,8 +878,8 @@ function ModeSwitch({
           )}
           style={
             mode === value
-              ? { background: "var(--surface)", color: "var(--ink)" }
-              : { color: "var(--ink-2)" }
+              ? { background: "var(--color-surface)", color: "var(--color-ink)" }
+              : { color: "var(--color-ink-secondary)" }
           }
         >
           {value === "chat" ? chatLabel : previewLabel}
@@ -906,5 +919,5 @@ function BarButton({
 
 /** A hairline between groups of toolbar controls. */
 function ToolbarDivider() {
-  return <span className="mx-1 h-5 w-px shrink-0" style={{ background: "var(--line)" }} aria-hidden />;
+  return <span className="mx-1 h-5 w-px shrink-0" style={{ background: "var(--color-border)" }} aria-hidden />;
 }

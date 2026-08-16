@@ -5,7 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { StructuredChoice } from "@/components/build/StructuredChoice";
 import { planIntake, type DesignPreviewId, type IntakeAnswers } from "@/lib/build/intake";
-import "@/components/workspace-ui/tokens.css";
+import "@/app/studio.css";
 
 /**
  * Drives the real components through the real plan, with the generation call
@@ -64,8 +64,8 @@ export function IntakePreview() {
 
   return (
     <main
-      className="wsRoot mx-auto flex min-h-screen flex-col px-4 py-6"
-      style={{ background: "var(--bg)", width: width ? `${width}px` : "100%", maxWidth: width ? `${width}px` : 820 }}
+      className="studio wsRoot mx-auto flex min-h-screen flex-col px-4 py-6"
+      style={{ background: "var(--color-canvas)", width: width ? `${width}px` : "100%", maxWidth: width ? `${width}px` : 820 }}
     >
       {showChrome && <div className="mb-4 flex flex-wrap gap-2">
         {IDEAS.map((entry, index) => (
@@ -75,9 +75,9 @@ export function IntakePreview() {
             onClick={() => reset(index)}
             className="rounded-full border px-3 py-1 text-[12px]"
             style={{
-              borderColor: index === ideaIndex ? "var(--accent)" : "var(--line)",
-              background: index === ideaIndex ? "var(--accent-soft)" : "transparent",
-              color: "var(--ink)",
+              borderColor: index === ideaIndex ? "var(--color-accent)" : "var(--color-border)",
+              background: index === ideaIndex ? "var(--color-accent-soft)" : "transparent",
+              color: "var(--color-ink)",
             }}
           >
             {entry.key}
@@ -86,18 +86,18 @@ export function IntakePreview() {
       </div>}
 
       {showChrome && (
-        <p className="mb-1 text-[12px]" style={{ color: "var(--ink-3)" }}>
+        <p className="mb-1 text-[12px]" style={{ color: "var(--color-ink-muted)" }}>
           idea: “{idea}” · domain: {plan.domain} · steps: {plan.steps.length}
         </p>
       )}
 
       {/* Stand-in for the conversation area above the composer. */}
-      <div className="mb-3 flex-1 rounded-[14px] border p-4" style={{ borderColor: "var(--line)" }}>
-        <p className="text-[19px] font-semibold leading-snug" style={{ color: "var(--ink)" }}>
+      <div className="mb-3 flex-1 rounded-[14px] border p-4" style={{ borderColor: "var(--color-border)" }}>
+        <p className="text-[19px] font-semibold leading-snug" style={{ color: "var(--color-ink)" }}>
           {idea}
         </p>
         {dispatched && (
-          <p className="mt-3 text-[13px]" style={{ color: "var(--accent)" }} data-testid="intake-dispatched">
+          <p className="mt-3 text-[13px]" style={{ color: "var(--color-accent)" }} data-testid="intake-dispatched">
             → generation dispatched once with {dispatched}
           </p>
         )}
@@ -125,14 +125,14 @@ export function IntakePreview() {
       {/* Stand-in for the composer, at its real height. */}
       <div
         className="flex items-center justify-between rounded-[14px] border px-4 py-3"
-        style={{ borderColor: "var(--line)", background: "var(--surface)" }}
+        style={{ borderColor: "var(--color-border)", background: "var(--color-surface)" }}
       >
-        <span className="text-[14px]" style={{ color: "var(--ink-3)" }}>
+        <span className="text-[14px]" style={{ color: "var(--color-ink-muted)" }}>
           {ts("chatPlaceholder")}
         </span>
         <span
           className="grid h-8 w-8 place-items-center rounded-full text-[13px]"
-          style={{ background: "var(--accent)", color: "#fff" }}
+          style={{ background: "var(--color-accent)", color: "#fff" }}
         >
           ↑
         </span>

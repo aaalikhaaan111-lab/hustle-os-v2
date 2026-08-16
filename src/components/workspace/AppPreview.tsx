@@ -134,13 +134,13 @@ export function AppPreview({ document: builtDocument, device, title, onRuntimeEr
       {booting && (
         <div
           className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-center"
-          style={{ background: "var(--surface)" }}
+          style={{ background: "var(--color-surface)" }}
           role="status"
           aria-live="polite"
           data-testid="app-preview-booting"
         >
-          <span aria-hidden className="ai-pending mb-1 h-9 w-9 rounded-full border-2" style={{ borderColor: "var(--line-2)" }} />
-          <p className="text-[14px] font-medium" style={{ color: "var(--ink-2)" }}>{t("previewBootingTitle")}</p>
+          <span aria-hidden className="ai-pending mb-1 h-9 w-9 rounded-full border-2" style={{ borderColor: "var(--color-border-strong)" }} />
+          <p className="text-[14px] font-medium" style={{ color: "var(--color-ink-secondary)" }}>{t("previewBootingTitle")}</p>
         </div>
       )}
     </div>

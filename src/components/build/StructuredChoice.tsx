@@ -140,7 +140,7 @@ export function StructuredChoice({
               data-testid="structured-choice-back"
               aria-label={backLabel}
               className="-ml-1 shrink-0 rounded-full px-1.5 py-1 text-[12px] font-medium transition-colors disabled:opacity-50"
-              style={{ color: "var(--ink-2)" }}
+              style={{ color: "var(--color-ink-secondary)" }}
             >
               ← {backLabel}
             </button>
@@ -149,13 +149,13 @@ export function StructuredChoice({
               It was 13px, semibold and truncated — smaller than the
               conversation around it, and a question that cannot finish its own
               sentence. */}
-          <h2 id={labelledById} className="text-[15px] font-normal leading-[1.65]" style={{ color: "var(--ink)" }}>
+          <h2 id={labelledById} className="text-[15px] font-normal leading-[1.65]" style={{ color: "var(--color-ink)" }}>
             {title}
           </h2>
         </div>
         <div className="flex shrink-0 items-center gap-2">
           {progress && (
-            <span className="text-[11px] tabular-nums" style={{ color: "var(--ink-3)" }}>
+            <span className="text-[11px] tabular-nums" style={{ color: "var(--color-ink-muted)" }}>
               {progress}
             </span>
           )}
@@ -165,7 +165,7 @@ export function StructuredChoice({
             onClick={() => onChoose(null)}
             data-testid="structured-choice-defer"
             className="rounded-full px-2.5 py-1 text-[12px] font-medium transition-colors disabled:opacity-50"
-            style={{ color: "var(--ink-2)" }}
+            style={{ color: "var(--color-ink-secondary)" }}
           >
             {deferLabel}
           </button>
@@ -208,12 +208,12 @@ export function StructuredChoice({
               onClick={() => pick(option.id)}
               className="group flex w-full items-center gap-2.5 rounded-[11px] border p-2 text-left outline-none transition-all focus-visible:ring-2 focus-visible:ring-offset-1 disabled:opacity-50"
               style={{
-                borderColor: isSelected ? "var(--accent)" : "var(--line)",
-                background: isSelected ? "var(--accent-soft)" : "var(--surface)",
-                boxShadow: isSelected ? "0 0 0 1px var(--accent)" : "none",
+                borderColor: isSelected ? "var(--color-accent)" : "var(--color-border)",
+                background: isSelected ? "var(--color-accent-soft)" : "var(--color-surface)",
+                boxShadow: isSelected ? "0 0 0 1px var(--color-accent)" : "none",
                 // Focus reads as a ring in the accent, selection as the fill —
                 // two different signals rather than one doing both jobs.
-                ["--tw-ring-color" as string]: "var(--accent-pale)",
+                ["--tw-ring-color" as string]: "var(--color-accent-line)",
               }}
             >
               {option.preview && (
@@ -222,11 +222,11 @@ export function StructuredChoice({
                 </span>
               )}
               <span className="min-w-0 flex-1">
-                <span className="block text-[12.5px] font-semibold leading-snug" style={{ color: "var(--ink)" }}>
+                <span className="block text-[12.5px] font-semibold leading-snug" style={{ color: "var(--color-ink)" }}>
                   {option.label}
                 </span>
                 {option.hint && (
-                  <span className="mt-0.5 block truncate text-[11px] leading-snug" style={{ color: "var(--ink-3)" }}>
+                  <span className="mt-0.5 block truncate text-[11px] leading-snug" style={{ color: "var(--color-ink-muted)" }}>
                     {option.hint}
                   </span>
                 )}

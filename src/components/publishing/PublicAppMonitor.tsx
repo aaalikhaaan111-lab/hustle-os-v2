@@ -188,7 +188,7 @@ export function PublicAppMonitor({ frameId, documentUrl, labels, deadlineMs = DE
     <>
       {booting && (
         <div role="status" aria-live="polite" data-testid="public-app-booting" style={overlay}>
-          <span style={{ color: "var(--ink-2, #5d5d58)" }}>{labels.loading}</span>
+          <span style={{ color: "var(--color-ink-secondary, #5d5d58)" }}>{labels.loading}</span>
         </div>
       )}
 
@@ -199,7 +199,7 @@ export function PublicAppMonitor({ frameId, documentUrl, labels, deadlineMs = DE
               : kind === "app" ? labels.appFailedTitle
               : labels.stalledTitle}
           </p>
-          <p style={{ margin: 0, maxWidth: "34em", color: "var(--ink-2, #5d5d58)" }}>
+          <p style={{ margin: 0, maxWidth: "34em", color: "var(--color-ink-secondary, #5d5d58)" }}>
             {kind === "runtime" ? labels.runtimeFailedBody
               : kind === "app" ? labels.appFailedBody
               : labels.stalledBody}
@@ -225,23 +225,23 @@ export function PublicAppMonitor({ frameId, documentUrl, labels, deadlineMs = DE
 const overlay: React.CSSProperties = {
   position: "absolute", inset: 0, display: "flex", flexDirection: "column",
   alignItems: "center", justifyContent: "center", gap: "10px", padding: "24px",
-  textAlign: "center", background: "var(--surface, #fff)",
+  textAlign: "center", background: "var(--color-surface, #fff)",
   font: "15px/1.55 ui-sans-serif, system-ui, sans-serif",
 };
 
 const titleStyle: React.CSSProperties = {
-  margin: 0, fontSize: "17px", fontWeight: 600, color: "var(--ink, #1b1b1a)",
+  margin: 0, fontSize: "17px", fontWeight: 600, color: "var(--color-ink, #1b1b1a)",
 };
 
 const buttonStyle: React.CSSProperties = {
   marginTop: "6px", padding: "11px 18px", borderRadius: "10px", cursor: "pointer",
-  border: "1px solid var(--line-2, #e3e3de)", background: "var(--surface, #fff)",
-  font: "inherit", fontSize: "15px", fontWeight: 560, color: "var(--ink, #1b1b1a)",
+  border: "1px solid var(--color-border-strong, #e3e3de)", background: "var(--color-surface, #fff)",
+  font: "inherit", fontSize: "15px", fontWeight: 560, color: "var(--color-ink, #1b1b1a)",
   // A comfortable target on a phone; this is the one control on the screen.
   minHeight: "44px", minWidth: "44px",
 };
 
 const diagnosticStyle: React.CSSProperties = {
   margin: "2px 0 0", fontFamily: "ui-monospace, monospace", fontSize: "11px",
-  color: "var(--ink-3, #9a9a94)",
+  color: "var(--color-ink-muted, #9a9a94)",
 };

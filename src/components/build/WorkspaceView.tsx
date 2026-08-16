@@ -204,10 +204,10 @@ function ReadyCard({ onOpenPreview }: { onOpenPreview: () => void }) {
   return (
     <div
       className="rise rounded-[var(--r-lg)] border p-4"
-      style={{ borderColor: "var(--line-accent)", background: "var(--surface)" }}
+      style={{ borderColor: "var(--color-accent-line)", background: "var(--color-surface)" }}
     >
       <p className="text-[14px] font-medium">{t("buildVersionReady")}</p>
-      <p className="mt-1 text-[14px] leading-relaxed" style={{ color: "var(--ink-2)" }}>
+      <p className="mt-1 text-[14px] leading-relaxed" style={{ color: "var(--color-ink-secondary)" }}>
         {t("buildVersionReadyBody")}
       </p>
       {/* One destination, because there is only one. The Versions link that

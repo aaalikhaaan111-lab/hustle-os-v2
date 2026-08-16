@@ -975,18 +975,19 @@
   padding: 0.8rem 1rem;
 }
 
+/* The live dot. The glow is gone — a 4px ring plus an 18px coloured bloom on a
+   5px dot is three times more light than the dot itself, and "published" is a
+   fact rather than an event that needs announcing every render. */
 .publication-status-dot {
-  width: 0.45rem;
-  height: 0.45rem;
+  width: 0.3125rem;
+  height: 0.3125rem;
   flex: 0 0 auto;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.22);
-  box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.025);
+  background: var(--color-ink-muted);
 }
 
 .publication-status-dot.is-live {
   background: var(--color-success);
-  box-shadow: 0 0 0 4px var(--color-success-soft), 0 0 18px rgba(52, 211, 153, 0.34);
   animation: publication-live-emergence 520ms var(--ease-out-soft) both;
 }
 
@@ -995,53 +996,86 @@
   to { opacity: 1; transform: scale(1); }
 }
 
+/* "Unpublished changes" is the one thing in the toolbar a person genuinely
+   needs to notice, so it keeps a tinted capsule — but at a size that can be
+   read. 0.58rem is 9px. */
 .publication-change-badge {
   max-width: 11rem;
   overflow: hidden;
-  border: 1px solid rgba(251, 191, 36, 0.18);
+  border: 1px solid var(--color-warning);
   border-radius: 999px;
-  padding: 0.18rem 0.45rem;
-  color: #fde68a;
-  background: rgba(251, 191, 36, 0.07);
-  font-size: 0.58rem;
-  font-weight: 700;
-  letter-spacing: 0.06em;
+  padding: 0.2rem 0.5rem;
+  color: var(--color-warning);
+  background: var(--color-warning-soft);
+  font-size: 0.75rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
   text-overflow: ellipsis;
-  text-transform: uppercase;
   white-space: nowrap;
 }
 
+/* Publish controls, in the same language as every other button.
+
+   They were their own button system: 0.67rem type at weight 720 in a 999px
+   capsule, the primary carrying a two-stop violet gradient and a 24px coloured
+   shadow, the secondary a 3.5%-white fill with a 9%-white border, and both
+   lifting a pixel on hover. That is four differences from `.s-btn` and none of
+   them meant anything — publishing is not a different KIND of action, it is
+   the primary action of the preview toolbar.
+
+   Now: the same heights, radius, type and fills as the rest of the product.
+   Still separate selectors because the markup names them, but there is nothing
+   left in here that disagrees with the system. */
 .publication-primary,
 .publication-secondary {
   display: inline-flex;
-  min-height: 2rem;
+  height: 2.125rem;
   align-items: center;
   justify-content: center;
-  border-radius: 999px;
-  padding: 0.45rem 0.7rem;
-  font-size: 0.67rem;
-  font-weight: 720;
-  transition: border-color 160ms ease, background 160ms ease, color 160ms ease, transform 160ms ease;
+  gap: 0.375rem;
+  border: 1px solid transparent;
+  border-radius: var(--r-sm, 9px);
+  padding: 0 0.75rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  transition: border-color 120ms ease, background-color 120ms ease, color 120ms ease;
 }
 
 .publication-primary {
-  color: white;
-  background: linear-gradient(135deg, var(--color-accent), #7380ff);
-  box-shadow: 0 8px 24px rgba(93, 107, 255, 0.2);
+  color: var(--color-accent-foreground);
+  background: var(--color-accent);
+  font-weight: 560;
 }
+.publication-primary:hover { background: var(--color-accent-hover); }
 
 .publication-secondary {
-  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-color: var(--color-border-strong);
   color: var(--color-ink-secondary);
-  background: rgba(255, 255, 255, 0.035);
+  background: var(--color-surface-elevated);
+}
+.publication-secondary:hover { color: var(--color-ink); background: var(--color-surface-hover); }
+
+/* Destructive, but not shouting. Unpublish rendered in full danger red at rest,
+   which made the single most alarming colour in the palette the most prominent
+   object in the preview toolbar — louder than Publish, which is the action
+   almost everyone actually wants. It reads as an ordinary secondary control
+   until the pointer is on it, and turns red at the moment it is about to be
+   pressed. */
+.publication-danger:hover {
+  color: var(--color-danger);
+  background: var(--color-danger-soft);
+  border-color: var(--color-danger);
 }
 
-.publication-primary:hover,
-.publication-secondary:hover { transform: translateY(-1px); }
-.publication-secondary:hover { color: var(--color-ink); border-color: rgba(255, 255, 255, 0.16); }
-.publication-danger:hover { color: #fca5a5; border-color: rgba(248, 113, 113, 0.24); }
 .publication-primary:disabled,
-.publication-secondary:disabled { pointer-events: none; opacity: 0.45; }
+.publication-secondary:disabled { pointer-events: none; opacity: 0.38; }
+
+@media (pointer: coarse) {
+  .publication-primary,
+  .publication-secondary { height: 2.75rem; }
+}
 
 .publication-message {
   padding: 0 1rem 0.75rem;
@@ -1049,7 +1083,7 @@
   font-size: 0.7rem;
   line-height: 1.4;
 }
-.publication-message.is-error { color: #fca5a5; }
+.publication-message.is-error { color: var(--color-danger); }
 
 /**
  * The same message, inside the preview toolbar rather than the dock.
@@ -1108,10 +1142,10 @@
   justify-content: space-between;
   gap: 1rem;
   color: var(--color-ink-secondary);
-  font-size: 0.68rem;
+  font-size: 0.8125rem;
 }
 .publication-responses summary::-webkit-details-marker { display: none; }
-.publication-responses summary strong { color: var(--color-ink); font-weight: 700; }
+.publication-responses summary strong { color: var(--color-ink); font-weight: 600; }
 .publication-empty { margin-top: 0.7rem; color: var(--color-ink-muted); font-size: 0.7rem; }
 
 .publication-response-list {
@@ -1127,8 +1161,8 @@
   padding: 0.7rem;
   background: rgba(255, 255, 255, 0.022);
 }
-.publication-response-list time { display: block; margin-bottom: 0.45rem; color: var(--color-ink-muted); font-size: 0.58rem; }
-.publication-response-list p { display: grid; grid-template-columns: minmax(5rem, 0.35fr) minmax(0, 1fr); gap: 0.6rem; overflow-wrap: anywhere; color: var(--color-ink-secondary); font-size: 0.68rem; line-height: 1.5; }
+.publication-response-list time { display: block; margin-bottom: 0.45rem; color: var(--color-ink-muted); font-size: 0.6875rem; }
+.publication-response-list p { display: grid; grid-template-columns: minmax(5rem, 0.35fr) minmax(0, 1fr); gap: 0.6rem; overflow-wrap: anywhere; color: var(--color-ink-secondary); font-size: 0.8125rem; line-height: 1.5; }
 .publication-response-list p + p { margin-top: 0.25rem; }
 .publication-response-list p span { color: var(--color-ink-muted); }
 
@@ -1136,12 +1170,19 @@
    Stage 5 — response intelligence and guided improvement
    -------------------------------------------------------------------------- */
 
+/* Feedback, in the product's own language.
+   ---------------------------------------------------------------------------
+   This panel ran a THIRD type system: sizes from 0.56rem (9px) to 1rem at
+   weights of 700, 710, 720 and 760, inside boxes nested three deep — a
+   bordered panel holding bordered sections holding bordered response cards,
+   over a radial violet gradient. It sits inside the conversation, so all of
+   that was competing with the assistant's own words.
+
+   It is now regions separated by hairlines, on the studio's four type steps. */
 .feedback-panel {
-  border-top: 1px solid rgba(255, 255, 255, 0.05);
-  padding: 1rem;
-  background:
-    radial-gradient(circle at 12% 0%, rgba(93, 107, 255, 0.07), transparent 24rem),
-    rgba(7, 9, 15, 0.48);
+  border-top: 1px solid var(--color-border);
+  padding: 1.25rem 0 0;
+  background: transparent;
 }
 
 .feedback-panel-header,
@@ -1156,9 +1197,9 @@
   gap: 0.8rem;
 }
 
-.feedback-panel-header h2 { margin-top: 0.18rem; color: var(--color-ink); font-size: 1rem; font-weight: 720; letter-spacing: -0.025em; }
-.feedback-panel-header > strong { color: var(--color-ink-secondary); font-size: 0.68rem; }
-.feedback-eyebrow { color: var(--color-accent); font-size: 0.56rem; font-weight: 760; letter-spacing: 0.16em; text-transform: uppercase; }
+.feedback-panel-header h2 { margin-top: 0.18rem; color: var(--color-ink); font-size: 1.1875rem; font-weight: 600; letter-spacing: -0.025em; }
+.feedback-panel-header > strong { color: var(--color-ink-secondary); font-size: 0.8125rem; }
+.feedback-eyebrow { color: var(--color-accent); font-size: 0.6875rem; font-weight: 600; letter-spacing: 0.16em; text-transform: uppercase; }
 
 .feedback-empty,
 .feedback-first-response,
@@ -1166,66 +1207,68 @@
 .feedback-intelligence,
 .feedback-proposal,
 .feedback-inbox {
-  margin-top: 0.8rem;
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 1rem;
-  background: rgba(255, 255, 255, 0.022);
+  margin-top: 1rem;
+  border: 0;
+  border-top: 1px solid var(--color-border);
+  border-radius: 0;
+  padding-top: 1rem;
+  background: transparent;
 }
 
 .feedback-empty { padding: 1rem; }
-.feedback-empty h3 { color: var(--color-ink); font-size: 0.8rem; font-weight: 700; }
+.feedback-empty h3 { color: var(--color-ink); font-size: 0.9375rem; font-weight: 600; }
 .feedback-empty p { margin-top: 0.35rem; max-width: 42rem; color: var(--color-ink-muted); font-size: 0.7rem; line-height: 1.55; }
 
-.feedback-first-response { display: flex; gap: 0.75rem; padding: 0.8rem; border-color: rgba(93, 107, 255, 0.16); background: rgba(93, 107, 255, 0.055); }
-.feedback-first-response > span { width: 0.5rem; height: 0.5rem; flex: 0 0 auto; margin-top: 0.18rem; border-radius: 999px; background: var(--color-accent); box-shadow: 0 0 16px rgba(93, 107, 255, 0.45); }
-.feedback-first-response strong { color: var(--color-ink); font-size: 0.72rem; }
-.feedback-first-response p { margin-top: 0.2rem; color: var(--color-ink-muted); font-size: 0.65rem; line-height: 1.45; }
+.feedback-first-response { display: flex; gap: 0.75rem; padding: 0.8rem; border-color: var(--color-accent-line); background: var(--color-accent-soft); }
+.feedback-first-response > span { width: 0.5rem; height: 0.5rem; flex: 0 0 auto; margin-top: 0.18rem; border-radius: 999px; background: var(--color-accent); }
+.feedback-first-response strong { color: var(--color-ink); font-size: 0.8125rem; }
+.feedback-first-response p { margin-top: 0.2rem; color: var(--color-ink-muted); font-size: 0.8125rem; line-height: 1.45; }
 
 .feedback-analysis-bar { padding: 0.8rem; }
 .feedback-analysis-bar > div { min-width: 0; }
-.feedback-analysis-bar strong { color: var(--color-ink); font-size: 0.72rem; }
-.feedback-analysis-bar p { margin-top: 0.25rem; max-width: 38rem; color: var(--color-ink-muted); font-size: 0.64rem; line-height: 1.45; }
+.feedback-analysis-bar strong { color: var(--color-ink); font-size: 0.8125rem; }
+.feedback-analysis-bar p { margin-top: 0.25rem; max-width: 38rem; color: var(--color-ink-muted); font-size: 0.8125rem; line-height: 1.45; }
 
 .feedback-intelligence { padding: 0.9rem; }
-.feedback-intelligence-heading > p:last-child { margin-top: 0.4rem; max-width: 48rem; color: var(--color-ink-secondary); font-size: 0.75rem; line-height: 1.6; }
+.feedback-intelligence-heading > p:last-child { margin-top: 0.4rem; max-width: 48rem; color: var(--color-ink-secondary); font-size: 0.8125rem; line-height: 1.6; }
 .feedback-signal-list { display: grid; gap: 0.55rem; margin-top: 0.8rem; }
-.feedback-signal { min-width: 0; border-top: 1px solid rgba(255, 255, 255, 0.055); padding-top: 0.75rem; }
+.feedback-signal { min-width: 0; border-top: 1px solid var(--color-surface-elevated); padding-top: 0.75rem; }
 .feedback-signal-title { align-items: flex-start; }
-.feedback-signal h3 { color: var(--color-ink); font-size: 0.78rem; font-weight: 710; letter-spacing: -0.015em; }
-.feedback-signal > p { margin-top: 0.35rem; color: var(--color-ink-secondary); font-size: 0.68rem; line-height: 1.55; }
-.feedback-signal .feedback-signal-count { color: var(--color-ink-muted); font-size: 0.58rem; font-weight: 680; }
+.feedback-signal h3 { color: var(--color-ink); font-size: 0.8125rem; font-weight: 600; letter-spacing: -0.015em; }
+.feedback-signal > p { margin-top: 0.35rem; color: var(--color-ink-secondary); font-size: 0.8125rem; line-height: 1.55; }
+.feedback-signal .feedback-signal-count { color: var(--color-ink-muted); font-size: 0.6875rem; font-weight: 500; }
 .feedback-signal .feedback-evidence { color: #c4b5fd; font-weight: 620; }
-.feedback-confidence { flex: 0 0 auto; border-radius: 999px; padding: 0.2rem 0.42rem; color: var(--color-ink-muted); background: rgba(255, 255, 255, 0.04); font-size: 0.54rem; font-weight: 720; letter-spacing: 0.06em; text-transform: uppercase; }
+.feedback-confidence { flex: 0 0 auto; border-radius: 999px; padding: 0.2rem 0.42rem; color: var(--color-ink-muted); background: var(--color-surface-elevated); font-size: 0.6875rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; }
 .feedback-confidence.is-moderate { color: #c4b5fd; background: rgba(139, 92, 246, 0.1); }
 .feedback-confidence.is-strong { color: #a7f3d0; background: rgba(52, 211, 153, 0.09); }
-.feedback-uncertainty { display: grid; gap: 0.25rem; margin-top: 0.75rem; border-left: 2px solid rgba(251, 191, 36, 0.35); padding-left: 0.65rem; color: var(--color-ink-secondary); font-size: 0.67rem; line-height: 1.5; }
-.feedback-uncertainty span { color: #fde68a; font-size: 0.55rem; font-weight: 720; letter-spacing: 0.08em; text-transform: uppercase; }
+.feedback-uncertainty { display: grid; gap: 0.25rem; margin-top: 0.75rem; border-left: 2px solid rgba(251, 191, 36, 0.35); padding-left: 0.65rem; color: var(--color-ink-secondary); font-size: 0.8125rem; line-height: 1.5; }
+.feedback-uncertainty span { color: #fde68a; font-size: 0.6875rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; }
 
 .feedback-recommendations { margin-top: 0.95rem; }
-.feedback-recommendations > h3 { color: var(--color-ink-muted); font-size: 0.58rem; font-weight: 760; letter-spacing: 0.14em; text-transform: uppercase; }
-.feedback-recommendations article { align-items: flex-start; margin-top: 0.55rem; border: 1px solid rgba(255, 255, 255, 0.055); border-radius: 0.85rem; padding: 0.7rem; background: rgba(255, 255, 255, 0.02); }
-.feedback-recommendations strong { color: var(--color-ink); font-size: 0.72rem; }
-.feedback-recommendations p { margin-top: 0.25rem; color: var(--color-ink-muted); font-size: 0.65rem; line-height: 1.48; }
+.feedback-recommendations > h3 { color: var(--color-ink-muted); font-size: 0.6875rem; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; }
+.feedback-recommendations article { align-items: flex-start; margin-top: 0.55rem; border: 1px solid var(--color-surface-elevated); border-radius: 0.85rem; padding: 0.7rem; background: var(--color-surface-elevated); }
+.feedback-recommendations strong { color: var(--color-ink); font-size: 0.8125rem; }
+.feedback-recommendations p { margin-top: 0.25rem; color: var(--color-ink-muted); font-size: 0.8125rem; line-height: 1.48; }
 
-.feedback-proposal { padding: 0.9rem; border-color: rgba(93, 107, 255, 0.2); background: rgba(93, 107, 255, 0.055); }
-.feedback-proposal > h3 { margin-top: 0.35rem; color: var(--color-ink); font-size: 0.85rem; font-weight: 720; }
+.feedback-proposal { padding: 0.9rem; border-color: rgba(93, 107, 255, 0.2); background: var(--color-accent-soft); }
+.feedback-proposal > h3 { margin-top: 0.35rem; color: var(--color-ink); font-size: 0.9375rem; font-weight: 600; }
 .feedback-before-after { display: grid; gap: 0.5rem; margin-top: 0.75rem; }
 .feedback-before-after > div { border-radius: 0.8rem; padding: 0.7rem; background: rgba(0, 0, 0, 0.15); }
-.feedback-before-after > div.is-proposed { border: 1px solid rgba(93, 107, 255, 0.16); background: rgba(93, 107, 255, 0.06); }
-.feedback-before-after span { color: var(--color-ink-muted); font-size: 0.55rem; font-weight: 720; letter-spacing: 0.1em; text-transform: uppercase; }
-.feedback-before-after p { margin-top: 0.3rem; color: var(--color-ink-secondary); font-size: 0.69rem; line-height: 1.55; }
-.feedback-proposal-note { margin-top: 0.7rem; color: #fde68a; font-size: 0.62rem; line-height: 1.5; }
+.feedback-before-after > div.is-proposed { border: 1px solid var(--color-accent-line); background: rgba(93, 107, 255, 0.06); }
+.feedback-before-after span { color: var(--color-ink-muted); font-size: 0.6875rem; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; }
+.feedback-before-after p { margin-top: 0.3rem; color: var(--color-ink-secondary); font-size: 0.8125rem; line-height: 1.55; }
+.feedback-proposal-note { margin-top: 0.7rem; color: #fde68a; font-size: 0.8125rem; line-height: 1.5; }
 .feedback-proposal-actions { justify-content: flex-start; margin-top: 0.7rem; }
 
 .feedback-inbox { padding: 0.8rem; }
-.feedback-inbox summary { display: flex; cursor: pointer; list-style: none; justify-content: space-between; color: var(--color-ink-secondary); font-size: 0.68rem; font-weight: 680; }
+.feedback-inbox summary { display: flex; cursor: pointer; list-style: none; justify-content: space-between; color: var(--color-ink-secondary); font-size: 0.8125rem; font-weight: 500; }
 .feedback-inbox summary::-webkit-details-marker { display: none; }
 .feedback-inbox[open] summary span:last-child { transform: rotate(45deg); }
 .feedback-response-meta time { margin: 0; }
-.feedback-response-meta button { color: var(--color-ink-muted); font-size: 0.58rem; transition: color 150ms ease; }
+.feedback-response-meta button { color: var(--color-ink-muted); font-size: 0.6875rem; transition: color 150ms ease; }
 .feedback-response-meta button:hover { color: #fca5a5; }
 .feedback-response-meta button:disabled { opacity: 0.45; }
-.feedback-message { margin-top: 0.7rem; color: var(--color-success); font-size: 0.66rem; line-height: 1.5; }
+.feedback-message { margin-top: 0.7rem; color: var(--color-success); font-size: 0.8125rem; line-height: 1.5; }
 .feedback-message.is-error { color: #fca5a5; }
 
 /* ── Light-surface skin for the publishing + feedback panels ─────────────
@@ -1242,7 +1285,7 @@
 .publication-response-list article { border-color: var(--color-border); background: var(--color-surface); }
 .feedback-panel { border-top-color: var(--color-border); background: radial-gradient(circle at 12% 0%, rgba(93, 107, 255, 0.05), transparent 24rem), var(--color-surface); }
 .feedback-empty, .feedback-first-response, .feedback-analysis-bar, .feedback-intelligence, .feedback-proposal, .feedback-inbox { border-color: var(--color-border); background: var(--color-surface); }
-.feedback-first-response { border-color: rgba(93, 107, 255, 0.26); background: var(--color-accent-soft); }
+.feedback-first-response { border-color: var(--color-accent-line); background: var(--color-accent-soft); }
 .feedback-signal { border-top-color: var(--color-border); }
 .feedback-signal .feedback-evidence { color: var(--color-accent); }
 .feedback-confidence { background: var(--color-canvas); }
@@ -1251,10 +1294,10 @@
 .feedback-uncertainty { border-left-color: rgba(180, 83, 9, 0.4); }
 .feedback-uncertainty span { color: var(--color-warning); }
 .feedback-recommendations article { border-color: var(--color-border); background: var(--color-surface); }
-.feedback-proposal { border-color: rgba(93, 107, 255, 0.3); background: var(--color-accent-soft); }
+.feedback-proposal { border-color: var(--color-accent-line); background: var(--color-accent-soft); }
 .feedback-proposal-note { color: var(--color-warning); }
 .feedback-before-after > div { background: var(--color-canvas); }
-.feedback-before-after > div.is-proposed { border-color: rgba(93, 107, 255, 0.26); background: var(--color-accent-soft); }
+.feedback-before-after > div.is-proposed { border-color: var(--color-accent-line); background: var(--color-accent-soft); }
 .feedback-response-meta button:hover { color: var(--color-danger); }
 
 .public-project-unavailable {

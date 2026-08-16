@@ -20,6 +20,7 @@ import { UsageMenu } from "@/components/workspace-ui/UsageMenu";
 import type { WorkspaceUsage } from "@/lib/workspace/usage";
 import { useVoiceInput, voiceErrorKey } from "@/lib/workspace/useVoiceInput";
 import { cn } from "@/lib/utils";
+import { AssistantTurn, UserTurn } from "@/components/build/ConversationTurn";
 
 interface ChatMessage {
   id: string;
@@ -266,7 +267,7 @@ export function AssistantChat({
   ) : null;
 
   const voiceError = voice.error && (
-    <p role="alert" className="mt-1.5 text-[13px]" style={{ color: "var(--warn)" }}>
+    <p role="alert" className="mt-1.5 text-[13px]" style={{ color: "var(--color-warning)" }}>
       {t(voiceErrorKey(voice.error) as never)}
     </p>
   );
@@ -281,66 +282,75 @@ export function AssistantChat({
         <div ref={scrollRef} onScroll={handleScroll} className="min-h-0 flex-1 overflow-y-auto">
           <div className="mx-auto w-full px-5 py-8 sm:px-8" style={{ maxWidth: measure }}>
             {!available ? (
-              <p className="text-[15px] leading-[1.65]" style={{ color: "var(--ink-2)" }}>
-                {t("assistantUnavailable")}
-              </p>
+              <p className="s-body">{t("assistantUnavailable")}</p>
             ) : isEmpty ? (
-              <div className="flex flex-col gap-6">
-                <div>
-                  <p className="whitespace-pre-wrap text-[19px] font-semibold leading-snug tracking-[-0.01em]">
-                    {openingMessage}
-                  </p>
-                </div>
-                <div className="flex flex-wrap gap-2">
+              /* The opening. It was a 19px bold sentence sitting flush at the
+                 top of the scroll area with pill buttons under it. It is now
+                 the subject of the screen: display type, vertically centred in
+                 the empty conversation, with the starters as a quiet list of
+                 lines rather than a row of capsules. A capsule reads as a
+                 filter; a line reads as something to say. */
+              <div className="flex flex-col gap-8 pt-2">
+                <p className="s-opening max-w-[26ch] whitespace-pre-wrap">{openingMessage}</p>
+                <div className="flex flex-col items-start gap-0.5">
                   {starters.map((key) => (
-                    <VentrioButton
+                    <button
                       key={key}
-                      variant="secondary"
-                      size="sm"
-                      shape="pill"
+                      type="button"
                       disabled={isSending}
                       onClick={() => submit(t(key as Parameters<typeof t>[0]))}
-                      weight="medium"
+                      className="group -mx-2 flex min-h-[44px] w-full items-center gap-3 rounded-[var(--r-md)] px-2 text-left text-[15px] transition-colors disabled:opacity-50"
+                      style={{ color: "var(--color-ink-secondary)", transitionDuration: "var(--t-fast)" }}
                     >
+                      <span
+                        aria-hidden
+                        className="text-[13px] transition-transform group-hover:translate-x-0.5"
+                        style={{ color: "var(--color-accent)" }}
+                      >
+                        →
+                      </span>
                       {t(key as Parameters<typeof t>[0])}
-                    </VentrioButton>
+                    </button>
                   ))}
                 </div>
               </div>
             ) : (
-              <div className="flex flex-col gap-7">
+              /* THE TURN RHYTHM. Both speakers used to be typographically
+                 identical — 15px, same colour, same measure — distinguished
+                 only by the person's words sitting in a grey bubble on the
+                 right. Alignment is a weak signal and a bubble is a texting
+                 metaphor, and neither says which of the two is the substance.
+
+                 The assistant is the substance, so it gets the reading size and
+                 the full measure. The person's turn is set smaller, quieter and
+                 indented behind a hairline — a margin note, visibly a prompt
+                 rather than a reply. */
+              <div className="flex flex-col gap-8">
                 {messages.map((m) =>
                   m.role === "user" ? (
-                    <div key={m.id} className="ws-turn flex justify-end">
-                      <p
-                        className="max-w-[80%] whitespace-pre-wrap rounded-[var(--r-lg)] px-3.5 py-2.5 text-[15px] leading-[1.6]"
-                        style={{ background: "var(--sunken)" }}
-                      >
-                        {m.content}
-                      </p>
-                    </div>
+                    <UserTurn key={m.id}>{m.content}</UserTurn>
                   ) : (
-                    <div key={m.id} className="ws-turn whitespace-pre-wrap text-[15px] leading-[1.65]">
-                      {m.content}
-                    </div>
+                    <AssistantTurn key={m.id}>{m.content}</AssistantTurn>
                   )
                 )}
 
                 {isSending && (
-                  <div className="flex items-center gap-2 text-[14px]" aria-live="polite" style={{ color: "var(--ink-2)" }}>
-                    <span className="h-1.5 w-1.5 animate-pulse rounded-full" style={{ background: "var(--accent)" }} />
+                  <div className="s-meta flex items-center gap-2.5" aria-live="polite">
+                    <span className="s-thinking flex items-center gap-1" aria-hidden>
+                      <span />
+                      <span />
+                      <span />
+                    </span>
                     {t(THINKING_KEYS[thinkIdx] as Parameters<typeof t>[0])}
                   </div>
                 )}
 
                 {savedConfirm && (
-                  <div className="flex items-center gap-2 text-[14px] font-medium" style={{ color: "var(--ok)" }}>
-                    <span
-                      className="grid h-5 w-5 place-items-center rounded-full text-[11px]"
-                      style={{ background: "var(--ok-soft)" }}
-                    >
-                      ✓
-                    </span>
+                  <div
+                    className="flex items-center gap-2 text-[14px] font-medium"
+                    style={{ color: "var(--color-success)" }}
+                  >
+                    <span aria-hidden>✓</span>
                     {t("proposalSavedInline")}
                   </div>
                 )}
@@ -368,12 +378,12 @@ export function AssistantChat({
               </div>
             )}
             {note && (
-              <p role="status" className="mb-1.5 text-[13px]" style={{ color: "var(--warn)" }}>
+              <p role="status" className="mb-1.5 text-[13px]" style={{ color: "var(--color-warning)" }}>
                 {note}
               </p>
             )}
             {flash && (
-              <p className="mb-1.5 text-[13px] font-medium" style={{ color: "var(--ok)" }}>
+              <p className="mb-1.5 text-[13px] font-medium" style={{ color: "var(--color-success)" }}>
                 {flash}
               </p>
             )}
@@ -439,18 +449,9 @@ export function AssistantChat({
             <div className="flex flex-col gap-6">
               {messages.map((m) =>
                 m.role === "user" ? (
-                  <div key={m.id} className="animate-message-in flex justify-end">
-                    <div className="max-w-[85%] whitespace-pre-wrap rounded-[1.35rem] rounded-br-md bg-accent px-4 py-2.5 text-[15px] leading-relaxed text-white">
-                      {m.content}
-                    </div>
-                  </div>
+                  <UserTurn key={m.id}>{m.content}</UserTurn>
                 ) : (
-                  <div
-                    key={m.id}
-                    className="animate-message-in whitespace-pre-wrap text-[15px] leading-7 tracking-tight text-ink"
-                  >
-                    {m.content}
-                  </div>
+                  <AssistantTurn key={m.id}>{m.content}</AssistantTurn>
                 )
               )}
               {isSending && (

@@ -33,6 +33,7 @@ import { useFirstVersionJob } from "@/lib/workspace/useFirstVersionJob";
 import type { Locale } from "@/i18n/locale";
 import type { ProjectPublicationState } from "@/lib/publishing/types";
 import type { WorkspaceUsage } from "@/lib/workspace/usage";
+import { AssistantTurn, UserTurn } from "@/components/build/ConversationTurn";
 
 interface PreOutputWorkspaceProps {
   projectId: string;
@@ -481,25 +482,16 @@ export function PreOutputWorkspace({
                 ) : (
                   messages.map((message) =>
                     message.role === "user" ? (
-                      <div key={message.id} className="ws-turn flex justify-end">
-                        <p
-                          className="max-w-[80%] whitespace-pre-wrap rounded-[var(--r-lg)] px-3.5 py-2.5 text-[15px] leading-[1.6]"
-                          style={{ background: "var(--sunken)" }}
-                        >
-                          {message.content}
-                        </p>
-                      </div>
+                      <UserTurn key={message.id}>{message.content}</UserTurn>
                     ) : (
-                      <div key={message.id} className="ws-turn whitespace-pre-wrap text-[15px] leading-[1.65]">
-                        {message.content}
-                      </div>
+                      <AssistantTurn key={message.id}>{message.content}</AssistantTurn>
                     )
                   )
                 )}
 
                 {isSending && (
-                  <div className="flex items-center gap-2 text-[14px]" role="status" style={{ color: "var(--ink-2)" }}>
-                    <span className="h-1.5 w-1.5 animate-pulse rounded-full" style={{ background: "var(--accent)" }} />
+                  <div className="flex items-center gap-2 text-[14px]" role="status" style={{ color: "var(--color-ink-secondary)" }}>
+                    <span className="h-1.5 w-1.5 animate-pulse rounded-full" style={{ background: "var(--color-accent)" }} />
                     {isEditingOutput ? t("editing") : t("thinking")}
                   </div>
                 )}
@@ -510,7 +502,7 @@ export function PreOutputWorkspace({
                   <div className="flex flex-col gap-2">
                     <GenerationSteps title={t("genTitle")} steps={generationSteps} />
                     {elapsed >= 20 && (
-                      <p className="text-[13px] leading-relaxed" style={{ color: "var(--ink-3)" }}>
+                      <p className="text-[13px] leading-relaxed" style={{ color: "var(--color-ink-muted)" }}>
                         {t("genStillWorking")}
                       </p>
                     )}
@@ -550,22 +542,22 @@ export function PreOutputWorkspace({
                 {job.loaded && !hasVersion && job.phase !== "succeeded" && !job.active && !intake.step && (
                   <div
                     className="rise rounded-[var(--r-lg)] border p-5"
-                    style={{ borderColor: "var(--line-2)", background: "var(--surface)" }}
+                    style={{ borderColor: "var(--color-border-strong)", background: "var(--color-surface)" }}
                   >
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.09em]" style={{ color: "var(--ink-3)" }}>
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.09em]" style={{ color: "var(--color-ink-muted)" }}>
                       {t("projectDirection")}
                     </p>
                     <p className="mt-2 text-[17px] font-semibold leading-snug tracking-[-0.01em]">{projectName}</p>
-                    <p className="mt-1.5 text-[14px] leading-relaxed" style={{ color: "var(--ink-2)" }}>
+                    <p className="mt-1.5 text-[14px] leading-relaxed" style={{ color: "var(--color-ink-secondary)" }}>
                       {projectConcept ?? direction?.concept ?? t("conceptFallback")}
                     </p>
                     {(projectAudience || direction?.audience) && (
-                      <p className="mt-2.5 text-[13px]" style={{ color: "var(--ink-3)" }}>
+                      <p className="mt-2.5 text-[13px]" style={{ color: "var(--color-ink-muted)" }}>
                         {t("forLabel")}: {projectAudience ?? direction?.audience}
                       </p>
                     )}
 
-                    <div className="mt-4 border-t pt-4" style={{ borderColor: "var(--line)" }}>
+                    <div className="mt-4 border-t pt-4" style={{ borderColor: "var(--color-border)" }}>
                       {(() => {
                         // The heading states what happened; the body says what
                         // to do about it. Neither ever carries a provider
@@ -594,7 +586,7 @@ export function PreOutputWorkspace({
                               {heading}
                             </p>
                             {body && (
-                              <p className="mt-1 text-[14px] leading-relaxed" style={{ color: "var(--ink-2)" }}>
+                              <p className="mt-1 text-[14px] leading-relaxed" style={{ color: "var(--color-ink-secondary)" }}>
                                 {body}
                               </p>
                             )}
@@ -621,12 +613,12 @@ export function PreOutputWorkspace({
                         )}
                       </div>
                       {!direction && (
-                        <p className="mt-2.5 text-[13px] leading-relaxed" style={{ color: "var(--ink-3)" }}>
+                        <p className="mt-2.5 text-[13px] leading-relaxed" style={{ color: "var(--color-ink-muted)" }}>
                           {t("directionNeeded")}
                         </p>
                       )}
                       {stage3Status === "ready" && direction && !hasFailed && (
-                        <p className="mt-2.5 text-[13px]" style={{ color: "var(--ink-3)" }}>
+                        <p className="mt-2.5 text-[13px]" style={{ color: "var(--color-ink-muted)" }}>
                           {t("statusReady")}
                         </p>
                       )}
@@ -645,10 +637,10 @@ export function PreOutputWorkspace({
                 {hasVersion && canOpenPreview && (
                   <div
                     className="rise rounded-[var(--r-lg)] border p-4"
-                    style={{ borderColor: "var(--line-accent)", background: "var(--surface)" }}
+                    style={{ borderColor: "var(--color-accent-line)", background: "var(--color-surface)" }}
                   >
                     <p className="text-[14px] font-medium">{tw("buildVersionReady")}</p>
-                    <p className="mt-1 text-[14px] leading-relaxed" style={{ color: "var(--ink-2)" }}>
+                    <p className="mt-1 text-[14px] leading-relaxed" style={{ color: "var(--color-ink-secondary)" }}>
                       {tw("buildVersionReadyBody")}
                     </p>
                     <div className="mt-3.5">
@@ -711,7 +703,7 @@ export function PreOutputWorkspace({
             <div className="shrink-0 px-3.5 pb-3 pt-1.5 sm:px-8 sm:pb-6">
               <div className="mx-auto w-full" style={{ maxWidth: measure }}>
                 {note && (
-                  <p className="mb-1.5 text-[13px]" role="status" style={{ color: "var(--warn)" }}>
+                  <p className="mb-1.5 text-[13px]" role="status" style={{ color: "var(--color-warning)" }}>
                     {note}
                   </p>
                 )}
@@ -741,7 +733,7 @@ export function PreOutputWorkspace({
                   }}
                 />
                 {voice.error && (
-                  <p role="alert" className="mt-1.5 text-[13px]" style={{ color: "var(--warn)" }}>
+                  <p role="alert" className="mt-1.5 text-[13px]" style={{ color: "var(--color-warning)" }}>
                     {tb(voiceErrorKey(voice.error) as never)}
                   </p>
                 )}

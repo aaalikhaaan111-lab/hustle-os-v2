@@ -20,7 +20,8 @@
   "nav": {
     "create": "Create",
     "projects": "Projects",
-    "profile": "Profile"
+    "profile": "Profile",
+    "pricing": "Pricing"
   },
   "projects": {
     "eyebrow": "Your work",
@@ -1269,6 +1270,11 @@
     "featureBrandingOff": "Remove Ventrio branding",
     "featureSubdomain": "Project subdomain, e.g. your-idea.ventrio.org",
     "featureDiscovery": "Product creation and idea discovery",
-    "note": "Every plan runs on the same generation pipeline. Limits are the difference."
+    "note": "Every plan runs on the same generation pipeline. Limits are the difference.",
+    "rowGenerations": "Generations",
+    "rowPublished": "Published projects",
+    "rowBranding": "Ventrio badge",
+    "rowSubdomain": "Project subdomain",
+    "rowDiscovery": "Idea discovery"
   }
 }

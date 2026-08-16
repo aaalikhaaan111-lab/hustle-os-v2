@@ -40,20 +40,17 @@ export function OverviewScreen({ active, recent, activeResponses }: OverviewScre
   if (!active) {
     return (
       <PageBody>
-        <PageHeading title={t("navOverview")} lead={t("overviewEmptyLead")} />
-        <div
-          className="rise mt-7 rounded-[var(--r-lg)] border px-8 py-12 text-center"
-          style={{ borderColor: "var(--line)", background: "var(--surface)" }}
-        >
-          <p className="text-[17px] font-semibold tracking-[-0.01em]">{t("startFirstTitle")}</p>
-          <p className="mx-auto mt-2 max-w-md text-[14px] leading-relaxed" style={{ color: "var(--ink-2)" }}>
-            {t("startFirstBody")}
-          </p>
-          <VentrioLinkButton href="/create" variant="primary" className="mt-6">
-            <IconPlus className="h-4 w-4" />
-            {t("navNewProject")}
-          </VentrioLinkButton>
-        </div>
+        <PageHeading
+          eyebrow={t("navOverview")}
+          title={t("startFirstTitle")}
+          lead={t("startFirstBody")}
+          actions={
+            <VentrioLinkButton href="/create" variant="primary">
+              <IconPlus className="h-4 w-4" />
+              {t("navNewProject")}
+            </VentrioLinkButton>
+          }
+        />
       </PageBody>
     );
   }
@@ -66,57 +63,59 @@ export function OverviewScreen({ active, recent, activeResponses }: OverviewScre
 
   return (
     <PageBody>
+      {/* THE PROJECT IS THE SUBJECT, not the word "Overview".
+          The page used to open with a 26px heading reading "Overview" and a
+          grey line underneath mentioning the project by name — so the largest
+          type on the screen was a navigation label, and the thing the person
+          came back for was set as a caption. The name is the headline now, and
+          "Overview" is the eyebrow that says which screen this is. */}
       <PageHeading
-        title={t("navOverview")}
-        lead={
-          active.state === "published"
-            ? t("overviewLeadLive", { name: activeName })
-            : t("overviewLeadDraft", { name: activeName })
+        eyebrow={t("navOverview")}
+        title={activeName}
+        /* No lead. Both lead strings are of the form "<name> is still a
+           draft" / "<name> is live", and the name is now the headline directly
+           above — so the line restated the title and then told you a state that
+           the status dot below states again. Two repetitions of one fact. */
+        actions={
+          <VentrioLinkButton href={`/projects/${active.id}`} variant="primary">
+            <IconBuild className="h-4 w-4" />
+            {t("overviewContinue")}
+          </VentrioLinkButton>
         }
       />
 
-      {/* The one project that matters most, at full size. */}
-      <section
-        className="rise mt-7 overflow-hidden rounded-[var(--r-lg)] border transition-shadow duration-[var(--t-ctl)] ease-[var(--ease)] hover:shadow-[0_1px_2px_rgb(14_16_22/0.04),0_16px_40px_-26px_rgb(14_16_22/0.3)]"
-        style={{ borderColor: "var(--line)", background: "var(--surface)" }}
-      >
-        <div className="flex flex-col sm:flex-row">
+      {/* The card around this is gone. It was a bordered panel holding a
+          bordered preview column next to a stack of labels — a box inside a box
+          on a page that is already one column. A hairline above it separates it
+          from the heading, and that is enough. */}
+      <section className="s-enter mt-12 border-t pt-8" style={{ borderColor: "var(--color-border)" }}>
+        <div className="flex flex-col gap-6 sm:flex-row sm:gap-8">
           {/* The preview column exists only when there is something to put in
               it. A 280px panel holding the words "nothing here" is the emptiness
               this page was accused of. */}
           {active.hasOutput && (
-            <div
-              className="h-[180px] w-full shrink-0 overflow-hidden border-b sm:h-auto sm:w-[280px] sm:border-b-0 sm:border-r"
-              style={{ borderColor: "var(--line)", background: "var(--raised)" }}
-            >
+            /* The preview is the artifact: lit, with the system's one real
+               shadow, exactly as it appears in the workspace. */
+            <div className="s-artifact h-[190px] w-full shrink-0 overflow-hidden sm:h-[210px] sm:w-[300px]">
               <ProductPreview project={active.preview} density="sm" />
             </div>
           )}
 
-          <div className="flex min-w-0 flex-1 flex-col justify-between gap-6 p-5">
+          <div className="flex min-w-0 flex-1 flex-col justify-between gap-6">
             <div>
-              <div className="flex min-w-0 items-center gap-2">
-                <h2 className="min-w-0 truncate text-[18px] font-semibold tracking-[-0.01em]">{activeName}</h2>
+              <div className="flex min-w-0 items-center gap-3">
                 <StatusPill state={active.state} />
+                <span className="s-meta">{t("projectsUpdated", { when: formatAge(t, active.updated) })}</span>
               </div>
-              {active.summary && (
-                <p className="mt-1.5 text-[14px] leading-relaxed" style={{ color: "var(--ink-2)" }}>
-                  {active.summary}
-                </p>
-              )}
-              <p className="mt-2.5 text-[13px]" style={{ color: "var(--ink-3)" }}>
-                {t("projectsUpdated", { when: formatAge(t, active.updated) })}
-              </p>
+              {active.summary && <p className="s-body mt-3 max-w-lg">{active.summary}</p>}
             </div>
 
             <div>
               {/* Where the project actually is, named — a bar on its own says
                   nothing about what happens next. */}
               <div className="flex items-baseline justify-between gap-3">
-                <p className="text-[13px] font-semibold" style={{ color: "var(--ink-2)" }}>
-                  {lifecycle[reached]}
-                </p>
-                <p className="text-[13px] tabular-nums" style={{ color: "var(--ink-3)" }}>
+                <p className="s-eyebrow">{lifecycle[reached]}</p>
+                <p className="s-meta">
                   {reached + 1}/{lifecycle.length}
                 </p>
               </div>
@@ -124,20 +123,14 @@ export function OverviewScreen({ active, recent, activeResponses }: OverviewScre
                 {lifecycle.map((stage, index) => (
                   <span
                     key={stage}
-                    className="h-1 flex-1 rounded-full transition-colors duration-[var(--t-ctl)]"
-                    style={{ background: index <= reached ? "var(--accent)" : "var(--line-2)" }}
+                    className="h-1 flex-1 rounded-full transition-colors duration-[var(--t-base)]"
+                    style={{ background: index <= reached ? "var(--color-accent)" : "var(--color-border-strong)" }}
                   />
                 ))}
               </div>
-              <div className="mt-3.5 flex flex-wrap items-center justify-between gap-3">
-                <p className="text-[13px]" style={{ color: "var(--ink-3)" }}>
-                  {t("overviewNextLabel")} <span style={{ color: "var(--ink-2)" }}>{nextStage}</span>
-                </p>
-                <VentrioLinkButton href={`/projects/${active.id}`} variant="primary">
-                  <IconBuild className="h-4 w-4" />
-                  {t("overviewContinue")}
-                </VentrioLinkButton>
-              </div>
+              <p className="s-meta mt-3.5">
+                {t("overviewNextLabel")} <span style={{ color: "var(--color-ink-secondary)" }}>{nextStage}</span>
+              </p>
             </div>
           </div>
         </div>
@@ -146,11 +139,11 @@ export function OverviewScreen({ active, recent, activeResponses }: OverviewScre
       {recent.length > 0 && (
         <section className="mt-9">
           <div className="flex items-baseline justify-between">
-            <h2 className="text-[15px] font-semibold">{t("overviewRecent")}</h2>
+            <h2 className="s-eyebrow">{t("overviewRecent")}</h2>
             <Link
               href="/projects"
-              className="text-[13px] font-semibold transition-opacity duration-[var(--t-hover)] hover:opacity-70"
-              style={{ color: "var(--accent-ink)" }}
+              className="text-[13px] font-semibold transition-opacity duration-[var(--t-fast)] hover:opacity-70"
+              style={{ color: "var(--color-accent)" }}
             >
               {t("overviewAllProjects")}
             </Link>
@@ -158,29 +151,28 @@ export function OverviewScreen({ active, recent, activeResponses }: OverviewScre
 
           <ul className="mt-2 flex flex-col">
             {recent.map((project, index) => (
-              <li key={project.id} style={{ borderTop: index === 0 ? "none" : "1px solid var(--line)" }}>
+              <li key={project.id} style={{ borderTop: index === 0 ? "none" : "1px solid var(--color-border)" }}>
                 <Link
                   href={`/projects/${project.id}`}
-                  className="group flex items-start gap-3 rounded-[var(--r-md)] px-3 py-3.5 transition-colors duration-[var(--t-hover)] ease-[var(--ease)] hover:bg-[var(--raised)]"
+                  className="group relative flex items-center gap-4 rounded-[var(--r-md)] py-4 pl-4 pr-3"
                 >
                   <span
-                    className="dot mt-[7px] transition-transform duration-[var(--t-hover)] group-hover:scale-125"
-                    style={{ background: project.preview.accent }}
+                    aria-hidden
+                    className="absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-full transition-all group-hover:h-7"
+                    style={{ background: project.preview.accent, transitionDuration: "var(--t-base)" }}
                   />
                   <span className="min-w-0 flex-1">
-                    <span className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
-                      <span className="min-w-0 truncate text-[14.5px] font-semibold tracking-[-0.01em]">
-                        {project.name || t("untitledProject")}
-                      </span>
+                    <span className="block truncate text-[16px] font-medium tracking-[-0.015em]">
+                      {project.name || t("untitledProject")}
+                    </span>
+                    <span className="s-meta mt-1 flex min-w-0 items-center gap-2.5">
                       <StatusPill state={project.state} />
-                    </span>
-                    <span className="mt-0.5 block truncate text-[13px]" style={{ color: "var(--ink-2)" }}>
-                      {project.summary ?? (project.hasOutput ? t("summaryReady") : t("summaryNoVersion"))}
+                      <span className="truncate">
+                        {project.summary ?? (project.hasOutput ? t("summaryReady") : t("summaryNoVersion"))}
+                      </span>
                     </span>
                   </span>
-                  <span className="shrink-0 pt-0.5 text-[13px] tabular-nums" style={{ color: "var(--ink-3)" }}>
-                    {formatAge(t, project.updated)}
-                  </span>
+                  <span className="s-meta shrink-0">{formatAge(t, project.updated)}</span>
                 </Link>
               </li>
             ))}
@@ -189,23 +181,23 @@ export function OverviewScreen({ active, recent, activeResponses }: OverviewScre
       )}
 
       <section className="mt-9">
-        <h2 className="text-[15px] font-semibold">{t("overviewEvolution")}</h2>
+        <h2 className="s-eyebrow">{t("overviewEvolution")}</h2>
         <div
-          className="mt-2.5 flex flex-wrap items-center justify-between gap-3 rounded-[var(--r-md)] border px-4 py-3.5"
-          style={{ borderColor: "var(--line-accent)", background: "var(--accent-soft)" }}
+          className="mt-3 flex flex-wrap items-center justify-between gap-3 border-t pt-4"
+          style={{ borderColor: "var(--color-border)" }}
         >
           {/* No detection pipeline exists, so no project can have a signal.
               The state is honest rather than aspirational. */}
           <div className="min-w-0">
-            <p className="text-[14px] font-semibold">{t("overviewSignalTitle")}</p>
-            <p className="mt-0.5 text-[13px] leading-relaxed" style={{ color: "var(--ink-2)" }}>
+            <p className="s-title">{t("overviewSignalTitle")}</p>
+            <p className="s-body mt-1">
               {active.state === "published" ? t("overviewSignalLive") : t("overviewSignalDraft")}
             </p>
           </div>
           <Link
             href={`/projects/${active.id}/analytics`}
-            className="shrink-0 text-[13px] font-semibold transition-opacity duration-[var(--t-hover)] hover:opacity-70"
-            style={{ color: "var(--accent-ink)" }}
+            className="shrink-0 text-[13px] font-semibold transition-opacity duration-[var(--t-fast)] hover:opacity-70"
+            style={{ color: "var(--color-accent)" }}
           >
             {t("overviewSignalLink")}
           </Link>

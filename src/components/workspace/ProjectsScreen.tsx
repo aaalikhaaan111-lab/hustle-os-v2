@@ -5,13 +5,11 @@ import { useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { IconPlus, IconSearch, StatusPill } from "@/components/workspace-ui/parts";
 import { PageBody, PageHeading } from "@/components/workspace-ui/PageBody";
-import { VentrioButton, VentrioLinkButton } from "@/components/ui/VentrioButton";
 import { formatAge } from "@/lib/workspace/formatAge";
 import type { PresentedProject } from "@/lib/workspace/present";
 
 type Filter = "all" | "draft" | "published";
 
-/** Label keys sit beside the values so the control never shows a raw enum. */
 const FILTERS = [
   { option: "all", labelKey: "projectsFilterAll" },
   { option: "draft", labelKey: "projectsFilterDraft" },
@@ -19,13 +17,22 @@ const FILTERS = [
 ] as const;
 
 /**
- * Projects, as the conversations they are.
+ * The index of everything you have made.
  *
- * A grid of thumbnails said "here is your gallery of templates". What is
- * actually here is a set of ongoing conversations with a partner who is
- * building something with you — so this is a list: one line for what it is, one
- * for where it got to, and the last time it moved. Search, filter and sort are
- * real client-side operations over the signed-in user's real rows.
+ * WHAT THIS WAS: a 15px semibold name, a 13.5px grey line under it, and a
+ * timestamp, repeated down a white sheet with a hairline between rows. Dense,
+ * legible and completely anonymous — a settings list that happened to contain
+ * projects.
+ *
+ * WHAT IT IS NOW: an index. Each project gets a real line of type at 20px, its
+ * own colour as a full-height edge marker rather than a 6px dot, and the state
+ * and age set as quiet metadata on a second line. The row is 84px tall and the
+ * whole thing reads as a body of work rather than a table of records.
+ *
+ * The controls moved with it. Search was a bordered field in a toolbar row;
+ * it is now an unboxed field on the hairline under the heading, and the filter
+ * is three plain words rather than a segmented control in a grey tub. Chrome
+ * that surrounds a control is chrome you have to look past to use it.
  */
 export function ProjectsScreen({ projects }: { projects: PresentedProject[] }) {
   const t = useTranslations("workspace");
@@ -50,121 +57,119 @@ export function ProjectsScreen({ projects }: { projects: PresentedProject[] }) {
   return (
     <PageBody>
       <PageHeading
-        title={t("projectsTitle")}
+        eyebrow={t("projectsTitle")}
+        title={
+          projects.length === 0
+            ? t("startFirstTitle")
+            : t("projectsCount", { count: projects.length })
+        }
         lead={
           projects.length === 0
-            ? t("projectsNothingYet")
+            ? t("startFirstBody")
             : publishedCount > 0
               ? t("projectsCountLive", { count: projects.length, live: publishedCount })
-              : t("projectsCount", { count: projects.length })
+              : undefined
         }
         actions={
-          <VentrioLinkButton href="/create" variant="primary">
+          <Link href="/create" className="s-btn s-btn--primary">
             <IconPlus className="h-4 w-4" />
             {t("navNewProject")}
-          </VentrioLinkButton>
+          </Link>
         }
       />
 
       {projects.length === 0 ? (
-        <div
-          className="rise mt-5 rounded-[16px] border px-5 py-9 text-center sm:px-8 sm:py-12"
-          style={{ borderColor: "var(--line)", background: "var(--surface)" }}
-        >
-          <p className="v-title">{t("startFirstTitle")}</p>
-          <p className="v-body mx-auto mt-2 max-w-md" style={{ color: "var(--ink-2)" }}>
-            {t("startFirstBody")}
-          </p>
-          <VentrioLinkButton href="/create" variant="primary" className="mt-6">
-            {t("navNewProject")}
-          </VentrioLinkButton>
+        /* No box. An empty index is an empty page with one thing to do on it —
+           drawing a dashed rectangle around the absence only makes the absence
+           look like a broken component. */
+        <div className="mt-16 border-t pt-10 s-rule" style={{ borderColor: "var(--color-border)" }}>
+          <p className="s-body max-w-md">{t("projectsNothingYet")}</p>
         </div>
       ) : (
         <>
-          <div className="mt-5 flex flex-wrap items-center gap-2">
+          <div
+            className="mt-10 flex flex-wrap items-center gap-x-6 gap-y-3 border-b pb-3"
+            style={{ borderColor: "var(--color-border)" }}
+          >
             <label
-              className="flex h-10 min-w-[200px] flex-1 items-center gap-2 rounded-[var(--r-md)] border px-3.5 transition-[border-color,box-shadow] duration-[var(--t-hover)] focus-within:border-[var(--accent)] focus-within:shadow-[0_0_0_4px_rgb(107_100_242/0.11)] sm:max-w-[280px] sm:flex-none"
-              style={{ borderColor: "var(--line-2)", background: "var(--surface)" }}
+              className="flex min-w-[180px] flex-1 items-center gap-2.5 sm:max-w-[300px]"
+              style={{ color: "var(--color-ink-muted)" }}
             >
-              <IconSearch className="h-4 w-4 shrink-0 text-[var(--ink-3)]" />
+              <IconSearch className="h-4 w-4 shrink-0" />
               <input
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
                 placeholder={t("projectsSearch")}
                 aria-label={t("projectsSearch")}
-                className="w-full bg-transparent text-[16px] outline-none placeholder:text-[var(--ink-3)] md:text-[15px]"
+                className="w-full bg-transparent text-[15px] outline-none"
+                style={{ color: "var(--color-ink)" }}
               />
             </label>
 
-            <div
-              className="flex h-10 items-center gap-0.5 rounded-[var(--r-md)] p-1"
-              style={{ background: "var(--sunken)" }}
-            >
+            <div role="group" className="flex items-center gap-1">
               {FILTERS.map(({ option, labelKey }) => (
-                <VentrioButton
+                <button
                   key={option}
-                  variant="ghost"
-                  size="sm"
+                  type="button"
                   onClick={() => setFilter(option)}
                   aria-pressed={filter === option}
-                  on={filter === option}
-                  className="h-8 rounded-[var(--r-xs)]"
+                  className="s-btn s-btn--ghost h-8 px-2.5 text-[13.5px]"
+                  style={
+                    filter === option
+                      ? { color: "var(--color-ink)", background: "var(--color-surface-hover)" }
+                      : undefined
+                  }
                 >
                   {t(labelKey)}
-                </VentrioButton>
+                </button>
               ))}
             </div>
 
-            <span className="v-meta ml-auto hidden sm:block" style={{ color: "var(--ink-3)" }}>
-              {t("projectsSorted")}
-            </span>
+            <span className="s-meta ml-auto hidden sm:block">{t("projectsSorted")}</span>
           </div>
 
           {visible.length === 0 ? (
-            <p className="v-body mt-8 text-center" style={{ color: "var(--ink-2)" }}>
-              {t("projectsNoMatch", { query })}
-            </p>
+            <p className="s-body mt-12">{t("projectsNoMatch", { query })}</p>
           ) : (
-            <ul className="mt-5 flex flex-col">
+            <ul className="mt-1">
               {visible.map((project, index) => (
                 <li
                   key={project.id}
-                  className="ws-row"
+                  className="s-enter border-b"
                   style={{
-                    borderTop: index === 0 ? "none" : "1px solid var(--line)",
-                    animationDelay: `${Math.min(index, 7) * 28}ms`,
+                    borderColor: "var(--color-border)",
+                    animationDelay: `${Math.min(index, 8) * 26}ms`,
                   }}
                 >
                   <Link
                     href={`/projects/${project.id}`}
-                    className="group flex items-start gap-3 rounded-[var(--r-md)] px-3 py-4 transition-colors duration-[var(--t-hover)] ease-[var(--ease)] hover:bg-[var(--raised)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
-                    style={{ outlineColor: "var(--accent)" }}
+                    className="group relative flex items-center gap-4 rounded-[var(--r-md)] py-5 pl-4 pr-3 transition-colors"
+                    style={{ transitionDuration: "var(--t-fast)" }}
                   >
-                    {/* The project's own colour — the same one its preview uses,
-                        so a project is recognisable before it is read. */}
+                    {/* The project's colour as an edge, not a dot. It is the
+                        same colour the preview uses, so a project is
+                        recognisable before the name is read — and at 3×24px it
+                        is actually visible, which a 6px dot was not. */}
                     <span
-                      className="dot mt-[7px] transition-transform duration-[var(--t-hover)] group-hover:scale-125"
-                      style={{ background: project.preview.accent }}
+                      aria-hidden
+                      className="absolute left-0 top-1/2 h-6 w-[3px] -translate-y-1/2 rounded-full transition-all group-hover:h-9"
+                      style={{ background: project.preview.accent, transitionDuration: "var(--t-base)" }}
                     />
 
                     <span className="min-w-0 flex-1">
-                      <span className="flex min-w-0 flex-wrap items-center gap-x-2.5 gap-y-1">
-                        <span className="min-w-0 max-w-full truncate text-[15px] font-semibold tracking-[-0.01em]">
-                          {project.name || t("untitledProject")}
-                        </span>
-                        <StatusPill state={project.state} />
+                      <span className="block truncate text-[19px] font-medium leading-snug tracking-[-0.02em]">
+                        {project.name || t("untitledProject")}
                       </span>
-                      <span
-                        className="mt-1 block truncate text-[13.5px] leading-relaxed"
-                        style={{ color: "var(--ink-2)" }}
-                      >
-                        {project.summary ?? (project.hasOutput ? t("summaryReady") : t("summaryNoVersion"))}
+                      <span className="s-meta mt-1.5 flex min-w-0 items-center gap-2.5">
+                        <StatusPill state={project.state} />
+                        <span className="truncate">
+                          {project.summary ??
+                            (project.hasOutput ? t("summaryReady") : t("summaryNoVersion"))}
+                        </span>
                       </span>
                     </span>
 
-                    <span className="shrink-0 pt-0.5 text-[13px] tabular-nums" style={{ color: "var(--ink-3)" }}>
-                      {formatAge(t, project.updated)}
-                    </span>
+                    <span className="s-meta shrink-0">{formatAge(t, project.updated)}</span>
                   </Link>
                 </li>
               ))}

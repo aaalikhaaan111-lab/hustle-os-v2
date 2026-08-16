@@ -146,8 +146,29 @@ check("and the large card is gone", !/direction-card|DirectionCard/.test(createC
  * is asserted below: nothing on this screen is a column grid on a phone.
  */
 check("discovery choices stack too", (createExperience.match(/choice-stack/g) ?? []).length >= 2, "expected two stacked surfaces");
-check("the empty state offers chips, not a hero",
-  /emptyPrompt/.test(createCode) && /flex flex-wrap gap-2/.test(createCode));
+/**
+ * DELIBERATELY REVERSED, and worth stating rather than quietly editing.
+ *
+ * This asserted chips in a wrapping row. It was itself the fix for an earlier
+ * defect — the screen opened with a marketing hero (`clamp(2.35rem, 5vw, 3rem)`
+ * plus a signal dot) over five bordered starting-point cards, and that was
+ * removed as "a landing page inside the product".
+ *
+ * Chips over-corrected. A row of capsules is the web's convention for FILTERS —
+ * ways to narrow something already on screen — and these are openings. At 17px
+ * under a 17px question, the first screen of the product read as a form label
+ * above a filter bar.
+ *
+ * The opening is now `s-opening` (24/28px), which is the size of someone asking
+ * a question and is deliberately smaller than `s-display`; the starting points
+ * are plain lines. The rule the hero violated still holds and is asserted right
+ * below: no display face, no signal dot, nothing on this screen is a grid.
+ */
+check("the empty state opens with a question, not a hero",
+  /emptyPrompt/.test(createCode) && /s-opening/.test(createCode) && !/s-display/.test(createCode));
+check("and the starting points are lines, not capsules",
+  /STARTING_POINTS\.map/.test(createCode) && !/rounded-full border/.test(createCode),
+  "a row of capsules reads as a filter bar; these are openings");
 check("and the marketing hero is gone",
   !/openingSignal/.test(createCode) && !/clamp\(2\.35rem/.test(createCode),
   "an 83px display headline and an eyebrow are an advertisement for a product already open");

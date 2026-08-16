@@ -91,7 +91,7 @@ export function SettingsClient({
               <div className="flex items-center gap-4">
                 <span
                   className="grid h-14 w-14 shrink-0 place-items-center rounded-full text-[18px] font-semibold"
-                  style={{ background: "var(--accent-soft)", color: "var(--accent-ink)" }}
+                  style={{ background: "var(--color-accent-soft)", color: "var(--color-accent)" }}
                   aria-hidden
                 >
                   {initials}
@@ -108,7 +108,7 @@ export function SettingsClient({
 
           {section === "usage" && (
             <Panel>
-              <p className="text-[15px] font-semibold">{t("usage")}</p>
+              <p className="s-eyebrow">{t("usage")}</p>
               <ul className="mt-4 flex flex-col gap-4">
                 {[
                   { label: t("usageChanges"), counter: usage.aiChanges },
@@ -117,20 +117,20 @@ export function SettingsClient({
                 ].map(({ label, counter }) => (
                   <li key={label}>
                     <div className="flex items-baseline justify-between gap-2">
-                      <span className="text-[14px]" style={{ color: "var(--ink-2)" }}>
+                      <span className="text-[14px]" style={{ color: "var(--color-ink-secondary)" }}>
                         {label}
                       </span>
-                      <span className="text-[13px] font-semibold tabular-nums" style={{ color: "var(--ink-3)" }}>
+                      <span className="text-[13px] font-semibold tabular-nums" style={{ color: "var(--color-ink-muted)" }}>
                         {counter.available ? `${counter.used}/${counter.limit}` : t("usageUnavailable")}
                       </span>
                     </div>
                     {counter.available && (
-                      <div className="mt-2 h-1.5 overflow-hidden rounded-full" style={{ background: "var(--sunken)" }}>
+                      <div className="mt-2 h-1.5 overflow-hidden rounded-full" style={{ background: "var(--color-surface-hover)" }}>
                         <div
-                          className="h-full rounded-full transition-[width] duration-[var(--t-layout)] ease-[var(--ease)]"
+                          className="h-full rounded-full transition-[width] duration-[var(--t-slow)] ease-[var(--ease)]"
                           style={{
                             width: `${Math.min(100, (counter.used / Math.max(1, counter.limit)) * 100)}%`,
-                            background: "var(--accent-grad)",
+                            background: "var(--color-accent)",
                           }}
                         />
                       </div>
@@ -138,7 +138,7 @@ export function SettingsClient({
                   </li>
                 ))}
               </ul>
-              <p className="mt-5 text-[13px] leading-relaxed" style={{ color: "var(--ink-3)" }}>
+              <p className="mt-5 text-[13px] leading-relaxed" style={{ color: "var(--color-ink-muted)" }}>
                 {t("usageNote")}
               </p>
             </Panel>
@@ -146,8 +146,8 @@ export function SettingsClient({
 
           {section === "appearance" && (
             <Panel>
-              <p className="text-[15px] font-semibold">{t("settingsAppearance")}</p>
-              <p className="mt-1.5 text-[14px] leading-relaxed" style={{ color: "var(--ink-2)" }}>
+              <p className="s-eyebrow">{t("settingsAppearance")}</p>
+              <p className="mt-1.5 text-[14px] leading-relaxed" style={{ color: "var(--color-ink-secondary)" }}>
                 {t("settingsAppearanceBody")}
               </p>
               {/* Both themes are listed so the section reads as complete, but the
@@ -163,7 +163,7 @@ export function SettingsClient({
                 >
                   <IconPalette className="h-[17px] w-[17px] shrink-0" />
                   {t("settingsAppearanceLight")}
-                  <span className="ml-auto text-[13px] font-normal" style={{ color: "var(--ink-3)" }}>
+                  <span className="ml-auto text-[13px] font-normal" style={{ color: "var(--color-ink-muted)" }}>
                     {tProfile("languageInUse")}
                   </span>
                 </VentrioButton>
@@ -177,7 +177,7 @@ export function SettingsClient({
                 >
                   <IconMoon className="h-[17px] w-[17px] shrink-0" />
                   {t("settingsAppearanceDark")}
-                  <span className="ml-auto text-[13px] font-normal" style={{ color: "var(--ink-3)" }}>
+                  <span className="ml-auto text-[13px] font-normal" style={{ color: "var(--color-ink-muted)" }}>
                     {t("settingsAppearanceSoon")}
                   </span>
                 </VentrioButton>
@@ -193,7 +193,7 @@ export function SettingsClient({
                 >
                   <IconSettings className="h-[17px] w-[17px] shrink-0" />
                   {t("settingsAppearanceSystem")}
-                  <span className="ml-auto text-[13px] font-normal" style={{ color: "var(--ink-3)" }}>
+                  <span className="ml-auto text-[13px] font-normal" style={{ color: "var(--color-ink-muted)" }}>
                     {t("settingsAppearanceSoon")}
                   </span>
                 </VentrioButton>
@@ -203,8 +203,8 @@ export function SettingsClient({
 
           {section === "language" && (
             <Panel>
-              <p className="text-[15px] font-semibold">{t("settingsLanguage")}</p>
-              <p className="mt-1.5 text-[14px] leading-relaxed" style={{ color: "var(--ink-2)" }}>
+              <p className="s-eyebrow">{t("settingsLanguage")}</p>
+              <p className="mt-1.5 text-[14px] leading-relaxed" style={{ color: "var(--color-ink-secondary)" }}>
                 {t("settingsLanguageBody")} {t("settingsLanguageImmediate")}
               </p>
               {/* The same switcher the landing footer uses, in its light list
@@ -217,7 +217,7 @@ export function SettingsClient({
 
           {section === "privacy" && (
             <Panel>
-              <p className="text-[14px] leading-relaxed" style={{ color: "var(--ink-2)" }}>
+              <p className="text-[14px] leading-relaxed" style={{ color: "var(--color-ink-secondary)" }}>
                 {t("settingsLegalNote")}
               </p>
               <div className="mt-2 flex flex-col">
@@ -235,7 +235,7 @@ export function SettingsClient({
                     weight="normal" style={{ justifyContent: "space-between" }} className="px-2"
                   >
                     {item.label}
-                    <span aria-hidden style={{ color: "var(--ink-3)" }}>
+                    <span aria-hidden style={{ color: "var(--color-ink-muted)" }}>
                       ↗
                     </span>
                   </VentrioLinkButton>
@@ -248,9 +248,9 @@ export function SettingsClient({
             <Panel>
               <div
                 className="flex h-11 items-center justify-between gap-4 border-b text-[14px]"
-                style={{ borderColor: "var(--line)" }}
+                style={{ borderColor: "var(--color-border)" }}
               >
-                <span className="shrink-0" style={{ color: "var(--ink-2)" }}>
+                <span className="shrink-0" style={{ color: "var(--color-ink-secondary)" }}>
                   {t("settingsEmail")}
                 </span>
                 <span className="min-w-0 truncate font-medium">{email}</span>
@@ -275,8 +275,12 @@ export function SettingsClient({
 function Panel({ children }: { children: ReactNode }) {
   return (
     <div
-      className="rise rounded-[var(--r-lg)] border p-5"
-      style={{ borderColor: "var(--line)", background: "var(--surface)" }}
+      /* A section, not a card. Settings was five bordered panels stacked down
+          a page that is already one column — five boxes to hold five lists. A
+          hairline above each says the same thing and stops the page reading as
+          a form built out of containers. */
+      className="s-enter border-t pt-7"
+      style={{ borderColor: "var(--color-border)" }}
     >
       {children}
     </div>

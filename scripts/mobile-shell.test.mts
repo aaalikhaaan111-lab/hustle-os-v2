@@ -37,7 +37,7 @@ const code = (source: string) =>
 
 const shell = read("src/components/workspace-ui/WorkspaceShell.tsx");
 const shellCode = code(shell);
-const tokens = read("src/components/workspace-ui/tokens.css");
+const tokens = read("src/app/studio.css");
 const hook = read("src/lib/workspace/useAppViewport.ts");
 const buildScreen = code(read("src/components/workspace/BuildScreen.tsx"));
 
@@ -46,7 +46,7 @@ const buildScreen = code(read("src/components/workspace/BuildScreen.tsx"));
 check("the shell no longer sizes itself with dvh",
   !/h-dvh/.test(shellCode),
   "dvh tracks the URL bar, so the layout resized on every scroll gesture");
-check("it uses the app frame", /ventrio-app-frame/.test(shellCode));
+check("it uses the app frame", /studio-frame/.test(shellCode));
 check("whose fallback is the stable small viewport", /height:\s*var\(--ventrio-app-height,\s*100svh\)/.test(tokens));
 check("with a fallback for engines without svh", /@supports not \(height: 100svh\)/.test(tokens));
 check("and the shell still clips its own overflow", /overflow-hidden/.test(shellCode));
@@ -67,7 +67,7 @@ check("its height is published to the shell", /--ventrio-app-height/.test(hook) 
 // translate legitimately, and the rule's own comment explains what it no longer
 // does — matching either would pass the check by describing it.
 const cssCode = tokens.replace(/\/\*[\s\S]*?\*\//g, "");
-const frameRule = cssCode.split(".ventrio-app-frame {")[1]?.split("}")[0] ?? "";
+const frameRule = cssCode.split(".studio-frame {")[1]?.split("}")[0] ?? "";
 check("the frame is not translated", !/transform/.test(frameRule),
   "the compensation was itself the thing that moved the app");
 check("it is anchored to the viewport instead", /position: fixed/.test(frameRule));
@@ -79,13 +79,15 @@ check("the property is released on unmount", /removeProperty\("--ventrio-app-hei
 
 /* ── the composer is a field, not a slab ─────────────────────────────────── */
 
+/* `.wsRoot .ws-composer` became `.s-composer` when the second palette was
+   retired. The properties being protected are unchanged. */
+const composerRule = cssCode.split(".s-composer {")[1]?.split("}")[0] ?? "";
 check("the composer does not force a compositing layer",
-  !/backdrop-filter/.test(cssCode.split(".wsRoot .ws-composer {")[1]?.split("}")[0] ?? ""),
+  composerRule.length > 0 && !/backdrop-filter/.test(composerRule),
   "a 20px blur the width of the conversation is what read as a large white surface");
 check("it has a solid surface with a visible edge",
-  /background: var\(--surface\)/.test(cssCode.split(".wsRoot .ws-composer {")[1]?.split("}")[0] ?? ""));
-check("and no shadow that reaches the last message",
-  !/30px/.test(cssCode.split(".wsRoot .ws-composer {")[1]?.split("}")[0] ?? ""));
+  /background: var\(--color-surface\)/.test(composerRule) && /border: 1px solid/.test(composerRule));
+check("and no shadow that reaches the last message", !/box-shadow/.test(composerRule));
 check("an engine without visualViewport degrades to the CSS fallback",
   /if \(!viewport\) return;/.test(hook));
 check("the shell installs the hook", /useAppViewport\(\)/.test(shellCode));
@@ -105,7 +107,7 @@ check("previews that measure themselves get it too", /preview\(effectiveDevice\)
  * at #6e7482 on --raised was failing contrast. Retuning the scale lifts every
  * surface at once, which is the opposite of restyling component by component.
  */
-const value = (name: string) => (tokens.match(new RegExp(`--${name}:\\s*(#[0-9a-f]{6})`, "i")) ?? [])[1]?.toLowerCase();
+const value = (name: string) => (tokens.match(new RegExp(`--color-${name}:\\s*(#[0-9a-f]{6})`, "i")) ?? [])[1]?.toLowerCase();
 const luminance = (hex: string) => {
   const n = parseInt(hex.slice(1), 16);
   const [r, g, b] = [(n >> 16) & 255, (n >> 8) & 255, n & 255].map((c) => {
@@ -121,9 +123,9 @@ const contrast = (a: string, b: string) => {
 
 const surface = value("surface");
 const ink = value("ink");
-const ink2 = value("ink-2");
-const ink3 = value("ink-3");
-const line = value("line");
+const ink2 = value("ink-secondary");
+const ink3 = value("ink-muted");
+const line = value("border");
 
 check("the tokens still define one scale", !!surface && !!ink && !!ink2 && !!ink3 && !!line);
 if (surface && ink && ink2 && ink3 && line) {
@@ -132,7 +134,8 @@ if (surface && ink && ink2 && ink3 && line) {
   check("secondary text passes AA", contrast(ink2, surface) >= 4.5, contrast(ink2, surface).toFixed(2));
   check("small print passes AA", contrast(ink3, surface) >= 4.5, contrast(ink3, surface).toFixed(2));
   check("a border is actually visible against a surface", contrast(line, surface) >= 1.15,
-    `${contrast(line, surface).toFixed(3)} — #e8ebf1 on white was 1.10, which reads as no border at all`);
+    `${contrast(line, surface).toFixed(3)} — #e8ebf1 on white was 1.10, which read as no border at all. ` +
+    "Inverted on a dark ground the rule is the same: the hairline must be LIGHTER than the panel.");
 }
 
 /* ── report ──────────────────────────────────────────────────────────────── */

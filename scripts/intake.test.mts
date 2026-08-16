@@ -321,7 +321,7 @@ function runFlow(idea: string, picks: (string | null)[]) {
   check("selection starts empty", /useState<string \| null>\(null\)/.test(component));
   check("aria-checked follows selection, not focus", /aria-checked=\{isSelected\}/.test(component));
   check("the roving tabindex is separate from selection", /tabIndex=\{index === focusIndex/.test(component));
-  check("the accent fill is applied only when selected", /background: isSelected \? "var\(--accent-soft\)"/.test(component));
+  check("the accent fill is applied only when selected", /background: isSelected \? "var\(--color-accent-soft\)"/.test(component));
   check("focus is shown as a ring, not as the selected fill", /focus-visible:ring-2/.test(component));
   check("arrow keys move focus without choosing",
     /case "ArrowRight":[\s\S]{0,120}move\(focusIndex \+ 1\)/.test(component));

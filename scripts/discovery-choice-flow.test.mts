@@ -139,7 +139,33 @@ check("no display face in the thread", !/ventrio-display/.test(createCode.slice(
 for (const hero of ["clamp(1.75rem", "clamp(2.35rem", "text-[19px]", "text-[17px]"]) {
   check(`no ${hero} in the conversation`, !createCode.slice(createCode.indexOf("messages.map")).includes(hero));
 }
-check("user and assistant turns share a size", /text-\[15px\] leading-\[1\.6\]/.test(createExperience));
+/**
+ * DELIBERATELY REVERSED. This asserted that both speakers were set identically,
+ * which was the fix for the assistant's latest turn being promoted to display
+ * type — a landing-page headline announcing the options.
+ *
+ * Identical sizing solved that and created another problem: with both turns at
+ * 15px in the same colour, the ONLY thing separating them was a grey capsule
+ * pushed to the right, and nothing said which of the two was the substance.
+ *
+ * They now differ by one step and in opposite directions — the assistant reads
+ * at 16.5px in full ink, the person's prompt at 15px in muted ink behind a
+ * hairline. The original defect stays fixed and is still asserted above: no
+ * display face anywhere in the thread, and no promoted turn.
+ *
+ * Both come from one component so the four conversation surfaces cannot drift
+ * into three different answers again, which is what they had done.
+ */
+const turn = readFileSync(
+  new URL("../src/components/build/ConversationTurn.tsx", import.meta.url), "utf8");
+check("the assistant turn carries the reading size", /text-\[16\.5px\]/.test(turn));
+check("the person's turn is quieter, not a bubble",
+  /border-l-2/.test(turn) && /color-ink-muted/.test(turn) && !/rounded-\[/.test(turn));
+check("every conversation surface uses the one component",
+  ["src/components/build/AssistantChat.tsx",
+   "src/components/build/PreOutputWorkspace.tsx",
+   "src/components/create/CreateExperience.tsx"].every((f) =>
+    /UserTurn/.test(readFileSync(new URL(`../${f}`, import.meta.url), "utf8"))));
 
 // The question in the workspace is a message too, not a form label.
 check("the build question uses body type", /text-\[15px\] font-normal leading-\[1\.65\]/.test(structured));

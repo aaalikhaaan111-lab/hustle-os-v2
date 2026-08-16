@@ -1,45 +1,55 @@
 import type { ReactNode } from "react";
 
-/** One measure for the whole workspace, so no two routes disagree. */
-const MEASURE = 960;
-
 /**
- * The one content grid.
+ * The one content column.
  *
- * Every route centres its content in the same column at the same width, so the
- * composition reads as balanced rather than pushed to one side, and headings
- * land on the same line whichever page you arrived from. Where prose needs a
- * shorter line, the block inside caps itself — the page origin never moves.
+ * Widened from 960 to 1080 and given far more vertical air. The old page
+ * opened 32px from the top of a white sheet that was itself inset from a grey
+ * desk, so content began roughly 60px down inside two nested boxes. There is
+ * no sheet now — the page sits directly in the room — so the space has to be
+ * real space rather than the gap between two containers.
  */
+const MEASURE = 1080;
+
 export function PageBody({ className = "", children }: { className?: string; children: ReactNode }) {
   return (
-    <div className={`mx-auto w-full px-5 py-8 sm:px-8 sm:py-10 ${className}`} style={{ maxWidth: MEASURE }}>
+    <div
+      className={`mx-auto w-full px-5 pb-24 pt-8 sm:px-8 sm:pb-16 sm:pt-14 ${className}`}
+      style={{ maxWidth: MEASURE }}
+    >
       {children}
     </div>
   );
 }
 
-/** The heading block every page opens with, so the type scale never drifts. */
+/**
+ * The heading block every page opens with.
+ *
+ * Editorial, not a dashboard label. The old title was 26px semibold with a
+ * 14.5px lead under it — a two-point difference in a grey column, which is
+ * why no screen had an obvious subject. `s-display` is 32/44px at weight 500
+ * with real negative tracking, and the eyebrow above it names the region so
+ * the title itself never has to carry the words "Your" or "All".
+ */
 export function PageHeading({
+  eyebrow,
   title,
   lead,
   actions,
 }: {
+  eyebrow?: string;
   title: string;
   lead?: ReactNode;
   actions?: ReactNode;
 }) {
   return (
-    <div className="flex flex-wrap items-start justify-between gap-3">
+    <header className="flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
       <div className="min-w-0 flex-1">
-        <h1 className="truncate text-[26px] font-semibold leading-tight tracking-[-0.02em]">{title}</h1>
-        {lead && (
-          <p className="mt-1.5 text-[14.5px] font-normal leading-relaxed" style={{ color: "var(--ink-2)" }}>
-            {lead}
-          </p>
-        )}
+        {eyebrow && <p className="s-eyebrow mb-3">{eyebrow}</p>}
+        <h1 className="s-display">{title}</h1>
+        {lead && <p className="s-body mt-3 max-w-xl">{lead}</p>}
       </div>
       {actions && <div className="flex shrink-0 items-center gap-2">{actions}</div>}
-    </div>
+    </header>
   );
 }

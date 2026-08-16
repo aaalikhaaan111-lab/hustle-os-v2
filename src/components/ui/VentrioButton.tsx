@@ -39,7 +39,10 @@ const button = cva("vbtn", {
       ghost: "vbtn--ghost",
       icon: "vbtn--icon vbtn--square",
       composer: "vbtn--composer vbtn--square",
-      generative: "vbtn--generative ws-edge",
+      // `ws-edge` removed with the animated conic ring it addressed. The rule
+      // lived in the retired `workspace-ui/tokens.css`, so the class had become
+      // a name attached to nothing.
+      generative: "vbtn--generative",
       danger: "vbtn--danger",
     },
     size: { sm: "vbtn--sm", md: "vbtn--md", lg: "vbtn--lg" },

@@ -1,8 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { getTranslations } from "next-intl/server";
-import { PageHeader } from "@/components/ui/PageHeader";
-import { BackNav } from "@/components/layout/BackNav";
 import { PublicFooter } from "@/components/layout/PublicFooter";
 import { PLANS, type PlanId } from "@/lib/billing/plans";
 import { paddleClientConfig } from "@/lib/billing/paddle";
@@ -47,7 +45,6 @@ const PRICE: Record<PlanId, string> = { free: "$0", pro: "$19", studio: "$49" };
  */
 export default async function PricingPage() {
   const t = await getTranslations("pricing");
-  const tc = await getTranslations("common");
 
   // Who is looking, and whether checkout can be offered at all. Both are read
   // once: the button below is a link to sign-in for a visitor, a real checkout
@@ -57,16 +54,32 @@ export default async function PricingPage() {
   const currentPlan = user ? await getUserPlan(supabase, user.id) : "free";
   const paddle = paddleClientConfig();
 
-  const features = (plan: PlanId): string[] => {
-    const e = PLANS[plan];
-    return [
-      t("featureGenerations", { count: e.generationsPerMonth }),
-      e.maxPublishedProjects === null ? t("featurePublishMany") : t("featurePublishOne"),
-      e.canRemoveBranding ? t("featureBrandingOff") : t("featureBrandingOn"),
-      t("featureSubdomain"),
-      t("featureDiscovery"),
-    ];
-  };
+  /**
+   * The comparison, as rows rather than three repeated lists.
+   *
+   * Every value still comes from `PLANS` — the same object the quota resolver
+   * and the publish action enforce against — so there is no second list of
+   * limits to fall out of date. What changed is only that a capability is now
+   * stated once with three answers, instead of three times with one answer
+   * each, which is what makes the differences visible without re-reading.
+   */
+  const ROWS: { label: string; value: (plan: PlanId) => string }[] = [
+    {
+      label: t("rowGenerations"),
+      value: (plan) => t("featureGenerations", { count: PLANS[plan].generationsPerMonth }),
+    },
+    {
+      label: t("rowPublished"),
+      value: (plan) =>
+        PLANS[plan].maxPublishedProjects === null ? t("featurePublishMany") : t("featurePublishOne"),
+    },
+    {
+      label: t("rowBranding"),
+      value: (plan) => (PLANS[plan].canRemoveBranding ? t("featureBrandingOff") : t("featureBrandingOn")),
+    },
+    { label: t("rowSubdomain"), value: () => t("featureSubdomain") },
+    { label: t("rowDiscovery"), value: () => t("featureDiscovery") },
+  ];
 
   const cta: Record<PlanId, string> = {
     free: t("freeCta"),
@@ -84,100 +97,163 @@ export default async function PricingPage() {
     studio: t("studioTagline"),
   };
 
+  /**
+   * The call to action for a plan.
+   *
+   * The BRANCHES ARE UNCHANGED — this is the same billing logic, moved into one
+   * function so the table and the stacked mobile layout cannot drift apart.
+   * Pro opens Paddle's overlay checkout and grants nothing on its own; the plan
+   * changes only when Paddle's signed webhook confirms a payment. Studio has no
+   * Paddle price yet and stays a stated pending state rather than a button that
+   * cannot work.
+   */
+  const action = (plan: PlanId) => {
+    if (plan === "free") {
+      return (
+        <Link href="/create" className="s-btn s-btn--secondary w-full">
+          {cta.free}
+        </Link>
+      );
+    }
+    if (plan === currentPlan) {
+      return (
+        <p className="s-meta flex min-h-[2.375rem] items-center justify-center">{t("currentPlan")}</p>
+      );
+    }
+    if (plan === "pro" && paddle && user) {
+      return (
+        <UpgradeButton
+          clientToken={paddle.clientToken}
+          environment={paddle.environment}
+          priceId={paddle.priceId}
+          userId={user.id}
+          email={user.email ?? undefined}
+          label={cta.pro}
+          className="s-btn s-btn--primary w-full"
+        />
+      );
+    }
+    if (plan === "pro" && paddle && !user) {
+      // Checkout needs an account to attach the subscription to.
+      return (
+        <Link href="/login?next=%2Fpricing" className="s-btn s-btn--primary w-full">
+          {cta.pro}
+        </Link>
+      );
+    }
+    return (
+      <button type="button" disabled aria-describedby="billing-note" className="s-btn s-btn--secondary w-full">
+        {cta[plan]} — {t("billingPending")}
+      </button>
+    );
+  };
+
   return (
     <>
-      <div className="mx-auto flex w-full max-w-5xl flex-col gap-5 px-4 py-5 sm:px-6 sm:py-8">
-        <BackNav fallback="/" label={tc("backToVentrio")} />
-        <PageHeader title={t("pageTitle")} description={t("lead")} />
+      {/* PRICING, AS A COMPARISON RATHER THAN THREE BROCHURES.
 
-        <div className="grid gap-4 md:grid-cols-3">
+          It was three equal bordered cards side by side, each repeating the
+          same five feature lines with its own tick marks — so the one thing a
+          person actually wants (what changes between plans) had to be found by
+          reading the same list three times and diffing it by eye. Pro was
+          "highlighted" with a 40%-opacity accent border, which at that opacity
+          is not a highlight.
+
+          It is now one table. The plans are columns, the capabilities are rows,
+          and the differences line up horizontally where they can be read. Pro
+          is marked by tone and a label rather than by a border nobody sees. */}
+      <div className="mx-auto w-full max-w-[1080px] px-5 pb-20 pt-14 sm:px-8">
+        <header className="max-w-2xl">
+          <p className="s-eyebrow mb-3">{t("pageTitle")}</p>
+          <h1 className="s-display">{t("lead")}</h1>
+        </header>
+
+        {/* Wide: a real table. Narrow: the same data as three stacked blocks,
+            because a three-column table on a phone is a horizontal scroll. */}
+        <div className="mt-14 hidden md:block">
+          <table className="w-full border-collapse text-left">
+            <thead>
+              <tr>
+                <th className="w-[26%] pb-6 align-bottom" />
+                {ORDER.map((plan) => (
+                  <th key={plan} className="w-[24.6%] pb-6 pl-6 align-bottom">
+                    <span className="s-eyebrow block">{name[plan]}</span>
+                    <span className="mt-3 flex items-baseline gap-1.5">
+                      <span className="text-[34px] font-medium leading-none tracking-[-0.035em]">
+                        {PRICE[plan]}
+                      </span>
+                      {plan !== "free" && <span className="s-meta">{t("perMonth")}</span>}
+                    </span>
+                    <span className="s-meta mt-2.5 block font-normal">{tagline[plan]}</span>
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {ROWS.map((row) => (
+                <tr key={row.label} className="border-t" style={{ borderColor: "var(--color-border)" }}>
+                  <th scope="row" className="py-4 pr-6 text-[14px] font-normal align-top"
+                      style={{ color: "var(--color-ink-muted)" }}>
+                    {row.label}
+                  </th>
+                  {ORDER.map((plan) => (
+                    <td key={plan} className="py-4 pl-6 align-top text-[15px]"
+                        style={{ color: "var(--color-ink)" }}>
+                      {row.value(plan)}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+              <tr className="border-t" style={{ borderColor: "var(--color-border)" }}>
+                <td />
+                {ORDER.map((plan) => (
+                  <td key={plan} className="pl-6 pt-8">
+                    {action(plan)}
+                  </td>
+                ))}
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div className="mt-12 flex flex-col gap-10 md:hidden">
           {ORDER.map((plan) => (
-            <div
-              key={plan}
-              className={`flex flex-col rounded-2xl border p-5 ${
-                plan === "pro" ? "border-accent/40 bg-surface shadow-sm" : "border-border bg-surface"
-              }`}
-            >
-              <p className="v-title">
-                {name[plan]}
+            <section key={plan} className="border-t pt-6" style={{ borderColor: "var(--color-border)" }}>
+              <p className="s-eyebrow">{name[plan]}</p>
+              <p className="mt-3 flex items-baseline gap-1.5">
+                <span className="text-[32px] font-medium leading-none tracking-[-0.035em]">{PRICE[plan]}</span>
+                {plan !== "free" && <span className="s-meta">{t("perMonth")}</span>}
               </p>
-              <p className="mt-3 flex items-baseline gap-1">
-                <span className="text-[30px] font-semibold leading-none tracking-[-0.02em] text-ink">
-                  {PRICE[plan]}
-                </span>
-                {plan !== "free" && (
-                  <span className="v-meta">{t("perMonth")}</span>
-                )}
-              </p>
-              <p className="v-body mt-2">{tagline[plan]}</p>
-
-              <ul className="mt-5 flex flex-1 flex-col gap-2.5">
-                {features(plan).map((feature) => (
-                  <li key={feature} className="flex items-start gap-2.5 text-[14.5px] leading-[1.55] text-ink">
-                    <svg viewBox="0 0 16 16" aria-hidden className="mt-[3px] h-3.5 w-3.5 shrink-0 text-accent" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M3 8.5l3.5 3.5L13 5" />
-                    </svg>
-                    {feature}
+              <p className="s-body mt-2">{tagline[plan]}</p>
+              {/* The VALUES only, with no row label beside them.
+                  These strings are full sentences — "1 published project",
+                  "Ventrio branding on published projects" — written for a
+                  bullet list, so pairing each with its own noun as a label read
+                  as the same thing said twice down the whole column. The labels
+                  earn their place in the desktop table, where they are the row
+                  headers that make three columns comparable; on one column
+                  there is nothing to compare and the sentence is enough. */}
+              <ul className="mt-6 flex flex-col gap-2.5">
+                {ROWS.map((row) => (
+                  <li key={row.label} className="flex items-start gap-2.5 text-[15px]"
+                      style={{ color: "var(--color-ink)" }}>
+                    <span aria-hidden className="mt-[9px] h-[3px] w-[3px] shrink-0 rounded-full"
+                          style={{ background: "var(--color-ink-muted)" }} />
+                    {row.value(plan)}
                   </li>
                 ))}
               </ul>
-
-              <div className="mt-6">
-                {plan === "free" ? (
-                  <Link
-                    href="/create"
-                    className="inline-flex w-full items-center justify-center rounded-xl bg-ink px-4 py-2.5 text-[14px] font-semibold text-surface transition-opacity hover:opacity-90"
-                  >
-                    {cta.free}
-                  </Link>
-                ) : plan === currentPlan ? (
-                  <p className="v-tap flex items-center justify-center rounded-[10px] border border-border px-4 py-2.5 text-center text-[14.5px] font-semibold text-ink-muted">
-                    {t("currentPlan")}
-                  </p>
-                ) : plan === "pro" && paddle && user ? (
-                  <UpgradeButton
-                    clientToken={paddle.clientToken}
-                    environment={paddle.environment}
-                    priceId={paddle.priceId}
-                    userId={user.id}
-                    email={user.email ?? undefined}
-                    label={cta.pro}
-                    className="inline-flex w-full items-center justify-center rounded-xl bg-ink px-4 py-2.5 text-[14px] font-semibold text-surface transition-opacity hover:opacity-90 disabled:opacity-60"
-                  />
-                ) : plan === "pro" && paddle && !user ? (
-                  /* Checkout needs an account to attach the subscription to. */
-                  <Link
-                    href="/login?next=%2Fpricing"
-                    className="inline-flex w-full items-center justify-center rounded-xl bg-ink px-4 py-2.5 text-[14px] font-semibold text-surface transition-opacity hover:opacity-90"
-                  >
-                    {cta.pro}
-                  </Link>
-                ) : (
-                  /*
-                    Studio has no Paddle price yet, and Pro has none when billing
-                    is unconfigured. A stated pending state, never a button that
-                    could look like it subscribed someone.
-                  */
-                  <button
-                    type="button"
-                    disabled
-                    aria-describedby="billing-note"
-                    className="inline-flex w-full cursor-not-allowed items-center justify-center rounded-xl border border-border px-4 py-2.5 text-[14px] font-semibold text-ink-muted"
-                  >
-                    {cta[plan]} — {t("billingPending")}
-                  </button>
-                )}
-              </div>
-            </div>
+              <div className="mt-7">{action(plan)}</div>
+            </section>
           ))}
         </div>
 
-        <p id="billing-note" className="v-meta">
+        <p id="billing-note" className="s-meta mt-14 max-w-2xl">
           {t("billingSoon")}
         </p>
-        <p className="text-xs text-ink-muted">{t("note")}</p>
+        <p className="s-meta mt-2 max-w-2xl">{t("note")}</p>
       </div>
-      <div className="mx-auto w-[min(100%-2rem,1280px)]">
+      <div className="mx-auto w-[min(100%-2rem,1080px)]">
         <PublicFooter />
       </div>
     </>

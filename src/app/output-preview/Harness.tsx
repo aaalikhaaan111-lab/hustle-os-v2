@@ -9,10 +9,10 @@ import { ViewportFrame } from "@/components/workspace/ViewportFrame";
 import { DEVICE_WIDTHS, type DeviceMode } from "@/lib/build/deviceWidths";
 import { CHRONOVERSE_OUTPUT } from "@/lib/build/outputFixtures";
 // The workspace's design tokens are scoped to `.wsRoot` and normally come from
-// WorkspaceShell. Without both, every `var(--line)` and `var(--accent-soft)`
+// WorkspaceShell. Without both, every `var(--color-border)` and `var(--color-accent-soft)`
 // falls back to its initial value and the UI renders in stark black on white —
 // a harness artifact that looks exactly like a styling defect.
-import "@/components/workspace-ui/tokens.css";
+import "@/app/studio.css";
 
 /**
  * Renders the stored artifact through the SAME mechanism the workspace uses,
@@ -53,7 +53,7 @@ export function Harness({
   // column where it actually appears.
   if (screen === "generation") {
     return (
-      <div className="wsRoot h-screen w-full overflow-hidden" style={{ background: "var(--bg)" }}>
+      <div className="studio wsRoot h-screen w-full overflow-hidden" style={{ background: "var(--color-canvas)" }}>
       <BuildScreen
       projectId="output-preview-harness"
         chat={() => (
@@ -89,7 +89,7 @@ export function Harness({
   // session, a query or a model.
   if (controls) {
     return (
-      <div className="wsRoot h-screen w-full overflow-hidden" style={{ background: "var(--bg)" }}>
+      <div className="studio wsRoot h-screen w-full overflow-hidden" style={{ background: "var(--color-canvas)" }}>
       <BuildScreen
       projectId="output-preview-harness"
         chat={() => (

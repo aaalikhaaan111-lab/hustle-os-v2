@@ -6,6 +6,7 @@ import { headers } from "next/headers";
 import { AppShell } from "@/components/layout/AppShell";
 import { clientMessages } from "@/i18n/clientMessages";
 import "./globals.css";
+import "./studio.css";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
