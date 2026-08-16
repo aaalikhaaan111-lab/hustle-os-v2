@@ -73,6 +73,31 @@ check("the external link still opens in a new tab", /target="_blank"/.test(code)
 check("menu rows are comfortable under a thumb", /min-h-\[44px\]/.test(code));
 check("and so is the trigger", /h-11 w-11/.test(code));
 
+/**
+ * THE MENU CANNOT BE CLIPPED. The first version was a `<details>` with an
+ * absolutely positioned panel, reported clipping off the visible surface — and
+ * it had to, because the toolbar sits inside two ancestors carrying
+ * `overflow-hidden`. `position: fixed` alone would not have been safe either:
+ * an ancestor with a transform makes fixed resolve against that ancestor.
+ */
+check("the menu escapes its clipping ancestors", /createPortal\(/.test(code));
+check("rendered into the document body", /document\.body,/.test(code));
+check("and it is no longer a details element", !/<details/.test(code));
+check("it is positioned from the trigger's measured rect", /getBoundingClientRect\(\)/.test(code));
+check("clamped inside the viewport horizontally",
+  /Math\.max\(MARGIN, window\.innerWidth - rect\.right\)/.test(code));
+check("and vertically", /Math\.min\(rect\.bottom \+ GAP, window\.innerHeight - MARGIN\)/.test(code));
+check("it cannot exceed the screen width", /max-w-\[calc\(100vw-16px\)\]/.test(code));
+
+/* it goes away the four ways a person expects */
+check("an outside tap closes it", /onClick=\{\(\) => setOpen\(false\)\} aria-hidden/.test(code));
+check("Escape closes it", /event\.key === "Escape"/.test(code));
+check("scrolling closes it", /addEventListener\("scroll", close, true\)/.test(code),
+  "capture phase, so a scroll inside the preview panel counts too");
+check("resizing closes it", /addEventListener\("resize", close\)/.test(code));
+check("and choosing an item closes it", /item\.onSelect\?\.\(\); setOpen\(false\);/.test(code));
+check("the trigger announces its state", /aria-haspopup="menu"/.test(code) && /aria-expanded=\{open\}/.test(code));
+
 /* ── desktop is unchanged ────────────────────────────────────────────────── */
 
 check("the viewport toggles are a wide-screen affordance",

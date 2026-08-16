@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useState, useSyncExternalStore, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import {
   chooseWorkspaceMode,
   chosenWorkspaceMode,
@@ -644,16 +645,21 @@ function RailButton({
 /**
  * The overflow menu a phone toolbar needs.
  *
- * Deliberately labelled. The controls that moved in here — Reload, Copy link,
- * Open public page — were previously icons in a row that scrolled sideways at
- * 390 px, which is indistinguishable from not existing unless you already know
- * they are there. Words are what make them findable by someone who did not
- * build the product.
+ * WHY IT IS PORTALLED, which is the whole fix. The first version was a
+ * `<details>` with an absolutely positioned panel, and it was reported clipping
+ * off the visible surface. It had to: the toolbar sits inside two ancestors
+ * carrying `overflow-hidden` — the workspace root and the panel row — and an
+ * absolutely positioned child cannot escape either. `position: fixed` would not
+ * have been reliable either, because any ancestor with a transform (the panel's
+ * own entrance animation) makes fixed positioning resolve against that ancestor
+ * instead of the viewport.
  *
- * A `<details>` element rather than state and a popover library: it opens,
- * closes on outside interaction via the summary's own toggle, is keyboard
- * reachable, and needs no effect to clean up. Rows are 44 px so they are
- * comfortable under a thumb.
+ * So it renders into `document.body` and positions itself from the trigger's
+ * measured rect, clamped to the viewport on both axes. It cannot be clipped by
+ * anything, and it cannot run off the edge of a narrow screen.
+ *
+ * Rows are 44px, and it closes on outside pointer, Escape, scroll and resize —
+ * the four ways a person expects a popover on a phone to go away.
  */
 function ToolbarMenu({
   label,
@@ -662,51 +668,106 @@ function ToolbarMenu({
   label: string;
   items: Array<{ key: string; label: string; icon: ReactNode; onSelect?: () => void; href?: string }>;
 }) {
+  const [open, setOpen] = useState(false);
+  const [spot, setSpot] = useState<{ top: number; right: number } | null>(null);
+  const trigger = useRef<HTMLButtonElement | null>(null);
+
+  const place = useCallback(() => {
+    const node = trigger.current;
+    if (!node) return;
+    const rect = node.getBoundingClientRect();
+    const GAP = 6;
+    const MARGIN = 8;
+    setSpot({
+      top: Math.min(rect.bottom + GAP, window.innerHeight - MARGIN),
+      // Anchored to the trigger's right edge, but never past the screen edge.
+      right: Math.max(MARGIN, window.innerWidth - rect.right),
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!open) return;
+    place();
+    const close = () => setOpen(false);
+    const onKey = (event: KeyboardEvent) => { if (event.key === "Escape") setOpen(false); };
+    // `true` so a scroll inside the preview panel closes it too, not only one
+    // on the document.
+    window.addEventListener("scroll", close, true);
+    window.addEventListener("resize", close);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("scroll", close, true);
+      window.removeEventListener("resize", close);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open, place]);
+
   if (items.length === 0) return null;
+
   return (
-    <details className="relative shrink-0 [&[open]>summary>span]:opacity-100">
-      <summary
+    <>
+      <button
+        ref={trigger}
+        type="button"
         aria-label={label}
-        className="flex h-11 w-11 cursor-pointer list-none items-center justify-center rounded-[var(--r-sm)] [&::-webkit-details-marker]:hidden"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        onClick={() => setOpen((value) => !value)}
+        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[var(--r-sm)]"
         style={{ color: "var(--ink-2)" }}
       >
         <span aria-hidden className="text-[20px] leading-none">⋯</span>
-      </summary>
-      <div
-        className="lift-3 absolute right-0 z-30 mt-1 flex min-w-[220px] flex-col rounded-[var(--r-md)] border p-1"
-        style={{ borderColor: "var(--line)", background: "var(--surface)" }}
-        role="menu"
-      >
-        {items.map((item) =>
-          item.href ? (
-            <a
-              key={item.key}
-              role="menuitem"
-              href={item.href}
-              target="_blank"
-              rel="noreferrer"
-              className="flex min-h-[44px] items-center gap-3 rounded-[var(--r-sm)] px-3 text-[14.5px] font-medium"
-              style={{ color: "var(--ink)" }}
-            >
-              {item.icon}
-              {item.label}
-            </a>
-          ) : (
-            <button
-              key={item.key}
-              role="menuitem"
-              type="button"
-              onClick={item.onSelect}
-              className="flex min-h-[44px] items-center gap-3 rounded-[var(--r-sm)] px-3 text-left text-[14.5px] font-medium"
-              style={{ color: "var(--ink)" }}
-            >
-              {item.icon}
-              {item.label}
-            </button>
-          ),
-        )}
-      </div>
-    </details>
+      </button>
+
+      {open && spot && createPortal(
+        <>
+          {/* Catches the outside tap. Transparent, full-screen, below the menu. */}
+          <div className="fixed inset-0 z-[60]" onClick={() => setOpen(false)} aria-hidden />
+          <div
+            role="menu"
+            aria-label={label}
+            className="lift-3 fixed z-[61] flex min-w-[224px] max-w-[calc(100vw-16px)] flex-col rounded-[var(--r-md)] border p-1"
+            style={{
+              top: spot.top,
+              right: spot.right,
+              borderColor: "var(--line)",
+              background: "var(--surface)",
+            }}
+          >
+            {items.map((item) =>
+              item.href ? (
+                <a
+                  key={item.key}
+                  role="menuitem"
+                  href={item.href}
+                  target="_blank"
+                  rel="noreferrer"
+                  onClick={() => setOpen(false)}
+                  className="flex min-h-[44px] items-center gap-3 rounded-[var(--r-sm)] px-3 text-[14.5px] font-medium"
+                  style={{ color: "var(--ink)" }}
+                >
+                  {item.icon}
+                  {item.label}
+                </a>
+              ) : (
+                <button
+                  key={item.key}
+                  role="menuitem"
+                  type="button"
+                  onClick={() => { item.onSelect?.(); setOpen(false); }}
+                  className="flex min-h-[44px] items-center gap-3 rounded-[var(--r-sm)] px-3 text-left text-[14.5px] font-medium"
+                  style={{ color: "var(--ink)" }}
+                >
+                  {item.icon}
+                  {item.label}
+                </button>
+              ),
+            )}
+          </div>
+        </>,
+        document.body,
+      )}
+    </>
   );
 }
 
@@ -719,7 +780,7 @@ function ToolbarMenu({
  * A segment says which mode is active and makes the other one a single tap.
  *
  * Mobile only: on desktop both surfaces are on screen at once and a mode switch
- * would be answering a question nobody is asking.
+ * would answer a question nobody is asking.
  */
 function ModeSwitch({
   mode,
