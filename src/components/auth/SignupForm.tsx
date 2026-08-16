@@ -13,7 +13,7 @@ import { GoogleSignInButton } from "@/components/auth/GoogleSignInButton";
 import { ConfirmEmailPending } from "@/components/auth/ConfirmEmailPending";
 import { signupAction, type SignupActionState } from "@/lib/actions/auth";
 
-const initialState: SignupActionState = { error: null, success: false, email: null };
+const initialState: SignupActionState = { error: null, code: null, status: "idle", email: null };
 
 export function SignupForm() {
   const t = useTranslations("auth");
@@ -28,7 +28,7 @@ export function SignupForm() {
   const [showConsentNotice, setShowConsentNotice] = useState(false);
   const consentCheckboxRef = useRef<HTMLInputElement>(null);
 
-  if (state.success && state.email) {
+  if (state.status === "awaiting_confirmation" && state.email) {
     return <ConfirmEmailPending email={state.email} />;
   }
 

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/Button";
@@ -9,18 +9,31 @@ import { Card, CardContent } from "@/components/ui/Card";
 import { Field } from "@/components/ui/Field";
 import { Input } from "@/components/ui/Input";
 import { GoogleSignInButton } from "@/components/auth/GoogleSignInButton";
+import { ConfirmEmailPending } from "@/components/auth/ConfirmEmailPending";
 import { loginAction, type AuthActionState } from "@/lib/actions/auth";
 
-const initialState: AuthActionState = { error: null };
+const initialState: AuthActionState = { error: null, code: null };
 
 export function LoginForm() {
   const t = useTranslations("auth");
   const tCommon = useTranslations("common");
   const [state, formAction, isPending] = useActionState(loginAction, initialState);
+  /**
+   * Kept so an unconfirmed address has somewhere to go. The action knows the
+   * address but a failed login returns no data, and this is exactly the person
+   * who never received the first link — leaving them on a red line reading "not
+   * confirmed", with no way to request another, is the dead end that made "no
+   * email arrives" unrecoverable rather than merely annoying.
+   */
+  const [email, setEmail] = useState("");
   const searchParams = useSearchParams();
   const oauthErrorCode = searchParams.get("error");
   const oauthError = oauthErrorCode ? t("googleSignInFailed") : null;
   const displayError = state.error || oauthError;
+
+  if (state.code === "email_not_confirmed" && email) {
+    return <ConfirmEmailPending email={email} reason="unconfirmed_login" />;
+  }
   // Set by the proxy when an auth-required page redirected here — carried
   // through both sign-in paths so a successful login returns the visitor to
   // where they were headed instead of always landing on the default home.
@@ -57,6 +70,8 @@ export function LoginForm() {
                 type="email"
                 autoComplete="email"
                 required
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
                 placeholder={t("emailPlaceholder")}
               />
             </Field>
