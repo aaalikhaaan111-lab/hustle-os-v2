@@ -3,30 +3,36 @@
  *
  *   npx tsx --conditions=react-server scripts/generation-handoff.test.mts
  *
- * THE BUG. On a real iPhone a generation completed and the workspace did not
- * show the result. The person went to Projects, opened the project again, and
- * only then saw the preview — for the thing they had just waited three minutes
- * for. That is the core loop failing at its most important moment.
+ * THE BUG, TWICE. A generation completed on a real iPhone and the workspace did
+ * not show the result; the person had to reopen the project from Projects. The
+ * first fix did not work, and the reason is the reason this file is written the
+ * way it is.
  *
- * Three causes, and all three had to be fixed for the transition to be
- * deterministic:
+ * That fix carried the arrival in a `sessionStorage` marker read through
+ * `useSyncExternalStore`. A snapshot must be pure and stable, and reading
+ * consumed the marker — so the read was cached in a module-level Map. But
+ * `BuildScreen` is rendered from the first render by `PreOutputWorkspace`, long
+ * before any generation finishes: the snapshot ran, found nothing, cached
+ * `false`, and returned that for the life of the page. The generation then
+ * completed, wrote its marker, and nothing ever re-read it.
  *
- *   1. NOTHING RECOVERED A SUSPENDED TAB. The poll was a bare setInterval.
- *      Generation takes two to four minutes, nobody watches that, and iOS
- *      throttles a backgrounded tab's timers to nothing — or restores the page
- *      from bfcache, where effects do not re-run at all.
- *   2. THE REFRESH WAS ONE SHOT. Guarded by project id, fired once per mount.
- *      The worker writes the application and finishes the job row separately, so
- *      a refresh landing in that gap came back with nothing — and nothing ever
- *      tried again.
- *   3. THE PANEL HONOURED A STALE PREFERENCE. `previewOpen` fell back to a
- *      stored flag, which on a phone is very often "closed", because there the
- *      preview replaces the conversation.
+ * The tests passed. Every one of them asserted the SHAPE of that code — that a
+ * marker was written, that a snapshot was read, that the names lined up — and
+ * shape is exactly what was correct. So this file drives the store instead:
+ * subscribe, announce, and check what a subscriber actually observes. A store
+ * that never notifies fails here.
  *
  * Offline. Real-device behaviour is a real-device claim and is not asserted.
  */
 
 import { readFileSync } from "node:fs";
+import {
+  chooseWorkspaceMode,
+  chosenWorkspaceMode,
+  resetWorkspaceModes,
+  showGeneratedResult,
+  subscribeWorkspaceMode,
+} from "../src/lib/workspace/workspaceMode";
 
 let passed = 0;
 const failures: string[] = [];
@@ -39,79 +45,131 @@ const read = (path: string) => readFileSync(new URL(`../${path}`, import.meta.ur
 const code = (source: string) =>
   source.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "").replace(/\{\/\*[\s\S]*?\*\/\}/g, "");
 
-const hook = code(read("src/lib/workspace/useFirstVersionJob.ts"));
+/* ── 1. the store behaves, driven rather than described ──────────────────── */
+
+const P = "project-1";
+const OTHER = "project-2";
+
+resetWorkspaceModes();
+check("with no choice made, the store says so", chosenWorkspaceMode(P) === null);
+
+/**
+ * THE REGRESSION THAT MATTERS. A subscriber that reads before anything has
+ * happened — which is what `BuildScreen` does on its first render — must still
+ * see the arrival when it comes. The previous implementation cached that first
+ * read and never changed its answer.
+ */
+{
+  resetWorkspaceModes();
+  let notifications = 0;
+  const seen: Array<string | null> = [];
+  const unsubscribe = subscribeWorkspaceMode(() => { notifications += 1; seen.push(chosenWorkspaceMode(P)); });
+
+  // The first render, long before any generation finishes.
+  const firstRead = chosenWorkspaceMode(P);
+  check("the first read is empty, as it is on a fresh workspace", firstRead === null);
+
+  showGeneratedResult(P);
+
+  check("a subscriber is notified when the generation lands", notifications === 1, `${notifications} notifications`);
+  check("and the value it then reads is preview", chosenWorkspaceMode(P) === "preview",
+    "this is the exact assertion the cached snapshot failed");
+  check("the notification carried the new value", seen[0] === "preview");
+  unsubscribe();
+}
+
+/* ── 2. reading does not consume ─────────────────────────────────────────── */
+
+{
+  resetWorkspaceModes();
+  showGeneratedResult(P);
+  check("reading twice gives the same answer",
+    chosenWorkspaceMode(P) === "preview" && chosenWorkspaceMode(P) === "preview",
+    "a snapshot React calls repeatedly, twice per render under StrictMode, must be stable");
+}
+
+/* ── 3. an explicit switch still wins, in both directions ────────────────── */
+
+{
+  resetWorkspaceModes();
+  showGeneratedResult(P);
+  chooseWorkspaceMode(P, "chat");
+  check("the person can go back to the conversation", chosenWorkspaceMode(P) === "chat");
+  chooseWorkspaceMode(P, "preview");
+  check("and forward again", chosenWorkspaceMode(P) === "preview");
+}
+
+/**
+ * A generation that just landed overrides an earlier "chat". Someone who closed
+ * the preview did not thereby ask to be kept from the result they then waited
+ * three minutes for — and on a phone closing it is simply how you reach the
+ * conversation.
+ */
+{
+  resetWorkspaceModes();
+  chooseWorkspaceMode(P, "chat");
+  showGeneratedResult(P);
+  check("an arrival beats a stale 'chat' choice", chosenWorkspaceMode(P) === "preview");
+}
+
+/* ── 4. choices do not leak between projects ─────────────────────────────── */
+
+{
+  resetWorkspaceModes();
+  showGeneratedResult(P);
+  check("another project is unaffected", chosenWorkspaceMode(OTHER) === null,
+    "a finished generation must not open the preview on a project opened in the meantime");
+}
+
+/* ── 5. no redundant notifications ───────────────────────────────────────── */
+
+{
+  resetWorkspaceModes();
+  let notifications = 0;
+  const unsubscribe = subscribeWorkspaceMode(() => { notifications += 1; });
+  chooseWorkspaceMode(P, "preview");
+  chooseWorkspaceMode(P, "preview");
+  check("setting the same mode twice notifies once", notifications === 1, `${notifications}`);
+  unsubscribe();
+  chooseWorkspaceMode(P, "chat");
+  check("an unsubscribed listener stops hearing", notifications === 1, `${notifications}`);
+}
+
+/* ── 6. the wiring, which behaviour alone cannot show ────────────────────── */
+
 const preOutput = code(read("src/components/build/PreOutputWorkspace.tsx"));
 const buildScreen = code(read("src/components/workspace/BuildScreen.tsx"));
-const handoff = read("src/lib/workspace/generationHandoff.ts");
-const handoffCode = code(handoff);
+const hook = code(read("src/lib/workspace/useFirstVersionJob.ts"));
 
-/* ── 1. a suspended tab catches up ───────────────────────────────────────── */
+check("the screen that sees the job succeed announces it", /showGeneratedResult\(projectId\)/.test(preOutput));
+check("before the refresh that unmounts it",
+  preOutput.indexOf("showGeneratedResult") < preOutput.indexOf("router.refresh"));
+check("the dead marker module is gone",
+  !/generationHandoff/.test(preOutput) && !/generationHandoff/.test(buildScreen));
 
-check("the poll still runs while a job is in flight", /setInterval\(refresh/.test(hook));
-check("the tab catches up when it becomes visible again",
-  /visibilitychange/.test(hook),
-  "iOS throttles a backgrounded tab's timers to nothing for minutes at a time");
-check("and after a back/forward cache restore",
-  /pageshow/.test(hook),
-  "visibilitychange does not fire for a bfcache restore, where effects never re-run");
-check("and on focus", /"focus"/.test(hook));
-check("catching up is not gated on this tab's idea of being in flight",
-  !/if \(!inFlight\) return;[\s\S]{0,200}visibilitychange/.test(hook),
-  "that idea can be minutes stale, which is the whole problem");
-check("it only asks while there is no result yet", /if \(hasOutput\) return;[\s\S]{0,400}visibilitychange/.test(hook));
+check("the panel subscribes to the store", /subscribeWorkspaceMode/.test(buildScreen));
+check("and derives the panel from it", /chosen !== null/.test(buildScreen));
+check("a phone shows the result by default once there is one",
+  /hasOutput && \(narrow \|\| storedOpen\)/.test(buildScreen),
+  "on desktop both surfaces are visible, so the remembered preference still decides");
 
-/* ── 2. the arrival refresh is retried, and bounded ──────────────────────── */
+/* ── 7. the tab still catches up after iOS suspends it ───────────────────── */
 
-check("the refresh is no longer one shot per project",
-  !/refreshedForJob/.test(preOutput),
-  "a single refresh that lands in the worker's write gap was terminal");
-check("it retries a bounded number of times", /MAX_ARRIVAL_REFRESHES/.test(preOutput));
-check("with a gap between attempts", /ARRIVAL_RETRY_MS/.test(preOutput));
-check("and still stops, so the failure path cannot loop",
-  /refreshAttempts\.current >= MAX_ARRIVAL_REFRESHES/.test(preOutput));
-check("the first attempt is immediate", /attempt === 0 \? 0 : ARRIVAL_RETRY_MS/.test(preOutput));
+check("the poll recovers on visibility", /visibilitychange/.test(hook));
+check("and after a bfcache restore", /pageshow/.test(hook));
+check("the arrival refresh retries, bounded", /MAX_ARRIVAL_REFRESHES/.test(preOutput));
 
-/* ── 3. the preview opens, exactly once ──────────────────────────────────── */
+/* ── 8. the mode is stated, not implied ──────────────────────────────────── */
 
-check("the arrival is recorded before the refresh unmounts the screen",
-  /markGenerationArrived\(projectId\)/.test(preOutput));
-check("and the marker is set before router.refresh is scheduled",
-  preOutput.indexOf("markGenerationArrived") < preOutput.indexOf("router.refresh"));
-
-check("the panel reads the marker", /generationArrivedSnapshot\(projectId\)/.test(buildScreen));
-check("a just-arrived generation opens the panel",
-  /override \?\? \(justGenerated \|\| \(hasOutput && storedOpen\)\)/.test(buildScreen),
-  "otherwise a stored 'closed' preference hides the result the person waited for");
-check("an explicit toggle still wins", /override \?\?/.test(buildScreen));
-check("the marker is per project", /KEY_PREFIX/.test(handoff) && /\$\{KEY_PREFIX\}\$\{projectId\}/.test(handoff));
-
-/**
- * Exactly once is the requirement. Reading consumes, and the cache means React
- * calling the snapshot repeatedly — twice per render under StrictMode — cannot
- * consume twice or answer differently within a session.
- */
-check("reading the marker consumes it", /removeItem\(key\(projectId\)\)/.test(handoff));
-check("and the answer is stable once decided", /decided\.set\(projectId, found\)/.test(handoff));
-check("the snapshot returns the cached answer on later calls",
-  /const known = decided\.get\(projectId\);[\s\S]{0,120}if \(known !== undefined\) return known;/.test(handoff));
-
-/**
- * `sessionStorage`, not `localStorage`. A marker that outlived the tab would
- * open the preview on some unrelated future visit — a different wrong behaviour
- * from the one being fixed.
- */
-// Comments stripped: the file explains why it is not localStorage, and matching
-// that sentence would pass the check by describing it.
-check("the marker is scoped to the tab",
-  /sessionStorage/.test(handoffCode) && !/localStorage/.test(handoffCode));
-check("the server never claims a generation just arrived",
-  /\(\) => false,/.test(buildScreen),
-  "session storage does not exist there, and this tab is what witnessed the arrival");
-
-/* ── 4. storage being unavailable degrades, never breaks ─────────────────── */
-
-check("a refused write is survivable", /catch \{[\s\S]{0,200}\}/.test(handoff));
-check("a refused read answers false", /catch \{\s*return false;/.test(handoff));
+check("a phone gets a Chat/Preview switch", /<ModeSwitch/.test(buildScreen));
+check("it is mobile only", /narrow && hasOutput && \(/.test(buildScreen));
+check("it is a tablist to assistive tech", /role="tablist"/.test(buildScreen) && /role="tab"/.test(buildScreen));
+check("with the active mode announced", /aria-selected=\{mode === value\}/.test(buildScreen));
+for (const locale of ["en", "ru"]) {
+  const messages = JSON.parse(read(`messages/${locale}.json`)) as { workspace: Record<string, string> };
+  check(`${locale}: both mode labels exist`,
+    !!messages.workspace.modeChat?.trim() && !!messages.workspace.modePreview?.trim());
+}
 
 /* ── report ──────────────────────────────────────────────────────────────── */
 

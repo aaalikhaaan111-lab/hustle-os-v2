@@ -1,7 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useState, useSyncExternalStore, type ReactNode } from "react";
-import { generationArrivedSnapshot } from "@/lib/workspace/generationHandoff";
+import {
+  chooseWorkspaceMode,
+  chosenWorkspaceMode,
+  subscribeWorkspaceMode,
+} from "@/lib/workspace/workspaceMode";
 import { useTranslations } from "next-intl";
 import {
   IconChat,
@@ -166,50 +170,44 @@ export function BuildScreen({
     },
     () => true
   );
-  const [override, setOverride] = useState<boolean | null>(null);
   const [fullScreen, setFullScreen] = useState(false);
   const [device, setDevice] = useState<DeviceMode>("desktop");
   const [reloadKey, setReloadKey] = useState(0);
   const [copied, setCopied] = useState<"done" | "failed" | null>(null);
 
   /**
-   * A generation that just finished opens the preview, whatever the preference.
+   * The explicit choice, shared across the component swap.
    *
-   * `storedOpen` remembers that the person once closed the panel — which on a
-   * phone they very likely did, because there the preview replaces the
-   * conversation rather than sitting beside it. Honouring that after a
-   * generation means the result of the thing they waited three minutes for does
-   * not appear, which is the reported failure: the workspace stayed on the chat
-   * and they had to reopen the project from Projects to see their own result.
-   *
-   * Read once and consumed, so this is a single automatic open for the
-   * generation that just landed, not a permanent override of the preference. The
-   * marker is set by `PreOutputWorkspace` before the refresh that unmounts it —
-   * the two halves of this transition are different components, so it cannot be
-   * passed down. See `generationHandoff.ts`.
+   * `PreOutputWorkspace` and `BuildScreen` are different components and the
+   * generation's arrival unmounts the first, so this cannot be local state. It
+   * is a store that actually notifies — see `workspaceMode.ts` for why the
+   * previous cached-snapshot version silently never fired.
    */
-  const justGenerated = useSyncExternalStore(
-    () => () => {},
-    () => generationArrivedSnapshot(projectId),
-    () => false,
+  const chosen = useSyncExternalStore(
+    subscribeWorkspaceMode,
+    () => chosenWorkspaceMode(projectId),
+    () => null,
   );
 
-  // An explicit choice still wins — including closing it again straight away —
-  // but a generation that just arrived beats a preference set minutes ago.
-  // Without either, the panel opens by itself only when there is something in
-  // it: the conversation keeps the screen while the first version is still an
-  // idea, but the control to look is always there.
-  const previewOpen = override ?? (justGenerated || (hasOutput && storedOpen));
+  /**
+   * With no explicit choice: on a phone the result takes the screen as soon as
+   * there is one, because that is what the person came for and Chat is one tap
+   * away. On desktop the two sit side by side, so the remembered preference
+   * still decides.
+   */
+  const previewOpen = chosen !== null
+    ? chosen === "preview"
+    : hasOutput && (narrow || storedOpen);
 
   const changePreviewOpen = useCallback((next: boolean) => {
-    setOverride(next);
+    chooseWorkspaceMode(projectId, next ? "preview" : "chat");
     if (!next) setFullScreen(false);
     try {
       window.localStorage.setItem(PREVIEW_OPEN_KEY, next ? "1" : "0");
     } catch {
       // A browser that refuses storage still gets a working toggle.
     }
-  }, []);
+  }, [projectId]);
 
   useEffect(() => {
     if (!copied) return;
@@ -239,7 +237,26 @@ export function BuildScreen({
   const showChat = !(previewOpen && (fullScreen || narrow));
 
   return (
-    <div className="relative flex h-full min-h-0 overflow-hidden rounded-[inherit]">
+    <div className="relative flex h-full min-h-0 flex-col overflow-hidden rounded-[inherit]">
+      {/* One bar, above both surfaces, so the mode is legible from either one.
+          Only on a phone: on desktop the conversation and the preview are both
+          on screen and there is no mode to be in. It renders only once there is
+          something to switch to. */}
+      {narrow && hasOutput && (
+        <div
+          className="flex shrink-0 items-center justify-center border-b px-3 py-2"
+          style={{ borderColor: "var(--line)", background: "var(--surface)" }}
+        >
+          <ModeSwitch
+            mode={previewOpen ? "preview" : "chat"}
+            onChange={(next) => changePreviewOpen(next === "preview")}
+            chatLabel={t("modeChat")}
+            previewLabel={t("modePreview")}
+          />
+        </div>
+      )}
+
+      <div className="relative flex min-h-0 flex-1 overflow-hidden">
       {showChat && (
         <div
           className="flex min-h-0 min-w-0 flex-col transition-[flex-basis] duration-[var(--t-layout)] ease-[var(--ease)]"
@@ -454,6 +471,8 @@ export function BuildScreen({
           </div>
         </section>
       )}
+
+      </div>
 
       {/* ── The panel toggle ─────────────────────────────────────────────
           All that is left of the floating rail. Switching between conversation
@@ -688,6 +707,59 @@ function ToolbarMenu({
         )}
       </div>
     </details>
+  );
+}
+
+/**
+ * Chat or Preview, stated rather than implied.
+ *
+ * On a phone the preview replaces the conversation, so without this the person
+ * cannot tell whether they are talking to Ventrio or looking at what it built —
+ * and after a generation the surface changes under them with no explanation.
+ * A segment says which mode is active and makes the other one a single tap.
+ *
+ * Mobile only: on desktop both surfaces are on screen at once and a mode switch
+ * would be answering a question nobody is asking.
+ */
+function ModeSwitch({
+  mode,
+  onChange,
+  chatLabel,
+  previewLabel,
+}: {
+  mode: "chat" | "preview";
+  onChange: (next: "chat" | "preview") => void;
+  chatLabel: string;
+  previewLabel: string;
+}) {
+  return (
+    <div
+      role="tablist"
+      aria-label={`${chatLabel} / ${previewLabel}`}
+      className="flex shrink-0 rounded-[var(--r-md)] p-0.5"
+      style={{ background: "var(--sunken)" }}
+    >
+      {(["chat", "preview"] as const).map((value) => (
+        <button
+          key={value}
+          role="tab"
+          type="button"
+          aria-selected={mode === value}
+          onClick={() => onChange(value)}
+          className={cn(
+            "min-h-[36px] rounded-[var(--r-sm)] px-3.5 text-[13.5px] font-semibold transition-colors",
+            mode === value ? "shadow-sm" : "",
+          )}
+          style={
+            mode === value
+              ? { background: "var(--surface)", color: "var(--ink)" }
+              : { color: "var(--ink-2)" }
+          }
+        >
+          {value === "chat" ? chatLabel : previewLabel}
+        </button>
+      ))}
+    </div>
   );
 }
 

@@ -72,6 +72,31 @@ export async function updateSession(request: NextRequest) {
    */
   const projectSlug = slugFromHost(request.headers.get("host"));
   if (projectSlug && !pathname.startsWith("/p/")) {
+    /**
+     * A project subdomain serves ONE thing: that project, at its root.
+     *
+     * This used to rewrite every path, so `watch-party-club.ventrio.org/pricing`
+     * answered 200 with the application instead of the pricing page — measured,
+     * 19 kB of app shell where the apex returns 113 kB of pricing. Any link on a
+     * published page that resolved relatively was silently served the app back,
+     * and nothing said so.
+     *
+     * Anything that is not this project belongs to the apex and is sent there
+     * with its path intact, rather than quietly answered with the wrong page.
+     * That also makes the "Made with Ventrio" badge robust: whether its link is
+     * absolute or relative, Pricing now resolves to Pricing.
+     */
+    if (pathname.startsWith("/_next") || pathname.startsWith("/api")) {
+      // The page that asked for these is on this host. Redirecting them
+      // cross-origin would break the page that is already rendering.
+      return NextResponse.next({ request });
+    }
+
+    if (pathname !== "/") {
+      const apex = new URL(`${pathname}${request.nextUrl.search}`, getSiteUrl());
+      return NextResponse.redirect(apex, 308);
+    }
+
     const requestHeaders = new Headers(request.headers);
     requestHeaders.set("x-ventrio-public-route", "1");
     const url = request.nextUrl.clone();

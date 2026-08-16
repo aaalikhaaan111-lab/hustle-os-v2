@@ -1232,7 +1232,9 @@
     "previewUnavailableBody": "It is still saved. This workspace could not rebuild it, so nothing is shown rather than something wrong.",
     "previewBootingTitle": "Starting your app…",
     "usageUnavailable": "Not available",
-    "moreActions": "More actions"
+    "moreActions": "More actions",
+    "modeChat": "Chat",
+    "modePreview": "Preview"
   },
   "branding": {
     "madeWith": "Made with Ventrio",

@@ -1232,7 +1232,9 @@
     "previewUnavailableBody": "Она сохранена. Рабочее пространство не смогло её пересобрать, поэтому лучше не показывать ничего, чем показать неверное.",
     "previewBootingTitle": "Запускаем приложение…",
     "usageUnavailable": "Недоступно",
-    "moreActions": "Ещё действия"
+    "moreActions": "Ещё действия",
+    "modeChat": "Чат",
+    "modePreview": "Превью"
   },
   "branding": {
     "madeWith": "Сделано в Ventrio",

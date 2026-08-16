@@ -154,17 +154,24 @@ check(
   "opening the preview is always offered",
   /canOpenPreview: !previewOpen/.test(buildScreen),
 );
-// It must still not *auto-open* an empty panel — the conversation keeps the
-// screen until there is something to show, unless the person says otherwise.
-// `justGenerated` is the one addition, and it can only be true once a
-// generation has actually landed, so an empty panel is still never opened.
+/**
+ * The panel must never open over nothing — the conversation keeps the screen
+ * until there is something to show.
+ *
+ * What changed: with no explicit choice, a phone now shows the result as soon
+ * as one exists, because that is what the person came for and Chat is one tap
+ * away on the mode switch. Desktop still honours the remembered preference,
+ * since there both surfaces are visible at once. Both branches require
+ * `hasOutput`, so an empty panel still opens itself in neither.
+ */
 check(
   "an empty panel does not open itself",
-  /override \?\? \(justGenerated \|\| \(hasOutput && storedOpen\)\)/.test(buildScreen),
+  /hasOutput && \(narrow \|\| storedOpen\)/.test(buildScreen),
 );
 check(
-  "and the automatic open requires a generation that just arrived",
-  /generationArrivedSnapshot/.test(buildScreen),
+  "the automatic open comes from a store that notifies",
+  /subscribeWorkspaceMode/.test(buildScreen),
+  "the previous cached snapshot never fired, so the preview never opened",
 );
 check("the empty panel explains itself", /previewEmptyTitle/.test(buildScreen));
 check("a running build says so", /previewGeneratingTitle/.test(buildScreen));

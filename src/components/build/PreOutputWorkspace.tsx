@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { markGenerationArrived } from "@/lib/workspace/generationHandoff";
+import { showGeneratedResult } from "@/lib/workspace/workspaceMode";
 import { useLocale, useTranslations } from "next-intl";
 import type { AssistantMessage } from "@/lib/actions/assistant";
 import { sendAssistantMessage } from "@/lib/actions/assistant";
@@ -180,9 +180,10 @@ export function PreOutputWorkspace({
     if (hasVersion || job.phase !== "succeeded") return;
     if (refreshAttempts.current >= MAX_ARRIVAL_REFRESHES) return;
 
-    // Recorded before the refresh, because this component is unmounted by it.
-    // `BuildScreen` reads the marker on the other side and opens the preview.
-    markGenerationArrived(projectId);
+    // Announced before the refresh, because this component is unmounted by it.
+    // The store survives the swap and notifies whichever screen is mounted, so
+    // the preview opens whether `BuildScreen` is already there or arrives next.
+    showGeneratedResult(projectId);
 
     const attempt = refreshAttempts.current;
     refreshAttempts.current = attempt + 1;
