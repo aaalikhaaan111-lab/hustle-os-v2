@@ -137,6 +137,28 @@ check("every failure goes through the shared describer",
   (actionsCode.match(/describeFailure\(/g) ?? []).length >= 4);
 check("failures are mapped to a closed set", /mapAuthError\(/.test(actionsCode));
 
+/* ── 4b. the server-action module exports only async functions ───────────── */
+
+/**
+ * A `"use server"` module may export nothing but async functions.
+ *
+ * Found by `next build` and by nothing else: a plain `export const` there is
+ * valid TypeScript and passes eslint, but at build time the module ends up
+ * exporting NOTHING — every import of every action in it fails with "the module
+ * has no exports at all". A shared constant belongs outside the action file.
+ *
+ * Types are erased before this rule applies, so `export interface` and
+ * `export type` are fine and are excluded here.
+ */
+check("the actions file is a server module", /^"use server";/.test(actions));
+const valueExports = [...actionsCode.matchAll(/^export\s+(?!async\s+function\b)(?!interface\b)(?!type\b)(\w+)/gm)]
+  .map((match) => match[1]);
+check("it exports only async functions",
+  valueExports.length === 0,
+  `found: ${valueExports.join(", ")} — a "use server" module that exports a value exports nothing at all`);
+check("the shared cooldown constant lives outside it",
+  /export const RESEND_COOLDOWN_SECONDS/.test(read("src/lib/auth/errors.ts")));
+
 /* ── 5. the mapping itself ───────────────────────────────────────────────── */
 
 const CASES: Array<[string, { status?: number; code?: string; message?: string }, AuthFailure]> = [

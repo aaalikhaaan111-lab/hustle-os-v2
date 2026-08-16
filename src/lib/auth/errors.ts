@@ -16,6 +16,24 @@
  * the shapes the service really returns.
  */
 
+/**
+ * How long the interface waits before offering another resend, when the backend
+ * did not name an interval of its own.
+ *
+ * A floor rather than a guess at Supabase's limiter: the server returns an
+ * interval on every result and the client always uses the server's, so the
+ * countdown can never be shorter than what the backend will accept. Getting
+ * this wrong is not cosmetic — it re-enables a button that will fail, and the
+ * person concludes that four emails are on the way.
+ *
+ * It lives here rather than in `actions/auth.ts` because that file is
+ * `"use server"`, and a server-action module may export only async functions. A
+ * plain `const` there is not a type error and not a lint error — it makes the
+ * whole module export nothing at build time, which is a failure the type
+ * checker cannot see and only `next build` reports.
+ */
+export const RESEND_COOLDOWN_SECONDS = 60;
+
 /** The failures the interface has something to say about. */
 export type AuthFailure =
   | "invalid_credentials"

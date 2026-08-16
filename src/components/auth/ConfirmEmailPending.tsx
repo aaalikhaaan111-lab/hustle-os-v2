@@ -4,11 +4,10 @@ import { useActionState, useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/Button";
 import { InfoIcon } from "@/components/ui/icons";
-import {
-  resendConfirmationEmailAction,
-  RESEND_COOLDOWN_SECONDS,
-  type ResendActionState,
-} from "@/lib/actions/auth";
+import { resendConfirmationEmailAction, type ResendActionState } from "@/lib/actions/auth";
+// Not from the action module: that file is "use server" and may export only
+// async functions, so a shared constant has to live outside it.
+import { RESEND_COOLDOWN_SECONDS } from "@/lib/auth/errors";
 
 /**
  * Waiting for a confirmation link, honestly.

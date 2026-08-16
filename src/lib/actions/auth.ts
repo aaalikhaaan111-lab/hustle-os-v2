@@ -5,19 +5,12 @@ import { getTranslations } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
 import { syncLocaleCookieAfterLogin } from "@/lib/actions/locale";
 import { buildRedirectUrl, isSafeRedirectPath } from "@/lib/site";
-import { mapAuthError, signUpFoundExistingAccount, type AuthFailure } from "@/lib/auth/errors";
-
-/**
- * How long the interface waits before offering another resend, when the backend
- * did not name an interval of its own.
- *
- * A floor rather than a guess at Supabase's limiter: the server always returns
- * an interval, and the client always uses the server's, so the countdown can
- * never be shorter than what the backend will accept. Getting this wrong is not
- * cosmetic — it re-enables a button that will fail, and the person concludes
- * that four emails are on the way.
- */
-export const RESEND_COOLDOWN_SECONDS = 60;
+import {
+  mapAuthError,
+  signUpFoundExistingAccount,
+  RESEND_COOLDOWN_SECONDS,
+  type AuthFailure,
+} from "@/lib/auth/errors";
 
 export interface AuthActionState {
   error: string | null;
