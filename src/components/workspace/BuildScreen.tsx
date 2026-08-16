@@ -306,20 +306,32 @@ export function BuildScreen({
                 pinned group below and the desktop row is the one it always
                 was. */}
             <div className={cn("flex min-w-0 flex-1 items-center gap-2", narrow ? "overflow-hidden" : "overflow-x-auto")}>
-            {/* The toolbar names the thing it acts on, and says whether that
-                thing is live. The capsule is gone: the project's state is
-                already stated in the header two rows above, and a filled green
-                pill repeating it made the loudest object in the toolbar the one
-                piece of information that was already on screen. A dot and a
-                word, in the metadata voice. */}
-            <span className="min-w-0 shrink-0 truncate text-[13px] font-medium">{t("tabPreview")}</span>
-            <span
-              className="flex shrink-0 items-center gap-1.5 text-[13px] font-medium leading-none"
-              style={{ color: published ? "var(--color-success)" : "var(--color-ink-muted)" }}
-            >
-              <span aria-hidden className="h-[5px] w-[5px] rounded-full" style={{ background: "currentColor" }} />
-              {published ? t("statusLive") : t("statusDraft")}
-            </span>
+            {/* On a phone the toolbar is ACTIONS ONLY.
+                It carried the word "Preview" and the publication state as well,
+                and on a 390px screen with a long unpublish label ("Снять с
+                публикации") there was not room: the title truncated to
+                "Предпросмо…" and the state was pushed off the row. Neither was
+                worth the space, because the header directly above already
+                names the project and states whether it is live, and the mode
+                switch between them already says which of the two surfaces you
+                are looking at. Three statements of one fact, and the one that
+                broke was the redundant one.
+
+                The capsule is gone on every width too: a filled green pill made
+                the loudest object in the toolbar the piece of information that
+                was already on screen twice. */}
+            {!narrow && (
+              <>
+                <span className="min-w-0 shrink-0 truncate text-[13px] font-medium">{t("tabPreview")}</span>
+                <span
+                  className="flex shrink-0 items-center gap-1.5 text-[13px] font-medium leading-none"
+                  style={{ color: published ? "var(--color-success)" : "var(--color-ink-muted)" }}
+                >
+                  <span aria-hidden className="h-[5px] w-[5px] rounded-full" style={{ background: "currentColor" }} />
+                  {published ? t("statusLive") : t("statusDraft")}
+                </span>
+              </>
+            )}
 
             <div className="ml-auto flex shrink-0 items-center gap-1">
               {/* Viewport. Only meaningful with something to look at. */}

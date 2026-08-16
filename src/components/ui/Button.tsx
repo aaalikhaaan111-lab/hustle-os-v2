@@ -8,10 +8,14 @@ type ButtonSize = "sm" | "md" | "lg";
  * The original app button, kept as an adapter over VentrioButton.
  *
  * Auth, error and not-found pages still call this with their own vocabulary, so
- * the props stay exactly as they were; the rendering is now the one button
- * system. `outline` maps onto `secondary` — they were the same thing wearing
- * two names. These surfaces keep their pill shape, which is what they have
- * always had.
+ * the props stay exactly as they were; the rendering is the one button system.
+ * `outline` maps onto `secondary` — they were the same thing wearing two names.
+ *
+ * THE PILL IS GONE. These surfaces kept `shape="pill"` because they always had
+ * it, which meant every button on sign-in, sign-up, profile and settings was a
+ * capsule while every button in the workspace beside them was a 9px rectangle.
+ * A capsule reads as a tag or a filter; most of these are commands. They now
+ * take the default shape, like everything else.
  */
 const VARIANT: Record<ButtonVariant, "primary" | "secondary" | "ghost"> = {
   primary: "primary",
@@ -54,7 +58,6 @@ export function Button(props: ButtonProps) {
         rel={props.rel}
         variant={mapped}
         size={size}
-        shape="pill"
         className={className}
       >
         {children}
@@ -71,7 +74,6 @@ export function Button(props: ButtonProps) {
       disabled={disabled}
       variant={mapped}
       size={size}
-      shape="pill"
       className={className}
     >
       {children}

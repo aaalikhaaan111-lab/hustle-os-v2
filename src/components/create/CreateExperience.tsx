@@ -735,7 +735,6 @@ function ChoiceGrid({
         <VentrioButton
           variant="primary"
           size="sm"
-          shape="pill"
           disabled={busy || selected.length === 0}
           onClick={onContinue}
           className="w-fit"
