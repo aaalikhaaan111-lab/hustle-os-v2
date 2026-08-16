@@ -150,7 +150,7 @@ check("an empty log is not a Ventrio failure", describedFailureOrigin([]) === "a
 
 /* ── 4. the published page states the failure ────────────────────────────── */
 
-const publicFrame = read("src/components/publishing/PublicAppFrame.tsx");
+const publicFrame = read("src/components/publishing/PublicAppMonitor.tsx");
 const publicView = read("src/components/publishing/PublicAppView.tsx");
 
 check("the published frame subscribes to the preview protocol", /subscribePreview/.test(publicFrame));
@@ -171,7 +171,7 @@ check("it distinguishes the two origins", /runtimeFailedTitle/.test(publicFrame)
  */
 check(
   "the failure state only replaces an app that never appeared",
-  /failure\s*!==\s*null\s*&&\s*!ready/.test(code(publicFrame)),
+  /!running\s*&&\s*\(failure !== null \|\| stalled\)/.test(code(publicFrame)),
 );
 
 /** No stack traces, no internal detail, to a stranger. */
@@ -182,12 +182,17 @@ check("the view passes the publication's locale", /locale/.test(publicView));
 
 /* ── 5. the sandbox boundary is unchanged ────────────────────────────────── */
 
-check("the published frame still uses the shared sandbox attribute", /SANDBOX_ATTRIBUTE/.test(publicFrame));
-// Comments stripped: the file's own doc comment explains that it never grants
-// same-origin, and matching that sentence would pass the check by describing it.
-check("it never asks for same-origin", !/allow-same-origin/.test(code(publicFrame)));
-check("it hardcodes no sandbox tokens of its own", !/allow-scripts/.test(code(publicFrame)));
-check("it is still a srcDoc frame", /srcDoc/.test(publicFrame));
+// The frame is rendered by the server view; the monitor fills it. Each half is
+// asserted where it actually lives.
+check("the published frame still uses the shared sandbox attribute", /SANDBOX_ATTRIBUTE/.test(publicView));
+// Comments stripped: the files' doc comments explain that same-origin is never
+// granted, and matching that sentence would pass the check by describing it.
+check("the view never asks for same-origin", !/allow-same-origin/.test(code(publicView)));
+check("the monitor never asks for same-origin", !/allow-same-origin/.test(code(publicFrame)));
+check("neither hardcodes sandbox tokens of its own",
+  !/allow-scripts/.test(code(publicView)) && !/allow-scripts/.test(code(publicFrame)));
+check("it is still a srcdoc frame, never given an address",
+  /\.srcdoc\s*=/.test(code(publicFrame)) && !/<iframe[^>]*\ssrc=/.test(code(publicView)));
 
 /* ── 6. the copy exists in both locales ──────────────────────────────────── */
 

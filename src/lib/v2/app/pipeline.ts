@@ -19,7 +19,6 @@ import "server-only";
 import { compileGeneratedApp, type CompileDiagnostic } from "./compile";
 import { buildSandboxDocument } from "./sandbox";
 import { getRuntimeBundle } from "./runtimeBundle";
-import { specifiersIn } from "./validate";
 import { validateGeneratedApp, type AppIssue } from "./validate";
 import type { GeneratedAppV1 } from "./contract";
 
@@ -85,42 +84,35 @@ export async function buildGeneratedApp(
   }
 
   /**
-   * Only the libraries this project declared are shipped into the sandbox.
+   * The runtime is built from what the COMPILED module graph imports.
    *
-   * Shipping all ten produced a 1.8 MB document for an app importing three of
-   * them — recharts and framer-motion dominate — and every preview paid that.
-   * Narrowing it is also the smaller surface: a library that is not in the
-   * import map is not reachable from inside the sandbox at all, so an import
-   * that somehow evaded both the validator and the bundler still finds nothing
-   * to resolve against.
+   * WHY NOT THE DECLARATION. `runtime.dependencies` is what the model said it
+   * would use, and models declare the whole menu: every app measured declared
+   * all eight libraries, while Watch Party Club imports three and Wheelside
+   * Glaze Guide imports two. The unused ones are not free — recharts and
+   * framer-motion dominate the graph, and the difference for one real published
+   * app was 1956 kB of runtime against 1110 kB. The public page ships the whole
+   * document twice, so every unused library was paid for four times over.
    *
-   * The template's own imports are always included: Ventrio's entry module
-   * mounts with them, so their absence would be a build that cannot start.
+   * That is a correctness problem on a phone, not a tuning opportunity. iOS
+   * gives a tab a fraction of the memory a desktop tab gets, and a published
+   * app that a laptop renders in a second is one WebKit can fail to load at all.
+   *
+   * WHY NOT THE SOURCES EITHER. Scanning the project's own files was the
+   * previous approach and it over-collects: a specifier inside a comment, a
+   * dead branch or a file esbuild tree-shook still counted. The compiled output
+   * is the exact set the import map has to satisfy, because esbuild leaves
+   * runtime libraries as external imports and resolves everything else. If it
+   * is not imported there, nothing inside the sandbox can reach for it.
+   *
+   * The template's own imports are unioned in regardless: Ventrio's entry
+   * module mounts with them, so their absence would be a build that cannot
+   * start. Narrower is also the smaller surface — a library absent from the
+   * import map is unreachable from inside the sandbox at all.
    */
-  /**
-   * What the app actually imports, not what it declared.
-   *
-   * `runtime.dependencies` is a package list — `date-fns` — while a file may
-   * legitimately import `date-fns/locale`, which the validator allows. Building
-   * from the declaration produced an import map missing exactly those subpaths,
-   * and an unresolvable bare specifier does not fail one component: it stops
-   * the whole module graph before the app's first line, which is why the
-   * preview went white with nothing reported. Reading the sources is what makes
-   * "allowed to import" and "present in the import map" the same set.
-   */
-  const imported = new Set<string>();
-  for (const source of Object.values(app.files as unknown as Record<string, string>)) {
-    if (typeof source !== "string") continue;
-    for (const specifier of specifiersIn(source)) {
-      if (!specifier.startsWith(".") && !specifier.startsWith("/")) imported.add(specifier);
-    }
-  }
   const needed = [
-    // The template's own imports: Ventrio's entry module mounts with them, so
-    // their absence would be a build that cannot start.
     "react", "react-dom", "react-dom/client", "react/jsx-runtime",
-    ...app.runtime.dependencies,
-    ...imported,
+    ...compiled.externals,
   ];
   const runtime = await getRuntimeBundle(needed);
 

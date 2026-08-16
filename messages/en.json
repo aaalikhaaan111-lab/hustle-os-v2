@@ -221,7 +221,9 @@
     "appFailedBody": "Something in the app stopped it from loading. Reloading sometimes helps. If it keeps happening, the person who published it will need to fix it.",
     "appRuntimeFailedTitle": "Ventrio could not load this app",
     "appRuntimeFailedBody": "The app itself is fine — Ventrio failed to deliver it. This is on our side, and reloading usually works.",
-    "appReload": "Reload"
+    "appReload": "Reload",
+    "appStalledTitle": "This app is taking too long to start",
+    "appStalledBody": "It did not finish loading. Reloading often helps — on a phone, closing other tabs first can too."
   },
   "feedback": {
     "eyebrow": "Feedback loop",

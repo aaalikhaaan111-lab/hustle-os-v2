@@ -59,6 +59,14 @@ export type AppCompileResult =
       bytes: number;
       durationMs: number;
       warnings: CompileDiagnostic[];
+      /**
+       * The runtime libraries this graph actually imports, as the bundler
+       * resolved them — including subpaths like `react-dom/client`.
+       *
+       * The import map must satisfy exactly this set, and building the runtime
+       * from anything wider ships bytes nothing can reach. See `pipeline.ts`.
+       */
+      externals: string[];
       /** What the Tailwind stage did, for the build report. */
       tailwind: TailwindOutcome;
     }
@@ -175,7 +183,21 @@ if (!__announceReady() && node && typeof MutationObserver === "function") {
  * project file (virtual). Anything that matches neither throws, which fails the
  * build with a message naming the specifier.
  */
-function virtualFiles(files: Record<string, string>, entry: string): Plugin {
+function virtualFiles(
+  files: Record<string, string>,
+  entry: string,
+  /**
+   * Every runtime library the bundler actually resolved, recorded as it goes.
+   *
+   * This is the authoritative answer to "what must the import map contain",
+   * and it is collected here rather than inferred later because this is the
+   * one place that already decides it. The alternatives are both wrong in the
+   * expensive direction: the project's declared `dependencies` is what a model
+   * said it might use (in practice, all of them), and scanning source text
+   * counts specifiers in comments and dead branches.
+   */
+  externals: Set<string>,
+): Plugin {
   return {
     name: "ventrio-virtual-fs",
     setup(pluginBuild) {
@@ -202,7 +224,10 @@ function virtualFiles(files: Record<string, string>, entry: string): Plugin {
         // Bare specifiers: allowed libraries only, and left external so the
         // build neither reads node_modules nor emits their source.
         if (!args.path.startsWith(".") && !args.path.startsWith("/")) {
-          if (isAllowedImport(args.path)) return { path: args.path, external: true };
+          if (isAllowedImport(args.path)) {
+            externals.add(args.path);
+            return { path: args.path, external: true };
+          }
           return { errors: [{ text: `"${args.path}" is not available in the Ventrio runtime.` }] };
         }
 
@@ -290,6 +315,10 @@ export async function compileGeneratedApp(app: GeneratedAppV1): Promise<AppCompi
   // project that tried to supply its own.
   const files: Record<string, string> = { ...app.files, [entry]: entrySource(template) };
 
+  // Filled by the resolver as it marks runtime libraries external; this is what
+  // the import map has to satisfy, and nothing wider needs shipping.
+  const externals = new Set<string>();
+
   try {
     const result = await withTimeout(
       build({
@@ -310,7 +339,7 @@ export async function compileGeneratedApp(app: GeneratedAppV1): Promise<AppCompi
         // output either way.
         absWorkingDir: "/",
         outdir: "/out",
-        plugins: [virtualFiles(files, entry)],
+        plugins: [virtualFiles(files, entry, externals)],
         // Belt and braces: even if a resolve slipped through, these never
         // become part of the bundle.
         external: ["react", "react-dom", "react-dom/client", "react/jsx-runtime",
@@ -388,7 +417,12 @@ export async function compileGeneratedApp(app: GeneratedAppV1): Promise<AppCompi
       };
     }
 
-    return { ok: true, code, css, bytes, durationMs: elapsed(), warnings: result.warnings.map(toDiagnostic), tailwind };
+    return {
+      ok: true, code, css, bytes, durationMs: elapsed(),
+      warnings: result.warnings.map(toDiagnostic),
+      externals: [...externals].sort(),
+      tailwind,
+    };
   } catch (error) {
     // esbuild throws a structured failure; anything else is ours.
     const errors = (error as { errors?: unknown }).errors;

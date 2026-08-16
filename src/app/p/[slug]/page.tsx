@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import { ProjectOutputRenderer } from "@/components/build/ProjectOutputRenderer";
 import { PublicAppView } from "@/components/publishing/PublicAppView";
@@ -10,7 +9,6 @@ import { canonicalProjectUrl } from "@/lib/publishing/publicUrl";
 import { brandingRequiredFor } from "@/lib/publishing/branding";
 import { VentrioBadge } from "@/components/publishing/VentrioBadge";
 import { getTranslations } from "next-intl/server";
-import { buildGeneratedApp } from "@/lib/v2/app/pipeline";
 
 /**
  * A published project, for anyone with the link.
@@ -82,23 +80,24 @@ export default async function PublicProjectPage({ params }: PublicProjectPagePro
 
   if (publication.app) {
     /**
-     * Compiled per request, from source, never from a stored document.
+     * The document is NOT built here any more.
      *
-     * The same rule the workspace follows: what is persisted is the project,
-     * and the document is rebuilt every time it is shown. It carries this
-     * request's CSP nonce, because a srcdoc frame inherits the parent page's
-     * policy and would otherwise refuse Ventrio's own bootstrap script.
+     * It is still compiled per request from source — that rule has not changed,
+     * and nothing stores a rendered document — but it is compiled by
+     * `./app-document`, which serves it as its own response. Embedding it here
+     * meant React Server Components serialised it twice, once as markup and
+     * once as flight data, making a 2.4 MB document into 5.6 MB of page. A real
+     * iPhone could not load that; the route comment records the whole finding.
+     *
+     * Two consequences worth stating. This page no longer compiles anything, so
+     * it is cheap and fast. And a publication that fails to compile is no longer
+     * a 404 here — the document request answers 404 and `PublicAppMonitor`
+     * shows Ventrio's own failure state, which is a better answer for a link
+     * someone has already shared than a page that simply does not exist.
      */
-    const nonce = (await headers()).get("x-nonce") ?? undefined;
-    const built = await buildGeneratedApp(publication.app, { nonce });
-    // A published application that no longer compiles is a 404 rather than a
-    // broken page. It cannot be repaired from here, and showing a frame full of
-    // build errors to a stranger is worse than showing nothing.
-    if (!built.ok) notFound();
-
     return (
       <main className="public-project-page">
-        <PublicAppView title={publication.name} document={built.document} locale={publication.locale} />
+        <PublicAppView title={publication.name} slug={publication.slug} locale={publication.locale} />
         {branding && <VentrioBadge labels={badgeLabels} pricingHref={`${getSiteUrl()}/pricing`} />}
       </main>
     );

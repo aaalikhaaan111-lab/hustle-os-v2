@@ -867,6 +867,77 @@
 
 .public-project-page .project-output { min-height: 100dvh; }
 
+/* The published app's last-resort message.
+   -------------------------------------------------------------------------
+   `PublicAppMonitor` reports every boot failure it can observe, but it has to
+   hydrate before it can say anything — and the failure this exists for is one
+   where the renderer is already in trouble, which is exactly when hydration may
+   never happen. On a real iPhone that showed as "Starting the app…" with no end.
+
+   So this is server-rendered, hidden, and revealed by a CSS animation with a
+   long delay. No JavaScript participates, so it cannot be starved by the thing
+   it is reporting on. The monitor sets `data-ventrio-host="alive"` on mount,
+   which cancels it — a page whose script is running owns its own messaging.
+
+   The delay sits past the monitor's own 25 s deadline, so in a healthy-but-slow
+   boot the monitor always speaks first. */
+.ventrio-boot-fallback {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 24px;
+  text-align: center;
+  background: var(--surface, #fff);
+  font: 15px/1.55 ui-sans-serif, system-ui, sans-serif;
+  opacity: 0;
+  visibility: hidden;
+  animation: ventrio-boot-fallback-in 0s linear 35s forwards;
+}
+
+@keyframes ventrio-boot-fallback-in {
+  to { opacity: 1; visibility: visible; }
+}
+
+.ventrio-boot-fallback__title {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--ink, #1b1b1a);
+}
+
+.ventrio-boot-fallback__body {
+  margin: 0;
+  max-width: 34em;
+  color: var(--ink-2, #5d5d58);
+}
+
+.ventrio-boot-fallback__action {
+  margin-top: 6px;
+  padding: 11px 18px;
+  border: 1px solid var(--line-2, #e3e3de);
+  border-radius: 10px;
+  background: var(--surface, #fff);
+  color: var(--ink, #1b1b1a);
+  font-size: 15px;
+  font-weight: 560;
+  text-decoration: none;
+  /* One control on the screen, and it is being tapped on a phone. */
+  min-height: 44px;
+  min-width: 44px;
+  display: inline-flex;
+  align-items: center;
+}
+
+/* The host script is running, so it owns the messaging from here. */
+:root[data-ventrio-host="alive"] .ventrio-boot-fallback {
+  display: none;
+  animation: none;
+}
+
 .publication-dock {
   position: relative;
   z-index: 30;

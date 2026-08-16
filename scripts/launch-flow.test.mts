@@ -160,27 +160,36 @@ check("and so is something that is neither shape", parsePublicationPayload({ nop
 /* ── 4. the public route serves it, sandboxed ────────────────────────────── */
 
 const publicPage = read("src/app/p/[slug]/page.tsx");
-check("the public page compiles the application per request", /buildGeneratedApp\(publication\.app/.test(publicPage));
-check("carrying the request's CSP nonce", /x-nonce/.test(publicPage));
+/**
+ * Still compiled per request from source — but by `./app-document`, not by the
+ * page. Embedding it made RSC ship the document twice and a real iPhone could
+ * not load the result; `public-app-boot.test.mts` records the measurements.
+ */
+const documentRoute = read("src/app/p/[slug]/app-document/route.ts");
+check("the application is compiled per request", /buildGeneratedApp\(publication\.app/.test(documentRoute));
+check("carrying the request's CSP nonce", /x-nonce/.test(documentRoute));
 // A published app that no longer compiles is a 404, not a page of build errors.
-check("a publication that fails to build is not found", /if \(!built\.ok\) notFound\(\)/.test(publicPage));
+check("a publication that fails to build is not found", /if \(!built\.ok\) return notFound\(\)/.test(documentRoute));
+check("the page itself no longer compiles anything", !/buildGeneratedApp/.test(publicPage));
 check("and the page still serves page artifacts", /ProjectOutputRenderer/.test(publicPage));
 
 /**
- * The frame itself lives in `PublicAppFrame`, which is a client component
- * because the published page now listens for the runtime errors a generated app
- * reports — before, a broken app showed a visitor a blank screen and said
- * nothing. `PublicAppView` stayed a server component and owns the copy.
+ * The frame is rendered by `PublicAppView` (a server component) and filled by
+ * `PublicAppMonitor` (a client one) after fetching the document from its own
+ * route. That split exists because embedding the document made RSC ship it
+ * twice — 5.6 MB of markup for a 2.4 MB app — which a real iPhone could not
+ * load. See `public-app-boot.test.mts` for the whole finding.
  *
  * The guarantee is unchanged and is asserted where the iframe actually is.
  */
 const view = read("src/components/publishing/PublicAppView.tsx");
-const frame = read("src/components/publishing/PublicAppFrame.tsx");
+const monitor = read("src/components/publishing/PublicAppMonitor.tsx");
 check("the visitor's frame uses the shared sandbox attribute",
-  /sandbox=\{SANDBOX_ATTRIBUTE\}/.test(frame));
-check("the document is srcDoc, never an address", /srcDoc=\{srcDoc\}/.test(frame));
-check("the visitor's view renders that frame and nothing else",
-  /PublicAppFrame/.test(view) && !/<iframe/.test(view));
+  /sandbox=\{SANDBOX_ATTRIBUTE\}/.test(view));
+check("the document is still srcdoc, never the frame's address",
+  /\.srcdoc\s*=/.test(monitor) && !/<iframe[^>]*\ssrc=/.test(view));
+check("and it is never embedded in the page",
+  !/document: string/.test(view) && /documentUrl=/.test(view));
 // Asserted on the value, not on the file's text: the comment above it mentions
 // the token it must never contain, and a grep would pass on the wrong grounds.
 const tokens = SANDBOX_ATTRIBUTE.split(" ").filter(Boolean).sort();

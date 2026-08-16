@@ -98,8 +98,11 @@ check(
 );
 check("an import that is not allowed is still refused", !Object.keys(bundle.names).includes("node:fs"));
 
-// The pipeline must read the files, not the declaration.
-check("the pipeline collects real import specifiers", /specifiersIn\(source\)/.test(pipeline));
+// The pipeline must build from what is really imported, never the declaration.
+// It now takes that from the bundler's own resolver — the authoritative answer,
+// and narrower than a source scan, which counted comments and dead branches.
+check("the pipeline builds from the compiled graph", /compiled\.externals/.test(pipeline));
+check("and never from the declaration", !/app\.runtime\.dependencies/.test(pipeline));
 check("and still includes the template's own imports", /"react-dom\/client", "react\/jsx-runtime"/.test(pipeline));
 
 /**
