@@ -160,6 +160,88 @@ export function escapeForStyle(css: string): string {
  * before the import map and before any code. A policy declared after the thing
  * it governs is applied after that thing has already had its chance.
  */
+/**
+ * The origin relative paths are resolved against inside the sandbox.
+ *
+ * `.invalid` is reserved by RFC 2606 and can never resolve to a host. Together
+ * with `connect-src 'none'` — which denies fetch, XHR, WebSocket, EventSource
+ * and sendBeacon at the platform level — this is a parsing device and not a
+ * destination. It grants a generated app no reach it did not already have.
+ */
+export const SANDBOX_BASE_URL = "https://app.ventrio.invalid/";
+
+/**
+ * A base URL that relative paths can actually be resolved against.
+ *
+ * THE DEFECT THIS CLOSES. The document's URL is `about:srcdoc` and its origin is
+ * opaque, which serialises as the string `"null"`. Both are *cannot-be-a-base*
+ * URLs, so every one of these throws, in every browser:
+ *
+ *     new URL("/")                        // no base at all
+ *     new URL("/", "about:srcdoc")        // location.href
+ *     new URL("/", "null")                // window.origin, location.origin
+ *     new URL("/", "")                    // origin on some engines
+ *
+ * That is not hypothetical. Chrome reports it as
+ * `TypeError: Failed to construct 'URL': Invalid URL` and WebKit as
+ * `TypeError: "/" cannot be parsed as a URL` — the second is what a beta user on
+ * iOS saw, with a blank frame behind it. It reached them because react-router
+ * resolves against `location.origin || location.href` and calls that during
+ * *render*, so a single `<Link to="/">` was enough to blank the app on first
+ * paint. `RUNTIME_OVERRIDES` fixes that library; this fixes the document, so
+ * that a generated app calling `new URL("/settings")` in its own code — which
+ * the product promises it may — also works.
+ *
+ * THE RULE. When the base is one this document cannot resolve against, and the
+ * input is not already absolute, resolve against `SANDBOX_BASE_URL` instead.
+ * Anything with a usable base, and any absolute URL, takes the native path
+ * untouched. A genuinely malformed URL still throws: a shim that swallowed
+ * everything would hide real bugs in generated code.
+ *
+ * Subclassing rather than wrapping is deliberate: `class extends URL` keeps
+ * `instanceof`, and keeps the statics — `createObjectURL`, `revokeObjectURL`,
+ * `canParse`, `parse` — reachable through the prototype chain. The import-map
+ * shim that runs next depends on `URL.createObjectURL` and must not notice that
+ * anything changed.
+ *
+ * The whole body is inside a try/catch: a browser that dislikes any part of this
+ * keeps its native `URL` rather than losing the document.
+ *
+ * Exported so `preview-base-url.test.mts` can evaluate the real script rather
+ * than a re-typed copy of it — a test against a paraphrase proves nothing about
+ * what ships.
+ */
+export const BASE_URL_BOOTSTRAP = `(function () {
+  var BASE = ${JSON.stringify(SANDBOX_BASE_URL)};
+  try {
+    var Native = URL;
+    var unusable = function (base) {
+      if (base === undefined || base === null) return true;
+      var text = String(base);
+      // "" and "null" are what an opaque origin reports for its origin;
+      // "about:*" is this document's own URL. None can have a path resolved
+      // against it.
+      return text === "" || text === "null" || text.slice(0, 6) === "about:";
+    };
+    var Patched = class extends Native {
+      constructor(url, base) {
+        if (unusable(base)) {
+          var text = String(url);
+          // Already absolute? Then it needs no base and must keep its own.
+          var absolute = Native.canParse ? Native.canParse(text) : (function () {
+            try { new Native(text); return true; } catch (ignored) { return false; }
+          })();
+          super(text, absolute ? undefined : BASE);
+          return;
+        }
+        super(url, base);
+      }
+    };
+    globalThis.URL = Patched;
+    if (typeof globalThis.webkitURL !== "undefined") globalThis.webkitURL = Patched;
+  } catch (ignored) { /* the native URL stays; nothing here is worth a blank frame */ }
+})();`;
+
 export function buildSandboxDocument(input: SandboxInput): string {
   const lang = /^[a-zA-Z-]{2,16}$/.test(input.lang) ? input.lang : "en";
 
@@ -275,7 +357,11 @@ document.head.appendChild(im);`;
     + (input.css ? `<style>${escapeForStyle(input.css)}</style>` : "")
     + `</head><body><div id="root"></div>`
     + assets
-    // First, so it is listening before anything can fail.
+    // Before everything, because the import-map shim on the third line calls
+    // URL.createObjectURL and the app module resolves paths. It cannot throw:
+    // its whole body is inside a try/catch that falls back to the native URL.
+    + `<script${nonce}>${escapeForScript(BASE_URL_BOOTSTRAP)}</script>`
+    // Then the reporter, so it is listening before anything can fail.
     + `<script${nonce}>${escapeForScript(reporter)}</script>`
     + `<script${nonce}>${escapeForScript(shim)}</script>`
     + `<script type="module"${nonce}>${escapeForScript(input.code)}</script>`

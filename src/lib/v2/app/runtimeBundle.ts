@@ -35,7 +35,7 @@ import "server-only";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { build } from "esbuild";
-import { isAllowedImport, RUNTIME_LIBRARIES } from "./runtime";
+import { isAllowedImport, RUNTIME_LIBRARIES, RUNTIME_OVERRIDES } from "./runtime";
 
 const execFileAsync = promisify(execFile);
 
@@ -94,13 +94,40 @@ async function buildCore(specifiers: readonly string[]): Promise<string> {
   const imports = specifiers
     .map((spec, i) => `import * as __m${i} from ${JSON.stringify(spec)};`)
     .join("\n");
+
+  /**
+   * `RUNTIME_OVERRIDES` applied, as a plain object layered over the namespace.
+   *
+   * A module namespace object is frozen and its properties are non-writable, so
+   * the substitution cannot be made in place — it has to be a copy. Spreading
+   * preserves every other export untouched, and the replacement names are read
+   * from the same namespace, so a rename in the package produces `undefined`
+   * here rather than a wrong binding. `runtime-router.test.mts` asserts both
+   * sides still exist, which is what turns that into a caught failure.
+   *
+   * The facades built in the browser destructure from this object, so a
+   * generated app importing `BrowserRouter` receives `MemoryRouter` without
+   * anything in the import map, the CSP or the facade generator changing.
+   */
+  const overridden = specifiers
+    .map((spec, i) => {
+      const overrides = RUNTIME_OVERRIDES[spec];
+      if (!overrides) return null;
+      const pairs = Object.entries(overrides)
+        .map(([from, to]) => `  ${JSON.stringify(from)}: __m${i}[${JSON.stringify(to)}],`)
+        .join("\n");
+      return `const __o${i} = {\n  ...__m${i},\n${pairs}\n};`;
+    })
+    .filter((line): line is string => line !== null)
+    .join("\n");
+
   const table = specifiers
-    .map((spec, i) => `  ${JSON.stringify(spec)}: __m${i},`)
+    .map((spec, i) => `  ${JSON.stringify(spec)}: ${RUNTIME_OVERRIDES[spec] ? `__o${i}` : `__m${i}`},`)
     .join("\n");
 
   const result = await build({
     stdin: {
-      contents: `${imports}\nexport const __libs = {\n${table}\n};\n`,
+      contents: `${imports}\n${overridden}\nexport const __libs = {\n${table}\n};\n`,
       resolveDir: process.cwd(),
       loader: "js",
     },

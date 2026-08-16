@@ -49,6 +49,49 @@ export const RUNTIME_LIBRARIES: readonly RuntimeLibrary[] = [
 const LIBRARY_NAMES: ReadonlySet<string> = new Set(RUNTIME_LIBRARIES.map((l) => l.name));
 
 /**
+ * Exports that must resolve to something else inside the sandbox.
+ *
+ * THE CONSTRAINT. A generated app runs in a `srcdoc` frame on an opaque origin,
+ * so its document URL is `about:srcdoc` — a *cannot-be-a-base* URL — and it has
+ * no session history it is allowed to write. Two things follow, and react-router
+ * hits both:
+ *
+ *   1. It resolves paths with `new URL(href, location.origin !== "null" ?
+ *      location.origin : location.href)`, which becomes
+ *      `new URL("/", "about:srcdoc")` and throws. This is not deferred until a
+ *      navigation: browser history's `encodeLocation` runs during render, so a
+ *      single `<Link to="/">` blanks the app on first paint.
+ *   2. `history.pushState` is refused on an opaque origin, and react-router's
+ *      fallback for that refusal is `location.assign(url)` — which tries to
+ *      navigate the frame away and leaves it empty.
+ *
+ * Memory history has neither problem: it resolves against a fixed base and
+ * never touches `pushState`. Nothing is lost by the swap, because there was
+ * never anything to lose — a `srcdoc` frame has no address bar, no shareable
+ * URL and no deep links, so history routing was unobservable even when it did
+ * not crash. What a person sees, and what the app's own `useNavigate`, `Link`,
+ * `useParams` and `useSearchParams` do, is identical.
+ *
+ * WHY HERE AND NOT IN THE PROMPT. Telling the model to write `MemoryRouter`
+ * would make correctness depend on the model complying every time, and a
+ * generated app that reaches for the obvious router must not be able to produce
+ * a blank screen. The runtime owes the app a router that works.
+ *
+ * Keyed by specifier, then by the export a generated app writes, to the export
+ * it actually gets. Both sides must exist in the installed package —
+ * `runtime-router.test.mts` asserts exactly that, so an upgrade that renames or
+ * drops either one fails a test instead of a beta user's preview.
+ */
+export const RUNTIME_OVERRIDES: Readonly<Record<string, Readonly<Record<string, string>>>> = {
+  "react-router-dom": {
+    BrowserRouter: "MemoryRouter",
+    HashRouter: "MemoryRouter",
+    createBrowserRouter: "createMemoryRouter",
+    createHashRouter: "createMemoryRouter",
+  },
+};
+
+/**
  * The scaffolds a project can declare.
  *
  * One today. It exists as a named thing rather than an implicit default so a

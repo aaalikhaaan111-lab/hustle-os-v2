@@ -45,15 +45,24 @@ const base = {
   check("the module bootstrap carries it", /<script type="module" nonce="/.test(doc));
   check("the shim carries it", /<script nonce="/.test(doc));
 
-  // Three tags Ventrio writes without assets: the failure reporter, the import
-  // map shim, and the app module. The reporter was added when a module that
-  // failed to load left the preview white with nothing reported — it is
-  // Ventrio's own script and is nonced like the others.
+  // Four tags Ventrio writes without assets: the base-URL bootstrap, the
+  // failure reporter, the import map shim, and the app module. Each arrived
+  // from a preview that had gone blank in production:
+  //
+  //   - the reporter, when a module that failed to load left the frame white
+  //     with nothing reported;
+  //   - the bootstrap, when `about:srcdoc` turned out to be a base no relative
+  //     path could resolve against, and react-router threw during render.
+  //
+  // The number is written out rather than derived on purpose. It is the check
+  // that a fifth script cannot appear in the document without someone deciding
+  // that it should, because every one of them is authorised by the nonce.
   const withoutAssets = buildSandboxDocument({ ...base, nonce: NONCE });
   check("a document with no assets still nonces its scripts",
-    (withoutAssets.match(/<script[^>]*nonce=/g) ?? []).length === 3);
+    (withoutAssets.match(/<script[^>]*nonce=/g) ?? []).length === 4,
+    String((withoutAssets.match(/<script[^>]*nonce=/g) ?? []).length));
   check("and every one of them is Ventrio's",
-    (withoutAssets.match(/<script/g) ?? []).length === 3,
+    (withoutAssets.match(/<script/g) ?? []).length === 4,
     String((withoutAssets.match(/<script/g) ?? []).length));
 }
 
@@ -92,12 +101,12 @@ const base = {
   check("the generated string cannot close Ventrio's element", hostile.includes("<\\/script"));
   // The property is that the nonce appears only on tags Ventrio emitted, and
   // never on anything the model produced. The count tracks how many scripts
-  // Ventrio writes — three since the failure reporter joined them — so it is
-  // compared against the tags rather than a number written twice.
+  // Ventrio writes — four since the base-URL bootstrap joined the reporter —
+  // so it is compared against the tags rather than a number written twice.
   const nonced = hostile.match(/<script[^>]*nonce=/g) ?? [];
   check("the nonce appears exactly as many times as Ventrio wrote it",
     (hostile.match(new RegExp(NONCE, "g")) ?? []).length === nonced.length);
-  check("and only Ventrio's three tags are authorised", nonced.length === 3, String(nonced.length));
+  check("and only Ventrio's four tags are authorised", nonced.length === 4, String(nonced.length));
   // The model's own "<script" is still in the document as text. That it is
   // present and unnonced is the whole point: the count above must not grow
   // just because generated output mentions a script.
