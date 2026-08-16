@@ -25,12 +25,12 @@
   /* Borders on intelligent surfaces carry a trace of the mark. */
   --line-accent: #dcd9fb;
 
-  --accent: #6b64f2;
+  --accent: #5a51e8;
   --accent-deep: #4b3fe4;
   --accent-pale: #cfcbf7;
   --accent-ink: #4a41d8;
   --accent-soft: #f0efff;
-  --accent-grad: linear-gradient(135deg, #4b3fe4 0%, #6b64f2 52%, #8b86f7 100%);
+  --accent-grad: linear-gradient(135deg, #4b3fe4 0%, #5a51e8 52%, #8b86f7 100%);
 
   /* Translucent chrome. Glass only means something when there is a field
      behind it to pick up, which is what --field below provides. */

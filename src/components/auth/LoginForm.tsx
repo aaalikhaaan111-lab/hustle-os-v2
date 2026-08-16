@@ -44,17 +44,15 @@ export function LoginForm() {
   return (
     <div className="mx-auto flex w-full max-w-sm flex-col gap-8 py-12 sm:py-20">
       <div className="flex flex-col items-center gap-2 text-center">
-        <h1 className="text-2xl font-semibold tracking-tight text-ink">{t("loginTitle")}</h1>
-        <p className="text-sm text-ink-secondary">{t("loginSubtitle")}</p>
+        <h1 className="v-display">{t("loginTitle")}</h1>
+        <p className="v-body">{t("loginSubtitle")}</p>
       </div>
 
       <Card>
         <CardContent className="flex flex-col gap-5 py-5">
           <div className="flex flex-col gap-2">
             <GoogleSignInButton label={t("continueWithGoogle")} next={next} />
-            <p className="text-center text-[11px] leading-relaxed text-ink-muted">
-              {t("googleConsentNotice")}
-            </p>
+            <p className="v-meta text-center">{t("googleConsentNotice")}</p>
           </div>
 
           <div className="flex items-center gap-3">
@@ -85,7 +83,11 @@ export function LoginForm() {
                 placeholder="••••••••"
               />
             </Field>
-            {displayError && <p className="text-sm text-danger">{displayError}</p>}
+            {displayError && (
+              <p role="alert" className="text-[0.9375rem] text-danger">
+                {displayError}
+              </p>
+            )}
             <Button type="submit" disabled={isPending} className="mt-1">
               {isPending ? t("loggingIn") : t("loginTitle")}
             </Button>
@@ -93,7 +95,7 @@ export function LoginForm() {
         </CardContent>
       </Card>
 
-      <p className="text-center text-sm text-ink-secondary">
+      <p className="v-body text-center">
         {t("noAccount")}{" "}
         <Link href="/signup" className="font-medium text-accent hover:text-accent-hover">
           {t("signUp")}

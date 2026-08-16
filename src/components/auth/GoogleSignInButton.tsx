@@ -116,7 +116,11 @@ export function GoogleSignInButton({
         <GoogleIcon />
         {isPending ? t("redirectingToGoogle") : (label ?? t("continueWithGoogle"))}
       </Button>
-      {error && <p className="text-sm text-danger">{error}</p>}
+      {error && (
+        <p role="alert" className="text-[0.9375rem] text-danger">
+          {error}
+        </p>
+      )}
     </div>
   );
 }

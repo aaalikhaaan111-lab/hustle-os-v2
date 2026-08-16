@@ -10,6 +10,14 @@ interface EmptyStateProps {
   className?: string;
 }
 
+/**
+ * Nothing here yet — said calmly.
+ *
+ * The dashed border is gone. A dashed outline is the web's convention for a
+ * drop target, so an empty projects list read as somewhere to drag a file. It
+ * is the same hairline every other surface uses; what marks the state as empty
+ * is the words, which is the only thing that actually says so.
+ */
 export function EmptyState({
   icon,
   title,
@@ -23,31 +31,27 @@ export function EmptyState({
   return (
     <div
       className={cn(
-        "flex flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-surface/60 text-center transition-colors duration-150",
-        isCompact ? "px-6 py-10" : "px-8 py-16",
+        "v-surface flex flex-col items-center justify-center text-center",
+        isCompact ? "px-6 py-10" : "px-6 py-14 sm:px-8",
         className
       )}
     >
       {icon && (
         <div
           className={cn(
-            "mb-4 flex items-center justify-center rounded-full bg-surface-hover text-ink-secondary",
+            // Muted, not accented. The accent means "the thing to do", and in
+            // an empty state that is the action at the bottom, not the picture.
+            "mb-4 flex items-center justify-center rounded-full bg-surface-hover text-ink-muted",
             isCompact ? "h-10 w-10" : "h-12 w-12"
           )}
+          aria-hidden
         >
           {icon}
         </div>
       )}
-      <h3 className={cn("font-medium text-ink", isCompact ? "text-sm" : "text-base")}>
-        {title}
-      </h3>
+      <h3 className="v-title">{title}</h3>
       {description && (
-        <p
-          className={cn(
-            "mt-2 text-ink-secondary",
-            isCompact ? "max-w-[220px] text-xs" : "max-w-sm text-sm"
-          )}
-        >
+        <p className={cn("v-body mt-2", isCompact ? "max-w-[240px]" : "max-w-sm")}>
           {description}
         </p>
       )}

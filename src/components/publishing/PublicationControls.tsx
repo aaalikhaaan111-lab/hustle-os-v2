@@ -144,7 +144,7 @@ export function PublicationControls({
 
   if (compact) {
     return (
-      <div className="flex shrink-0 items-center gap-1.5" aria-label={t("controlsLabel")}>
+      <div className="relative flex shrink-0 items-center gap-1.5" aria-label={t("controlsLabel")}>
         {hasUnpublishedChanges && !publication?.isPublished && (
           <span className="publication-change-badge">{t("unpublishedChanges")}</span>
         )}

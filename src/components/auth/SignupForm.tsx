@@ -53,8 +53,8 @@ export function SignupForm() {
   return (
     <div className="mx-auto flex w-full max-w-sm flex-col gap-8 py-12 sm:py-20">
       <div className="flex flex-col items-center gap-2 text-center">
-        <h1 className="text-2xl font-semibold tracking-tight text-ink">{t("signupTitle")}</h1>
-        <p className="text-sm text-ink-secondary">{t("signupSubtitle")}</p>
+        <h1 className="v-display">{t("signupTitle")}</h1>
+        <p className="v-body">{t("signupSubtitle")}</p>
       </div>
 
       <Card>
@@ -67,11 +67,13 @@ export function SignupForm() {
               consentGiven={consent}
               onConsentMissing={handleConsentMissing}
             />
-            <p className="text-center text-[11px] leading-relaxed text-ink-muted">
-              {t("googleConsentNotice")}
-            </p>
+            {/* 11px was the smallest text in the product, and it was being
+                used for the notice that says what agreeing to Google sign-in
+                means. Consent text is the last thing that should be hard to
+                read. This is the `v-meta` size, like every other aside. */}
+            <p className="v-meta text-center">{t("googleConsentNotice")}</p>
             {showConsentNotice && !consent && (
-              <p className="text-center text-xs font-medium text-danger">
+              <p role="alert" className="text-center text-[0.8125rem] font-medium text-danger">
                 {t("googleConsentValidation")}
               </p>
             )}
@@ -106,7 +108,10 @@ export function SignupForm() {
               />
             </Field>
 
-            <label className="flex items-start gap-2.5 text-xs leading-relaxed text-ink-secondary">
+            {/* The whole row is the target, not the box: `min-h-[44px]` and
+                `py-2` give a thumb somewhere to land, since a 16px checkbox
+                never was one. */}
+            <label className="flex min-h-[44px] items-start gap-3 py-2 text-[0.8125rem] leading-relaxed text-ink-secondary">
               <input
                 ref={consentCheckboxRef}
                 type="checkbox"
@@ -116,14 +121,18 @@ export function SignupForm() {
                   setConsent(event.target.checked);
                   if (event.target.checked) setShowConsentNotice(false);
                 }}
-                className={`mt-0.5 h-4 w-4 shrink-0 rounded border-border-strong text-accent focus:ring-2 focus:ring-accent/40 ${
+                className={`mt-0.5 h-5 w-5 shrink-0 rounded-[6px] border-border-strong text-accent focus:ring-2 focus:ring-accent/50 ${
                   showConsentNotice && !consent ? "ring-2 ring-danger" : ""
                 }`}
               />
               {consentLabel}
             </label>
 
-            {state.error && <p className="text-sm text-danger">{state.error}</p>}
+            {state.error && (
+              <p role="alert" className="text-[0.9375rem] text-danger">
+                {state.error}
+              </p>
+            )}
             <Button type="submit" disabled={isPending || !consent} className="mt-1">
               {isPending ? t("creatingAccount") : t("createAccount")}
             </Button>
@@ -131,7 +140,7 @@ export function SignupForm() {
         </CardContent>
       </Card>
 
-      <p className="text-center text-sm text-ink-secondary">
+      <p className="v-body text-center">
         {t("alreadyHaveAccount")}{" "}
         <Link href="/login" className="font-medium text-accent hover:text-accent-hover">
           {t("logIn")}

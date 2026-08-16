@@ -106,6 +106,30 @@
   padding: 0;
 }
 
+/* ── The touch floor ──────────────────────────────────────────────────────
+   Every size above is a mouse size. Under a thumb, `sm` was a 36px target and
+   a square `sm` was 32px — both under the 44px minimum, and the square ones
+   are the icon-only controls where there is no text edge to aim at either.
+
+   Keyed on the POINTER, not the viewport. A narrow window on a laptop is
+   still a mouse and does not need 44px of button; a tablet at 1024px is a
+   thumb and does. `coarse` is the thing that actually predicts which.
+
+   The font size deliberately does not grow with it — this raises the target,
+   it does not re-scale the type. ─────────────────────────────────────────── */
+@media (pointer: coarse) {
+  .vbtn--sm,
+  .vbtn--md {
+    height: 44px;
+  }
+  .vbtn--square.vbtn--sm,
+  .vbtn--square.vbtn--md,
+  .vbtn--square.vbtn--lg {
+    width: 44px;
+    height: 44px;
+  }
+}
+
 /* ── Shapes ────────────────────────────────────────────────────────────── */
 .vbtn--default {
   border-radius: var(--r-sm, 10px);

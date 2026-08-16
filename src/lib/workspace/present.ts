@@ -34,7 +34,15 @@ const SHAPE_BY_TYPE: Record<string, PreviewSpec["shape"]> = {
 };
 
 /** A small fixed palette, chosen per project by a stable hash of its id. */
-const ACCENTS = ["#5d6bff", "#2f7d6b", "#a4622c", "#6b5bd2", "#3f7cc4", "#a1497a"];
+/**
+ * Project marks. Deliberately not the brand accent.
+ *
+ * These identify one project from another at a glance, so they have to differ
+ * from each other — but the first was the old brand indigo, which made one
+ * project in every list look like the selected one. The set is now clearly
+ * "project colour", and the accent stays reserved for actions.
+ */
+const ACCENTS = ["#5b63d6", "#2f7d6b", "#a4622c", "#7a5bd2", "#3f7cc4", "#a1497a"];
 
 function accentFor(id: string): string {
   let hash = 0;

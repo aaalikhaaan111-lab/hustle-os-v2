@@ -197,9 +197,21 @@ const controls = read("src/components/publishing/PublicationControls.tsx");
 check("the success notice is still rendered", /role=\{error \? "alert" : "status"\}/.test(controls));
 check("the toolbar uses the inline variant", /publication-message--inline/.test(controls));
 const css = read("src/app/globals.css");
-check("which is centred on the row rather than bottom-padded",
-  /\.publication-message--inline \{[\s\S]{0,400}align-self: center/.test(css));
-check("and cannot stretch a narrow toolbar", /\.publication-message--inline \{[\s\S]{0,400}max-width/.test(css));
+/**
+ * It no longer participates in the toolbar's layout at all.
+ *
+ * These used to assert `align-self: center` and a `max-width` — the careful
+ * handling an IN-FLOW notice needs so it does not distort the row. It still
+ * distorted it: up to 15rem of inline-flex appearing inside a phone toolbar
+ * pushed the pinned Publish and Close controls sideways for as long as the
+ * message was up, which is the "publish feedback temporarily disrupts the
+ * toolbar" report. Anchored below the controls instead, so the guarantee is
+ * now structural rather than a matter of tuning.
+ */
+const inlineRule = css.split(".publication-message--inline {")[1]?.split("}")[0] ?? "";
+check("the notice is out of the toolbar's flow", /position: absolute/.test(inlineRule));
+check("anchored below the controls", /top: 100%/.test(inlineRule));
+check("and still cannot stretch across the screen", /max-width/.test(inlineRule));
 
 /* ── report ──────────────────────────────────────────────────────────────── */
 

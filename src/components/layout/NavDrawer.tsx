@@ -113,7 +113,7 @@ export function NavDrawer({ isAuthenticated, open, onOpenChange }: NavDrawerProp
             type="button"
             onClick={() => onOpenChange(false)}
             aria-label={t("menuClose")}
-            className="inline-flex h-8 w-8 items-center justify-center rounded-full text-ink-muted transition-colors hover:bg-surface-hover hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+            className="v-tap inline-flex h-11 w-11 items-center justify-center rounded-[10px] text-ink-muted transition-colors hover:bg-surface-hover hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
           >
             <svg viewBox="0 0 20 20" fill="none" className="h-4 w-4" aria-hidden>
               <path d="M5 5l10 10M15 5L5 15" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
@@ -143,7 +143,7 @@ export function NavDrawer({ isAuthenticated, open, onOpenChange }: NavDrawerProp
               <form action={signOutAction}>
                 <button
                   type="submit"
-                  className="w-full rounded-xl px-3 py-2.5 text-left text-[14px] font-medium text-ink-secondary transition-colors hover:bg-surface-hover hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                  className="v-tap flex w-full items-center rounded-[10px] px-3 py-2.5 text-left text-[15px] font-medium text-ink-secondary transition-colors hover:bg-surface-hover hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
                 >
                   {t("signOut")}
                 </button>

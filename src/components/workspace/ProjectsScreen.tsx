@@ -68,11 +68,11 @@ export function ProjectsScreen({ projects }: { projects: PresentedProject[] }) {
 
       {projects.length === 0 ? (
         <div
-          className="rise mt-7 rounded-[var(--r-lg)] border px-8 py-12 text-center"
+          className="rise mt-5 rounded-[16px] border px-5 py-9 text-center sm:px-8 sm:py-12"
           style={{ borderColor: "var(--line)", background: "var(--surface)" }}
         >
-          <p className="text-[17px] font-semibold tracking-[-0.01em]">{t("startFirstTitle")}</p>
-          <p className="mx-auto mt-2 max-w-md text-[14px] leading-relaxed" style={{ color: "var(--ink-2)" }}>
+          <p className="v-title">{t("startFirstTitle")}</p>
+          <p className="v-body mx-auto mt-2 max-w-md" style={{ color: "var(--ink-2)" }}>
             {t("startFirstBody")}
           </p>
           <VentrioLinkButton href="/create" variant="primary" className="mt-6">
@@ -81,7 +81,7 @@ export function ProjectsScreen({ projects }: { projects: PresentedProject[] }) {
         </div>
       ) : (
         <>
-          <div className="mt-7 flex flex-wrap items-center gap-2">
+          <div className="mt-5 flex flex-wrap items-center gap-2">
             <label
               className="flex h-10 min-w-[200px] flex-1 items-center gap-2 rounded-[var(--r-md)] border px-3.5 transition-[border-color,box-shadow] duration-[var(--t-hover)] focus-within:border-[var(--accent)] focus-within:shadow-[0_0_0_4px_rgb(107_100_242/0.11)] sm:max-w-[280px] sm:flex-none"
               style={{ borderColor: "var(--line-2)", background: "var(--surface)" }}
@@ -92,7 +92,7 @@ export function ProjectsScreen({ projects }: { projects: PresentedProject[] }) {
                 onChange={(event) => setQuery(event.target.value)}
                 placeholder={t("projectsSearch")}
                 aria-label={t("projectsSearch")}
-                className="w-full bg-transparent text-[14px] outline-none placeholder:text-[var(--ink-3)]"
+                className="w-full bg-transparent text-[16px] outline-none placeholder:text-[var(--ink-3)] md:text-[15px]"
               />
             </label>
 
@@ -115,13 +115,13 @@ export function ProjectsScreen({ projects }: { projects: PresentedProject[] }) {
               ))}
             </div>
 
-            <span className="ml-auto hidden text-[13px] sm:block" style={{ color: "var(--ink-3)" }}>
+            <span className="v-meta ml-auto hidden sm:block" style={{ color: "var(--ink-3)" }}>
               {t("projectsSorted")}
             </span>
           </div>
 
           {visible.length === 0 ? (
-            <p className="mt-12 text-center text-[14px]" style={{ color: "var(--ink-2)" }}>
+            <p className="v-body mt-8 text-center" style={{ color: "var(--ink-2)" }}>
               {t("projectsNoMatch", { query })}
             </p>
           ) : (
