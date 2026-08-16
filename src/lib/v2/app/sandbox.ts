@@ -348,9 +348,35 @@ document.head.appendChild(im);`;
     + `<meta charset="utf-8">`
     + `<meta name="viewport" content="width=device-width, initial-scale=1">`
     + `<title>${escapeHtml(input.title)}</title>`
+    /**
+     * The mobile safety floor, applied to every generated application.
+     *
+     * WHY `html` AND NOT JUST `body`. A real iPhone could drag a published app
+     * sideways while desktop was fine. `overflow-x: hidden` was set on `body`
+     * alone, which the spec propagates to the viewport — but propagation makes
+     * the body's own overflow `visible` again, and WebKit will still touch-pan
+     * the document when something genuinely sticks out. Setting it on both, plus
+     * a hard `max-width`, is what actually pins the page on iOS.
+     *
+     * WHAT THIS DELIBERATELY DOES NOT DO. It does not touch inner scrollers. A
+     * child with `overflow-x: auto` — the wrapper a model puts around a wide
+     * table, and both apps measured had one — keeps its own scrollbar, because
+     * the wrapper itself fits and only its contents overflow. So a table that is
+     * *meant* to scroll sideways still does; only the page cannot.
+     *
+     * Content wide by accident is clipped rather than dragging the page. That is
+     * a real trade and the better half of it: a layout that pushes the viewport
+     * sideways is unusable on a phone either way, and clipping keeps the primary
+     * column readable and the controls reachable.
+     *
+     * `overflow-wrap` is here for the other common cause: one long unbroken
+     * string — a URL, an id, a hash — is enough to widen a whole page.
+     */
     + `<style>*,*::before,*::after{box-sizing:border-box}html,body{margin:0;padding:0}`
-    + `body{min-height:100vh;overflow-x:hidden;-webkit-text-size-adjust:100%}`
-    + `img{max-width:100%;height:auto;display:block}#root{min-height:100vh}</style>`
+    + `html{overflow-x:hidden}`
+    + `body{min-height:100vh;max-width:100%;overflow-x:hidden;-webkit-text-size-adjust:100%;overflow-wrap:break-word}`
+    + `img,svg,video,canvas{max-width:100%;height:auto}img{display:block}`
+    + `#root{min-height:100vh;max-width:100%;overflow-x:hidden}</style>`
     // The generated app's own stylesheet, after the reset so it wins, and
     // inside a <style> element whose contents cannot close it — the same rule
     // the script payload follows.

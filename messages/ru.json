@@ -1231,7 +1231,8 @@
     "previewUnavailableTitle": "Не удалось загрузить эту версию",
     "previewUnavailableBody": "Она сохранена. Рабочее пространство не смогло её пересобрать, поэтому лучше не показывать ничего, чем показать неверное.",
     "previewBootingTitle": "Запускаем приложение…",
-    "usageUnavailable": "Недоступно"
+    "usageUnavailable": "Недоступно",
+    "moreActions": "Ещё действия"
   },
   "branding": {
     "madeWith": "Сделано в Ventrio",

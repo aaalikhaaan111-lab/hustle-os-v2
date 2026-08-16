@@ -276,7 +276,7 @@ export function BuildScreen({
                 gap of its own, so on a wide toolbar this sits flush against the
                 pinned group below and the desktop row is the one it always
                 was. */}
-            <div className="flex min-w-0 flex-1 items-center gap-2 overflow-x-auto">
+            <div className={cn("flex min-w-0 flex-1 items-center gap-2", narrow ? "overflow-hidden" : "overflow-x-auto")}>
             <span className="min-w-0 shrink-0 truncate text-[13px] font-semibold">{t("tabPreview")}</span>
             <span
               className="shrink-0 rounded-full px-2 py-[3px] text-[12px] font-semibold leading-none"
@@ -291,7 +291,7 @@ export function BuildScreen({
 
             <div className="ml-auto flex shrink-0 items-center gap-1">
               {/* Viewport. Only meaningful with something to look at. */}
-              {hasOutput && (
+              {hasOutput && !narrow && (
                 <>
                   <BarButton label={t("viewportDesktop")} active={device === "desktop"} onClick={() => setDevice("desktop")}>
                     <IconDesktop className="h-[18px] w-[18px]" />
@@ -319,7 +319,7 @@ export function BuildScreen({
               {/* Share, and only once there is something to share. A draft
                   preview is real but has no address, so the controls that
                   depend on one are absent rather than disabled-and-lying. */}
-              {shareUrl && (
+              {shareUrl && !narrow && (
                 <>
                   <ToolbarDivider />
                   <BarButton label={t("copyPreviewLink")} onClick={copyLink}>
@@ -351,6 +351,43 @@ export function BuildScreen({
                 preview. On desktop the row does not overflow, so nothing here
                 moves. */}
             <div className="flex shrink-0 items-center gap-1">
+              {/* On a phone, everything else moves into a menu.
+                  Pinning two controls fixed the two that mattered most and left
+                  the rest — Reload, Copy link, Open public page — inside a row
+                  that still scrolled sideways. An action reachable only by
+                  dragging a toolbar is one a new person never finds; the owner
+                  knows they exist because he built them. The menu carries words
+                  rather than icons for the same reason. */}
+              {narrow && hasOutput && (
+                <ToolbarMenu
+                  label={t("moreActions")}
+                  items={[
+                    {
+                      key: "reload",
+                      label: t("reload"),
+                      icon: <IconRefresh className="h-[18px] w-[18px]" />,
+                      onSelect: () => setReloadKey((key) => key + 1),
+                    },
+                    ...(shareUrl
+                      ? [
+                          {
+                            key: "copy",
+                            label: t("copyPreviewLink"),
+                            icon: <IconCopy className="h-[18px] w-[18px]" />,
+                            onSelect: () => { void copyLink(); },
+                          },
+                          {
+                            key: "open",
+                            label: t("openPublicPage"),
+                            icon: <IconExternal className="h-[18px] w-[18px]" />,
+                            href: shareUrl,
+                          },
+                        ]
+                      : []),
+                  ]}
+                />
+              )}
+
               {/* Publishing, handed in by the screen that owns the action. */}
               {publishControl && (
                 <>
@@ -585,6 +622,75 @@ function RailButton({
  * effect. Buttons that merely act — reload, close — take no `active` and stay
  * plain, rather than claiming a pressed state they do not have.
  */
+/**
+ * The overflow menu a phone toolbar needs.
+ *
+ * Deliberately labelled. The controls that moved in here — Reload, Copy link,
+ * Open public page — were previously icons in a row that scrolled sideways at
+ * 390 px, which is indistinguishable from not existing unless you already know
+ * they are there. Words are what make them findable by someone who did not
+ * build the product.
+ *
+ * A `<details>` element rather than state and a popover library: it opens,
+ * closes on outside interaction via the summary's own toggle, is keyboard
+ * reachable, and needs no effect to clean up. Rows are 44 px so they are
+ * comfortable under a thumb.
+ */
+function ToolbarMenu({
+  label,
+  items,
+}: {
+  label: string;
+  items: Array<{ key: string; label: string; icon: ReactNode; onSelect?: () => void; href?: string }>;
+}) {
+  if (items.length === 0) return null;
+  return (
+    <details className="relative shrink-0 [&[open]>summary>span]:opacity-100">
+      <summary
+        aria-label={label}
+        className="flex h-11 w-11 cursor-pointer list-none items-center justify-center rounded-[var(--r-sm)] [&::-webkit-details-marker]:hidden"
+        style={{ color: "var(--ink-2)" }}
+      >
+        <span aria-hidden className="text-[20px] leading-none">⋯</span>
+      </summary>
+      <div
+        className="lift-3 absolute right-0 z-30 mt-1 flex min-w-[220px] flex-col rounded-[var(--r-md)] border p-1"
+        style={{ borderColor: "var(--line)", background: "var(--surface)" }}
+        role="menu"
+      >
+        {items.map((item) =>
+          item.href ? (
+            <a
+              key={item.key}
+              role="menuitem"
+              href={item.href}
+              target="_blank"
+              rel="noreferrer"
+              className="flex min-h-[44px] items-center gap-3 rounded-[var(--r-sm)] px-3 text-[14.5px] font-medium"
+              style={{ color: "var(--ink)" }}
+            >
+              {item.icon}
+              {item.label}
+            </a>
+          ) : (
+            <button
+              key={item.key}
+              role="menuitem"
+              type="button"
+              onClick={item.onSelect}
+              className="flex min-h-[44px] items-center gap-3 rounded-[var(--r-sm)] px-3 text-left text-[14.5px] font-medium"
+              style={{ color: "var(--ink)" }}
+            >
+              {item.icon}
+              {item.label}
+            </button>
+          ),
+        )}
+      </div>
+    </details>
+  );
+}
+
 function BarButton({
   label,
   onClick,

@@ -1231,7 +1231,8 @@
     "previewUnavailableTitle": "This version could not be loaded",
     "previewUnavailableBody": "It is still saved. This workspace could not rebuild it, so nothing is shown rather than something wrong.",
     "previewBootingTitle": "Starting your app…",
-    "usageUnavailable": "Not available"
+    "usageUnavailable": "Not available",
+    "moreActions": "More actions"
   },
   "branding": {
     "madeWith": "Made with Ventrio",
