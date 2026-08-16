@@ -127,26 +127,43 @@ try {
  * visible half of the "/" URL failure, and it would have made any other
  * first-render crash look the same way.
  *
- * Polled a frame at a time rather than hooked to a commit callback, because the
- * tree is the model's and may render asynchronously. The ceiling is about a
- * second; past that the host's own reveal floor takes over and the document's
- * watchdog reports an app that never started.
+ * OBSERVED RATHER THAN POLLED, and the difference is not stylistic. The first
+ * version of this fix polled for about a second's worth of animation frames and
+ * then gave up — which turned a real 2.3 MB application, measured booting in
+ * roughly three seconds, into one that never announced readiness at all. That
+ * would have replaced a preview that lied about being ready with one that lied
+ * about never starting, which is not an improvement.
+ *
+ * A MutationObserver fires exactly when the first child is committed, with no
+ * frame budget to exhaust and no dependence on a frame rate that a background
+ * tab throttles anyway. The timeout is only there to stop observing; by then the
+ * document's own watchdog has already reported an app that rendered nothing.
  */
-let __frames = 0;
-function __announce() {
-  if (node && node.childElementCount > 0) {
-    window.__ventrioReady = true;
-    if (typeof window.__ventrioStarted === "function") window.__ventrioStarted();
-    try {
-      window.parent.postMessage({ source: "ventrio-preview", version: 1, type: "ready", payload: {} }, "*");
-    } catch (_) { /* the host may be gone; never throw from here */ }
-    return;
-  }
-  __frames += 1;
-  if (__frames > 60) return;
-  requestAnimationFrame(__announce);
+function __announceReady() {
+  if (!node || node.childElementCount === 0) return false;
+  window.__ventrioReady = true;
+  if (typeof window.__ventrioStarted === "function") window.__ventrioStarted();
+  try {
+    window.parent.postMessage({ source: "ventrio-preview", version: 1, type: "ready", payload: {} }, "*");
+  } catch (_) { /* the host may be gone; never throw from here */ }
+  return true;
 }
-requestAnimationFrame(__announce);
+
+// Synchronously first: a small app can commit before this line runs.
+if (!__announceReady() && node && typeof MutationObserver === "function") {
+  const __observer = new MutationObserver(() => {
+    if (__announceReady()) __observer.disconnect();
+  });
+  __observer.observe(node, { childList: true, subtree: true });
+  setTimeout(() => __observer.disconnect(), 30000);
+} else if (!window.__ventrioReady && node) {
+  // No MutationObserver: fall back to a coarse poll on the same horizon rather
+  // than leaving readiness unanswerable.
+  const __started = Date.now();
+  const __poll = setInterval(() => {
+    if (__announceReady() || Date.now() - __started > 30000) clearInterval(__poll);
+  }, 250);
+}
 `;
 }
 

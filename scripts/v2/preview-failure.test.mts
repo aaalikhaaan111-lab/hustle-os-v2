@@ -41,15 +41,28 @@ const compile = code(read("src/lib/v2/app/compile.ts"));
 
 check(
   "readiness is gated on the root having children",
-  /childElementCount\s*>\s*0/.test(compile),
+  /childElementCount\s*(===\s*0|>\s*0)/.test(compile),
   "a ready posted before the first commit is a claim the app is running when it may have died",
 );
 check(
   "the ready message is not posted immediately after render()",
   !/\.render\([^)]*\)\s*;?\s*window\.parent\.postMessage/.test(compile),
 );
-check("readiness is retried across frames", /requestAnimationFrame/.test(compile));
-check("the retry is bounded", /__frames\s*>\s*\d+/.test(compile));
+/**
+ * Observed, not polled on a frame budget. The first version of this fix gave up
+ * after about a second of animation frames, which made a real 2.3 MB
+ * application — measured booting in roughly three seconds — never announce
+ * readiness at all. That trades a preview that lies about being ready for one
+ * that lies about never starting.
+ */
+check("readiness is observed rather than polled on a frame budget",
+  /MutationObserver/.test(compile) && !/__frames/.test(compile));
+check("the observer watches the mount point for children",
+  /childList: true/.test(compile));
+check("it stops observing eventually", /__observer\.disconnect\(\)/.test(compile));
+check("readiness is also checked synchronously first",
+  /if \(!__announceReady\(\)/.test(compile),
+  "a small app can commit before the observer is installed");
 
 /**
  * React 19 surfaces render failures through these options rather than by
