@@ -16,13 +16,32 @@ import {
   IconUser,
 } from "@/components/workspace-ui/parts";
 import { VentrioButton, VentrioLinkButton } from "@/components/ui/VentrioButton";
+import { Progress } from "@/components/ui/shadcn/progress";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/shadcn/card";
 import type { WorkspaceUsage } from "@/lib/workspace/usage";
 
 type Section = "profile" | "usage" | "appearance" | "language" | "privacy" | "account";
 
 /**
- * Settings as one product: sections on the left, the selected one on the right,
- * kept to a reading column with dividers instead of cards.
+ * Settings as one product: sections on the left, the selected one on the right.
+ *
+ * WHAT CHANGED, AND WHY. The right column was a hairline rule and then loose
+ * content — a label, a value, a form control — floating in a 1080px field. At
+ * that width a display name input ran most of the screen and the page read as
+ * unstyled markup rather than a screen. Each section is a Card now, on a
+ * reading column that stops at 640px: the same containment every other surface
+ * in the product uses, and a measure a form can actually be read at.
+ *
+ * The section list is sticky on desktop so it stays put while a long section
+ * scrolls, and on a phone it is a scrolling row that ends with real padding —
+ * the last item used to be clipped by the viewport edge with nothing to
+ * indicate more.
  *
  * Every control here is wired to something that already works — the display
  * name form, the language switcher, logout, the legal routes and the existing
@@ -60,11 +79,13 @@ export function SettingsClient({
     <PageBody>
       <PageHeading title={t("settingsTitle")} />
 
-      <div className="mt-6 flex flex-col gap-8 md:flex-row md:gap-10">
-        {/* A list on desktop, a compact scrollable selector on small screens. */}
+      <div className="mt-8 flex flex-col gap-8 md:flex-row md:gap-12">
+        {/* A list on desktop, a compact scrollable selector on small screens.
+            `-mx-5 px-5` lets the row bleed to the screen edge while keeping a
+            gutter at both ends, so the last section is never half-cut. */}
         <nav
           aria-label={t("settingsTitle")}
-          className="flex shrink-0 gap-1 overflow-x-auto pb-1 md:w-48 md:flex-col md:overflow-visible md:pb-0"
+          className="-mx-5 flex shrink-0 gap-1 overflow-x-auto px-5 pb-1 [scrollbar-width:none] md:sticky md:top-8 md:mx-0 md:h-fit md:w-52 md:flex-col md:overflow-visible md:px-0 md:pb-0"
         >
           {sections.map((item) => {
             const active = section === item.id;
@@ -85,31 +106,37 @@ export function SettingsClient({
           })}
         </nav>
 
-        <div key={section} className="ws-page min-w-0 flex-1">
+        {/* 640px: a form is read one line at a time, and a name field that
+            runs 900px wide looks like a mistake rather than a field. */}
+        <div key={section} className="ws-page min-w-0 flex-1 md:max-w-[640px]">
           {section === "profile" && (
-            <Panel>
-              <div className="flex items-center gap-4">
+            <Panel title={t("settingsProfile")} description={t("settingsProfileBody")}>
+              {/* The identity block sits on the card's own sunken surface so it
+                  reads as "who this is" rather than as the first form row. */}
+              <div className="flex items-center gap-4 rounded-[var(--r-md)] bg-muted/60 p-4">
                 <span
-                  className="grid h-14 w-14 shrink-0 place-items-center rounded-full text-[18px] font-semibold"
+                  className="grid h-12 w-12 shrink-0 place-items-center rounded-full text-[16px] font-semibold"
                   style={{ background: "var(--color-accent-soft)", color: "var(--color-accent)" }}
                   aria-hidden
                 >
                   {initials}
                 </span>
-                <p className="min-w-0 truncate text-[15px] font-medium">{displayName || email.split("@")[0]}</p>
+                {/* Name only. The form below already shows the signed-in
+                    address as its own row, and printing it twice sixty pixels
+                    apart reads as a mistake rather than as emphasis. */}
+                <span className="min-w-0 truncate text-[15px] font-medium">
+                  {displayName || email.split("@")[0]}
+                </span>
               </div>
-              {/* The form already shows the signed-in address; repeating it
-                  beside the avatar would say the same thing twice. */}
-              <div className="mt-5">
+              <div className="mt-6">
                 <ProfileForm email={email} displayName={displayName} />
               </div>
             </Panel>
           )}
 
           {section === "usage" && (
-            <Panel>
-              <p className="s-eyebrow">{t("usage")}</p>
-              <ul className="mt-4 flex flex-col gap-4">
+            <Panel title={t("usage")} description={t("usageNote")}>
+              <ul className="flex flex-col gap-5">
                 {[
                   { label: t("usageChanges"), counter: usage.aiChanges },
                   { label: t("usageBuilds"), counter: usage.projectBuilds },
@@ -124,35 +151,28 @@ export function SettingsClient({
                         {counter.available ? `${counter.used}/${counter.limit}` : t("usageUnavailable")}
                       </span>
                     </div>
+                    {/* A real ratio — what you have used out of what you have —
+                        so it is a real meter rather than an invented one. The
+                        hand-rolled two-div bar it replaces carried no ARIA at
+                        all; Progress reports its value to a screen reader. */}
                     {counter.available && (
-                      <div className="mt-2 h-1.5 overflow-hidden rounded-full" style={{ background: "var(--color-surface-hover)" }}>
-                        <div
-                          className="h-full rounded-full transition-[width] duration-[var(--t-slow)] ease-[var(--ease)]"
-                          style={{
-                            width: `${Math.min(100, (counter.used / Math.max(1, counter.limit)) * 100)}%`,
-                            background: "var(--color-accent)",
-                          }}
-                        />
-                      </div>
+                      <Progress
+                        className="mt-2 h-1.5"
+                        value={Math.min(100, (counter.used / Math.max(1, counter.limit)) * 100)}
+                        aria-label={label}
+                      />
                     )}
                   </li>
                 ))}
               </ul>
-              <p className="mt-5 text-[13px] leading-relaxed" style={{ color: "var(--color-ink-muted)" }}>
-                {t("usageNote")}
-              </p>
             </Panel>
           )}
 
           {section === "appearance" && (
-            <Panel>
-              <p className="s-eyebrow">{t("settingsAppearance")}</p>
-              <p className="mt-1.5 text-[14px] leading-relaxed" style={{ color: "var(--color-ink-secondary)" }}>
-                {t("settingsAppearanceBody")}
-              </p>
+            <Panel title={t("settingsAppearance")} description={t("settingsAppearanceBody")}>
               {/* Both themes are listed so the section reads as complete, but the
                   one that does not exist yet is disabled and says why. */}
-              <div className="mt-4 flex flex-col gap-1.5" role="radiogroup" aria-label={t("settingsAppearance")}>
+              <div className="flex flex-col gap-1.5" role="radiogroup" aria-label={t("settingsAppearance")}>
                 <VentrioButton
                   variant="secondary"
                   size="lg"
@@ -202,25 +222,19 @@ export function SettingsClient({
           )}
 
           {section === "language" && (
-            <Panel>
-              <p className="s-eyebrow">{t("settingsLanguage")}</p>
-              <p className="mt-1.5 text-[14px] leading-relaxed" style={{ color: "var(--color-ink-secondary)" }}>
-                {t("settingsLanguageBody")} {t("settingsLanguageImmediate")}
-              </p>
+            <Panel
+              title={t("settingsLanguage")}
+              description={`${t("settingsLanguageBody")} ${t("settingsLanguageImmediate")}`}
+            >
               {/* The same switcher the landing footer uses, in its light list
                   presentation — one implementation of changing locale. */}
-              <div className="mt-4">
-                <LanguageSwitcher variant="list" />
-              </div>
+              <LanguageSwitcher variant="list" />
             </Panel>
           )}
 
           {section === "privacy" && (
-            <Panel>
-              <p className="text-[14px] leading-relaxed" style={{ color: "var(--color-ink-secondary)" }}>
-                {t("settingsLegalNote")}
-              </p>
-              <div className="mt-2 flex flex-col">
+            <Panel title={t("settingsPrivacy")} description={t("settingsLegalNote")}>
+              <div className="-mx-2 flex flex-col">
                 {[
                   { href: "/privacy", label: tFooter("privacy") },
                   { href: "/terms", label: tFooter("terms") },
@@ -245,14 +259,9 @@ export function SettingsClient({
           )}
 
           {section === "account" && (
-            <Panel>
-              <div
-                className="flex h-11 items-center justify-between gap-4 border-b text-[14px]"
-                style={{ borderColor: "var(--color-border)" }}
-              >
-                <span className="shrink-0" style={{ color: "var(--color-ink-secondary)" }}>
-                  {t("settingsEmail")}
-                </span>
+            <Panel title={t("settingsAccount")} description={t("settingsAccountBody")}>
+              <div className="flex items-center justify-between gap-4 rounded-[var(--r-md)] bg-muted/60 px-4 py-3 text-[14px]">
+                <span className="shrink-0 text-muted-foreground">{t("settingsEmail")}</span>
                 <span className="min-w-0 truncate font-medium">{email}</span>
               </div>
               <div className="mt-6 flex flex-wrap items-center gap-3">
@@ -271,18 +280,32 @@ export function SettingsClient({
   );
 }
 
-/** One card per section, so the right column reads as a single object. */
-function Panel({ children }: { children: ReactNode }) {
+/**
+ * One card per section, so the right column reads as a single object.
+ *
+ * The previous version was a hairline and then bare content, on the reasoning
+ * that five boxes for five lists is over-containment. That is true when the
+ * sections are stacked; here only ONE is ever on screen, so the hairline had
+ * nothing to separate it from and the content simply floated. A card gives the
+ * selected section an edge, and the header gives it a name and a sentence —
+ * which several sections previously had to state inside their own body.
+ */
+function Panel({
+  title,
+  description,
+  children,
+}: {
+  title: string;
+  description?: string;
+  children: ReactNode;
+}) {
   return (
-    <div
-      /* A section, not a card. Settings was five bordered panels stacked down
-          a page that is already one column — five boxes to hold five lists. A
-          hairline above each says the same thing and stops the page reading as
-          a form built out of containers. */
-      className="s-enter border-t pt-7"
-      style={{ borderColor: "var(--color-border)" }}
-    >
-      {children}
-    </div>
+    <Card className="s-enter">
+      <CardHeader>
+        <CardTitle className="text-[17px]">{title}</CardTitle>
+        {description && <CardDescription>{description}</CardDescription>}
+      </CardHeader>
+      <CardContent>{children}</CardContent>
+    </Card>
   );
 }
