@@ -37,7 +37,7 @@ export default async function DeleteAccountPage() {
 
       <Card className="max-w-md">
         <CardContent className="flex flex-col gap-3 py-6">
-          <span className="text-xs font-bold uppercase tracking-[0.14em] text-ink-muted">
+          <span className="s-eyebrow">
             {t("howTo.title")}
           </span>
           <p className="text-sm leading-relaxed text-ink-secondary">{howToBody}</p>

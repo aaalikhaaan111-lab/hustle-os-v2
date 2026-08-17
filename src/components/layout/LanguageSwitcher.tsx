@@ -162,7 +162,16 @@ export function LanguageSwitcher({
              parallel to the container's rather than floating inside them.
              Pinned in pixels: the theme's radius scale is customised here, so
              rounded-xl/rounded-lg did not land on a parallel pair. */
-          className="absolute bottom-full right-0 z-50 mb-2 min-w-[10rem] rounded-[14px] border border-white/12 bg-[#14102c]/90 p-1 shadow-[0_18px_40px_-16px_rgba(4,2,16,0.9)] backdrop-blur-md"
+          /* Painted from the palette rather than in white-on-dark literals. This
+             panel was `bg-[#14102c]/90` with `text-white` rows — invisible on
+             warm paper, which is what made the control disappear from the top
+             bar entirely. */
+          className="absolute bottom-full right-0 z-50 mb-2 min-w-[10rem] rounded-[14px] border p-1 backdrop-blur-md"
+          style={{
+            borderColor: "var(--color-border)",
+            background: "var(--color-surface)",
+            boxShadow: "0 2px 4px rgb(31 29 26 / 0.05), 0 18px 44px -20px rgb(31 29 26 / 0.18)",
+          }}
         >
           {OPTIONS.map((option, index) => {
             const isActive = option === locale;
@@ -185,10 +194,13 @@ export function LanguageSwitcher({
                   "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-accent",
                   // The selection carries a background of its own, so hovering a
                   // different row cannot end up looking more selected than it.
-                  isActive
-                    ? "bg-white/[0.10] font-medium text-white"
-                    : "text-white/65 hover:bg-white/[0.06] hover:text-white"
+                  isActive ? "font-medium" : ""
                 )}
+                style={
+                  isActive
+                    ? { background: "var(--color-accent-soft)", color: "var(--color-accent)" }
+                    : { color: "var(--color-ink-secondary)" }
+                }
               >
                 <svg
                   viewBox="0 0 12 12"
@@ -227,12 +239,15 @@ export function LanguageSwitcher({
         aria-controls={open ? listId : undefined}
         aria-label={t("languageLabel")}
         className={cn(
-          "inline-flex items-center gap-1.5 rounded-full border border-white/12 bg-white/5 px-3 py-1.5",
-          "text-[13px] font-medium text-white/80 transition-colors",
-          "hover:border-white/25 hover:text-white disabled:opacity-60",
-          "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent",
-          open && "border-white/25 text-white"
+          "inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5",
+          "text-[13px] font-medium transition-colors disabled:opacity-60",
+          "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
         )}
+        style={{
+          borderColor: open ? "var(--color-border-strong)" : "var(--color-border)",
+          background: "var(--color-surface)",
+          color: "var(--color-ink-secondary)",
+        }}
       >
         <svg viewBox="0 0 16 16" aria-hidden className="h-3.5 w-3.5 shrink-0 opacity-80">
           <circle cx="8" cy="8" r="6.25" fill="none" stroke="currentColor" strokeWidth="1.3" />

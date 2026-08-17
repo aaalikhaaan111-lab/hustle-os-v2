@@ -3,10 +3,11 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
-import { IconPlus, IconSearch, StatusPill } from "@/components/workspace-ui/parts";
+import { IconPlus, IconSearch, ProductPreview, StatusPill } from "@/components/workspace-ui/parts";
 import { PageBody, PageHeading } from "@/components/workspace-ui/PageBody";
 import { formatAge } from "@/lib/workspace/formatAge";
 import type { PresentedProject } from "@/lib/workspace/present";
+import { HowItWorks } from "@/components/workspace-ui/HowItWorks";
 
 type Filter = "all" | "draft" | "published";
 
@@ -17,22 +18,23 @@ const FILTERS = [
 ] as const;
 
 /**
- * The index of everything you have made.
+ * Everything you have made.
  *
- * WHAT THIS WAS: a 15px semibold name, a 13.5px grey line under it, and a
- * timestamp, repeated down a white sheet with a hairline between rows. Dense,
- * legible and completely anonymous — a settings list that happened to contain
- * projects.
+ * TWO LAYOUTS AGO this was a text list — a name, a grey summary line and a
+ * timestamp, repeated down a white sheet. That is how you list invoices. It
+ * then became an editorial index with bigger type, which read better and was
+ * still a list of filenames.
  *
- * WHAT IT IS NOW: an index. Each project gets a real line of type at 20px, its
- * own colour as a full-height edge marker rather than a 6px dot, and the state
- * and age set as quiet metadata on a second line. The row is 84px tall and the
- * whole thing reads as a body of work rather than a table of records.
+ * What is actually on this screen is the set of things this person BUILT, and
+ * the first thing anyone wants from that is to recognise their own work. So it
+ * is a gallery: each project leads with its own preview in the same frame the
+ * workspace shows it in, with the name and state underneath. Someone who has
+ * never written code should be able to find the thing they made on Tuesday by
+ * looking at it, not by reading.
  *
- * The controls moved with it. Search was a bordered field in a toolbar row;
- * it is now an unboxed field on the hairline under the heading, and the filter
- * is three plain words rather than a segmented control in a grey tub. Chrome
- * that surrounds a control is chrome you have to look past to use it.
+ * The controls stayed unboxed — search is a field on the hairline rather than
+ * a bordered input in a toolbar, and the filter is three plain words. Chrome
+ * around a control is chrome you have to look past to use it.
  */
 export function ProjectsScreen({ projects }: { projects: PresentedProject[] }) {
   const t = useTranslations("workspace");
@@ -56,8 +58,9 @@ export function ProjectsScreen({ projects }: { projects: PresentedProject[] }) {
 
   return (
     <PageBody>
+      {/* No eyebrow. The shell's header bar already says "Projects" directly
+          above this, and the title says it a third time. */}
       <PageHeading
-        eyebrow={t("projectsTitle")}
         title={
           projects.length === 0
             ? t("startFirstTitle")
@@ -82,8 +85,11 @@ export function ProjectsScreen({ projects }: { projects: PresentedProject[] }) {
         /* No box. An empty index is an empty page with one thing to do on it —
            drawing a dashed rectangle around the absence only makes the absence
            look like a broken component. */
-        <div className="mt-16 border-t pt-10 s-rule" style={{ borderColor: "var(--color-border)" }}>
+        <div className="mt-14 border-t pt-10" style={{ borderColor: "var(--color-border)" }}>
           <p className="s-body max-w-md">{t("projectsNothingYet")}</p>
+          {/* The one place the product has to explain itself: there is nothing
+              on the screen to infer it from. */}
+          <HowItWorks className="mt-7" />
         </div>
       ) : (
         <>
@@ -131,45 +137,38 @@ export function ProjectsScreen({ projects }: { projects: PresentedProject[] }) {
           {visible.length === 0 ? (
             <p className="s-body mt-12">{t("projectsNoMatch", { query })}</p>
           ) : (
-            <ul className="mt-1">
+            /* A GALLERY, NOT A LEDGER.
+               These were text rows: a name, a grey line, a timestamp. That is
+               how you list invoices. What is actually here is the set of things
+               this person has MADE, and the first thing anyone wants from that
+               list is to recognise their own work — which needs a picture, not
+               a filename. Each project now leads with its own preview, and the
+               name and state read underneath it. */
+            <ul className="mt-8 grid grid-cols-1 gap-x-6 gap-y-9 sm:grid-cols-2 lg:grid-cols-3">
               {visible.map((project, index) => (
                 <li
                   key={project.id}
-                  className="s-enter border-b"
-                  style={{
-                    borderColor: "var(--color-border)",
-                    animationDelay: `${Math.min(index, 8) * 26}ms`,
-                  }}
+                  className="s-enter"
+                  style={{ animationDelay: `${Math.min(index, 8) * 26}ms` }}
                 >
-                  <Link
-                    href={`/projects/${project.id}`}
-                    className="group relative flex items-center gap-4 rounded-[var(--r-md)] py-5 pl-4 pr-3 transition-colors"
-                    style={{ transitionDuration: "var(--t-fast)" }}
-                  >
-                    {/* The project's colour as an edge, not a dot. It is the
-                        same colour the preview uses, so a project is
-                        recognisable before the name is read — and at 3×24px it
-                        is actually visible, which a 6px dot was not. */}
-                    <span
-                      aria-hidden
-                      className="absolute left-0 top-1/2 h-6 w-[3px] -translate-y-1/2 rounded-full transition-all group-hover:h-9"
-                      style={{ background: project.preview.accent, transitionDuration: "var(--t-base)" }}
-                    />
-
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate text-[19px] font-medium leading-snug tracking-[-0.02em]">
-                        {project.name || t("untitledProject")}
-                      </span>
-                      <span className="s-meta mt-1.5 flex min-w-0 items-center gap-2.5">
-                        <StatusPill state={project.state} />
-                        <span className="truncate">
-                          {project.summary ??
-                            (project.hasOutput ? t("summaryReady") : t("summaryNoVersion"))}
-                        </span>
-                      </span>
+                  <Link href={`/projects/${project.id}`} className="group block">
+                    <span className="s-artifact block aspect-[16/10] w-full overflow-hidden">
+                      <ProductPreview project={project.preview} density="sm" />
                     </span>
 
-                    <span className="s-meta shrink-0">{formatAge(t, project.updated)}</span>
+                    <span className="mt-3.5 block min-w-0">
+                      <span
+                        className="block truncate text-[16px] font-medium tracking-[-0.015em]"
+                        style={{ color: "var(--color-ink)" }}
+                      >
+                        {project.name || t("untitledProject")}
+                      </span>
+                      <span className="s-meta mt-1 flex min-w-0 items-center gap-2.5">
+                        <StatusPill state={project.state} />
+                        <span aria-hidden>·</span>
+                        <span className="truncate">{formatAge(t, project.updated)}</span>
+                      </span>
+                    </span>
                   </Link>
                 </li>
               ))}

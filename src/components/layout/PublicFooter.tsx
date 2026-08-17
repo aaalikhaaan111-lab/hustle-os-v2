@@ -85,7 +85,7 @@ export async function PublicFooter() {
       <div className="flex flex-col gap-10 md:flex-row md:justify-between">
         {/* Who this is, in one line, and where to find us.
             `-mt-1` on the wide layout only: the wordmark row is a 20px mark
-            beside 15px text, against 11px uppercase headings in the columns
+            beside 15px text, against the sentence-case headings in the columns
             opposite, so matching the container tops left this block sitting
             visibly lower than the row it is meant to align with. The nudge is
             optical, and it is skipped on the stacked layout where there is
@@ -130,7 +130,7 @@ export async function PublicFooter() {
         >
           {groups.map((group) => (
             <div key={group.title} className="min-w-0">
-              <h2 className="break-words text-[11px] font-semibold uppercase tracking-[0.14em] text-ink-secondary">
+              <h2 className="s-eyebrow break-words">
                 {group.title}
               </h2>
               <ul className="mt-3 flex flex-col gap-2 text-[13px]">
@@ -146,7 +146,7 @@ export async function PublicFooter() {
           ))}
 
           <div className="min-w-0">
-            <h2 className="break-words text-[11px] font-semibold uppercase tracking-[0.14em] text-ink-secondary">
+            <h2 className="s-eyebrow break-words">
               {t("groupContact")}
             </h2>
             <ul className="mt-3 flex flex-col gap-2 text-[13px]">

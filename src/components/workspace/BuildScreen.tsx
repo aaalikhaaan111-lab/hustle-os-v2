@@ -188,6 +188,29 @@ export function BuildScreen({
   const [copied, setCopied] = useState<"done" | "failed" | null>(null);
 
   /**
+   * THE MOMENT IT GOES LIVE.
+   *
+   * Publishing was silent: a button changed label, a pill changed colour, and
+   * the single most significant thing a person does in this product — putting
+   * something they made in front of other people — passed without being
+   * marked at all. This watches the transition into published and plays one
+   * soft ring around the page itself, once. Not confetti; the product stays
+   * calm. But it should not be possible to publish and wonder whether it
+   * worked.
+   */
+  const [justPublished, setJustPublished] = useState(false);
+  const wasPublished = useRef(published);
+  useEffect(() => {
+    if (published && !wasPublished.current) {
+      setJustPublished(true);
+      const timer = setTimeout(() => setJustPublished(false), 1000);
+      wasPublished.current = published;
+      return () => clearTimeout(timer);
+    }
+    wasPublished.current = published;
+  }, [published]);
+
+  /**
    * The explicit choice, shared across the component swap.
    *
    * `PreOutputWorkspace` and `BuildScreen` are different components and the
@@ -306,46 +329,56 @@ export function BuildScreen({
                 pinned group below and the desktop row is the one it always
                 was. */}
             <div className={cn("flex min-w-0 flex-1 items-center gap-2", narrow ? "overflow-hidden" : "overflow-x-auto")}>
-            {/* On a phone the toolbar is ACTIONS ONLY.
-                It carried the word "Preview" and the publication state as well,
-                and on a 390px screen with a long unpublish label ("Снять с
-                публикации") there was not room: the title truncated to
-                "Предпросмо…" and the state was pushed off the row. Neither was
-                worth the space, because the header directly above already
-                names the project and states whether it is live, and the mode
-                switch between them already says which of the two surfaces you
-                are looking at. Three statements of one fact, and the one that
-                broke was the redundant one.
+            {/* THE TOOLBAR IS ACTIONS ONLY, at every width.
+                It used to open with the word "Preview" and the publication
+                state. The header one row above already names the project and
+                says whether it is live, and on a phone the mode switch between
+                them says which of the two surfaces you are looking at — so this
+                was the third statement of the same fact.
 
-                The capsule is gone on every width too: a filled green pill made
-                the loudest object in the toolbar the piece of information that
-                was already on screen twice. */}
-            {!narrow && (
-              <>
-                <span className="min-w-0 shrink-0 truncate text-[13px] font-medium">{t("tabPreview")}</span>
-                <span
-                  className="flex shrink-0 items-center gap-1.5 text-[13px] font-medium leading-none"
-                  style={{ color: published ? "var(--color-success)" : "var(--color-ink-muted)" }}
-                >
-                  <span aria-hidden className="h-[5px] w-[5px] rounded-full" style={{ background: "currentColor" }} />
-                  {published ? t("statusLive") : t("statusDraft")}
-                </span>
-              </>
-            )}
-
+                It was also costing real room. In Russian the device labels are
+                "Компьютер / Планшет / Телефон", and with the title in the row
+                the switcher truncated to "Т…" on a 1440px screen. Dropping the
+                repetition is what let the controls say words at all. */}
             <div className="ml-auto flex shrink-0 items-center gap-1">
-              {/* Viewport. Only meaningful with something to look at. */}
+              {/* THE DEVICE SWITCHER SAYS WORDS.
+                  It was three unlabelled glyphs — a monitor, a tablet and a
+                  phone — sitting in a row of other unlabelled glyphs. Someone
+                  who builds software reads that instantly; someone who has
+                  never written code sees five identical grey squares and does
+                  not touch any of them. Icons plus the actual nouns, grouped so
+                  it reads as one control with three settings rather than three
+                  separate buttons. */}
               {hasOutput && !narrow && (
                 <>
-                  <BarButton label={t("viewportDesktop")} active={device === "desktop"} onClick={() => setDevice("desktop")}>
-                    <IconDesktop className="h-[18px] w-[18px]" />
-                  </BarButton>
-                  <BarButton label={t("viewportTablet")} active={device === "tablet"} onClick={() => setDevice("tablet")}>
-                    <IconTablet className="h-[18px] w-[18px]" />
-                  </BarButton>
-                  <BarButton label={t("viewportMobile")} active={device === "mobile"} onClick={() => setDevice("mobile")}>
-                    <IconMobile className="h-[18px] w-[18px]" />
-                  </BarButton>
+                <div
+                  role="group"
+                  aria-label={t("viewportHint", { device: "" }).trim()}
+                  className="flex shrink-0 items-center gap-0.5 rounded-[var(--r-md)] p-0.5"
+                  style={{ background: "var(--color-surface-sunken)" }}
+                >
+                  {([
+                    ["desktop", t("viewportDesktop"), IconDesktop],
+                    ["tablet", t("viewportTablet"), IconTablet],
+                    ["mobile", t("viewportMobile"), IconMobile],
+                  ] as const).map(([mode, label, Icon]) => (
+                    <button
+                      key={mode}
+                      type="button"
+                      aria-pressed={device === mode}
+                      onClick={() => setDevice(mode)}
+                      className="flex h-8 shrink-0 items-center gap-1.5 rounded-[var(--r-xs)] px-2.5 text-[13px] font-medium transition-colors"
+                      style={
+                        device === mode
+                          ? { background: "var(--color-surface)", color: "var(--color-ink)" }
+                          : { color: "var(--color-ink-muted)" }
+                      }
+                    >
+                      <Icon className="h-[16px] w-[16px]" />
+                      {label}
+                    </button>
+                  ))}
+                </div>
                   <ToolbarDivider />
                   <BarButton label={t("reload")} onClick={() => setReloadKey((key) => key + 1)}>
                     <IconRefresh className="h-[18px] w-[18px]" />
@@ -489,7 +522,7 @@ export function BuildScreen({
                   key={`${reloadKey}-${effectiveDevice}`}
                   width={DEVICE_WIDTHS[effectiveDevice]}
                   title={t("previewRegion")}
-                  className="s-artifact"
+                  className={cn("s-artifact", justPublished && "s-landed")}
                 >
                   {typeof preview === "function" ? preview(effectiveDevice) : preview}
                 </ViewportFrame>
@@ -597,21 +630,33 @@ function PreviewPlaceholder({
       role="status"
       aria-live="polite"
     >
-      <span
-        aria-hidden
-        className={cn(
-          "mb-1 h-9 w-9 rounded-full border-2",
-          (status === "generating" || status === "loading") && "ai-pending"
-        )}
-        style={{
-          borderColor: status === "failed" || status === "unavailable" ? "var(--color-warning)" : "var(--color-border-strong)",
-          borderStyle: status === "empty" ? "dashed" : "solid",
-        }}
-      />
-      <p className="text-[15px] font-semibold" style={{ color: "var(--color-ink)" }}>
-        {t(copy[0])}
-      </p>
-      <p className="text-[13px] leading-relaxed" style={{ color: "var(--color-ink-muted)" }}>
+      {/* WAITING IS A MOMENT, NOT A GAP.
+          This was a 36px dashed ring above two lines of small grey text — the
+          visual language of an error state, shown to somebody who is watching
+          their idea get built for the first time. While something is genuinely
+          being made the three dots are the same indicator the conversation
+          uses, so "Ventrio is working" looks the same wherever it happens. */}
+      {status === "generating" || status === "loading" ? (
+        <span className="s-thinking mb-3 flex items-center gap-1.5" aria-hidden>
+          <span />
+          <span />
+          <span />
+        </span>
+      ) : (
+        <span
+          aria-hidden
+          className="mb-3 h-10 w-10 rounded-full border-2"
+          style={{
+            borderColor:
+              status === "failed" || status === "unavailable"
+                ? "var(--color-warning)"
+                : "var(--color-border-strong)",
+            borderStyle: status === "empty" ? "dashed" : "solid",
+          }}
+        />
+      )}
+      <p className="s-title">{t(copy[0])}</p>
+      <p className="s-body mt-1.5">
         {t(copy[1])}
       </p>
       {showRetry && (
@@ -875,7 +920,7 @@ function ModeSwitch({
       role="tablist"
       aria-label={`${chatLabel} / ${previewLabel}`}
       className="flex shrink-0 rounded-[var(--r-md)] p-0.5"
-      style={{ background: "var(--color-surface-hover)" }}
+      style={{ background: "var(--color-surface-sunken)" }}
     >
       {(["chat", "preview"] as const).map((value) => (
         <button
@@ -885,7 +930,7 @@ function ModeSwitch({
           aria-selected={mode === value}
           onClick={() => onChange(value)}
           className={cn(
-            "min-h-[36px] rounded-[var(--r-sm)] px-3.5 text-[13.5px] font-semibold transition-colors",
+            "min-h-[38px] rounded-[var(--r-xs)] px-4 text-[14px] font-medium transition-colors",
             mode === value ? "shadow-sm" : "",
           )}
           style={

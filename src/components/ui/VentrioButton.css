@@ -8,15 +8,13 @@
    "generative" variant — a conic-gradient ring animating its angle forever.
    Seven effects and three background layers to say "this is a button".
 
-   It looked expensive and read as a template. On a dark ground it also could
-   not work at all: a white-to-violet bevel is light catching glass, and there
-   is no light in this room.
+   It looked expensive and read as a template.
 
    WHAT IT IS NOW. A rectangle of one colour, or a rectangle of one colour with
-   a hairline. Hierarchy is carried by TONE — how bright the fill is against a
-   near-black ground — which is the only thing that reads at a glance:
+   a hairline. Hierarchy is carried by how much the fill separates from the warm
+   paper behind it, which is the only thing that reads at a glance:
 
-     primary    the accent, with a dark label     the action the screen is about
+     primary    the accent, with a white label    the action the screen is about
      secondary  a raised neutral with a hairline  a real alternative
      ghost      nothing until hover               tertiary
      icon       nothing until hover               bare controls
@@ -63,7 +61,7 @@
 }
 
 .vbtn:focus-visible {
-  outline: 2px solid var(--color-accent, #8b7cff);
+  outline: 2px solid var(--color-accent, #5b4bd6);
   outline-offset: 2px;
 }
 
@@ -76,12 +74,12 @@
 
 /* ── Sizes ─────────────────────────────────────────────────────────────── */
 .vbtn--sm {
-  height: 34px;
+  height: 36px;
   padding: 0 12px;
   font-size: 13.5px;
 }
 .vbtn--md {
-  height: 38px;
+  height: 40px;
   padding: 0 15px;
   font-size: 14px;
 }
@@ -93,13 +91,13 @@
 
 /* Square controls match their height and drop horizontal padding. */
 .vbtn--square.vbtn--sm {
-  width: 34px;
-  height: 34px;
+  width: 36px;
+  height: 36px;
   padding: 0;
 }
 .vbtn--square.vbtn--md {
-  width: 38px;
-  height: 38px;
+  width: 40px;
+  height: 40px;
   padding: 0;
 }
 .vbtn--square.vbtn--lg {
@@ -126,11 +124,13 @@
 }
 
 /* ── Shapes ────────────────────────────────────────────────────────────────
-   The default is a 9px radius. The pill is kept for the few surfaces that
-   still ask for it by name, but nothing in the studio chooses it: a capsule
-   reads as a tag or a filter, and most of these are commands. */
+   The default is the system's small radius, which is generous on purpose: soft
+   corners read as approachable, and this product is for people who are not
+   sure they belong in a tool like it. The pill is kept for the few surfaces
+   that still ask for it by name, but nothing chooses it — a capsule reads as a
+   tag or a filter, and most of these are commands. */
 .vbtn--default {
-  border-radius: var(--r-sm, 9px);
+  border-radius: var(--r-sm, 11px);
 }
 .vbtn--pill,
 .vbtn--circle {
@@ -138,38 +138,39 @@
 }
 
 /* ── Primary ───────────────────────────────────────────────────────────────
-   The accent, carrying a near-black label. White on this violet measures
-   3.27:1 and fails; the dark label measures 6.02:1 — and a pale key with a
-   dark legend is simply the better object on a dark ground. */
+   The accent, carrying a white label. On warm paper the accent is a deeper
+   indigo-violet than it was on the dark ground, and white on it measures
+   6.14:1 — a colour that carries text on near-black is not the same colour
+   that carries it on white, so this is retuned rather than reused. */
 .vbtn--primary,
 .vbtn--generative {
-  background-color: var(--color-accent, #8b7cff);
+  background-color: var(--color-accent, #5b4bd6);
   font-weight: 560;
 }
 .vbtn--primary:hover:not(:disabled),
 .vbtn--generative:hover:not(:disabled) {
-  background-color: var(--color-accent-hover, #a093ff);
+  background-color: var(--color-accent-hover, #4f41c4);
 }
 
 /* ── Secondary ─────────────────────────────────────────────────────────── */
 .vbtn--secondary {
-  background-color: var(--color-surface-elevated, #16171d);
-  border-color: var(--color-border-strong, #33363f);
+  background-color: var(--color-surface-elevated, #ffffff);
+  border-color: var(--color-border-strong, #d6d0c6);
 }
 .vbtn--secondary:hover:not(:disabled) {
-  background-color: var(--color-surface-hover, #1c1e25);
+  background-color: var(--color-surface-hover, #f4f2ee);
 }
 
 /* ── Ghost, icon, composer: no material until asked for ────────────────── */
 .vbtn--ghost:hover:not(:disabled),
 .vbtn--icon:hover:not(:disabled),
 .vbtn--composer:hover:not(:disabled) {
-  background-color: var(--color-surface-hover, #1c1e25);
+  background-color: var(--color-surface-hover, #f4f2ee);
 }
 
 /* Danger: only where a real destructive route exists. */
 .vbtn--danger:hover:not(:disabled) {
-  background-color: var(--color-danger-soft, rgb(255 107 107 / 0.12));
+  background-color: var(--color-danger-soft, rgb(194 53 43 / 0.09));
 }
 
 /* ── Selected ──────────────────────────────────────────────────────────────
@@ -183,7 +184,7 @@
 .vbtn--icon.is-on,
 .vbtn--composer.is-on,
 .vbtn--secondary.is-on {
-  background-color: var(--color-surface-hover, #1c1e25);
+  background-color: var(--color-surface-hover, #f4f2ee);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -203,28 +204,28 @@
    Only colour lives here. Everything else stays above, where Tailwind
    utilities can still override it. */
 .vbtn {
-  color: var(--color-ink, #f4f5f7);
+  color: var(--color-ink, #1f1d1a);
 }
 .vbtn--primary,
 .vbtn--generative {
-  color: var(--color-accent-foreground, #0b0a14);
+  color: var(--color-accent-foreground, #ffffff);
 }
 .vbtn--secondary {
-  color: var(--color-ink, #f4f5f7);
+  color: var(--color-ink, #1f1d1a);
 }
 .vbtn--ghost,
 .vbtn--icon,
 .vbtn--composer {
-  color: var(--color-ink-secondary, #a8adb9);
+  color: var(--color-ink-secondary, #55504a);
 }
 .vbtn--danger {
-  color: var(--color-danger, #ff6b6b);
+  color: var(--color-danger, #c2352b);
 }
 .vbtn--ghost:hover:not(:disabled),
 .vbtn--icon:hover:not(:disabled),
 .vbtn--composer:hover:not(:disabled),
 .vbtn--secondary:hover:not(:disabled) {
-  color: var(--color-ink, #f4f5f7);
+  color: var(--color-ink, #1f1d1a);
 }
 .vbtn--ghost.is-on,
 .vbtn--icon.is-on,
@@ -234,5 +235,5 @@
 .vbtn--icon.is-on:hover,
 .vbtn--composer.is-on:hover,
 .vbtn--secondary.is-on:hover {
-  color: var(--color-accent, #8b7cff);
+  color: var(--color-accent, #5b4bd6);
 }

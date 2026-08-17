@@ -17,7 +17,6 @@ import {
   VentrioMark,
   type ProjectState,
 } from "./parts";
-import { Tooltip } from "./Tooltip";
 
 export interface ShellProject {
   id: string;
@@ -44,15 +43,18 @@ export interface WorkspaceShellProps {
 }
 
 /**
- * The rail is 68px and does not expand.
+ * The rail is 232px, labelled, and does not collapse.
  *
- * It used to be a 236px column of labelled rows that collapsed to 76px, with a
- * toggle, a stored preference, a tooltip mode and two render paths through the
- * same function. Five destinations do not need 236px of chrome, and the toggle
- * existed mainly to undo the cost of the width. Icons with tooltips, at one
- * fixed width, removes the state and gives the width back to the work.
+ * It was 68px of bare icons with tooltips. That is fine for someone who uses a
+ * tool every day and learns the glyphs; it is hostile to the person this
+ * product is for, who has never used a builder and should not have to hover a
+ * shape to discover what it does. Every destination now says its own name.
+ *
+ * It still does not collapse. The toggle that used to be here existed mainly
+ * to undo the cost of a 236px column, and a fixed width removes a piece of
+ * state, a stored preference and two render paths through one function.
  */
-const RAIL = 68;
+const RAIL = 232;
 
 const NARROW_QUERY = "(max-width: 767px)";
 
@@ -105,10 +107,16 @@ export function WorkspaceShell({
     () => false
   );
 
+  /**
+   * `/create` is deliberately NOT in this list on desktop. It is the standing
+   * button above the rail, and having it in both places put "New project" on
+   * the screen three times — button, nav row, and the page's own action.
+   * The phone tab bar still carries it, because there is no standing button
+   * down there to carry it instead.
+   */
   const primary: NavEntry[] = [
     { href: "/dashboard", label: t("navOverview"), Icon: IconOverview },
     { href: "/projects", label: t("projectsTitle"), Icon: IconProjects },
-    { href: "/create", label: t("navNewProject"), Icon: IconPlus },
   ];
 
   const projectItems: NavEntry[] = project
@@ -123,87 +131,82 @@ export function WorkspaceShell({
   /* ── Desktop rail ─────────────────────────────────────────────────────── */
 
   const railLink = ({ href, label, Icon }: NavEntry) => (
-    <Tooltip key={href} label={label}>
-      <Link
-        href={href}
-        aria-label={label}
-        aria-current={isActive(href) ? "page" : undefined}
-        className="s-nav-item h-11 w-11 items-center justify-center rounded-[var(--r-md)]"
-      >
-        <Icon className="h-[19px] w-[19px]" />
-      </Link>
-    </Tooltip>
+    <Link
+      key={href}
+      href={href}
+      aria-current={isActive(href) ? "page" : undefined}
+      className="s-nav-item h-10 w-full px-3"
+    >
+      <Icon className="h-[18px] w-[18px] shrink-0" />
+      <span className="min-w-0 truncate">{label}</span>
+    </Link>
   );
 
   const rail = (
     <aside
-      className="s-inset hidden shrink-0 flex-col items-center border-r py-4 md:flex"
+      className="s-inset hidden shrink-0 flex-col border-r px-3 py-4 md:flex"
       style={{ width: RAIL, borderColor: "var(--color-border)" }}
     >
-      <Link href="/dashboard" aria-label="Ventrio" className="mb-6 rounded-[var(--r-sm)]">
+      <Link href="/dashboard" className="mb-5 flex items-center gap-2.5 px-2 py-1">
         <VentrioMark size={26} />
+        <span className="text-[16px] font-semibold tracking-[-0.02em]">Ventrio</span>
       </Link>
 
-      <nav aria-label={t("navLabel")} className="flex flex-1 flex-col items-center gap-1">
+      {/* Starting something new is the product's whole point, so it is a real
+          button standing above the navigation rather than the third item in a
+          list of places to go. */}
+      <Link href="/create" className="s-btn s-btn--primary mb-5 w-full">
+        <IconPlus className="h-4 w-4" />
+        {t("navNewProject")}
+      </Link>
+
+      <nav aria-label={t("navLabel")} className="flex flex-1 flex-col gap-0.5 overflow-y-auto">
         {primary.map(railLink)}
 
         {projectItems.length > 0 && (
           <>
-            <span
-              className="my-2 h-px w-6 shrink-0"
-              style={{ background: "var(--color-border)" }}
-              aria-hidden
-            />
+            <p className="s-eyebrow mb-1 mt-5 px-3">{t("navThisProject")}</p>
             {projectItems.map(railLink)}
           </>
         )}
 
-        {/* Recents are a rail affordance only when there is no project open —
-            otherwise the project's own destinations are the ones that matter.
-            Each is the project's colour, which is the same colour its preview
-            uses, so it is recognisable before it is read. */}
+        {/* Recents belong in the rail only when no project is open — otherwise
+            this project's own destinations are the ones that matter. Each
+            carries the project's colour, the same one its preview uses, so it
+            is recognisable before it is read. */}
         {!project && recent.length > 0 && (
           <>
-            <span
-              className="my-2 h-px w-6 shrink-0"
-              style={{ background: "var(--color-border)" }}
-              aria-hidden
-            />
-            {recent.slice(0, 4).map((item) => (
-              <Tooltip key={item.id} label={item.name || t("untitledProject")}>
-                <Link
-                  href={`/projects/${item.id}`}
-                  aria-label={item.name || t("untitledProject")}
-                  className="s-nav-item h-11 w-11 items-center justify-center rounded-[var(--r-md)]"
-                >
-                  <span
-                    className="h-2 w-2 rounded-full"
-                    style={{ background: item.accent }}
-                    aria-hidden
-                  />
-                </Link>
-              </Tooltip>
+            <p className="s-eyebrow mb-1 mt-5 px-3">{t("navRecent")}</p>
+            {recent.slice(0, 5).map((item) => (
+              <Link
+                key={item.id}
+                href={`/projects/${item.id}`}
+                className="s-nav-item h-9 w-full px-3 text-[14px]"
+              >
+                <span
+                  className="h-2 w-2 shrink-0 rounded-full"
+                  style={{ background: item.accent }}
+                  aria-hidden
+                />
+                <span className="min-w-0 truncate">{item.name || t("untitledProject")}</span>
+              </Link>
             ))}
           </>
         )}
       </nav>
 
-      <div className="flex flex-col items-center gap-1">
+      <div className="flex flex-col gap-0.5 border-t pt-3" style={{ borderColor: "var(--color-border)" }}>
         {railLink({ href: "/settings", label: t("navSettings"), Icon: IconSettings })}
-        <Tooltip label={t("navAccount")}>
-          <Link
-            href="/settings?section=profile"
-            aria-label={t("navAccount")}
-            className="s-nav-item h-11 w-11 items-center justify-center rounded-[var(--r-md)]"
+        <Link href="/settings?section=profile" className="s-nav-item h-10 w-full px-3">
+          <span
+            className="grid h-[22px] w-[22px] shrink-0 place-items-center rounded-full text-[10px] font-semibold"
+            style={{ background: "var(--color-accent-soft)", color: "var(--color-accent)" }}
+            aria-hidden
           >
-            <span
-              className="grid h-[26px] w-[26px] place-items-center rounded-full text-[11px] font-semibold"
-              style={{ background: "var(--color-accent-soft)", color: "var(--color-accent)" }}
-            >
-              {initials}
-            </span>
-          </Link>
-        </Tooltip>
+            {initials}
+          </span>
+          <span className="min-w-0 truncate">{t("navAccount")}</span>
+        </Link>
       </div>
     </aside>
   );
@@ -212,6 +215,7 @@ export function WorkspaceShell({
 
   const tabs: NavEntry[] = [
     ...primary,
+    { href: "/create", label: t("navNewProject"), Icon: IconPlus },
     { href: "/settings", label: t("navSettings"), Icon: IconSettings },
   ];
 
@@ -230,10 +234,10 @@ export function WorkspaceShell({
           key={href}
           href={href}
           aria-current={isActive(href) ? "page" : undefined}
-          className="s-nav-item s-tab min-h-[52px] flex-1 flex-col items-center justify-center gap-1 rounded-none"
+          className="s-nav-item s-tab min-h-[56px] flex-1 flex-col items-center justify-center gap-1.5 rounded-none"
         >
           <Icon className="h-[20px] w-[20px]" />
-          <span className="text-[10.5px] font-medium leading-none">{label}</span>
+          <span className="text-[11.5px] font-medium leading-none">{label}</span>
         </Link>
       ))}
     </nav>

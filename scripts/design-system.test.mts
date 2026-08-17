@@ -118,8 +118,11 @@ check("no platform screen hardcodes a colour", painted.length === 0, painted.joi
 
 /* ── one radius scale ────────────────────────────────────────────────────── */
 
+/* Softer than the dark system's 9/12/16. Rounded corners read as friendly,
+   and this product is for people who are not sure they belong in a tool like
+   it — so the scale is generous on purpose. */
 check("the studio defines one radius scale",
-  /--r-sm:\s*9px/.test(studioBlock) && /--r-md:\s*12px/.test(studioBlock) && /--r-lg:\s*16px/.test(studioBlock));
+  /--r-sm:\s*11px/.test(studioBlock) && /--r-md:\s*14px/.test(studioBlock) && /--r-lg:\s*20px/.test(studioBlock));
 
 /* ── one type scale, and it is short ─────────────────────────────────────── */
 
@@ -180,8 +183,15 @@ check("and have no drop shadow", !/shadow-\[/.test(card));
 const shell = nocode(read("src/components/workspace-ui/WorkspaceShell.tsx"));
 check("the phone navigation is a tab bar, not a drawer",
   /s-tab/.test(shell) && !/drawerOpen/.test(shell) && !/ws-scrim/.test(shell));
-check("its tabs clear the touch floor", /min-h-\[52px\]/.test(shell));
-check("and every tab carries a word", /text-\[10\.5px\] font-medium/.test(shell));
+check("its tabs clear the touch floor", /min-h-\[56px\]/.test(shell));
+check("and every tab carries a word", /text-\[11\.5px\] font-medium/.test(shell));
+/**
+ * The desktop rail says words too. It was 68px of bare icons with tooltips,
+ * which is fine for someone who uses a tool daily and learns the glyphs, and
+ * hostile to a person who has never opened a builder before.
+ */
+check("the desktop rail is labelled, not a column of glyphs",
+  /\{label\}<\/span>/.test(shell) && !/aria-label=\{label\}/.test(shell));
 
 /**
  * The touch floor itself moved from a viewport query to a POINTER query. A

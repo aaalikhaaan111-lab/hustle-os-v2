@@ -22,6 +22,7 @@ import { VentrioButton } from "@/components/ui/VentrioButton";
 import { useVoiceInput, voiceErrorKey } from "@/lib/workspace/useVoiceInput";
 import { cn } from "@/lib/utils";
 import { UserTurn } from "@/components/build/ConversationTurn";
+import { HowItWorks } from "@/components/workspace-ui/HowItWorks";
 
 const STARTING_POINTS: {
   id: CreationStartingPoint;
@@ -466,30 +467,44 @@ export function CreateExperience({ userId, initialDraft }: CreateExperienceProps
                The starting points are lines, not capsules. A row of pills reads
                as a filter bar — a set of ways to narrow something that is
                already there — and these are openings. */
-            <section className="flex w-full flex-col gap-8 pt-4">
+            /* THE FIRST SCREEN OF THE PRODUCT.
+               It has to answer a question nobody was answering: what IS this?
+               Someone who has never written code arrived at a text field and an
+               instruction to describe something, with no way to tell whether
+               that produced a document, a design, an app, or an invoice.
+
+               So: the question, in the size of somebody asking it; one line
+               saying what happens next in words with no jargon in them; the
+               five steps, once, because this is the one screen where the person
+               may not yet know the shape of the product; and the openings as
+               plain lines rather than capsules, because a row of pills reads as
+               a filter bar and these are ways to begin. */
+            <section className="flex w-full flex-col gap-9 pt-2">
               <div className="s-enter flex flex-col gap-4">
                 <p className="s-opening max-w-[20ch]">{t("emptyPrompt")}</p>
                 <p className="s-body max-w-md">{t("emptyHint")}</p>
               </div>
 
-              {/* This turn's suggestions, and the only ones on the screen.
-                  They belong to the opening question, so they disappear the
-                  moment the conversation starts — unlike the three standing
-                  buttons that used to sit above the composer forever. */}
-              <div className="s-enter flex flex-col items-start gap-0.5">
+              <HowItWorks className="s-enter" />
+
+              {/* This turn's suggestions, and the only ones on the screen. They
+                  belong to the opening question, so they disappear the moment
+                  the conversation starts — unlike the three standing buttons
+                  that used to sit above the composer forever. */}
+              <div className="s-enter flex flex-col items-start gap-1">
                 {STARTING_POINTS.map((point) => (
                   <button
                     key={point.id}
                     type="button"
                     disabled={isSending || creating}
                     onClick={() => pickStartingPoint(point)}
-                    className="group -mx-2 flex min-h-[44px] w-full items-center gap-3 rounded-[var(--r-md)] px-2 text-left text-[15px] transition-colors disabled:opacity-50"
+                    className="group -mx-3 flex min-h-[48px] w-full items-center gap-3 rounded-[var(--r-md)] px-3 text-left text-[15.5px] transition-colors disabled:opacity-50"
                     style={{ color: "var(--color-ink-secondary)", transitionDuration: "var(--t-fast)" }}
                   >
                     <span
                       aria-hidden
-                      className="text-[13px] transition-transform group-hover:translate-x-0.5"
-                      style={{ color: "var(--color-accent)" }}
+                      className="grid h-6 w-6 shrink-0 place-items-center rounded-full text-[12px] transition-transform group-hover:translate-x-0.5"
+                      style={{ background: "var(--color-accent-soft)", color: "var(--color-accent)" }}
                     >
                       →
                     </span>

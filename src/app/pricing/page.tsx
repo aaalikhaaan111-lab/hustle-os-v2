@@ -142,8 +142,11 @@ export default async function PricingPage() {
       );
     }
     return (
+      /* "Upgrade to Pro — Upgrade pending" said upgrade twice. The state is
+         that billing is not open yet, so the button says the plan and the note
+         under the table says why it cannot be pressed. */
       <button type="button" disabled aria-describedby="billing-note" className="s-btn s-btn--secondary w-full">
-        {cta[plan]} — {t("billingPending")}
+        {cta[plan]} ({t("billingPending")})
       </button>
     );
   };
@@ -177,7 +180,17 @@ export default async function PricingPage() {
                 <th className="w-[26%] pb-6 align-bottom" />
                 {ORDER.map((plan) => (
                   <th key={plan} className="w-[24.6%] pb-6 pl-6 align-bottom">
-                    <span className="s-eyebrow block">{name[plan]}</span>
+                    <span className="flex items-center gap-2">
+                      <span className="s-eyebrow">{name[plan]}</span>
+                      {plan === "pro" && (
+                        <span
+                          className="rounded-full px-2 py-0.5 text-[11.5px] font-medium"
+                          style={{ background: "var(--color-accent-soft)", color: "var(--color-accent)" }}
+                        >
+                          {t("mostPeople")}
+                        </span>
+                      )}
+                    </span>
                     <span className="mt-3 flex items-baseline gap-1.5">
                       <span className="text-[34px] font-medium leading-none tracking-[-0.035em]">
                         {PRICE[plan]}
@@ -219,7 +232,17 @@ export default async function PricingPage() {
         <div className="mt-12 flex flex-col gap-10 md:hidden">
           {ORDER.map((plan) => (
             <section key={plan} className="border-t pt-6" style={{ borderColor: "var(--color-border)" }}>
-              <p className="s-eyebrow">{name[plan]}</p>
+              <p className="flex items-center gap-2">
+                <span className="s-eyebrow">{name[plan]}</span>
+                {plan === "pro" && (
+                  <span
+                    className="rounded-full px-2 py-0.5 text-[11.5px] font-medium"
+                    style={{ background: "var(--color-accent-soft)", color: "var(--color-accent)" }}
+                  >
+                    {t("mostPeople")}
+                  </span>
+                )}
+              </p>
               <p className="mt-3 flex items-baseline gap-1.5">
                 <span className="text-[32px] font-medium leading-none tracking-[-0.035em]">{PRICE[plan]}</span>
                 {plan !== "free" && <span className="s-meta">{t("perMonth")}</span>}

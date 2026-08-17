@@ -87,7 +87,25 @@ check("the composer does not force a compositing layer",
   "a 20px blur the width of the conversation is what read as a large white surface");
 check("it has a solid surface with a visible edge",
   /background: var\(--color-surface\)/.test(composerRule) && /border: 1px solid/.test(composerRule));
-check("and no shadow that reaches the last message", !/box-shadow/.test(composerRule));
+/**
+ * A SHADOW IS ALLOWED; REACHING THE CONVERSATION IS NOT.
+ *
+ * This asserted no box-shadow at all, which was right while the composer sat
+ * on a near-black ground and needed none. On warm paper a white field against
+ * a white page needs some separation, so the rule is now the thing that was
+ * actually wrong: the original `0 8px 30px` had no negative spread and
+ * extended ~15px upward over the last message.
+ *
+ * Computed, not eyeballed: a shadow's top edge sits at (blur/2 − y + spread).
+ * If that is not negative, it reaches up into the conversation.
+ */
+const shadow = composerRule.match(/box-shadow:[^;]+/)?.[0] ?? "";
+const layer = shadow.match(/0 (\d+)px (\d+)px (-?\d+)px/);
+check("the composer has some separation from the page", /box-shadow/.test(composerRule));
+check("and its shadow cannot reach the conversation", !!layer && (() => {
+  const [, y, blur, spread] = layer.map(Number);
+  return blur / 2 - y + spread < 0;
+})(), shadow.slice(0, 90));
 check("an engine without visualViewport degrades to the CSS fallback",
   /if \(!viewport\) return;/.test(hook));
 check("the shell installs the hook", /useAppViewport\(\)/.test(shellCode));

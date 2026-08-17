@@ -132,9 +132,13 @@ check(
   /key=\{`\$\{reloadKey\}-\$\{effectiveDevice\}`\}/.test(buildScreen),
 );
 
-// All three modes must be reachable from the rail, or tablet is dead code.
+// All three modes must be reachable, or tablet is dead code. They moved from
+// three separate icon buttons into one grouped switcher that says the actual
+// nouns — "Computer / Tablet / Phone" — because three unlabelled glyphs is
+// exactly the kind of control a non-technical person never touches.
 for (const device of Object.keys(DEVICE_WIDTHS)) {
-  check(`the rail offers ${device}`, new RegExp(`setDevice\\("${device}"\\)`).test(buildScreen));
+  check(`the switcher offers ${device}`, new RegExp(`setDevice\\(mode\\)`).test(buildScreen)
+    && new RegExp(`"${device}", t\\(`).test(buildScreen));
 }
 
 /* ── 3. the fullscreen exit glyph corners inward ────────────────────────── */

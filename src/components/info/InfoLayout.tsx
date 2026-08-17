@@ -15,7 +15,7 @@ export async function InfoLayout({ eyebrow, title, children }: { eyebrow: string
         <span aria-hidden>←</span>
         {t("backHome")}
       </Link>
-      <p className="mt-10 text-[11px] font-semibold uppercase tracking-[0.2em] text-accent">{eyebrow}</p>
+      <p className="mt-10 s-eyebrow">{eyebrow}</p>
       <h1 className="mt-3 text-[clamp(2rem,5vw,3rem)] font-semibold leading-[1.08] tracking-[-0.03em] text-ink text-balance">
         {title}
       </h1>

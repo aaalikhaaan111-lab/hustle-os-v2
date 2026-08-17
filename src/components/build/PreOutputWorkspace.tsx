@@ -544,7 +544,7 @@ export function PreOutputWorkspace({
                     className="rise rounded-[var(--r-lg)] border p-5"
                     style={{ borderColor: "var(--color-border-strong)", background: "var(--color-surface)" }}
                   >
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.09em]" style={{ color: "var(--color-ink-muted)" }}>
+                    <p className="s-eyebrow" style={{ color: "var(--color-ink-muted)" }}>
                       {t("projectDirection")}
                     </p>
                     <p className="mt-2 text-[17px] font-semibold leading-snug tracking-[-0.01em]">{projectName}</p>

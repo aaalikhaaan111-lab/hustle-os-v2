@@ -1199,7 +1199,7 @@
 
 .feedback-panel-header h2 { margin-top: 0.18rem; color: var(--color-ink); font-size: 1.1875rem; font-weight: 600; letter-spacing: -0.025em; }
 .feedback-panel-header > strong { color: var(--color-ink-secondary); font-size: 0.8125rem; }
-.feedback-eyebrow { color: var(--color-accent); font-size: 0.6875rem; font-weight: 600; letter-spacing: 0.16em; text-transform: uppercase; }
+.feedback-eyebrow { color: var(--color-accent); font-size: 0.6875rem; font-weight: 600; letter-spacing: 0; }
 
 .feedback-empty,
 .feedback-first-response,
@@ -1238,14 +1238,14 @@
 .feedback-signal > p { margin-top: 0.35rem; color: var(--color-ink-secondary); font-size: 0.8125rem; line-height: 1.55; }
 .feedback-signal .feedback-signal-count { color: var(--color-ink-muted); font-size: 0.6875rem; font-weight: 500; }
 .feedback-signal .feedback-evidence { color: #c4b5fd; font-weight: 620; }
-.feedback-confidence { flex: 0 0 auto; border-radius: 999px; padding: 0.2rem 0.42rem; color: var(--color-ink-muted); background: var(--color-surface-elevated); font-size: 0.6875rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; }
+.feedback-confidence { flex: 0 0 auto; border-radius: 999px; padding: 0.2rem 0.42rem; color: var(--color-ink-muted); background: var(--color-surface-elevated); font-size: 0.6875rem; font-weight: 600; letter-spacing: 0; }
 .feedback-confidence.is-moderate { color: #c4b5fd; background: rgba(139, 92, 246, 0.1); }
 .feedback-confidence.is-strong { color: #a7f3d0; background: rgba(52, 211, 153, 0.09); }
 .feedback-uncertainty { display: grid; gap: 0.25rem; margin-top: 0.75rem; border-left: 2px solid rgba(251, 191, 36, 0.35); padding-left: 0.65rem; color: var(--color-ink-secondary); font-size: 0.8125rem; line-height: 1.5; }
-.feedback-uncertainty span { color: #fde68a; font-size: 0.6875rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; }
+.feedback-uncertainty span { color: var(--color-warning); font-size: 0.6875rem; font-weight: 600; letter-spacing: 0; }
 
 .feedback-recommendations { margin-top: 0.95rem; }
-.feedback-recommendations > h3 { color: var(--color-ink-muted); font-size: 0.6875rem; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; }
+.feedback-recommendations > h3 { color: var(--color-ink-muted); font-size: 0.6875rem; font-weight: 600; letter-spacing: 0; }
 .feedback-recommendations article { align-items: flex-start; margin-top: 0.55rem; border: 1px solid var(--color-surface-elevated); border-radius: 0.85rem; padding: 0.7rem; background: var(--color-surface-elevated); }
 .feedback-recommendations strong { color: var(--color-ink); font-size: 0.8125rem; }
 .feedback-recommendations p { margin-top: 0.25rem; color: var(--color-ink-muted); font-size: 0.8125rem; line-height: 1.48; }
@@ -1257,7 +1257,7 @@
 .feedback-before-after > div.is-proposed { border: 1px solid var(--color-accent-line); background: rgba(93, 107, 255, 0.06); }
 .feedback-before-after span { color: var(--color-ink-muted); font-size: 0.6875rem; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; }
 .feedback-before-after p { margin-top: 0.3rem; color: var(--color-ink-secondary); font-size: 0.8125rem; line-height: 1.55; }
-.feedback-proposal-note { margin-top: 0.7rem; color: #fde68a; font-size: 0.8125rem; line-height: 1.5; }
+.feedback-proposal-note { margin-top: 0.7rem; color: var(--color-warning); font-size: 0.8125rem; line-height: 1.5; }
 .feedback-proposal-actions { justify-content: flex-start; margin-top: 0.7rem; }
 
 .feedback-inbox { padding: 0.8rem; }

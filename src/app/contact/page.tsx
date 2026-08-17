@@ -22,7 +22,7 @@ export default async function ContactPage() {
       <PageHeader title={t("pageTitle")} description={t("intro")} />
       <Card className="max-w-md">
         <CardContent className="flex flex-col gap-2 py-6">
-          <span className="text-xs font-bold uppercase tracking-[0.14em] text-ink-muted">
+          <span className="s-eyebrow">
             {t("emailLabel")}
           </span>
           <a

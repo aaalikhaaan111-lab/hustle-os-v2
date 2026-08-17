@@ -109,7 +109,7 @@ function Metric({ label, value }: { label: string; value: string }) {
       className="rounded-[var(--r-lg)] border p-4"
       style={{ borderColor: "var(--color-border)", background: "var(--color-surface)" }}
     >
-      <p className="text-[12px] font-semibold uppercase tracking-[0.08em]" style={{ color: "var(--color-ink-muted)" }}>
+      <p className="s-eyebrow" style={{ color: "var(--color-ink-muted)" }}>
         {label}
       </p>
       <p className="mt-1.5 text-[26px] font-semibold leading-none tabular-nums" style={{ color: "var(--color-ink)" }}>

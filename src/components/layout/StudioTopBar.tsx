@@ -39,7 +39,7 @@ export function StudioTopBar({ isAuthenticated }: { isAuthenticated: boolean }) 
   return (
     <header
       className="sticky top-0 z-40 border-b"
-      style={{ borderColor: "var(--color-border)", background: "rgb(8 8 11 / 0.86)", backdropFilter: "blur(12px)" }}
+      style={{ borderColor: "var(--color-border)", background: "rgb(251 250 248 / 0.88)", backdropFilter: "blur(12px)" }}
     >
       <div className="mx-auto flex h-14 w-full max-w-[1080px] items-center gap-3 px-5 sm:px-8">
         <Link href={isAuthenticated ? "/dashboard" : "/"} className="flex shrink-0 items-center gap-2">

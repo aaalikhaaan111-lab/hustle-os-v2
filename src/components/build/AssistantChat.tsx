@@ -574,7 +574,7 @@ function ProposalCard({ proposal, existing, disabled, onSave, onImprove, onDismi
 
   return (
     <div className="flex flex-col gap-3 rounded-2xl border border-accent/20 bg-accent-soft/50 p-4">
-      <span className="text-[11px] font-bold uppercase tracking-[0.12em] text-accent">
+      <span className="s-eyebrow">
         {t("proposalEyebrow", { field: proposal.label || fieldName })}
       </span>
 
