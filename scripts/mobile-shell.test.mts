@@ -47,7 +47,16 @@ check("the shell no longer sizes itself with dvh",
   !/h-dvh/.test(shellCode),
   "dvh tracks the URL bar, so the layout resized on every scroll gesture");
 check("it uses the app frame", /studio-frame/.test(shellCode));
-check("whose fallback is the stable small viewport", /height:\s*var\(--ventrio-app-height,\s*100svh\)/.test(tokens));
+/*
+ * The fallback is `100%`, not `100svh`, and that is a strengthening.
+ *
+ * `svh` still resolves against the layout viewport, so it needed to be the
+ * *small* variant to avoid tracking the URL bar. The body is now pinned to the
+ * viewport itself (see below), so 100% of it IS the viewport, with no variant
+ * to choose and nothing for the URL bar to change.
+ */
+check("whose fallback is the pinned body, not a viewport unit",
+  /height:\s*var\(--ventrio-app-height,\s*100%\)/.test(tokens));
 check("with a fallback for engines without svh", /@supports not \(height: 100svh\)/.test(tokens));
 check("and the shell still clips its own overflow", /overflow-hidden/.test(shellCode));
 
@@ -70,7 +79,38 @@ const cssCode = tokens.replace(/\/\*[\s\S]*?\*\//g, "");
 const frameRule = cssCode.split(".studio-frame {")[1]?.split("}")[0] ?? "";
 check("the frame is not translated", !/transform/.test(frameRule),
   "the compensation was itself the thing that moved the app");
-check("it is anchored to the viewport instead", /position: fixed/.test(frameRule));
+/*
+ * THE ROOT CAUSE, and where the anchor actually lives now.
+ *
+ * The frame being `fixed` was not enough. On iOS, `position: fixed` resolves
+ * against the LAYOUT viewport, which the keyboard does not shrink — so the
+ * document kept a scroll range underneath, and a hard drag scrolled the whole
+ * page up until the conversation left the screen. No offset can fix that,
+ * because the offset is compensating for a scroll that should not be possible.
+ *
+ * So the scroll range is removed at the source: the body itself is pinned to
+ * the viewport, which leaves the document with nothing to scroll. The frame is
+ * then positioned inside it, and `overscroll-behavior: none` stops a gesture
+ * that reaches the end of an inner scroller from chaining outward.
+ */
+const bodyRule = cssCode.split("body:has(.studio-frame) {")[1]?.split("}")[0] ?? "";
+const htmlRule = cssCode.split("html:has(.studio-frame) {")[1]?.split("}")[0] ?? "";
+check("the document itself is pinned, so there is no scroll range to steal",
+  /position: fixed/.test(bodyRule) && /overflow: hidden/.test(bodyRule),
+  "fixed resolves against the layout viewport on iOS, which a keyboard never shrinks");
+check("and the root cannot scroll either",
+  /overflow: hidden/.test(htmlRule) && /overscroll-behavior: none/.test(htmlRule));
+check("the frame is positioned inside that pinned body",
+  /position: absolute/.test(frameRule));
+
+/*
+ * The keyboard must resize the content rather than pan the page over it —
+ * without this, iOS keeps the layout viewport intact and scrolls to reveal the
+ * focused field, which is the pan this whole section exists to prevent.
+ */
+const layout = code(read("src/app/layout.tsx"));
+check("the viewport asks the keyboard to resize the content",
+  /interactiveWidget:\s*"resizes-content"/.test(layout));
 check("and no offset is published", !/--ventrio-app-offset/.test(hook));
 check("both resize and scroll are observed", /"resize", schedule/.test(hook) && /"scroll", schedule/.test(hook));
 check("updates are coalesced to a frame", /requestAnimationFrame/.test(hook),

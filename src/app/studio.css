@@ -27,34 +27,12 @@
    ========================================================================= */
 
 .studio {
-  /* ── 1. The supplied token set, verbatim ────────────────────────────── */
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.153 0.006 107.1);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.153 0.006 107.1);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.153 0.006 107.1);
-  --primary: oklch(0.228 0.013 107.4);
-  --primary-foreground: oklch(0.988 0.003 106.5);
-  --secondary: oklch(0.966 0.005 106.5);
-  --secondary-foreground: oklch(0.228 0.013 107.4);
-  --muted: oklch(0.966 0.005 106.5);
-  --muted-foreground: oklch(0.58 0.031 107.3);
-  --accent: oklch(0.966 0.005 106.5);
-  --accent-foreground: oklch(0.228 0.013 107.4);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.93 0.007 106.5);
-  --input: oklch(0.93 0.007 106.5);
-  --ring: oklch(0.737 0.021 106.9);
-  --radius: 0.625rem;
-  --sidebar: oklch(0.988 0.003 106.5);
-  --sidebar-foreground: oklch(0.153 0.006 107.1);
-  --sidebar-primary: oklch(0.228 0.013 107.4);
-  --sidebar-primary-foreground: oklch(0.988 0.003 106.5);
-  --sidebar-accent: oklch(0.966 0.005 106.5);
-  --sidebar-accent-foreground: oklch(0.228 0.013 107.4);
-  --sidebar-border: oklch(0.93 0.007 106.5);
-  --sidebar-ring: oklch(0.737 0.021 106.9);
+  /* ── 1. The token set lives at `:root`, in globals.css ────────────────
+     It used to be re-declared here as well. One declaration: the shadcn
+     components installed under `ui/shadcn` render outside this scope in a
+     few places (error pages, the auth shell), and a token they can only see
+     inside `.studio` is a token that fails exactly where it is least
+     expected. `:root` covers both. */
 
   /* ── 2. Aliases ─────────────────────────────────────────────────────────
      Every `bg-surface`, `text-ink`, `border-border` utility in this codebase
@@ -319,6 +297,22 @@
 }
 
 .s-btn--icon { width: 2.25rem; padding: 0; }
+
+/**
+ * The secondary-action button on a project card.
+ *
+ * ALWAYS VISIBLE BY DEFAULT. Hiding it until hover is a mouse idiom, and on a
+ * phone there is no hover and no right-click — a hover-only affordance would
+ * make the card's actions unreachable on the device where the gallery is used
+ * most. So it hides only where a real pointer can bring it back, and stays put
+ * everywhere else.
+ */
+@media (hover: hover) and (pointer: fine) {
+  .s-card-action { opacity: 0; }
+  .group\/card:hover .s-card-action,
+  .s-card-action:focus-visible,
+  .s-card-action[data-state="open"] { opacity: 1; }
+}
 
 @media (pointer: coarse) {
   .s-btn { height: 2.75rem; }
@@ -621,25 +615,75 @@
    the visual viewport, the only measurement a keyboard changes.
    ═══════════════════════════════════════════════════════════════════════ */
 
-.studio-frame {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: var(--ventrio-app-height, 100svh);
-}
+/* ═══════════════════════════════════════════════════════════════════════
+   THE APP FRAME, AND WHO OWNS SCROLLING
 
-@supports not (height: 100svh) {
-  .studio-frame { height: var(--ventrio-app-height, 100vh); }
-}
+   THE BUG. On a real iPhone, focusing the composer and then dragging hard
+   could push the whole workspace upward until the conversation left the
+   screen, exposing blank page.
 
-html:has(.studio-frame),
-body:has(.studio-frame) {
+   THE ROOT CAUSE. iOS Safari has TWO viewports. The LAYOUT viewport does not
+   change when the keyboard opens; the VISUAL viewport shrinks to the area
+   above it. `position: fixed` is resolved against the LAYOUT viewport — so
+   when iOS scrolls the visual viewport inside the layout viewport (which it
+   does, to reveal a focused input, and which a drag can then push further),
+   a fixed shell slides out of view with it.
+
+   `overflow: hidden` on html/body does NOT prevent that. It governs the
+   document's own scrolling box; moving the visual viewport is a different
+   mechanism entirely, which is why the previous fix reached for
+   `translateY(visualViewport.offsetTop)` — and why that oscillated during a
+   drag, because `offsetTop` changes continuously throughout the gesture.
+
+   THE FIX — remove the scroll, rather than chase it.
+
+   1. `interactive-widget=resizes-content` (in the viewport meta) asks the
+      browser to resize the LAYOUT viewport for the keyboard. Where it is
+      honoured there is no visual-viewport offset at all and none of the rest
+      of this matters. Safari does not honour it everywhere yet, hence 2.
+
+   2. `position: fixed` on BODY. This is the part `overflow: hidden` could not
+      do: it gives the document no scroll range whatsoever. `window.scrollY`
+      is pinned at 0, so iOS has nowhere to scroll the visual viewport TO, and
+      `visualViewport.offsetTop` stays 0 by construction. No compensation is
+      needed because there is no longer anything to compensate for.
+
+   3. The frame is `position: absolute` inside that immovable body, sized to
+      the visual viewport's HEIGHT — which is a measurement, not an offset. It
+      keeps the composer above the keyboard without moving the shell.
+
+   4. The conversation remains the one real scroller, with its overscroll
+      contained so reaching its end cannot start dragging anything else.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+html:has(.studio-frame) {
   height: 100%;
   overflow: hidden;
   overscroll-behavior: none;
-  touch-action: pan-y;
-  background: #ffffff;
+}
+
+body:has(.studio-frame) {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
+  background: var(--background);
+}
+
+.studio-frame {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  /* The visual viewport's height when there is one — see `useAppViewport`. */
+  height: var(--ventrio-app-height, 100%);
+  overflow: hidden;
+}
+
+@supports not (height: 100svh) {
+  .studio-frame { height: var(--ventrio-app-height, 100%); }
 }
 
 .studio-frame [data-scroll],

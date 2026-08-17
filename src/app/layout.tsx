@@ -4,6 +4,7 @@ import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages, getTranslations } from "next-intl/server";
 import { headers } from "next/headers";
 import { AppShell } from "@/components/layout/AppShell";
+import { Toaster } from "@/components/ui/shadcn/sonner";
 import { clientMessages } from "@/i18n/clientMessages";
 import "./globals.css";
 import "./studio.css";
@@ -55,6 +56,22 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
+  /**
+   * Ask the browser to resize the LAYOUT viewport when the on-screen keyboard
+   * opens, instead of leaving the layout viewport alone and scrolling a smaller
+   * visual viewport inside it.
+   *
+   * Where this is honoured, the iOS "the whole app slides up when you drag with
+   * the keyboard open" class of bug cannot occur at all: there is no
+   * visual-viewport offset to slide by. Safari does not honour it everywhere
+   * yet, so `studio.css` also removes the document's scroll range outright —
+   * see the comment on `.studio-frame` for why that is the part that actually
+   * fixes it today.
+   *
+   * Typed through as `interactiveWidget`, which Next maps to
+   * `interactive-widget=resizes-content` in the meta tag.
+   */
+  interactiveWidget: "resizes-content",
 };
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -108,6 +125,7 @@ export default async function RootLayout({
       <body className="min-h-full">
         <NextIntlClientProvider locale={locale} messages={messages}>
           <AppShell isAuthenticated={isAuthenticated}>{children}</AppShell>
+          <Toaster position="bottom-center" />
         </NextIntlClientProvider>
       </body>
     </html>

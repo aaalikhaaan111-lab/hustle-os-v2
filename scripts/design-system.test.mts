@@ -55,6 +55,9 @@ const tokens = nocss(read("src/app/studio.css"));
 /* ── there is exactly one platform palette ──────────────────────────────── */
 
 const studioBlock = tokens.split(".studio {")[1]?.split("\n}")[0] ?? "";
+/** The approved shadcn token set lives at `:root` in globals.css. */
+const rootBlock = globals.split(":root {")[1]?.split("\n}")[0] ?? "";
+const paletteBlocks = [studioBlock, rootBlock];
 
 /** A token is "defined" if it carries any value — hex, oklch or an alias. */
 const pick = (block: string, name: string) =>
@@ -171,7 +174,7 @@ check("Geist still declares Cyrillic",
  * no component can drift to a hand-picked corner.
  */
 check("the radius scale derives from the supplied --radius",
-  /--radius:\s*0\.625rem/.test(studioBlock) &&
+  /--radius:\s*0\.625rem/.test(rootBlock) &&
   /--r-sm:\s*calc\(var\(--radius\)/.test(studioBlock) &&
   /--r-md:\s*var\(--radius\)/.test(studioBlock) &&
   /--r-lg:\s*calc\(var\(--radius\)/.test(studioBlock));
@@ -207,18 +210,30 @@ check("and have no drop shadow", !/shadow-\[/.test(card));
 /* ── touch targets on the surfaces a phone actually uses ─────────────────── */
 
 /**
- * THE DRAWER IS GONE, so the checks that guarded its row heights are too.
+ * THE BOTTOM TAB BAR IS GONE, and the checks that guarded it with it.
  *
- * On a phone the whole product used to hide behind one unlabelled hamburger
- * that opened a sheet over the page. It is a bottom tab bar now — four
- * destinations, shown rather than disclosed — so what has to clear the touch
- * floor is the tab, and the tab is what is measured.
+ * It could not be shown on the build route — the composer owns the bottom edge
+ * of a phone — so the one screen people spend the most time in had no
+ * navigation at all. Mobile navigation is a real drawer now, opened from a
+ * trigger that is present on every route, holding exactly the destinations the
+ * desktop rail holds. One navigation, two presentations.
  */
 const shell = nocode(read("src/components/workspace-ui/WorkspaceShell.tsx"));
-check("the phone navigation is a tab bar, not a drawer",
-  /s-tab/.test(shell) && !/drawerOpen/.test(shell) && !/ws-scrim/.test(shell));
-check("its tabs clear the touch floor", /min-h-\[56px\]/.test(shell));
-check("and every tab carries a word", /text-\[11\.5px\] font-medium/.test(shell));
+check("the phone navigation is a drawer, not a bottom tab bar",
+  !/s-tab/.test(shell) && /toggleSidebar/.test(shell) && /isMobile/.test(shell),
+  "a tab bar that cannot render on the busiest route is not navigation");
+check("its trigger is labelled for screen readers",
+  /aria-label=\{t\("navOpen"\)\}/.test(shell),
+  "an unlabelled icon button is the thing the drawer was replaced for");
+check("and every destination carries a word, not just a glyph",
+  /<span>\{label\}<\/span>/.test(shell));
+
+/**
+ * The drawer closes when you pick something. A sheet left open over the page
+ * you just asked for is the most common mobile-navigation defect there is.
+ */
+check("choosing a destination closes the drawer",
+  /onClick=\{\(\) => setOpenMobile\(false\)\}/.test(shell));
 /**
  * The desktop rail says words too. It was 68px of bare icons with tooltips,
  * which is fine for someone who uses a tool daily and learns the glyphs, and
@@ -299,12 +314,22 @@ const oklchToRgb = (L: number, C: number, H: number): [number, number, number] =
   return lin.map((v) => Math.min(1, Math.max(0, v))) as [number, number, number];
 };
 
-/** Reads `oklch(L C H)` out of a declaration, following one level of alias. */
+/**
+ * Reads `oklch(L C H)` out of a declaration, following aliases.
+ *
+ * Two blocks, in order: `.studio` holds the platform's own `--color-*` names,
+ * and those alias onto the shadcn token set, which lives at `:root` in
+ * globals.css. Resolving only the first one made every alias a dead end.
+ */
 const oklch = (name: string): [number, number, number] => {
-  const direct = studioBlock.match(new RegExp(`${name}:\\s*oklch\\(([\\d.]+)\\s+([\\d.]+)\\s+([\\d.]+)\\)`));
-  if (direct) return oklchToRgb(Number(direct[1]), Number(direct[2]), Number(direct[3]));
-  const alias = studioBlock.match(new RegExp(`${name}:\\s*var\\((--[\\w-]+)\\)`));
-  if (alias) return oklch(alias[1]);
+  for (const block of paletteBlocks) {
+    const direct = block.match(new RegExp(`${name}:\\s*oklch\\(([\\d.]+)\\s+([\\d.]+)\\s+([\\d.]+)\\)`));
+    if (direct) return oklchToRgb(Number(direct[1]), Number(direct[2]), Number(direct[3]));
+  }
+  for (const block of paletteBlocks) {
+    const alias = block.match(new RegExp(`${name}:\\s*var\\((--[\\w-]+)\\)`));
+    if (alias) return oklch(alias[1]);
+  }
   throw new Error(`no oklch value for ${name}`);
 };
 
@@ -375,18 +400,18 @@ check("buttons grow for a thumb, not for a narrow window",
 const coarse = button.split("@media (pointer: coarse) {")[1] ?? "";
 check("every icon-only control reaches 44px", /width: 44px;\s*\n\s*height: 44px;/.test(coarse));
 
-const empty = nocode(read("src/components/ui/EmptyState.tsx"));
-check("the empty state is not a drop zone", !/border-dashed/.test(empty),
-  "a dashed outline is the web's convention for somewhere to drag a file");
-check("and uses the shared surface and scale",
-  /s-panel/.test(empty) && /s-title/.test(empty) && /s-body/.test(empty));
+const empty = nocode(read("src/components/ui/shadcn/empty.tsx"));
+check("the empty state is not a drop zone",
+  !/\bborder(-[0-9]|-x|-y|-t|-r|-b|-l)?\s/.test(empty.replace(/border-dashed/g, "")),
+  "border-dashed alone sets a style on a zero-width border and draws nothing; " +
+  "adding any border width would turn every empty state into a file drop target");
 
-const skeleton = nocode(read("src/components/ui/Skeleton.tsx"));
+const skeleton = nocode(read("src/components/ui/shadcn/skeleton.tsx"));
 check("a placeholder has the geometry of the thing it replaces",
-  /s-panel/.test(skeleton) && !/rounded-3xl/.test(skeleton),
+  /rounded-md/.test(skeleton) && !/rounded-3xl/.test(skeleton),
   "rounded-3xl against a 16px card re-flowed the list the moment data arrived");
 
-const badge = nocode(read("src/components/ui/Badge.tsx"));
+const badge = nocode(read("src/components/ui/shadcn/badge.tsx"));
 check("badge text is meta-sized, not the product's smallest",
   /text-\[0\.8125rem\]/.test(badge));
 
