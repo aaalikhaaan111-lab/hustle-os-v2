@@ -209,20 +209,42 @@ export default async function PricingPage() {
               </tr>
             </thead>
             <tbody>
-              {ROWS.map((row) => (
-                <tr key={row.label} className="border-t" style={{ borderColor: "var(--color-border)" }}>
-                  <th scope="row" className="py-4 pr-6 text-[14px] font-normal align-top"
-                      style={{ color: "var(--color-ink-muted)" }}>
-                    {row.label}
-                  </th>
-                  {ORDER.map((plan) => (
-                    <td key={plan} className="py-4 pl-6 align-top text-[15px]"
-                        style={{ color: "var(--color-ink)" }}>
-                      {row.value(plan)}
-                    </td>
-                  ))}
-                </tr>
-              ))}
+              {/* A row whose three answers are identical is not a comparison.
+                  "Your own web address" and "Help finding and shaping the idea"
+                  are the same on every plan, and printing each of them three
+                  times filled a third of the table with repetition a reader has
+                  to check before discovering it says nothing. Those collapse to
+                  one cell across the plans, which is also the clearest possible
+                  statement that the capability is included everywhere. */}
+              {ROWS.map((row) => {
+                const values = ORDER.map((plan) => row.value(plan));
+                const identical = values.every((v) => v === values[0]);
+                return (
+                  <tr key={row.label} className="border-t" style={{ borderColor: "var(--color-border)" }}>
+                    <th
+                      scope="row"
+                      className="py-4 pr-6 align-top text-[14px] font-normal"
+                      style={{ color: "var(--color-ink-muted)" }}
+                    >
+                      {row.label}
+                    </th>
+                    {identical ? (
+                      <td colSpan={ORDER.length} className="py-4 pl-6 align-top text-[15px]"
+                          style={{ color: "var(--color-ink)" }}>
+                        {values[0]}
+                        <span className="s-meta ml-2">{t("onEveryPlan")}</span>
+                      </td>
+                    ) : (
+                      values.map((value, i) => (
+                        <td key={ORDER[i]} className="py-4 pl-6 align-top text-[15px]"
+                            style={{ color: "var(--color-ink)" }}>
+                          {value}
+                        </td>
+                      ))
+                    )}
+                  </tr>
+                );
+              })}
               <tr className="border-t" style={{ borderColor: "var(--color-border)" }}>
                 <td />
                 {ORDER.map((plan) => (

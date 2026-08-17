@@ -148,8 +148,8 @@ export function ProjectsScreen({ projects }: { projects: PresentedProject[] }) {
               {visible.map((project, index) => (
                 <li key={project.id} className="s-enter" style={{ animationDelay: `${Math.min(index, 8) * 26}ms` }}>
                   <Link href={`/projects/${project.id}`} className="group block">
-                    <span className="s-artifact block aspect-[16/10] w-full overflow-hidden">
-                      <ProductPreview project={project.preview} density="sm" />
+                    <span className="s-artifact s-thumb block aspect-[16/10] w-full">
+                      <ProductPreview project={project.preview} density="lg" />
                     </span>
                     <span className="mt-3 block min-w-0">
                       <span

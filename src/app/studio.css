@@ -434,6 +434,33 @@
 .s-seg[aria-pressed="true"] { background: var(--color-ink); color: #ffffff; }
 @media (pointer: coarse) { .s-seg { height: 2.5rem; } }
 
+/* A project thumbnail: the whole page, scaled to the card.
+   -------------------------------------------------------------------------
+   `ProductPreview` draws its composition at fixed pixel sizes, so in a wide
+   card it rendered a small drawing in the top-left with a third of the card
+   left blank underneath. Rendering it into a fixed 960×600 stage and scaling
+   THAT to the container gives a real thumbnail — the whole page, always
+   filling its frame, at any card width.
+
+   `cqw` rather than JavaScript: the container knows its own width, and a
+   ResizeObserver per card to compute a scale factor is a lot of machinery for
+   a number CSS already has. */
+.s-thumb {
+  container-type: inline-size;
+  position: relative;
+  overflow: hidden;
+}
+
+.s-thumb > * {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 960px;
+  height: 600px;
+  transform: scale(calc(100cqw / 960));
+  transform-origin: top left;
+}
+
 /* ═══════════════════════════════════════════════════════════════════════
    THE FIVE STEPS
    ═══════════════════════════════════════════════════════════════════════ */
