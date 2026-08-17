@@ -97,7 +97,7 @@ export function LoginForm() {
 
       <p className="s-body text-center">
         {t("noAccount")}{" "}
-        <Link href="/signup" className="font-medium text-accent hover:text-accent-hover">
+        <Link href="/signup" className="s-link">
           {t("signUp")}
         </Link>
       </p>

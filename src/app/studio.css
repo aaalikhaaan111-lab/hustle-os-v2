@@ -347,6 +347,24 @@
 
 @media (pointer: coarse) { .s-field { min-height: 2.75rem; } }
 
+/* A text link.
+   -------------------------------------------------------------------------
+   The supplied palette has no accent hue — `--primary` is near-black — so a
+   link coloured with it is indistinguishable from body copy. shadcn's answer
+   is an underline, and that is the one here: colour cannot carry "this is a
+   link" in a monochrome system. */
+.s-link {
+  color: var(--foreground);
+  font-weight: 500;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-color: var(--ring);
+  transition: text-decoration-color var(--t-fast) var(--ease);
+}
+@media (hover: hover) {
+  .s-link:hover { text-decoration-color: var(--foreground); }
+}
+
 /* ═══════════════════════════════════════════════════════════════════════
    7. POPOVERS AND MENUS
    ═══════════════════════════════════════════════════════════════════════ */

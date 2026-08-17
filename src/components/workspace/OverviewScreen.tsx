@@ -76,7 +76,7 @@ export function OverviewScreen({ active, recent, activeResponses }: OverviewScre
         <section className="mx-auto w-full max-w-[1160px] px-5 pb-16 sm:px-10">
           <div className="flex items-baseline justify-between gap-4">
             <h2 className="s-title">{t("homeYourWork")}</h2>
-            <Link href="/projects" className="text-[14px] font-medium" style={{ color: "var(--color-accent)" }}>
+            <Link href="/projects" className="s-link text-[14px]">
               {t("overviewAllProjects")}
             </Link>
           </div>
@@ -115,7 +115,7 @@ export function OverviewScreen({ active, recent, activeResponses }: OverviewScre
           {active?.state === "published" && activeResponses > 0 && (
             <p className="s-meta mt-8 border-t pt-5" style={{ borderColor: "var(--color-border)" }}>
               {t("overviewSignalTitle")}{" "}
-              <Link href={`/projects/${active.id}/analytics`} style={{ color: "var(--color-accent)" }}>
+              <Link href={`/projects/${active.id}/analytics`} className="s-link">
                 {t("overviewSignalLink")}
               </Link>
             </p>

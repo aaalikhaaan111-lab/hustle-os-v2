@@ -40,11 +40,11 @@ export function SignupForm() {
   const consentLabel = (
     <span>
       {t("consentPrefix")}{" "}
-      <Link href="/terms" target="_blank" className="font-medium text-accent hover:text-accent-hover">
+      <Link href="/terms" target="_blank" className="s-link">
         {t("termsOfUse")}
       </Link>{" "}
       {t("and")}{" "}
-      <Link href="/privacy" target="_blank" className="font-medium text-accent hover:text-accent-hover">
+      <Link href="/privacy" target="_blank" className="s-link">
         {t("privacyPolicy")}
       </Link>
     </span>
@@ -142,7 +142,7 @@ export function SignupForm() {
 
       <p className="s-body text-center">
         {t("alreadyHaveAccount")}{" "}
-        <Link href="/login" className="font-medium text-accent hover:text-accent-hover">
+        <Link href="/login" className="s-link">
           {t("logIn")}
         </Link>
       </p>
