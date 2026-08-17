@@ -250,37 +250,47 @@ export function WorkspaceShell({
       className="flex h-14 shrink-0 items-center gap-3 border-b px-4 sm:px-6"
       style={{ borderColor: "var(--color-border)" }}
     >
-      {/* On a phone the rail is not there to carry the mark, so the header
-          does — and it doubles as the way home. Inside a project it gives way
-          to the back control: the build route hides the tab bar (the composer
-          owns that edge), so this is the ONLY way out on a phone and it cannot
-          be the thing that gets dropped at a small width. */}
-      {project ? (
-        <Link
-          href="/projects"
-          aria-label={t("projectsTitle")}
-          className="s-nav-item h-10 w-10 shrink-0 items-center justify-center rounded-[var(--r-md)] md:hidden"
-        >
-          <IconBack className="h-[18px] w-[18px]" />
-        </Link>
-      ) : (
-        <Link href="/dashboard" aria-label="Ventrio" className="shrink-0 md:hidden">
-          <VentrioMark size={24} />
-        </Link>
-      )}
+      {/* RENDERED ON `narrow`, NOT HIDDEN WITH A UTILITY.
+          These used to be `md:hidden` and `hidden md:flex`, and BOTH were
+          showing at every width — the header carried two back arrows side by
+          side on a phone and on a 1440px screen. `.s-nav-item` sets
+          `display: flex` and, like the button sheet, it is deliberately
+          unlayered so Tailwind's preflight cannot reset it; an unlayered rule
+          beats a layered utility whatever its specificity, so `hidden` and
+          `md:flex` both lost to it silently.
+
+          The shell already subscribes to the same media query for the tab bar,
+          so the honest fix is to render one control or the other rather than
+          to draw both and try to hide one.
+
+          On a phone this is the ONLY way out of a project — the build route
+          hides the tab bar, because the composer owns that edge. */}
+      {narrow &&
+        (project ? (
+          <Link
+            href="/projects"
+            aria-label={t("projectsTitle")}
+            className="s-nav-item h-10 w-10 shrink-0 items-center justify-center rounded-[var(--r-md)]"
+          >
+            <IconBack className="h-[18px] w-[18px]" />
+          </Link>
+        ) : (
+          <Link href="/dashboard" aria-label="Ventrio" className="shrink-0">
+            <VentrioMark size={24} />
+          </Link>
+        ))}
 
       {project ? (
         <div className="flex min-w-0 flex-1 items-center gap-2.5">
-          <Link
-            href="/projects"
-            /* `md`, not `sm`. The icon-only back control below is `md:hidden`,
-               so at `sm` both rendered and the header carried two back
-               arrows side by side between 640 and 768px. */
-            className="s-nav-item hidden h-8 shrink-0 items-center gap-1.5 rounded-[var(--r-sm)] px-2 text-[13.5px] font-medium md:flex"
-          >
-            <IconBack className="h-4 w-4" />
-            {t("projectsTitle")}
-          </Link>
+          {!narrow && (
+            <Link
+              href="/projects"
+              className="s-nav-item h-8 shrink-0 items-center gap-1.5 rounded-[var(--r-sm)] px-2 text-[13.5px] font-medium"
+            >
+              <IconBack className="h-4 w-4" />
+              {t("projectsTitle")}
+            </Link>
+          )}
           <span className="min-w-0 truncate text-[15px] font-medium tracking-[-0.015em]">
             {project.name || t("untitledProject")}
           </span>

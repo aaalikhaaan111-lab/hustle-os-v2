@@ -825,7 +825,7 @@
     "description": "Данные твоего аккаунта.",
     "logout": "Выйти",
     "noNameSet": "Имя не указано",
-    "email": "EMAIL",
+    "email": "Почта",
     "displayNameLabel": "Отображаемое имя",
     "saveChanges": "Сохранить изменения",
     "languageLabel": "Язык интерфейса",

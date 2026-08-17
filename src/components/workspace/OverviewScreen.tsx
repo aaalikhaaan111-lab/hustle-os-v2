@@ -41,7 +41,6 @@ export function OverviewScreen({ active, recent, activeResponses }: OverviewScre
     return (
       <PageBody>
         <PageHeading
-          eyebrow={t("navOverview")}
           title={t("startFirstTitle")}
           lead={t("startFirstBody")}
           actions={
@@ -69,8 +68,9 @@ export function OverviewScreen({ active, recent, activeResponses }: OverviewScre
           type on the screen was a navigation label, and the thing the person
           came back for was set as a caption. The name is the headline now, and
           "Overview" is the eyebrow that says which screen this is. */}
+      {/* No eyebrow. The shell's header bar says "Overview" directly above
+          this, so an eyebrow repeating it put the word on screen twice. */}
       <PageHeading
-        eyebrow={t("navOverview")}
         title={activeName}
         /* No lead. Both lead strings are of the form "<name> is still a
            draft" / "<name> is live", and the name is now the headline directly

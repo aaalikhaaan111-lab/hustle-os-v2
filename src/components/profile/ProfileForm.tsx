@@ -21,7 +21,7 @@ export function ProfileForm({ email, displayName }: ProfileFormProps) {
   return (
     <div className="flex flex-col gap-5">
       <div>
-        <p className="text-xs font-medium uppercase tracking-wider text-ink-muted">{t("email")}</p>
+        <p className="s-eyebrow">{t("email")}</p>
         <p className="mt-1 text-sm text-ink">{email}</p>
       </div>
 

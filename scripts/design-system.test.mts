@@ -190,6 +190,25 @@ check("and every tab carries a word", /text-\[11\.5px\] font-medium/.test(shell)
  * which is fine for someone who uses a tool daily and learns the glyphs, and
  * hostile to a person who has never opened a builder before.
  */
+/**
+ * `.s-nav-item` SETS `display: flex`, AND IT IS UNLAYERED.
+ *
+ * That is deliberate — the same reasoning as the button sheet, where putting
+ * the rules in `@layer components` let Tailwind's unlayered preflight reset
+ * them. But an unlayered rule beats a layered utility whatever its
+ * specificity, so `hidden`, `md:hidden` and `md:flex` all lose to it SILENTLY.
+ *
+ * The header carried two back arrows side by side, on a phone and on a 1440px
+ * screen, for exactly this reason: one control was `md:hidden` and the other
+ * `hidden md:flex`, and neither instruction had any effect.
+ *
+ * Responsive display on these has to be a render decision, not a class.
+ */
+const navDisplayUtility = /className="[^"]*s-nav-item[^"]*\b(?:hidden|(?:sm|md|lg|xl):(?:flex|hidden|block|inline-flex))\b/;
+check("no s-nav-item is shown or hidden with a utility",
+  !navDisplayUtility.test(shell),
+  "s-nav-item's own display is unlayered and wins over Tailwind's");
+
 check("the desktop rail is labelled, not a column of glyphs",
   /\{label\}<\/span>/.test(shell) && !/aria-label=\{label\}/.test(shell));
 
