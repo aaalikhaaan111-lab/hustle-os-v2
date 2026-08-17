@@ -23,6 +23,36 @@ export interface PresentedProject {
   updated: RelativeAge;
   hasOutput: boolean;
   preview: PreviewSpec;
+  /** Null when the project has no generated version yet. */
+  content: PresentedPreviewContent | null;
+}
+
+/**
+ * THE REAL CONTENT OF A GENERATED PAGE, for a card that has to be recognisable.
+ *
+ * Project cards used to draw a decorative mock: a coloured bar, some grey rules
+ * and a hashed accent, identical in every project except the hue. Six projects
+ * therefore looked like six copies of one drawing, and finding "the chess one"
+ * meant reading names.
+ *
+ * This is the page's OWN content — its headline, its eyebrow, its call to
+ * action, its palette, drawn from `visual.palette`, which the generator chose
+ * for that project. Nothing here is invented or hashed; a project with no
+ * version yet returns null and the card says so rather than showing a mock of a
+ * page that does not exist.
+ *
+ * The output already travels in `snapshot_fields`, which `listProjects` selects
+ * in full — so this costs no extra query.
+ */
+export interface PresentedPreviewContent {
+  eyebrow: string;
+  headline: string;
+  subheadline: string;
+  ctaLabel: string;
+  /** The project's own three-colour palette, as the generator chose it. */
+  palette: [string, string, string];
+  /** Real section headings, for the strip under the fold. */
+  sections: string[];
 }
 
 /** Which composition suits each real project type. */
@@ -96,5 +126,18 @@ export function presentProject(
       shape: SHAPE_BY_TYPE[project.project_type] ?? "form",
       accent: accentFor(project.id),
     },
+    content: stage3?.output
+      ? {
+          eyebrow: stage3.output.hero.eyebrow,
+          headline: stage3.output.hero.headline,
+          subheadline: stage3.output.hero.subheadline,
+          ctaLabel: stage3.output.cta.label,
+          palette: stage3.output.visual.palette,
+          sections: stage3.output.sections
+            .map((section) => ("title" in section && typeof section.title === "string" ? section.title : ""))
+            .filter(Boolean)
+            .slice(0, 3),
+        }
+      : null,
   };
 }

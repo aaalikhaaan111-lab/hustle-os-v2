@@ -21,7 +21,7 @@ import { WorkspaceComposer } from "@/components/workspace-ui/Composer";
 import { VentrioButton } from "@/components/ui/VentrioButton";
 import { useVoiceInput, voiceErrorKey } from "@/lib/workspace/useVoiceInput";
 import { cn } from "@/lib/utils";
-import { UserTurn } from "@/components/build/ConversationTurn";
+import { AssistantTurn, UserTurn } from "@/components/build/ConversationTurn";
 import { HowItWorks } from "@/components/workspace-ui/HowItWorks";
 
 const STARTING_POINTS: {
@@ -538,9 +538,11 @@ export function CreateExperience({ userId, initialDraft }: CreateExperienceProps
                           a phone one sentence filled the screen. Every turn now
                           uses the same size and weight, which is what makes the
                           conversation read as a conversation. */}
-                      <div className="whitespace-pre-wrap text-[15px] leading-[1.65] text-ink">
-                        {message.content}
-                      </div>
+                      {/* The same turn component the workspace uses. This
+                          block set its own type, so the assistant spoke with a
+                          speaker mark in one place and without one here — the
+                          drift this component exists to prevent. */}
+                      <AssistantTurn>{message.content}</AssistantTurn>
 
                       {/* The options this message offered, under this message.
                           They used to render as a separate block after the whole

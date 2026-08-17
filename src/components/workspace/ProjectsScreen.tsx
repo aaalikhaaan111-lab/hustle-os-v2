@@ -3,10 +3,11 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
-import { IconPlus, IconSearch, ProductPreview, StatusPill } from "@/components/workspace-ui/parts";
+import { IconPlus, IconSearch, StatusPill } from "@/components/workspace-ui/parts";
 import { formatAge } from "@/lib/workspace/formatAge";
 import type { PresentedProject } from "@/lib/workspace/present";
 import { HowItWorks } from "@/components/workspace-ui/HowItWorks";
+import { ProjectThumb, ProjectThumbEmpty } from "@/components/workspace/ProjectThumb";
 
 type Filter = "all" | "draft" | "published";
 
@@ -61,7 +62,7 @@ export function ProjectsScreen({ projects }: { projects: PresentedProject[] }) {
           display face, then the work on a sheet that rises over it. This was a
           page heading, a search row and a grid — correct, and indistinguishable
           from a file browser. */}
-      <section className="s-sky-band px-5 pb-10 pt-10 sm:px-10 sm:pb-12 sm:pt-16">
+      <section className="px-5 pb-6 pt-8 sm:px-10 sm:pb-7 sm:pt-10">
         <div className="mx-auto flex w-full max-w-[1120px] flex-wrap items-end justify-between gap-5">
           <div className="min-w-0">
             <h1 className="s-display">
@@ -75,14 +76,14 @@ export function ProjectsScreen({ projects }: { projects: PresentedProject[] }) {
                   : t("projectsSorted")}
             </p>
           </div>
-          <Link href="/create" className="s-btn s-btn--primary h-11 px-5 text-[1rem]">
+          <Link href="/create" className="s-btn s-btn--primary">
             <IconPlus className="h-[18px] w-[18px]" />
             {t("navNewProject")}
           </Link>
         </div>
       </section>
 
-      <div className="s-sheet mx-auto w-full max-w-[1160px] px-5 pb-16 pt-7 sm:px-10 sm:pt-9">
+      <div className="mx-auto w-full max-w-[1160px] px-5 pb-16 sm:px-10">
       {projects.length === 0 ? (
         /* No box. An empty index is an empty page with one thing to do on it —
            drawing a dashed rectangle around the absence only makes the absence
@@ -149,12 +150,16 @@ export function ProjectsScreen({ projects }: { projects: PresentedProject[] }) {
                 <li key={project.id} className="s-enter" style={{ animationDelay: `${Math.min(index, 8) * 26}ms` }}>
                   <Link href={`/projects/${project.id}`} className="group block">
                     <span className="s-artifact s-thumb block aspect-[16/10] w-full">
-                      <ProductPreview project={project.preview} density="lg" />
+                      {project.content ? (
+                        <ProjectThumb content={project.content} />
+                      ) : (
+                        <ProjectThumbEmpty label={t("summaryNoVersion")} />
+                      )}
                     </span>
                     <span className="mt-3 block min-w-0">
                       <span
                         className="block truncate text-[17px] font-medium"
-                        style={{ fontFamily: "var(--font-display), Georgia, serif", color: "var(--color-ink)" }}
+                        style={{ color: "var(--color-ink)" }}
                       >
                         {project.name || t("untitledProject")}
                       </span>

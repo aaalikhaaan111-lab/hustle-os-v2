@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Alegreya, Geist, Geist_Mono, Lora } from "next/font/google";
+import { Figtree, Geist, Geist_Mono, Lora } from "next/font/google";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages, getTranslations } from "next-intl/server";
 import { headers } from "next/headers";
@@ -9,31 +9,23 @@ import "./globals.css";
 import "./studio.css";
 
 /**
- * Ventrio's voice.
+ * The platform UI face.
  *
- * The product had no display face at all — every screen was Geist Sans from
- * the wordmark down to the timestamps, which is why the typography read as
- * weak: there was nothing for the eye to land on and nothing that sounded like
- * anyone in particular.
+ * ONE CONSTRAINT WORTH STATING: Figtree ships latin and latin-ext only — it has
+ * no Cyrillic. Ventrio runs in Russian, so Figtree alone would leave half the
+ * product falling back to whatever the OS picks, differently on every machine.
  *
- * Alegreya is a humanist serif drawn for long-form literature, with a visibly
- * calligraphic hand. It is warm rather than grand — deliberately NOT Playfair,
- * which is the high-contrast display serif every "premium" template reaches
- * for. Ventrio's premise is that you describe what you want in your own words,
- * and a written face says that before a sentence is read.
+ * Geist is therefore kept and declared immediately after Figtree in the stack.
+ * Font matching is per GLYPH, not per string: latin renders in Figtree, Cyrillic
+ * falls through to Geist. Both are geometric humanist sans at similar widths, so
+ * the seam is not visible in normal use — but it is a seam, and it is here
+ * because the alternative is worse.
  *
- * It carries Cyrillic, which ruled out Fraunces and Instrument Serif: the
- * product runs in Russian, and a display face that falls back on half its
- * users is not a display face.
- *
- * Greetings, project names and section titles only. Everything operational
- * stays in Geist — a serif button is a costume.
+ * The editorial serif is gone with the direction that asked for it.
  */
-const alegreya = Alegreya({
-  variable: "--font-display",
-  subsets: ["latin", "cyrillic"],
-  weight: ["500", "700"],
-  style: ["normal", "italic"],
+const figtree = Figtree({
+  variable: "--font-ui",
+  subsets: ["latin", "latin-ext"],
 });
 
 const geistSans = Geist({
@@ -81,7 +73,7 @@ export default async function RootLayout({
   const requestHeaders = await headers();
   if (requestHeaders.get("x-ventrio-public-route") === "1") {
     return (
-      <html lang="en" className={`${geistSans.variable} ${geistMono.variable} ${lora.variable} ${alegreya.variable} h-full antialiased`}>
+      <html lang="en" className={`${geistSans.variable} ${geistMono.variable} ${lora.variable} ${figtree.variable} h-full antialiased`}>
         <body className="min-h-full">{children}</body>
       </html>
     );
@@ -111,7 +103,7 @@ export default async function RootLayout({
   return (
     <html
       lang={locale}
-      className={`${geistSans.variable} ${geistMono.variable} ${lora.variable} ${alegreya.variable} h-full antialiased`}
+      className={`${geistSans.variable} ${geistMono.variable} ${lora.variable} ${figtree.variable} h-full antialiased`}
     >
       <body className="min-h-full">
         <NextIntlClientProvider locale={locale} messages={messages}>

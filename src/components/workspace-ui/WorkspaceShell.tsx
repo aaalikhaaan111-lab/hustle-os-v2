@@ -6,6 +6,13 @@ import { useTranslations } from "next-intl";
 import { useSyncExternalStore, type ReactNode } from "react";
 import { useAppViewport } from "@/lib/workspace/useAppViewport";
 import {
+  sidebarCollapsed,
+  sidebarCollapsedServer,
+  subscribeSidebarCollapsed,
+  toggleSidebarCollapsed,
+} from "@/lib/workspace/sidebarCollapse";
+import { Tooltip } from "./Tooltip";
+import {
   IconAnalytics,
   IconBack,
   IconBuild,
@@ -53,6 +60,8 @@ export interface WorkspaceShellProps {
  * nothing.
  */
 const RAIL = 244;
+/** Wide enough for a 36px row plus the padding either side. */
+const RAIL_COLLAPSED = 60;
 
 const NARROW_QUERY = "(max-width: 767px)";
 
@@ -106,6 +115,20 @@ export function WorkspaceShell({
   );
 
   /**
+   * THE SIDEBAR COLLAPSES FROM THE LOGO.
+   *
+   * Backed by a store rather than component state so the value is readable
+   * during render, writable from the click, and the same on the server as on
+   * the first client render. See `sidebarCollapse.ts` for why the server
+   * snapshot is always `false`.
+   */
+  const collapsed = useSyncExternalStore(
+    subscribeSidebarCollapsed,
+    sidebarCollapsed,
+    sidebarCollapsedServer,
+  );
+
+  /**
    * `/create` is deliberately NOT in this list on desktop. It is the standing
    * button above the rail, and having it in both places put "New project" on
    * the screen three times — button, nav row, and the page's own action.
@@ -130,62 +153,107 @@ export function WorkspaceShell({
      Identity, the one action the product is for, where you can go, everything
      you have made, then you. */
 
-  const railLink = ({ href, label, Icon }: NavEntry) => (
-    <Link
-      key={href}
-      href={href}
-      aria-current={isActive(href) ? "page" : undefined}
-      className="s-nav-item h-9 w-full px-3"
-    >
-      <Icon className="h-[17px] w-[17px] shrink-0" />
-      <span className="min-w-0 truncate">{label}</span>
-    </Link>
-  );
+  /**
+   * One row, two states. Collapsed, the label is removed from the flow by CSS
+   * (`[data-collapsed]`) rather than hidden with a utility — hiding the text
+   * alone leaves its gap behind and the icon sits visibly off-centre. The
+   * tooltip carries the name, and `aria-label` carries it for assistive tech,
+   * so a collapsed rail is never a column of unexplained glyphs.
+   */
+  const railLink = ({ href, label, Icon }: NavEntry) => {
+    const row = (
+      <Link
+        key={href}
+        href={href}
+        aria-current={isActive(href) ? "page" : undefined}
+        aria-label={collapsed ? label : undefined}
+        data-collapsed={collapsed || undefined}
+        className="s-nav-item h-9 w-full px-2.5"
+      >
+        <Icon className="h-[17px] w-[17px] shrink-0" />
+        <span className="min-w-0 truncate">{label}</span>
+      </Link>
+    );
+    return collapsed ? (
+      <Tooltip key={href} label={label}>
+        {row}
+      </Tooltip>
+    ) : (
+      row
+    );
+  };
 
   const rail = (
     <aside
-      className="hidden shrink-0 flex-col border-r px-3 pb-3 pt-4 md:flex"
-      style={{ width: RAIL, borderColor: "var(--color-border)", background: "var(--color-surface)" }}
+      className="hidden shrink-0 flex-col border-r px-2 pb-2 pt-3 transition-[width] md:flex"
+      style={{
+        width: collapsed ? RAIL_COLLAPSED : RAIL,
+        borderColor: "var(--sidebar-border)",
+        background: "var(--sidebar)",
+        transitionDuration: "var(--t-base)",
+      }}
     >
-      <Link href="/dashboard" className="mb-4 flex items-center gap-2.5 px-2">
-        <VentrioMark size={24} />
-        <span
-          className="text-[19px] font-medium tracking-[-0.01em]"
-          style={{ fontFamily: "var(--font-display), Georgia, serif" }}
+      {/* THE LOGO IS THE TOGGLE.
+          It was a link to the dashboard, which the first nav row already is —
+          so the mark was doing a job something else did better, and the
+          sidebar had no way to collapse at all. A button, with the state in
+          `aria-expanded` and the name in a tooltip when there is no room for
+          one. */}
+      <Tooltip label={collapsed ? t("sidebarExpand") : t("sidebarCollapse")}>
+        <button
+          type="button"
+          onClick={toggleSidebarCollapsed}
+          aria-expanded={!collapsed}
+          aria-label={collapsed ? t("sidebarExpand") : t("sidebarCollapse")}
+          className="s-nav-item mb-3 h-10 w-full shrink-0 px-2.5"
+          data-collapsed={collapsed || undefined}
         >
-          Ventrio
-        </span>
-      </Link>
+          <VentrioMark size={22} />
+          <span className="min-w-0 truncate text-[15px] font-semibold tracking-[-0.01em]">Ventrio</span>
+        </button>
+      </Tooltip>
 
-      <Link href="/create" className="s-btn s-btn--primary mb-5 w-full">
-        <IconPlus className="h-4 w-4" />
-        {t("navNewProject")}
-      </Link>
+      {collapsed ? (
+        <Tooltip label={t("navNewProject")}>
+          <Link
+            href="/create"
+            aria-label={t("navNewProject")}
+            className="s-btn s-btn--primary mb-3 h-9 w-full px-0"
+          >
+            <IconPlus className="h-4 w-4" />
+          </Link>
+        </Tooltip>
+      ) : (
+        <Link href="/create" className="s-btn s-btn--primary mb-3 w-full">
+          <IconPlus className="h-4 w-4" />
+          {t("navNewProject")}
+        </Link>
+      )}
 
-      <nav aria-label={t("navLabel")} className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto">
+      <nav aria-label={t("navLabel")} className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto overflow-x-hidden">
         {primary.map(railLink)}
 
         {projectItems.length > 0 && (
           <>
-            <p className="s-eyebrow mb-1 mt-5 px-3">{t("navThisProject")}</p>
+            {!collapsed && <p className="s-eyebrow mb-1 mt-4 px-2.5">{t("navThisProject")}</p>}
+            {collapsed && <span className="my-2 h-px w-full shrink-0" style={{ background: "var(--sidebar-border)" }} aria-hidden />}
             {projectItems.map(railLink)}
           </>
         )}
 
-        {/* EVERYTHING YOU HAVE MADE, listed. Each carries the project's own
-            colour — the same one its preview uses — so it is recognisable
-            before it is read. */}
-        {!project && recent.length > 0 && (
+        {/* Everything you have made. Hidden when collapsed: a column of eight
+            identical dots is not a list of projects. */}
+        {!project && !collapsed && recent.length > 0 && (
           <>
-            <p className="s-eyebrow mb-1 mt-6 px-3">{t("navRecent")}</p>
+            <p className="s-eyebrow mb-1 mt-4 px-2.5">{t("navRecent")}</p>
             {recent.slice(0, 8).map((item) => (
               <Link
                 key={item.id}
                 href={`/projects/${item.id}`}
-                className="s-nav-item h-9 w-full px-3 text-[14px]"
+                className="s-nav-item h-8 w-full px-2.5 text-[13.5px]"
               >
                 <span
-                  className="h-2 w-2 shrink-0 rounded-full"
+                  className="h-1.5 w-1.5 shrink-0 rounded-full"
                   style={{ background: item.accent }}
                   aria-hidden
                 />
@@ -196,18 +264,28 @@ export function WorkspaceShell({
         )}
       </nav>
 
-      <div className="mt-3 flex flex-col gap-0.5 border-t pt-3" style={{ borderColor: "var(--color-border)" }}>
+      <div className="mt-2 flex flex-col gap-0.5 border-t pt-2" style={{ borderColor: "var(--sidebar-border)" }}>
         {railLink({ href: "/settings", label: t("navSettings"), Icon: IconSettings })}
-        <Link href="/settings?section=profile" className="s-nav-item h-11 w-full px-3">
-          <span
-            className="grid h-[26px] w-[26px] shrink-0 place-items-center rounded-full text-[11px] font-semibold"
-            style={{ background: "var(--color-accent-soft)", color: "var(--color-accent)" }}
-            aria-hidden
-          >
-            {initials}
-          </span>
-          <span className="min-w-0 truncate">{t("navAccount")}</span>
-        </Link>
+        {(() => {
+          const row = (
+            <Link
+              href="/settings?section=profile"
+              aria-label={collapsed ? t("navAccount") : undefined}
+              data-collapsed={collapsed || undefined}
+              className="s-nav-item h-9 w-full px-2.5"
+            >
+              <span
+                className="grid h-[22px] w-[22px] shrink-0 place-items-center rounded-full text-[10px] font-semibold"
+                style={{ background: "var(--secondary)", color: "var(--secondary-foreground)" }}
+                aria-hidden
+              >
+                {initials}
+              </span>
+              <span className="min-w-0 truncate">{t("navAccount")}</span>
+            </Link>
+          );
+          return collapsed ? <Tooltip label={t("navAccount")}>{row}</Tooltip> : row;
+        })()}
       </div>
     </aside>
   );
@@ -279,7 +357,6 @@ export function WorkspaceShell({
 
       <span
         className="min-w-0 flex-1 truncate text-[17px] font-medium"
-        style={{ fontFamily: "var(--font-display), Georgia, serif" }}
       >
         {project
           ? project.name || t("untitledProject")

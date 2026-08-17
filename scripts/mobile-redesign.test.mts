@@ -78,17 +78,19 @@ check("the composer has a rule at all", composerRule.length > 0);
 check("no blur", !/backdrop-filter/.test(composerRule));
 check("no animated edge", !/conic-gradient/.test(nocss(tokens)) && !/ws-edge/.test(nocode(composer)) && !/ws-edge/.test(nocode(read("src/components/ui/VentrioButton.tsx"))));
 const shadowDecl = composerRule.match(/box-shadow:[^;]+/)?.[0] ?? "";
-const shadowLayer = shadowDecl.match(/0 (\d+)px (\d+)px (-?\d+)px/);
+const shadowLayer = shadowDecl.match(/0 (\d+)px (\d+)px (-?\d+)(?:px)?/);
 check("no shadow reaching the conversation", !!shadowLayer && (() => {
   const [, y, blur, spread] = shadowLayer.map(Number);
-  // A shadow's top edge is at blur/2 − y + spread; negative means it never
-  // rises above the composer. The original `0 8px 30px` (no spread) reached
-  // ~15px up over the last message, which is what was reported from a device.
-  return blur / 2 - y + spread < 0;
+  // A shadow's top edge is at blur/2 − y + spread. Zero or less means it never
+  // rises above the composer — the shadcn shadow is `0 1px 2px 0`, whose top
+  // edge lands exactly on the element's own. The original `0 8px 30px` (no
+  // spread) reached ~15px up over the last message, which is what a real
+  // device reported.
+  return blur / 2 - y + spread <= 0;
 })(), shadowDecl.slice(0, 90));
 check("the composer is compact",
-  /padding: 0\.875rem/.test(composerRule) && /h-9/.test(composer),
-  "14px of padding and a compact control row");
+  /padding: 0\.625rem/.test(composerRule) && /h-9/.test(composer),
+  "10px of padding and a compact control row");
 check("its text stays 16px on mobile", /text-\[16px\]/.test(composer),
   "anything smaller and iOS zooms the page on focus");
 

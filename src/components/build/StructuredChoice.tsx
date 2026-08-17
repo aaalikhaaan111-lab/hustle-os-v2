@@ -206,7 +206,7 @@ export function StructuredChoice({
               data-option-id={option.id}
               onFocus={() => setFocusIndex(index)}
               onClick={() => pick(option.id)}
-              className="group flex w-full items-center gap-2.5 rounded-[11px] border p-2 text-left outline-none transition-all focus-visible:ring-2 focus-visible:ring-offset-1 disabled:opacity-50"
+              className="group flex w-full items-center gap-2.5 rounded-[var(--r-sm)] border p-2 text-left outline-none transition-all focus-visible:ring-2 focus-visible:ring-offset-1 disabled:opacity-50"
               style={{
                 borderColor: isSelected ? "var(--color-accent)" : "var(--color-border)",
                 background: isSelected ? "var(--color-accent-soft)" : "var(--color-surface)",

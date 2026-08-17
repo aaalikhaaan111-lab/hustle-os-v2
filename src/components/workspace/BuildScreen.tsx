@@ -20,6 +20,7 @@ import {
   IconRefresh,
 } from "@/components/workspace-ui/parts";
 import { VentrioButton, VentrioLinkButton } from "@/components/ui/VentrioButton";
+import { Tooltip } from "@/components/workspace-ui/Tooltip";
 import { cn } from "@/lib/utils";
 import { ViewportFrame } from "@/components/workspace/ViewportFrame";
 import { DEVICE_WIDTHS, type DeviceMode } from "@/lib/build/deviceWidths";
@@ -378,48 +379,52 @@ export function BuildScreen({
                 the switcher truncated to "Т…" on a 1440px screen. Dropping the
                 repetition is what let the controls say words at all. */}
             <div className="ml-auto flex shrink-0 items-center gap-1">
-              {/* THE DEVICE SWITCHER SAYS WORDS.
-                  It was three unlabelled glyphs — a monitor, a tablet and a
-                  phone — sitting in a row of other unlabelled glyphs. Someone
-                  who builds software reads that instantly; someone who has
-                  never written code sees five identical grey squares and does
-                  not touch any of them. Icons plus the actual nouns, grouped so
-                  it reads as one control with three settings rather than three
-                  separate buttons. */}
+              {/* THE DEVICE SWITCHER IS ICONS, WITH THE WORDS ONE HOVER AWAY.
+                  It carried the nouns inline — "Computer / Tablet / Phone" —
+                  which made the meaning unmissable and the toolbar cluttered:
+                  three words plus three icons plus four more controls in one
+                  bar, and in Russian the labels are long enough to truncate.
+
+                  Icon-only, with the label in a tooltip AND in `aria-label`,
+                  so the meaning is available on hover, on keyboard focus and
+                  to a screen reader. The tooltip opens below the control
+                  rather than beside it, because a side tooltip in a row of
+                  icons lands on the next one.
+
+                  Phones do not get this control at all — a phone IS the
+                  mobile viewport — so nothing here has to survive a tap-only
+                  device without hover. */}
               {hasOutput && !narrow && (
                 <>
                 <div
                   role="group"
-                  aria-label={t("viewportHint", { device: "" }).trim()}
-                  className="flex shrink-0 items-center gap-0.5 rounded-[var(--r-md)] p-0.5"
-                  style={{ background: "var(--color-surface-sunken)" }}
+                  aria-label={t("viewportGroup")}
+                  className="s-capsule border-0 p-0 shadow-none"
                 >
                   {([
                     ["desktop", t("viewportDesktop"), IconDesktop],
                     ["tablet", t("viewportTablet"), IconTablet],
                     ["mobile", t("viewportMobile"), IconMobile],
                   ] as const).map(([mode, label, Icon]) => (
-                    <button
-                      key={mode}
-                      type="button"
-                      aria-pressed={device === mode}
-                      onClick={() => setDevice(mode)}
-                      className="flex h-8 shrink-0 items-center gap-1.5 rounded-[var(--r-xs)] px-2.5 text-[13px] font-medium transition-colors"
-                      style={
-                        device === mode
-                          ? { background: "var(--color-surface)", color: "var(--color-ink)" }
-                          : { color: "var(--color-ink-muted)" }
-                      }
-                    >
-                      <Icon className="h-[16px] w-[16px]" />
-                      {label}
-                    </button>
+                    <Tooltip key={mode} label={label} side="bottom">
+                      <button
+                        type="button"
+                        aria-label={label}
+                        aria-pressed={device === mode}
+                        onClick={() => setDevice(mode)}
+                        className="s-seg"
+                      >
+                        <Icon className="h-[16px] w-[16px]" />
+                      </button>
+                    </Tooltip>
                   ))}
                 </div>
                   <ToolbarDivider />
-                  <BarButton label={t("reload")} onClick={() => setReloadKey((key) => key + 1)}>
-                    <IconRefresh className="h-[18px] w-[18px]" />
-                  </BarButton>
+                  <Tooltip label={t("reload")} side="bottom">
+                    <BarButton label={t("reload")} onClick={() => setReloadKey((key) => key + 1)}>
+                      <IconRefresh className="h-[18px] w-[18px]" />
+                    </BarButton>
+                  </Tooltip>
                   <BarButton
                     label={fullScreen ? t("exitFullScreen") : t("fullScreen")}
                     active={fullScreen}

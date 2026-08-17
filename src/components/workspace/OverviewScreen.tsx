@@ -2,10 +2,11 @@
 
 import Link from "next/link";
 import { useTranslations } from "next-intl";
-import { IconBuild, IconPlus, ProductPreview, StatusPill } from "@/components/workspace-ui/parts";
+import { IconBuild, IconPlus, StatusPill } from "@/components/workspace-ui/parts";
 import { HowItWorks } from "@/components/workspace-ui/HowItWorks";
 import { formatAge } from "@/lib/workspace/formatAge";
 import type { PresentedProject } from "@/lib/workspace/present";
+import { ProjectThumb, ProjectThumbEmpty } from "@/components/workspace/ProjectThumb";
 
 /* The six lifecycle stages drove a progress bar on this screen. The bar is
    gone — six stages with three of them unreachable is a meter measuring mostly
@@ -47,20 +48,20 @@ export function OverviewScreen({ active, recent, activeResponses }: OverviewScre
 
   return (
     <div className="min-h-full">
-      <section className="s-sky-band relative px-5 pb-12 pt-12 sm:px-10 sm:pb-16 sm:pt-20">
+      <section className="px-5 pb-8 pt-8 sm:px-10 sm:pb-10 sm:pt-12">
         <div className="mx-auto w-full max-w-[1120px]">
           <h1 className="s-greet max-w-[14ch]">
             {active ? t("greetReturning") : t("greetFirst")}
           </h1>
-          <p className="s-body mt-4 max-w-lg text-[1rem]">{t("startFirstBody")}</p>
+          <p className="s-body mt-3 max-w-lg">{t("startFirstBody")}</p>
 
-          <div className="mt-8 flex flex-wrap items-center gap-3">
-            <Link href="/create" className="s-btn s-btn--primary h-11 px-5 text-[1rem]">
+          <div className="mt-6 flex flex-wrap items-center gap-3">
+            <Link href="/create" className="s-btn s-btn--primary">
               <IconPlus className="h-[18px] w-[18px]" />
               {t("navNewProject")}
             </Link>
             {active && (
-              <Link href={`/projects/${active.id}`} className="s-btn s-btn--secondary h-11 px-5 text-[1rem]">
+              <Link href={`/projects/${active.id}`} className="s-btn s-btn--secondary">
                 <IconBuild className="h-[18px] w-[18px]" />
                 {t("homeContinue")}
               </Link>
@@ -72,7 +73,7 @@ export function OverviewScreen({ active, recent, activeResponses }: OverviewScre
       </section>
 
       {cards.length > 0 && (
-        <section className="s-sheet mx-auto w-full max-w-[1160px] px-5 pb-16 pt-8 sm:px-10 sm:pt-10">
+        <section className="mx-auto w-full max-w-[1160px] px-5 pb-16 sm:px-10">
           <div className="flex items-baseline justify-between gap-4">
             <h2 className="s-title">{t("homeYourWork")}</h2>
             <Link href="/projects" className="text-[14px] font-medium" style={{ color: "var(--color-accent)" }}>
@@ -85,12 +86,16 @@ export function OverviewScreen({ active, recent, activeResponses }: OverviewScre
               <li key={project.id} className="s-enter" style={{ animationDelay: `${Math.min(index, 6) * 26}ms` }}>
                 <Link href={`/projects/${project.id}`} className="group block">
                   <span className="s-artifact s-thumb block aspect-[16/10] w-full">
-                    <ProductPreview project={project.preview} density="lg" />
+                    {project.content ? (
+                      <ProjectThumb content={project.content} />
+                    ) : (
+                      <ProjectThumbEmpty label={t("summaryNoVersion")} />
+                    )}
                   </span>
                   <span className="mt-3 block min-w-0">
                     <span
                       className="block truncate text-[17px] font-medium"
-                      style={{ fontFamily: "var(--font-display), Georgia, serif", color: "var(--color-ink)" }}
+                      style={{ color: "var(--color-ink)" }}
                     >
                       {project.name || t("untitledProject")}
                     </span>

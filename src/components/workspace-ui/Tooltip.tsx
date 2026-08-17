@@ -22,7 +22,7 @@ export function Tooltip({
   children,
 }: {
   label: string;
-  side?: "right" | "left";
+  side?: "right" | "left" | "bottom";
   delay?: number;
   children: ReactNode;
 }) {
@@ -49,7 +49,18 @@ export function Tooltip({
         const trigger = wrap.current?.firstElementChild ?? wrap.current;
         if (!trigger) return;
         const r = trigger.getBoundingClientRect();
-        const gap = 10;
+        const gap = 8;
+        if (side === "bottom") {
+          /* For a row of icon-only controls, a tooltip to the side lands on top
+             of the next control. Below the trigger, centred on it, and clamped
+             horizontally so a long label at either end of a toolbar stays on
+             screen. */
+          setBox({
+            top: r.bottom + gap,
+            left: Math.min(Math.max(r.left + r.width / 2, 80), window.innerWidth - 80),
+          });
+          return;
+        }
         // Clamped so a long label near the top or bottom stays on screen.
         const top = Math.min(Math.max(r.top + r.height / 2, 24), window.innerHeight - 24);
         const left = side === "right" ? r.right + gap : r.left - gap;
@@ -102,7 +113,10 @@ export function Tooltip({
             style={{
               top: box.top,
               left: box.left,
-              transform: `translateY(-50%) ${side === "left" ? "translateX(-100%)" : ""}`,
+              transform:
+                side === "bottom"
+                  ? "translateX(-50%)"
+                  : `translateY(-50%) ${side === "left" ? "translateX(-100%)" : ""}`,
             }}
           >
             {label}

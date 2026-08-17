@@ -129,38 +129,68 @@ check("a new turn replaces them", /setTurn\(result\.turn\)/.test(createExperienc
  * proposal — `clamp(1.75rem, 5vw, 3rem)` in the display face. It announced the
  * options like a landing-page headline, and on a phone one sentence filled the
  * screen.
+ *
+ * The size is not asserted here any more because this block no longer sets
+ * one: `/create` used to style the assistant's text itself, which is how it
+ * ended up with no speaker mark while the workspace had one. It renders
+ * `AssistantTurn` now, and that component's type is asserted where it lives.
+ * What matters on THIS screen is that the promotion never returns.
  */
-const messageBlock = createExperience.slice(
-  createExperience.indexOf("A message, at message size"),
-  createExperience.indexOf("{message.content}", createExperience.indexOf("A message, at message size")),
-);
-check("assistant messages use body type", /text-\[15px\] leading-\[1\.65\]/.test(messageBlock), messageBlock.slice(-120));
+check("the assistant speaks through the shared turn",
+  /<AssistantTurn>/.test(createExperience));
+check("and is never promoted to display type",
+  !/clamp\(1\.75rem|s-greet|s-display/.test(
+    createCode.slice(createCode.indexOf("messages.map"))
+  ),
+  "a reply set as a headline is the defect this rule exists for");
 check("no display face in the thread", !/ventrio-display/.test(createCode.slice(createCode.indexOf("messages.map"))), "hero type is back");
 for (const hero of ["clamp(1.75rem", "clamp(2.35rem", "text-[19px]", "text-[17px]"]) {
   check(`no ${hero} in the conversation`, !createCode.slice(createCode.indexOf("messages.map")).includes(hero));
 }
 /**
- * DELIBERATELY REVERSED. This asserted that both speakers were set identically,
- * which was the fix for the assistant's latest turn being promoted to display
- * type — a landing-page headline announcing the options.
+ * THE TWO SPEAKERS ARE DIFFERENT KINDS OF OBJECT.
  *
- * Identical sizing solved that and created another problem: with both turns at
- * 15px in the same colour, the ONLY thing separating them was a grey capsule
- * pushed to the right, and nothing said which of the two was the substance.
+ * This assertion has moved with the design three times, so the rule is worth
+ * writing down rather than re-deriving:
  *
- * They now differ by one step and in opposite directions — the assistant reads
- * at 16.5px in full ink, the person's prompt at 15px in muted ink behind a
- * hairline. The original defect stays fixed and is still asserted above: no
- * display face anywhere in the thread, and no promoted turn.
+ *   v1  both turns set identically, the person's in a grey capsule. Fixed a
+ *       real defect (a reply promoted to display type) and created another:
+ *       nothing said which side was speaking.
+ *   v2  the person's turn as muted prose behind a left hairline, the reply one
+ *       step larger. Two paragraphs in one column — it did not read as a
+ *       conversation at all, which is what came back from review.
+ *   v3  containment and alignment: the person's turn is a bubble on the right,
+ *       the reply is prose at the full measure behind a speaker mark.
  *
- * Both come from one component so the four conversation surfaces cannot drift
- * into three different answers again, which is what they had done.
+ * v3 is not a return to v1. v1 differed by a background alone at identical
+ * type; v3 differs in KIND — contained versus uncontained, right versus left,
+ * marked versus unmarked — which is how every chat interface people already
+ * use distinguishes the two, and it does it without a second colour.
+ *
+ * What must stay true throughout: no display type anywhere in the thread, and
+ * one component behind all four conversation surfaces.
  */
 const turn = readFileSync(
   new URL("../src/components/build/ConversationTurn.tsx", import.meta.url), "utf8");
-check("the assistant turn carries the reading size", /text-\[16\.5px\]/.test(turn));
-check("the person's turn is quieter, not a bubble",
-  /border-l-2/.test(turn) && /color-ink-muted/.test(turn) && !/rounded-\[/.test(turn));
+check("the person's turn is contained and right-aligned", /s-turn-user/.test(turn));
+check("the reply is prose behind a speaker mark",
+  /s-turn-assistant/.test(turn) && /s-turn-mark/.test(turn));
+check("the two are different kinds of object, not two colours",
+  /s-turn-user/.test(turn) && /s-turn-assistant/.test(turn) &&
+  !/text-\[1[0-9](\.\d)?px\]/.test(turn),
+  "sizes belong to the stylesheet; the component carries the structure");
+
+/**
+ * And the stylesheet is what makes the distinction real: a bubble that is not
+ * contained, or a reply that is, would pass the structural checks above.
+ */
+const sheet = readFileSync(new URL("../src/app/studio.css", import.meta.url), "utf8");
+const userRule = sheet.split(".s-turn-user > div {")[1]?.split("}")[0] ?? "";
+check("the bubble is capped so a long paste is not a slab", /max-width/.test(userRule));
+check("and it is filled, so it reads as contained", /background/.test(userRule));
+check("the reply takes the full measure", /flex:\s*1/.test(
+  sheet.split(".s-turn-assistant > div:last-child {")[1]?.split("}")[0] ?? ""));
+
 check("every conversation surface uses the one component",
   ["src/components/build/AssistantChat.tsx",
    "src/components/build/PreOutputWorkspace.tsx",

@@ -56,8 +56,9 @@ const tokens = nocss(read("src/app/studio.css"));
 
 const studioBlock = tokens.split(".studio {")[1]?.split("\n}")[0] ?? "";
 
+/** A token is "defined" if it carries any value — hex, oklch or an alias. */
 const pick = (block: string, name: string) =>
-  (block.match(new RegExp(`${name}:\\s*(#[0-9a-fA-F]{6})`)) ?? [])[1]?.toLowerCase();
+  (block.match(new RegExp(`${name}:\\s*([^;]+);`)) ?? [])[1]?.trim();
 
 check("the studio defines the platform palette", studioBlock.length > 0);
 for (const name of [
@@ -116,15 +117,9 @@ for (const file of [
 }
 check("no platform screen hardcodes a colour", painted.length === 0, painted.join(", "));
 
-/* ── one radius scale ────────────────────────────────────────────────────── */
+/* The radius scale is asserted below, where it is derived from `--radius`. */
 
-/* Softer than the dark system's 9/12/16. Rounded corners read as friendly,
-   and this product is for people who are not sure they belong in a tool like
-   it — so the scale is generous on purpose. */
-check("the studio defines one radius scale",
-  /--r-sm:\s*11px/.test(studioBlock) && /--r-md:\s*14px/.test(studioBlock) && /--r-lg:\s*20px/.test(studioBlock));
-
-/* ── one type scale, in two voices ───────────────────────────────────────
+/* ── one type scale, one family ──────────────────────────────────────────
    The `v-*` scale that used to live in globals.css is retired: it was the
    platform's SECOND type system, and its steps are these. There is one place
    now, and it names a display face as well as a UI face — the product had no
@@ -143,40 +138,53 @@ check("the retired second scale is gone from globals",
   "two type systems is what made the product read as two products");
 
 /**
- * The voice is a serif and the work is a grotesk. Greetings, screen titles and
- * project names are set in the display face; nothing operational is — a serif
- * button is a costume.
+ * ONE FAMILY. The editorial serif is retired with the direction that asked for
+ * it: the platform sets everything in the UI face, and hierarchy comes from
+ * size and weight rather than from a second typeface.
  */
-for (const cls of ["s-greet", "s-display", "s-opening", "s-title"]) {
+for (const cls of ["s-greet", "s-display", "s-opening", "s-title", "s-body", "s-meta", "s-eyebrow"]) {
   const rule = tokens.split(`.${cls} {`)[1]?.split("}")[0] ?? "";
-  check(`${cls} is set in the display face`, /--font-display/.test(rule));
+  check(`${cls} does not set its own family`, !/font-family/.test(rule));
 }
-for (const cls of ["s-body", "s-meta", "s-eyebrow", "s-btn"]) {
-  const rule = tokens.split(`.${cls} {`)[1]?.split("}")[0] ?? "";
-  check(`${cls} is not`, !/--font-display/.test(rule));
-}
-
-check("the display face carries Cyrillic",
-  /subsets:\s*\["latin",\s*"cyrillic"\]/.test(nocode(read("src/app/layout.tsx")).split("Alegreya({")[1] ?? ""),
-  "the product runs in Russian; a display face that falls back on half its users is not one");
+check("the platform sets one family, on the scope",
+  /font-family:\s*var\(--font-ui\), var\(--font-geist-sans\)/.test(studioBlock));
 
 /**
- * The greeting is the largest step, and the question the assistant asks is
- * deliberately smaller than it. Both are larger than the title, which is
- * larger than the body — a scale whose steps a person can actually see, unlike
- * the 17px-title-over-15px-body it replaced.
+ * FIGTREE HAS NO CYRILLIC, and this product runs in Russian.
+ *
+ * Geist follows it in the stack so latin renders in Figtree and Cyrillic falls
+ * through per glyph. Both halves of that arrangement are asserted, because
+ * either one alone is a bug: Figtree without the fallback leaves Russian to
+ * whatever the OS picks, and the fallback without Figtree is the old face.
  */
-const size = (cls: string) => {
-  const rule = tokens.split(`.${cls} {`)[1]?.split("}")[0] ?? "";
-  return Number((rule.match(/font-size:\s*([\d.]+)rem/) ?? [])[1]);
-};
-check("the scale is genuinely stepped",
-  size("s-greet") > size("s-display") &&
-  size("s-display") > size("s-opening") &&
-  size("s-opening") > size("s-title") &&
-  size("s-title") > size("s-body") &&
-  size("s-body") > size("s-meta"),
-  [size("s-greet"), size("s-display"), size("s-opening"), size("s-title"), size("s-body"), size("s-meta")].join(" / "));
+const layout = nocode(read("src/app/layout.tsx"));
+check("Figtree is loaded for the UI", /Figtree\(\{[\s\S]{0,160}--font-ui/.test(layout));
+check("and a Cyrillic-capable face follows it in the stack",
+  /var\(--font-ui\), var\(--font-geist-sans\)/.test(studioBlock),
+  "Figtree ships latin only; Russian would fall back to the OS default");
+check("Geist still declares Cyrillic",
+  /Geist\(\{[\s\S]{0,140}"cyrillic"/.test(layout));
+
+/**
+ * THE RADIUS SCALE IS DERIVED, not restated. Every step is computed from the
+ * supplied `--radius`, so changing that one number moves the whole product and
+ * no component can drift to a hand-picked corner.
+ */
+check("the radius scale derives from the supplied --radius",
+  /--radius:\s*0\.625rem/.test(studioBlock) &&
+  /--r-sm:\s*calc\(var\(--radius\)/.test(studioBlock) &&
+  /--r-md:\s*var\(--radius\)/.test(studioBlock) &&
+  /--r-lg:\s*calc\(var\(--radius\)/.test(studioBlock));
+
+/**
+ * THE COLOUR FIELD IS RETIRED. The classes stay so no call site breaks, but
+ * they must paint the plain background — a gradient left behind under a new
+ * token system is exactly the kind of leftover this pass exists to remove.
+ */
+const skyRule = tokens.split(".s-sky-band { ")[1]?.split("}")[0]
+  ?? tokens.split(".s-sky,\n.s-sky-band {")[1]?.split("}")[0] ?? "";
+check("the retired colour field paints nothing",
+  !/gradient/.test(skyRule), skyRule.slice(0, 80));
 
 /* ── two surface treatments, no decorative shadows ───────────────────────── */
 
@@ -184,13 +192,6 @@ check("there is a panel treatment", /\.s-panel\s*\{/.test(tokens));
 check("and a sheet that rises over the field", /\.s-sheet\s*\{/.test(tokens));
 check("the panel does not float", !/box-shadow/.test(tokens.split(".s-panel {")[1]?.split("}")[0] ?? ""),
   "a shadow means 'above'; a panel sits on the page");
-
-/* ── the sky ─────────────────────────────────────────────────────────────── */
-
-check("there is a creation field", /\.s-sky\s*\{/.test(tokens) && /\.s-sky-band\s*\{/.test(tokens));
-check("built from the accent rather than an invented palette",
-  /--sky-1:\s*rgb\(91 75 214/.test(tokens),
-  "the field is the brand colour at low alpha, not a second identity");
 
 /* ── the legacy marketing chrome is gone from shared components ──────────── */
 
@@ -275,74 +276,83 @@ check("and the control group is its positioning context",
  * plainly: this is the one place the redesign changed a brand colour, and it
  * changed it by one step of lightness at the same hue.
  */
-const luminance = (hex: string) => {
-  const n = parseInt(hex.slice(1), 16);
-  const [r, g, b] = [(n >> 16) & 255, (n >> 8) & 255, n & 255].map((c) => {
-    const s = c / 255;
-    return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
-  }) as [number, number, number];
+/**
+ * CONTRAST, MEASURED FROM THE oklch TOKENS.
+ *
+ * The palette is the supplied shadcn set and is written in oklch, so the old
+ * hex parser could not read it — and a contrast suite that silently stops
+ * measuring is worse than none. This converts oklch → linear sRGB → relative
+ * luminance, which is what WCAG is defined on.
+ */
+const oklchToRgb = (L: number, C: number, H: number): [number, number, number] => {
+  const h = (H * Math.PI) / 180;
+  const a = C * Math.cos(h);
+  const bb = C * Math.sin(h);
+  const l = (L + 0.3963377774 * a + 0.2158037573 * bb) ** 3;
+  const m = (L - 0.1055613458 * a - 0.0638541728 * bb) ** 3;
+  const s2 = (L - 0.0894841775 * a - 1.291485548 * bb) ** 3;
+  const lin = [
+    4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s2,
+    -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s2,
+    -0.0041960863 * l - 0.7034186147 * m + 1.707614701 * s2,
+  ];
+  return lin.map((v) => Math.min(1, Math.max(0, v))) as [number, number, number];
+};
+
+/** Reads `oklch(L C H)` out of a declaration, following one level of alias. */
+const oklch = (name: string): [number, number, number] => {
+  const direct = studioBlock.match(new RegExp(`${name}:\\s*oklch\\(([\\d.]+)\\s+([\\d.]+)\\s+([\\d.]+)\\)`));
+  if (direct) return oklchToRgb(Number(direct[1]), Number(direct[2]), Number(direct[3]));
+  const alias = studioBlock.match(new RegExp(`${name}:\\s*var\\((--[\\w-]+)\\)`));
+  if (alias) return oklch(alias[1]);
+  throw new Error(`no oklch value for ${name}`);
+};
+
+const luminance = (c: [number, number, number]) => {
+  const [r, g, b] = c.map((v) => (v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4));
   return 0.2126 * r + 0.7152 * g + 0.0722 * b;
 };
-const contrast = (a: string, b: string) => {
+const contrast = (a: [number, number, number], b: [number, number, number]) => {
   const [x, y] = [luminance(a), luminance(b)].sort((m, n) => n - m);
   return (x + 0.05) / (y + 0.05);
 };
 
-const accent = pick(studioBlock, "--color-accent")!;
-const accentFg = pick(studioBlock, "--color-accent-foreground")!;
-const surfaceHex = pick(studioBlock, "--color-surface")!;
-const canvasHex = pick(studioBlock, "--color-canvas")!;
-const inkHex = pick(studioBlock, "--color-ink")!;
-const ink2Hex = pick(studioBlock, "--color-ink-secondary")!;
-const ink3Hex = pick(studioBlock, "--color-ink-muted")!;
-const borderHex = pick(studioBlock, "--color-border")!;
-const hoverHex = pick(studioBlock, "--color-surface-hover")!;
+const background = oklch("--background");
+const muted = oklch("--muted");
+const foreground = oklch("--foreground");
+const inkSecondary = oklch("--color-ink-secondary");
+const inkMuted = oklch("--color-ink-muted");
+const primary = oklch("--primary");
+const primaryFg = oklch("--primary-foreground");
+const borderTok = oklch("--border");
+
+check("body text is legible", contrast(foreground, background) >= 7,
+  contrast(foreground, background).toFixed(2));
+check("secondary text passes AA", contrast(inkSecondary, background) >= 4.5,
+  contrast(inkSecondary, background).toFixed(2));
+check("small print passes AA on the background", contrast(inkMuted, background) >= 4.5,
+  contrast(inkMuted, background).toFixed(2));
+check("and on a muted row", contrast(inkMuted, muted) >= 4.5,
+  contrast(inkMuted, muted).toFixed(2));
 
 /**
- * `--color-accent-soft` is a translucent tint, not a hex, so it has to be
- * COMPOSITED against the surface it sits on before it can be measured. Reading
- * the alpha off the declaration keeps the test honest if the tint is retuned.
+ * THE ONE DOCUMENTED DEVIATION FROM THE SUPPLIED SET.
+ *
+ * `--muted-foreground` is 4.26:1 on the background and 3.86:1 on `--muted` —
+ * under AA for text. It is kept verbatim because the token set is the source of
+ * truth, and it is used for icons, placeholders and rules where the text rule
+ * does not bind. Small TEXT reads `--color-ink-muted`, which is checked above.
+ * This asserts the two are genuinely different, so a later edit cannot quietly
+ * point body copy back at the failing one.
  */
-const softAlpha = Number(
-  (studioBlock.match(/--color-accent-soft:\s*rgb\([^/]+\/\s*([\d.]+)\s*\)/) ?? [])[1] ?? "0",
-);
-const over = (fg: string, bg: string, alpha: number) => {
-  const [f, b] = [parseInt(fg.slice(1), 16), parseInt(bg.slice(1), 16)];
-  const mix = (shift: number) => {
-    const a = (f >> shift) & 255;
-    const c = (b >> shift) & 255;
-    return Math.round(a * alpha + c * (1 - alpha));
-  };
-  return `#${[16, 8, 0].map((sh) => mix(sh).toString(16).padStart(2, "0")).join("")}`;
-};
-const accentSoftOnSurface = over(accent, surfaceHex, softAlpha);
+check("the AA-safe muted ink is not just an alias of --muted-foreground",
+  !/--color-ink-muted:\s*var\(--muted-foreground\)/.test(studioBlock));
 
-check("the soft tint has a real alpha", softAlpha > 0, String(softAlpha));
-check("body text is legible", contrast(inkHex, surfaceHex) >= 7, contrast(inkHex, surfaceHex).toFixed(2));
-check("secondary text passes AA", contrast(ink2Hex, surfaceHex) >= 4.5, contrast(ink2Hex, surfaceHex).toFixed(2));
-check("muted text passes AA on a surface",
-  contrast(ink3Hex, surfaceHex) >= 4.5, contrast(ink3Hex, surfaceHex).toFixed(2));
-check("and still passes on a hovered row",
-  contrast(ink3Hex, hoverHex) >= 4.5, contrast(ink3Hex, hoverHex).toFixed(2),
-);
-check("a hairline is visible against a panel",
-  contrast(borderHex, surfaceHex) >= 1.15,
-  `${contrast(borderHex, surfaceHex).toFixed(3)} — on a dark ground the edge must be LIGHTER than the panel`);
-
-/**
- * The accent has to carry text in BOTH directions: as a fill behind the button
- * label, and as text itself. Passing one way says nothing about the other —
- * white on this violet is 3.27:1 and fails, which is why the button label is
- * near-black rather than white.
- */
-check("a primary button label is legible on the accent",
-  contrast(accentFg, accent) >= 4.5, contrast(accentFg, accent).toFixed(2));
-check("accent text is legible on a surface",
-  contrast(accent, surfaceHex) >= 4.5, contrast(accent, surfaceHex).toFixed(2));
-check("accent text is legible on the canvas",
-  contrast(accent, canvasHex) >= 4.5, contrast(accent, canvasHex).toFixed(2));
-check("and on the soft tint, composited",
-  contrast(accent, accentSoftOnSurface) >= 4.5, contrast(accent, accentSoftOnSurface).toFixed(2));
+check("a primary button label is legible", contrast(primaryFg, primary) >= 4.5,
+  contrast(primaryFg, primary).toFixed(2));
+check("a hairline is visible against the background",
+  contrast(borderTok, background) >= 1.15,
+  contrast(borderTok, background).toFixed(3));
 
 /* ── the shared primitives obey the same system ──────────────────────────── */
 

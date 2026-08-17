@@ -165,7 +165,7 @@ export default async function PricingPage() {
           It is now one table. The plans are columns, the capabilities are rows,
           and the differences line up horizontally where they can be read. Pro
           is marked by tone and a label rather than by a border nobody sees. */}
-      <section className="s-sky-band px-5 pb-14 pt-14 sm:px-10 sm:pb-16 sm:pt-20">
+      <section className="px-5 pb-8 pt-10 sm:px-10 sm:pb-10 sm:pt-14">
         <div className="mx-auto w-full max-w-[1080px]">
           <p className="s-eyebrow mb-3">{t("pageTitle")}</p>
           <h1 className="s-greet max-w-[18ch]">{t("lead")}</h1>
@@ -197,7 +197,6 @@ export default async function PricingPage() {
                     <span className="mt-3 flex items-baseline gap-1.5">
                       <span
                         className="text-[38px] font-medium leading-none tracking-[-0.02em]"
-                        style={{ fontFamily: "var(--font-display), Georgia, serif" }}
                       >
                         {PRICE[plan]}
                       </span>
@@ -274,7 +273,6 @@ export default async function PricingPage() {
               <p className="mt-3 flex items-baseline gap-1.5">
                 <span
                   className="text-[34px] font-medium leading-none tracking-[-0.02em]"
-                  style={{ fontFamily: "var(--font-display), Georgia, serif" }}
                 >
                   {PRICE[plan]}
                 </span>

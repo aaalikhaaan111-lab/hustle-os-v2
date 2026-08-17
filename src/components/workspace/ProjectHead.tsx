@@ -31,7 +31,6 @@ export function ProjectHead({ name, published }: { name: string; published: bool
       </Link>
       <span
         className="min-w-0 flex-1 truncate text-[19px] font-medium"
-        style={{ fontFamily: "var(--font-display), Georgia, serif" }}
       >
         {name || t("untitledProject")}
       </span>

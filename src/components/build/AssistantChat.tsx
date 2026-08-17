@@ -573,7 +573,7 @@ function ProposalCard({ proposal, existing, disabled, onSave, onImprove, onDismi
   const canSave = value.trim().length > 0 && !disabled;
 
   return (
-    <div className="flex flex-col gap-3 rounded-2xl border border-accent/20 bg-accent-soft/50 p-4">
+    <div className="flex flex-col gap-3 rounded-[var(--r-lg)] border border-accent/20 bg-accent-soft/50 p-4">
       <span className="s-eyebrow">
         {t("proposalEyebrow", { field: proposal.label || fieldName })}
       </span>
@@ -584,7 +584,7 @@ function ProposalCard({ proposal, existing, disabled, onSave, onImprove, onDismi
           onChange={(e) => setValue(e.target.value)}
           rows={3}
           maxLength={800}
-          className="w-full resize-none rounded-xl border border-border bg-surface px-3 py-2 text-[15px] text-ink focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30"
+          className="w-full resize-none rounded-[var(--r-md)] border border-border bg-surface px-3 py-2 text-[15px] text-ink focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30"
         />
       ) : (
         <p className="whitespace-pre-wrap text-[15px] leading-relaxed text-ink">{value}</p>
