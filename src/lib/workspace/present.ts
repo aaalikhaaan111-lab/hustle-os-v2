@@ -80,7 +80,7 @@ const SHAPE_BY_TYPE: Record<string, PreviewSpec["shape"]> = {
  */
 const ACCENTS = ["#5b63d6", "#2f7d6b", "#a4622c", "#7a5bd2", "#3f7cc4", "#a1497a"];
 
-function accentFor(id: string): string {
+export function accentFor(id: string): string {
   let hash = 0;
   for (let i = 0; i < id.length; i += 1) hash = (hash * 31 + id.charCodeAt(i)) >>> 0;
   return ACCENTS[hash % ACCENTS.length];

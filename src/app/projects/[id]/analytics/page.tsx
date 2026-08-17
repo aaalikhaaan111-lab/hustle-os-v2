@@ -5,6 +5,7 @@ import { getCurrentUser } from "@/lib/supabase/currentUser";
 import { getProjectById } from "@/lib/build/queries";
 import { loadProjectAnalytics } from "@/lib/publishing/queries";
 import { WorkspaceShell } from "@/components/workspace-ui/WorkspaceShell";
+import { loadShellNav } from "@/lib/workspace/shellNav";
 import { PageBody, PageHeading } from "@/components/workspace-ui/PageBody";
 import { VentrioLinkButton } from "@/components/ui/VentrioButton";
 import { ResponsesChart } from "@/components/workspace/ResponsesChart";
@@ -58,10 +59,11 @@ export default async function ProjectAnalyticsPage({ params }: AnalyticsPageProp
   const project = await getProjectById(supabase, user.id, id);
   if (!project) notFound();
 
-  const [t, format, analytics] = await Promise.all([
+  const [t, format, analytics, nav] = await Promise.all([
     getTranslations("workspace"),
     getFormatter(),
     loadProjectAnalytics(supabase, user.id, project.id),
+    loadShellNav(supabase, user.id, user.email),
   ]);
 
   const day = (value: string | null) =>
@@ -77,7 +79,9 @@ export default async function ProjectAnalyticsPage({ params }: AnalyticsPageProp
 
   return (
     <WorkspaceShell
-      initials={(user.email ?? "?").slice(0, 2).toUpperCase()}
+      initials={nav.initials}
+      email={nav.email}
+      recent={nav.recent}
       project={{
         id: project.id,
         name: project.name ?? t("untitledProject"),

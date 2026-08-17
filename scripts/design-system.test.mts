@@ -234,6 +234,41 @@ check("and every destination carries a word, not just a glyph",
  */
 check("choosing a destination closes the drawer",
   /onClick=\{\(\) => setOpenMobile\(false\)\}/.test(shell));
+
+/* ── the collapsed rail, and the sidebar's own furniture ─────────────────── */
+
+/**
+ * COLLAPSED, THE WORDMARK IS HIDDEN, not clipped.
+ *
+ * `size="lg"` sets `p-0!` in icon mode while the base rule still forces
+ * `size-8`, so "Ventrio" began at 24px inside a 32px box and roughly eight
+ * pixels of a "V" survived the overflow — a sliver of a letter that read as a
+ * rendering fault rather than as a collapsed state.
+ */
+check("the wordmark is hidden when the rail collapses, not clipped",
+  /Ventrio[\s\S]{0,120}group-data-\[collapsible=icon\]:hidden|group-data-\[collapsible=icon\]:hidden[\s\S]{0,60}Ventrio/.test(shell),
+  "eight pixels of a letter is not a collapsed state");
+check("and the mark centres in the rail",
+  /group-data-\[collapsible=icon\]:justify-center/.test(shell));
+
+/**
+ * The rail's own padding (`p-2`) plus a `size-8` button is exactly 48px. Any
+ * other icon width leaves every glyph sitting off-centre against one edge.
+ */
+check("the icon rail is as wide as its contents",
+  /"--sidebar-width-icon":\s*"3rem"/.test(shell),
+  "3.25rem left a 4px bias that made the whole rail look misaligned");
+
+check("search is reachable from the rail", /setSearchOpen\(true\)/.test(shell));
+
+/**
+ * The footer is the signed-in person, not two more destinations. It was a
+ * "Settings" row and an "Account" row that looked like navigation; the account
+ * menu is where the settings sections and signing out actually live.
+ */
+check("the account footer opens a menu rather than linking away",
+  /DropdownMenuTrigger/.test(shell) && /signOutAction/.test(shell),
+  "a footer of loose links is not an account");
 /**
  * The desktop rail says words too. It was 68px of bare icons with tooltips,
  * which is fine for someone who uses a tool daily and learns the glyphs, and

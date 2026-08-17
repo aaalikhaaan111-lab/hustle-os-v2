@@ -22,7 +22,8 @@ export default async function ProjectsPage() {
   return (
     <WorkspaceShell
       initials={(user.email ?? "?").slice(0, 2).toUpperCase()}
-      recent={presented.slice(0, 3).map((p) => ({ id: p.id, name: p.name, accent: p.preview.accent }))}
+      email={user.email ?? ""}
+      recent={presented.map((p) => ({ id: p.id, name: p.name, accent: p.preview.accent }))}
     >
       <ProjectsScreen projects={presented} />
     </WorkspaceShell>

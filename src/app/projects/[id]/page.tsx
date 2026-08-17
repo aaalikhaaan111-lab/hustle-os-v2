@@ -6,6 +6,7 @@ import { getProjectById } from "@/lib/build/queries";
 import { buildWorkspaceViewProps } from "@/lib/build/workspaceProps";
 import { loadWorkspaceUsage } from "@/lib/workspace/usage";
 import { WorkspaceShell } from "@/components/workspace-ui/WorkspaceShell";
+import { loadShellNav } from "@/lib/workspace/shellNav";
 import { WorkspaceView } from "@/components/build/WorkspaceView";
 import { clientMessages } from "@/i18n/clientMessages";
 
@@ -34,9 +35,10 @@ export default async function ProjectWorkspacePage({ params, searchParams }: Pro
     notFound();
   }
 
-  const [props, usage] = await Promise.all([
+  const [props, usage, nav] = await Promise.all([
     buildWorkspaceViewProps(supabase, project, requestedConversationId),
     loadWorkspaceUsage(supabase, user.id),
+    loadShellNav(supabase, user.id, user.email),
   ]);
 
   const published = Boolean(props.publication?.isPublished);
@@ -58,7 +60,9 @@ export default async function ProjectWorkspacePage({ params, searchParams }: Pro
   return (
     <NextIntlClientProvider locale={props.projectLocale} messages={workspaceMessages}>
     <WorkspaceShell
-      initials={(user.email ?? "?").slice(0, 2).toUpperCase()}
+      initials={nav.initials}
+      email={nav.email}
+      recent={nav.recent}
       project={{ id: project.id, name: props.projectName, state: published ? "published" : "draft" }}
       defaultCollapsed
       fill

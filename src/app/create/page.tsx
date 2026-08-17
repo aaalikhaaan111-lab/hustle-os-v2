@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/supabase/currentUser";
 import { CreateExperience } from "@/components/create/CreateExperience";
 import { WorkspaceShell } from "@/components/workspace-ui/WorkspaceShell";
+import { loadShellNav } from "@/lib/workspace/shellNav";
 import { loadCreationDraftAction } from "@/lib/actions/creation";
 
 // The AI-first creation experience. /build/new redirects here so the retired
@@ -34,13 +35,14 @@ export default async function CreatePage() {
   // copy of the bundle in the same HTML, so the namespaces no client component
   // reads are dropped from both.
   const messages = clientMessages((await import(`../../../messages/${locale}.json`)).default);
+  const nav = await loadShellNav(supabase, user.id, user.email);
 
   // Creation lives inside the one authenticated shell, so Overview, Projects
   // and Settings stay one click away and there is no second navigation on
   // screen. The rail starts compact: this surface is about the conversation.
   return (
     <NextIntlClientProvider locale={locale} messages={messages}>
-      <WorkspaceShell initials={(user.email ?? "?").slice(0, 2).toUpperCase()} defaultCollapsed fill>
+      <WorkspaceShell initials={nav.initials} email={nav.email} recent={nav.recent} defaultCollapsed fill>
         <CreateExperience userId={user.id} initialDraft={initialDraft} />
       </WorkspaceShell>
     </NextIntlClientProvider>
