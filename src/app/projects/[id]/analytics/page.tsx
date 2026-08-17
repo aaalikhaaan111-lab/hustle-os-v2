@@ -7,6 +7,23 @@ import { loadProjectAnalytics } from "@/lib/publishing/queries";
 import { WorkspaceShell } from "@/components/workspace-ui/WorkspaceShell";
 import { PageBody, PageHeading } from "@/components/workspace-ui/PageBody";
 import { VentrioLinkButton } from "@/components/ui/VentrioButton";
+import { ResponsesChart } from "@/components/workspace/ResponsesChart";
+import {
+  Table,
+  TableBody,
+  TableCaption,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/shadcn/table";
+import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyTitle,
+} from "@/components/ui/shadcn/empty";
 
 interface AnalyticsPageProps {
   params: Promise<{ id: string }>;
@@ -81,6 +98,50 @@ export default async function ProjectAnalyticsPage({ params }: AnalyticsPageProp
               <Metric label={t("metricLastActivity")} value={day(analytics.lastResponseAt)} />
               <Metric label={t("metricSince")} value={day(analytics.publishedAt)} />
             </div>
+
+            {/* Only with more than one day of data. One point is not a trend,
+                and drawing it as one is the kind of invented insight this page
+                was rewritten to remove. */}
+            {analytics.daily.length > 1 && (
+              <div
+                className="mt-4 rounded-[var(--r-lg)] border p-4"
+                style={{ borderColor: "var(--color-border)", background: "var(--color-surface)" }}
+              >
+                <p className="s-eyebrow mb-3">{t("metricResponses")}</p>
+                <ResponsesChart data={analytics.daily} label={t("metricResponses")} />
+              </div>
+            )}
+
+            {/* The same series as a table. A chart shows the shape; the table is
+                what a person reads when they want the number for a given day,
+                and it is what a screen reader gets instead of an <svg>. */}
+            {analytics.daily.length > 1 && (
+              <div className="mt-4 overflow-hidden rounded-[var(--r-lg)] border"
+                   style={{ borderColor: "var(--color-border)" }}>
+                <Table>
+                  <TableCaption className="sr-only">{t("metricResponses")}</TableCaption>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>{t("metricLastActivity")}</TableHead>
+                      <TableHead className="text-right">{t("metricResponses")}</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {[...analytics.daily]
+                      .reverse()
+                      .filter((row) => row.responses > 0)
+                      .slice(0, 10)
+                      .map((row) => (
+                        <TableRow key={row.date}>
+                          <TableCell>{row.date}</TableCell>
+                          <TableCell className="text-right tabular-nums">{row.responses}</TableCell>
+                        </TableRow>
+                      ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+
             <p className="mt-4 text-[13px] leading-relaxed" style={{ color: "var(--color-ink-muted)" }}>
               {t("analyticsScopeNote")}
             </p>
@@ -119,6 +180,11 @@ function Metric({ label, value }: { label: string; value: string }) {
   );
 }
 
+/**
+ * Replaced by `Empty`. The hand-written version was a bordered box with a
+ * centred title, body, note and action — which is exactly what the primitive
+ * is, so keeping a local copy meant two empty states to keep in step.
+ */
 function EmptyState({
   title,
   body,
@@ -131,23 +197,15 @@ function EmptyState({
   action: React.ReactNode;
 }) {
   return (
-    <div
-      className="rounded-[var(--r-lg)] border p-8 text-center"
-      style={{ borderColor: "var(--color-border)", background: "var(--color-surface)" }}
-    >
-      <span
-        aria-hidden
-        className="mx-auto mb-3 block h-9 w-9 rounded-full border-2 border-dashed"
-        style={{ borderColor: "var(--color-border-strong)" }}
-      />
-      <p className="text-[15px] font-semibold" style={{ color: "var(--color-ink)" }}>{title}</p>
-      <p className="mx-auto mt-1.5 max-w-[46ch] text-[14px] leading-relaxed" style={{ color: "var(--color-ink-secondary)" }}>
-        {body}
-      </p>
-      <div className="mt-4 flex justify-center">{action}</div>
-      <p className="mx-auto mt-6 max-w-[52ch] text-[12.5px] leading-relaxed" style={{ color: "var(--color-ink-muted)" }}>
-        {note}
-      </p>
-    </div>
+    <Empty className="rounded-[var(--r-lg)] border" style={{ borderColor: "var(--color-border)" }}>
+      <EmptyHeader>
+        <EmptyTitle>{title}</EmptyTitle>
+        <EmptyDescription>{body}</EmptyDescription>
+      </EmptyHeader>
+      <EmptyContent>
+        {action}
+        <p className="s-meta mt-2">{note}</p>
+      </EmptyContent>
+    </Empty>
   );
 }

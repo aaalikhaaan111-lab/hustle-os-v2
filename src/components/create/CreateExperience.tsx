@@ -23,6 +23,7 @@ import { useVoiceInput, voiceErrorKey } from "@/lib/workspace/useVoiceInput";
 import { cn } from "@/lib/utils";
 import { AssistantTurn, UserTurn } from "@/components/build/ConversationTurn";
 import { HowItWorks } from "@/components/workspace-ui/HowItWorks";
+import { Alert, AlertDescription } from "@/components/ui/shadcn/alert";
 
 const STARTING_POINTS: {
   id: CreationStartingPoint;
@@ -650,9 +651,16 @@ export function CreateExperience({ userId, initialDraft }: CreateExperienceProps
               {t("refineQuestion", { name: refineTarget })}
             </p>
           )}
+          {/* QUOTA AND PROVIDER FAILURES ARE AN ALERT, not 12px of red text.
+              A used-up monthly allowance and a provider that would not answer
+              are the two things that stop the product working, and they were
+              being reported in the smallest type on the screen, inline, beside
+              the retry. An Alert gives them a surface and keeps the recovery
+              actions attached to it. */}
           {note && (
-            <div className="mb-2 flex items-center gap-3 px-1" role="status">
-              <p className="text-xs text-danger">{note}</p>
+            <Alert variant={noteIsLimitReached ? "default" : "destructive"} className="mb-2">
+              <AlertDescription className="flex flex-wrap items-center gap-3">
+                <span className="min-w-0 flex-1">{note}</span>
               {started && !noteIsLimitReached && (
                 <VentrioButton
                   variant="ghost"
@@ -679,7 +687,8 @@ export function CreateExperience({ userId, initialDraft }: CreateExperienceProps
                   {t("fallbackOffer")}
                 </VentrioButton>
               )}
-            </div>
+              </AlertDescription>
+            </Alert>
           )}
           <WorkspaceComposer
             hero={!started}

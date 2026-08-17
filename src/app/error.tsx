@@ -3,7 +3,14 @@
 import { useEffect } from "react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/Button";
-import { EmptyState } from "@/components/ui/EmptyState";
+import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@/components/ui/shadcn/empty";
 import { AlertIcon } from "@/components/ui/icons";
 
 export default function Error({
@@ -20,17 +27,19 @@ export default function Error({
   }, [error]);
 
   return (
-    <div className="flex flex-col gap-8">
-      <EmptyState
-        icon={<AlertIcon className="h-6 w-6" />}
-        title={t("genericTitle")}
-        description={t("genericDescription")}
-        action={
-          <Button variant="secondary" onClick={reset}>
-            {t("tryAgain")}
-          </Button>
-        }
-      />
-    </div>
+    <Empty>
+      <EmptyHeader>
+        <EmptyMedia variant="icon">
+          <AlertIcon className="h-6 w-6" />
+        </EmptyMedia>
+        <EmptyTitle>{t("genericTitle")}</EmptyTitle>
+        <EmptyDescription>{t("genericDescription")}</EmptyDescription>
+      </EmptyHeader>
+      <EmptyContent>
+        <Button variant="secondary" onClick={reset}>
+          {t("tryAgain")}
+        </Button>
+      </EmptyContent>
+    </Empty>
   );
 }

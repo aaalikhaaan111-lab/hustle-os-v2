@@ -246,7 +246,25 @@ for (const gone of ["readinessTracking", "readinessPattern", "analyzeCompletion"
 for (const fake of ["views", "visitors", "sessions", "bounce", "impressions"]) {
   check(`analytics claims no ${fake} metric`, !new RegExp(`metric${fake}`, "i").test(analytics));
 }
-check("no chart is drawn", !/<svg|Chart|sparkline|<canvas/i.test(code(analytics)));
+/*
+ * A CHART IS DRAWN NOW — but only over a series that exists.
+ *
+ * The old rule was "no chart", because every chart on this screen plotted
+ * invented numbers. The rule was never really about charts; it was that
+ * nothing may be drawn that is not measured. Responses per day IS measured —
+ * it is built from the `created_at` of the rows already fetched — so it is
+ * allowed to be drawn, and the assertions now guard the thing that mattered:
+ * the series is derived from real rows, and it is not drawn when there is
+ * nothing to see.
+ */
+check("the response series is derived from real rows, not generated",
+  /perDay/.test(publishing) && /daily\.push\(\{ date: key, responses: perDay\.get\(key\) \?\? 0 \}\)/.test(publishing),
+  "a chart is only honest if its points are counts of things that happened");
+check("no chart is drawn without at least two days to compare",
+  /analytics\.daily\.length > 1 &&/.test(analytics),
+  "a single point is not a trend, and an empty axis is not an insight");
+check("and the metric tiles still claim nothing extra",
+  !/sparkline/i.test(code(analytics)));
 check("the gap is stated rather than hidden", /analyticsScopeNote/.test(analytics));
 check(
   "and the note says what is not tracked",

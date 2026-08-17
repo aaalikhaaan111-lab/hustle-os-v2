@@ -1,19 +1,30 @@
 import { getTranslations } from "next-intl/server";
 import { Button } from "@/components/ui/Button";
-import { EmptyState } from "@/components/ui/EmptyState";
+import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@/components/ui/shadcn/empty";
 import { QuestionIcon } from "@/components/ui/icons";
 
 export default async function NotFound() {
   const t = await getTranslations("errors");
 
   return (
-    <div className="flex flex-col gap-8">
-      <EmptyState
-        icon={<QuestionIcon className="h-6 w-6" />}
-        title={t("notFoundTitle")}
-        description={t("notFoundDescription")}
-        action={<Button href="/projects">{t("backHome")}</Button>}
-      />
-    </div>
+    <Empty>
+      <EmptyHeader>
+        <EmptyMedia variant="icon">
+          <QuestionIcon className="h-6 w-6" />
+        </EmptyMedia>
+        <EmptyTitle>{t("notFoundTitle")}</EmptyTitle>
+        <EmptyDescription>{t("notFoundDescription")}</EmptyDescription>
+      </EmptyHeader>
+      <EmptyContent>
+        <Button href="/projects">{t("backHome")}</Button>
+      </EmptyContent>
+    </Empty>
   );
 }

@@ -13,6 +13,19 @@ import type { ProjectPublicationState, PublicationActionResult } from "@/lib/pub
 import { publicationMatchesDraft } from "@/lib/publishing/snapshot";
 import { cn } from "@/lib/utils";
 import { FeedbackPanel } from "@/components/publishing/FeedbackPanel";
+import { toast } from "sonner";
+import { Spinner } from "@/components/ui/shadcn/spinner";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/shadcn/alert-dialog";
 
 interface PublicationControlsProps {
   projectId: string;
@@ -58,9 +71,8 @@ export function PublicationControls({
   onDraftChanged,
 }: PublicationControlsProps) {
   const t = useTranslations("publishing");
+  const tCommon = useTranslations("common");
   const [publication, setPublication] = useState(initialPublication);
-  const [notice, setNotice] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
   const publicUrl = publication ? `${publicBaseUrl}/p/${publication.slug}` : null;
@@ -80,17 +92,25 @@ export function PublicationControls({
     [output, publication],
   );
 
+  /**
+   * PUBLISH FEEDBACK IS A TOAST NOW.
+   *
+   * It used to be a string held in local state and rendered inline in the
+   * toolbar, which had two costs. It disrupted the row it appeared in — that
+   * is why the message ended up absolutely positioned under the controls — and
+   * because it lived next to the button, it was invisible the moment the
+   * preview was closed or the person had scrolled. A toast is read wherever
+   * they happen to be looking and does not move anything.
+   */
   function run(action: () => Promise<PublicationActionResult>) {
-    setError(null);
-    setNotice(null);
     startTransition(async () => {
       const result = await action();
       if (result.error) {
-        setError(result.error);
+        toast.error(result.error);
         return;
       }
       if (result.publication) setPublication(result.publication);
-      if (result.message) setNotice(result.message);
+      if (result.message) toast.success(result.message);
     });
   }
 
@@ -98,10 +118,12 @@ export function PublicationControls({
     if (!publicUrl) return;
     try {
       await navigator.clipboard.writeText(publicUrl);
-      setNotice(t("linkCopied"));
-      setError(null);
+      toast.success(t("linkCopied"));
     } catch {
-      setError(t("copyFailed"));
+      /* A refused clipboard is not rare — an unfocused document rejects the
+         API outright — and silence leaves the button looking broken with
+         nothing to paste. */
+      toast.error(t("copyFailed"));
     }
   }
 
@@ -122,20 +144,46 @@ export function PublicationControls({
     await copyLink();
   }
 
-  function unpublish() {
-    if (!window.confirm(t("unpublishConfirm"))) return;
-    run(() => unpublishProjectAction(projectId));
-  }
+  /**
+   * Taking a live page offline is the one destructive action here, so it is
+   * confirmed. It was `window.confirm` — a browser modal that cannot be styled,
+   * cannot be translated beyond its two fixed buttons, and on iOS blocks the
+   * page until dismissed. `AlertDialog` is the same guard, in the product's own
+   * language and typography.
+   */
+  const unpublishConfirm = (
+    <AlertDialog>
+      <AlertDialogTrigger asChild>
+        <button type="button" disabled={isPending} className="publication-secondary publication-danger">
+          {t("unpublish")}
+        </button>
+      </AlertDialogTrigger>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>{t("unpublish")}</AlertDialogTitle>
+          <AlertDialogDescription>{t("unpublishConfirm")}</AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>{tCommon("cancel")}</AlertDialogCancel>
+          <AlertDialogAction onClick={() => run(() => unpublishProjectAction(projectId))}>
+            {t("unpublish")}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
 
   const publishActions = (
     <>
       {!publication?.isPublished && (
         <button type="button" disabled={isPending} onClick={() => run(() => publishProjectAction(projectId))} className="publication-primary">
+          {isPending && <Spinner className="size-4" />}
           {isPending ? t("publishing") : publication ? t("republish") : t("publish")}
         </button>
       )}
       {publication?.isPublished && hasUnpublishedChanges && (
         <button type="button" disabled={isPending} onClick={() => run(() => updatePublishedVersionAction(projectId))} className="publication-primary">
+          {isPending && <Spinner className="size-4" />}
           {isPending ? t("updating") : t("updateLive")}
         </button>
       )}
@@ -149,21 +197,7 @@ export function PublicationControls({
           <span className="publication-change-badge">{t("unpublishedChanges")}</span>
         )}
         {publishActions}
-        {publication?.isPublished && (
-          <button type="button" disabled={isPending} onClick={unpublish} className="publication-secondary publication-danger">
-            {t("unpublish")}
-          </button>
-        )}
-        {/* Errors are announced here rather than swallowed: the toolbar is
-            where the action was taken, so it is where the answer belongs. */}
-        {(notice || error) && (
-          <span
-            role={error ? "alert" : "status"}
-            className={cn("publication-message publication-message--inline", error && "is-error")}
-          >
-            {error ?? notice}
-          </span>
-        )}
+        {publication?.isPublished && unpublishConfirm}
       </div>
     );
   }
@@ -187,12 +221,14 @@ export function PublicationControls({
         <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5">
           {!publication?.isPublished && (
             <button type="button" disabled={isPending} onClick={() => run(() => publishProjectAction(projectId))} className="publication-primary">
-              {isPending ? t("publishing") : publication ? t("republish") : t("publish")}
+              {isPending && <Spinner className="size-4" />}
+          {isPending ? t("publishing") : publication ? t("republish") : t("publish")}
             </button>
           )}
           {publication?.isPublished && hasUnpublishedChanges && (
             <button type="button" disabled={isPending} onClick={() => run(() => updatePublishedVersionAction(projectId))} className="publication-primary">
-              {isPending ? t("updating") : t("updateLive")}
+              {isPending && <Spinner className="size-4" />}
+          {isPending ? t("updating") : t("updateLive")}
             </button>
           )}
           {publication?.isPublished && publicUrl && (
@@ -200,17 +236,11 @@ export function PublicationControls({
               <a href={publicUrl} target="_blank" rel="noreferrer" className="publication-secondary">{t("open")}</a>
               <button type="button" onClick={copyLink} className="publication-secondary">{t("copyLink")}</button>
               <button type="button" onClick={share} className="publication-secondary">{t("share")}</button>
-              <button type="button" disabled={isPending} onClick={unpublish} className="publication-secondary publication-danger">{t("unpublish")}</button>
+              {unpublishConfirm}
             </>
           )}
         </div>
       </div>
-
-      {(notice || error) && (
-        <p role={error ? "alert" : "status"} className={cn("publication-message", error && "is-error")}>
-          {error ?? notice}
-        </p>
-      )}
 
       {publication && (
         <FeedbackPanel

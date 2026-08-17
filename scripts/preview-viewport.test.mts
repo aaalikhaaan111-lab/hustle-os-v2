@@ -231,20 +231,32 @@ const copyLink = buildScreen.match(/async function copyLink\(\)[\s\S]*?\n  \}/)?
 check("copyLink is defined", /clipboard\.writeText/.test(copyLink));
 check(
   "a refused copy is reported rather than swallowed",
-  /catch\s*\{[\s\S]*?setCopied\("failed"\)/.test(copyLink),
+  /catch\s*\{[\s\S]*?toast\.error\(t\("previewLinkCopyFailed"\)\)/.test(copyLink),
 );
-check("a successful copy is still confirmed", /setCopied\("done"\)/.test(copyLink));
+check("a successful copy is still confirmed",
+  /toast\.success\(t\("previewLinkCopied"\)\)/.test(copyLink));
 
-// The two outcomes must not share one announcement: "copied" is a status,
-// failing to copy is an alert, and they must not claim the same thing.
-check(
-  "the failure is announced as an alert",
-  /role=\{copied === "failed" \? "alert" : "status"\}/.test(buildScreen),
-);
-check(
-  "the two outcomes render different messages",
-  /copied === "failed" \? t\("previewLinkCopyFailed"\) : t\("previewLinkCopied"\)/.test(buildScreen),
-);
+/*
+ * The two outcomes must not share one announcement: "copied" is a status,
+ * failing to copy is an alert, and they must not claim the same thing.
+ *
+ * They are toasts now rather than a pill driven by local state, so the
+ * distinction is carried by the variant — sonner gives `error` role="alert"
+ * and `success` role="status" — and the assertion follows it there.
+ */
+check("the failure is announced as an alert, the success as a status",
+  /toast\.error\(/.test(copyLink) && /toast\.success\(/.test(copyLink));
+check("the two outcomes render different messages",
+  /previewLinkCopyFailed/.test(copyLink) && /previewLinkCopied/.test(copyLink));
+
+/*
+ * A toast nobody mounted is a message nobody sees. The pill rendered itself;
+ * sonner needs a <Toaster> in the tree, and it must be inside the branch that
+ * actually wraps the workspace.
+ */
+const layout = read("src/app/layout.tsx");
+check("a Toaster is mounted for the authenticated app",
+  /<Toaster/.test(layout) && /from "@\/components\/ui\/shadcn\/sonner"/.test(layout));
 
 for (const key of ["previewLinkCopyFailed", "previewLinkCopied"]) {
   for (const [name, messages] of [["en", enMessages], ["ru", ruMessages]] as const) {

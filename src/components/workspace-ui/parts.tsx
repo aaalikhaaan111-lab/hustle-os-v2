@@ -3,6 +3,7 @@
 import type { ReactNode } from "react";
 import { useTranslations } from "next-intl";
 import { VentrioButton } from "@/components/ui/VentrioButton";
+import { Badge } from "@/components/ui/shadcn/badge";
 /** What a preview needs in order to be drawn — satisfied by a real project row
  *  or by lab demo content, without either knowing about the other. */
 export type ProjectState = "draft" | "published" | "proposal";
@@ -213,33 +214,32 @@ export const IconMinimize = ({ className }: IconProps) => (
 
 /* ── Shared primitives ──────────────────────────────────────────────────── */
 
-const STATE_STYLE: Record<ProjectState, { key: "statusDraft" | "statusPublished" | "statusProposal"; fg: string }> = {
-  draft: { key: "statusDraft", fg: "var(--color-ink-muted)" },
-  published: { key: "statusPublished", fg: "var(--color-success)" },
-  proposal: { key: "statusProposal", fg: "var(--color-accent)" },
+const STATE_VARIANT: Record<
+  ProjectState,
+  { key: "statusDraft" | "statusPublished" | "statusProposal"; variant: "secondary" | "default" | "outline" }
+> = {
+  draft: { key: "statusDraft", variant: "secondary" },
+  published: { key: "statusPublished", variant: "default" },
+  proposal: { key: "statusProposal", variant: "outline" },
 };
 
 /**
- * State, said with a dot and a word.
+ * Project state, as a Badge.
  *
- * It was a filled capsule — coloured background, coloured text, semibold, in
- * the middle of a row that also held the project's own accent colour and its
- * name. Three coloured objects competing on one line, and the loudest of them
- * was the least important. A 5px dot and the word in that colour carries the
- * same information at a fraction of the weight, and sits down inside the
- * metadata line where it belongs.
+ * This was a hand-rolled span: a coloured dot, the word beside it, and a colour
+ * table mapping each state to a foreground. It is the shadcn Badge now, which
+ * is the same information in the same token system with the shape, radius and
+ * type maintained in one place — and `published` reads as filled rather than as
+ * green text, which is the distinction that actually matters when scanning a
+ * gallery of drafts for the one that is live.
  */
 export function StatusPill({ state }: { state: ProjectState }) {
   const t = useTranslations("workspace");
-  const style = STATE_STYLE[state];
+  const { key, variant } = STATE_VARIANT[state];
   return (
-    <span
-      className="inline-flex shrink-0 items-center gap-1.5 text-[13px] font-medium leading-none"
-      style={{ color: style.fg }}
-    >
-      <span aria-hidden className="h-[5px] w-[5px] rounded-full" style={{ background: "currentColor" }} />
-      {t(style.key)}
-    </span>
+    <Badge variant={variant} className="shrink-0">
+      {t(key)}
+    </Badge>
   );
 }
 

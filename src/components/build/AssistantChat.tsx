@@ -143,6 +143,31 @@ export function AssistantChat({
     setAtBottom(distance < 120);
   }
 
+  /**
+   * The way back down.
+   *
+   * `atBottom` was already tracked — it is what stops new messages from yanking
+   * someone out of the history they are reading — but it was only ever used to
+   * suppress the auto-scroll. So scrolling up during a reply left no way back
+   * and no sign that anything had arrived: the conversation simply stopped
+   * moving. The state was there; this is the half that was missing.
+   *
+   * Sticky rather than absolute, because an absolutely-positioned child of a
+   * scroll container scrolls away with the content. The wrapper is zero-height
+   * so it adds nothing to the scroll range it sits in.
+   */
+  const jumpToLatest = !atBottom && (
+    <div className="sticky bottom-4 z-10 h-0 text-center">
+      <button
+        type="button"
+        onClick={() => scrollToBottom("smooth")}
+        className="s-btn s-btn--secondary absolute bottom-0 left-1/2 -translate-x-1/2 rounded-full px-3.5"
+      >
+        {t("assistantJumpToLatest")}
+      </button>
+    </div>
+  );
+
   // Cycle the project-specific thinking copy while a reply is in flight. The
   // index is reset to 0 in submit() when a send starts (not here), so the
   // effect never calls setState synchronously in its body.
@@ -360,6 +385,7 @@ export function AssistantChat({
             {proposalBlock && <div className="mt-7">{proposalBlock}</div>}
             {footer && <div className="mt-7">{footer}</div>}
           </div>
+          {jumpToLatest}
         </div>
 
         <div className="shrink-0 px-5 pb-5 pt-2 sm:px-8 sm:pb-7">
@@ -493,6 +519,7 @@ export function AssistantChat({
             </div>
           )}
         </div>
+        {jumpToLatest}
       </div>
 
       {/* Composer */}

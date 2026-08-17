@@ -193,9 +193,31 @@ for (const promise of ["custom domain", "unlimited generation", "team", "autonom
 
 /* ── 6. the publish notice moved, and still exists ───────────────────────── */
 
+/*
+ * It is a toast now, not an inline message under the toolbar. The message it
+ * carries is unchanged — the point of the check was that publishing SAYS
+ * something, success or failure, rather than completing in silence.
+ */
 const controls = read("src/components/publishing/PublicationControls.tsx");
-check("the success notice is still rendered", /role=\{error \? "alert" : "status"\}/.test(controls));
-check("the toolbar uses the inline variant", /publication-message--inline/.test(controls));
+check("publishing reports its outcome", /toast\.success\(result\.message\)/.test(controls));
+check("and a failed publish is an error, not a status",
+  /toast\.error\(result\.error\)/.test(controls));
+check("copying the public link says what happened",
+  /toast\.success\(t\("linkCopied"\)\)/.test(controls) &&
+  /toast\.error\(t\("copyFailed"\)\)/.test(controls));
+
+/*
+ * Unpublishing takes a page off the internet, so it still asks first — but
+ * through a real dialog rather than window.confirm, which cannot be styled,
+ * cannot be translated, and on iOS blocks the whole page.
+ */
+const controlsCode = controls
+  .replace(/\/\*[\s\S]*?\*\//g, "")
+  .replace(/^\s*\/\/.*$/gm, "")
+  .replace(/\{\/\*[\s\S]*?\*\/\}/g, "");
+check("unpublishing still confirms, without window.confirm",
+  !/window\.confirm/.test(controlsCode) && /AlertDialogAction/.test(controlsCode),
+  "the comment explaining the replacement is not the replacement");
 const css = read("src/app/globals.css");
 /**
  * It no longer participates in the toolbar's layout at all.

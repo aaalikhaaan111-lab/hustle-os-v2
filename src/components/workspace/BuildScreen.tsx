@@ -24,6 +24,12 @@ import { Tooltip } from "@/components/workspace-ui/Tooltip";
 import { cn } from "@/lib/utils";
 import { ViewportFrame } from "@/components/workspace/ViewportFrame";
 import { DEVICE_WIDTHS, type DeviceMode } from "@/lib/build/deviceWidths";
+import { toast } from "sonner";
+import {
+  ResizableHandle,
+  ResizablePanel,
+  ResizablePanelGroup,
+} from "@/components/ui/shadcn/resizable";
 
 const PREVIEW_OPEN_KEY = "ventrio:preview-open";
 
@@ -191,7 +197,6 @@ export function BuildScreen({
   const [device, setDevice] = useState<DeviceMode>("desktop");
   const effectiveDevice: DeviceMode = narrow ? "mobile" : device;
   const [reloadKey, setReloadKey] = useState(0);
-  const [copied, setCopied] = useState<"done" | "failed" | null>(null);
 
   /**
    * THE MOMENT IT GOES LIVE.
@@ -250,26 +255,23 @@ export function BuildScreen({
     }
   }, [projectId]);
 
-  useEffect(() => {
-    if (!copied) return;
-    // A failure is a longer read than "copied", and it asks the person to go and
-    // do something, so it stays up long enough to finish reading.
-    const timer = setTimeout(() => setCopied(null), copied === "failed" ? 6000 : 2200);
-    return () => clearTimeout(timer);
-  }, [copied]);
+  /* The copy notice used to be a floating pill with its own dismissal timer —
+     2.2s for success, 6s for failure — positioned over the canvas. It is a
+     toast now: same two outcomes, one surface for every piece of feedback in
+     the product, and no timer to keep in sync. */
 
   async function copyLink() {
     if (!shareUrl) return;
     try {
       await navigator.clipboard.writeText(shareUrl);
-      setCopied("done");
+      toast.success(t("previewLinkCopied"));
     } catch {
       // A refused clipboard used to be swallowed entirely, on the reasoning
       // that silence beats claiming a copy that did not happen. But silence
       // makes the button look broken and leaves nothing to paste, so say what
       // went wrong and where the link still is. The publish dock already
       // answers this way; this is the same answer in the rail.
-      setCopied("failed");
+      toast.error(t("previewLinkCopyFailed"));
     }
   }
 
@@ -297,16 +299,32 @@ export function BuildScreen({
         </div>
       )}
 
-      <div className="relative flex min-h-0 flex-1 overflow-hidden">
+      {/* RESIZABLE, on desktop, and only when both panes are actually on
+          screen. How much room the conversation needs against the page is a
+          judgement that changes with the task — reading a long reply wants
+          width, checking a layout wants the preview — and it was fixed at 43%.
+
+          Deliberately NOT on a phone: there, one surface is shown at a time
+          and the mode switch is the control. A drag handle between two panes
+          that are never side by side would be a handle for nothing. */}
+      <ResizablePanelGroup
+        orientation="horizontal"
+        className="relative flex min-h-0 flex-1 overflow-hidden"
+      >
       {showChat && (
         /* THE CONVERSATION IS A COLUMN OF PAPER ON THE CANVAS.
            It was a flush pane sharing a hard vertical rule with the preview —
            two boxes in a frame. It floats now: inset, its own surface, its own
            soft edge. Nothing divides the two halves of the screen; they sit on
            the same desk. */
-        <div
-          className="flex min-h-0 min-w-0 flex-col p-3 transition-[flex-basis] duration-[var(--t-slow)] ease-[var(--ease)] md:py-4 md:pl-4 md:pr-2"
-          style={{ flex: previewOpen && !narrow ? "0 0 43%" : "1 1 100%" }}
+        <ResizablePanel
+          id="conversation"
+          /* Strings, not numbers. In this version of the library a NUMBER is
+             pixels and a string is a percentage — `defaultSize={43}` sized the
+             conversation to 43 pixels, which is exactly the sliver it became. */
+          defaultSize={previewOpen && !narrow ? "43%" : "100%"}
+          minSize="28%"
+          className="flex min-h-0 min-w-0 flex-col p-3 md:py-4 md:pl-4 md:pr-2"
         >
           <div
             className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-[var(--r-xl)] border"
@@ -330,10 +348,13 @@ export function BuildScreen({
             openPreview: () => changePreviewOpen(true),
           })}
           </div>
-        </div>
+        </ResizablePanel>
       )}
 
+      {showChat && previewOpen && !narrow && <ResizableHandle withHandle />}
+
       {previewOpen && (
+        <ResizablePanel id="preview" minSize="30%" className="min-h-0 min-w-0">
         <section
           aria-label={t("previewRegion")}
           /* OPEN SKY. The preview was a bordered panel filled with canvas
@@ -582,9 +603,10 @@ export function BuildScreen({
             )}
           </div>
         </section>
+        </ResizablePanel>
       )}
 
-      </div>
+      </ResizablePanelGroup>
 
       {/* THE FLOATING RAIL IS GONE.
           Two icon buttons in a pill down the right edge, for switching between
@@ -594,21 +616,6 @@ export function BuildScreen({
           Close lives in the capsule attached to the page, and on a phone the
           mode switch sits above both surfaces. */}
 
-      {copied && (
-        <div
-          className="s-fade pointer-events-none absolute bottom-5 left-1/2 z-30 max-w-[min(92%,420px)] -translate-x-1/2 rounded-[var(--r-md)] border px-3.5 py-2 text-center text-[13px] font-medium"
-          // A failure is not a status update, and a screen reader should not
-          // have to wait its turn to hear that nothing was copied.
-          role={copied === "failed" ? "alert" : "status"}
-          style={{
-            background: "var(--color-surface-elevated)",
-            borderColor: copied === "failed" ? "var(--color-warning)" : "var(--color-border-strong)",
-            color: copied === "failed" ? "var(--color-warning)" : "var(--color-ink)",
-          }}
-        >
-          {copied === "failed" ? t("previewLinkCopyFailed") : t("previewLinkCopied")}
-        </div>
-      )}
     </div>
   );
 }

@@ -203,6 +203,18 @@ export interface ProjectAnalytics {
   uniqueSubmitters: number;
   firstResponseAt: string | null;
   lastResponseAt: string | null;
+  /**
+   * Responses per day, oldest first, with empty days filled in.
+   *
+   * The rows were already being fetched with their `created_at` and then thrown
+   * away in favour of four scalars — so a real series was one reduce from being
+   * available, and the analytics screen was showing numbers where it could show
+   * a shape. Nothing new is queried for this.
+   *
+   * Empty days are included deliberately: a chart that omits them draws four
+   * responses on four consecutive days and three weeks apart identically.
+   */
+  daily: Array<{ date: string; responses: number }>;
 }
 
 export async function loadProjectAnalytics(
@@ -225,6 +237,26 @@ export async function loadProjectAnalytics(
     .order("created_at", { ascending: true });
 
   const rows = responses ?? [];
+
+  const perDay = new Map<string, number>();
+  for (const row of rows) {
+    const day = row.created_at.slice(0, 10);
+    perDay.set(day, (perDay.get(day) ?? 0) + 1);
+  }
+
+  const daily: Array<{ date: string; responses: number }> = [];
+  if (rows.length > 0) {
+    const first = new Date(`${rows[0].created_at.slice(0, 10)}T00:00:00Z`);
+    const last = new Date(`${rows[rows.length - 1].created_at.slice(0, 10)}T00:00:00Z`);
+    // Capped so a project published a year ago does not build 365 points for a
+    // handful of responses; the window is the last 30 days of activity.
+    const start = new Date(Math.max(first.getTime(), last.getTime() - 29 * 86_400_000));
+    for (let d = new Date(start); d <= last; d.setUTCDate(d.getUTCDate() + 1)) {
+      const key = d.toISOString().slice(0, 10);
+      daily.push({ date: key, responses: perDay.get(key) ?? 0 });
+    }
+  }
+
   return {
     published: Boolean(publication?.is_published),
     publishedAt: publication?.published_at ?? null,
@@ -232,5 +264,6 @@ export async function loadProjectAnalytics(
     uniqueSubmitters: new Set(rows.map((row) => row.submitter_hash)).size,
     firstResponseAt: rows[0]?.created_at ?? null,
     lastResponseAt: rows[rows.length - 1]?.created_at ?? null,
+    daily,
   };
 }

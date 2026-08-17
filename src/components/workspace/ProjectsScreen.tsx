@@ -8,6 +8,14 @@ import { formatAge } from "@/lib/workspace/formatAge";
 import type { PresentedProject } from "@/lib/workspace/present";
 import { HowItWorks } from "@/components/workspace-ui/HowItWorks";
 import { ProjectThumb, ProjectThumbEmpty } from "@/components/workspace/ProjectThumb";
+import { ProjectCardMenu } from "@/components/workspace/ProjectCardMenu";
+import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyTitle,
+} from "@/components/ui/shadcn/empty";
 
 type Filter = "all" | "draft" | "published";
 
@@ -85,15 +93,21 @@ export function ProjectsScreen({ projects }: { projects: PresentedProject[] }) {
 
       <div className="mx-auto w-full max-w-[1160px] px-5 pb-16 sm:px-10">
       {projects.length === 0 ? (
-        /* No box. An empty index is an empty page with one thing to do on it —
-           drawing a dashed rectangle around the absence only makes the absence
-           look like a broken component. */
-        <div className="mt-14 border-t pt-10" style={{ borderColor: "var(--color-border)" }}>
-          <p className="s-body max-w-md">{t("projectsNothingYet")}</p>
-          {/* The one place the product has to explain itself: there is nothing
-              on the screen to infer it from. */}
-          <HowItWorks className="mt-7" />
-        </div>
+        <Empty className="py-10">
+          <EmptyHeader>
+            <EmptyTitle>{t("startFirstTitle")}</EmptyTitle>
+            <EmptyDescription>{t("projectsNothingYet")}</EmptyDescription>
+          </EmptyHeader>
+          <EmptyContent>
+            <Link href="/create" className="s-btn s-btn--primary">
+              <IconPlus className="h-4 w-4" />
+              {t("navNewProject")}
+            </Link>
+            {/* The one place the product has to explain itself: there is
+                nothing on the screen to infer it from. */}
+            <HowItWorks className="mt-6 justify-center" />
+          </EmptyContent>
+        </Empty>
       ) : (
         <>
           <div
@@ -138,7 +152,11 @@ export function ProjectsScreen({ projects }: { projects: PresentedProject[] }) {
           </div>
 
           {visible.length === 0 ? (
-            <p className="s-body mt-12">{t("projectsNoMatch", { query })}</p>
+            <Empty className="py-12">
+              <EmptyHeader>
+                <EmptyDescription>{t("projectsNoMatch", { query })}</EmptyDescription>
+              </EmptyHeader>
+            </Empty>
           ) : (
             /* A GALLERY, NOT A LEDGER. These were rows of names and timestamps,
                which is how you list invoices. What is here is the set of things
@@ -148,6 +166,10 @@ export function ProjectsScreen({ projects }: { projects: PresentedProject[] }) {
             <ul className="mt-8 grid grid-cols-1 gap-x-6 gap-y-8 sm:grid-cols-2 lg:grid-cols-3">
               {visible.map((project, index) => (
                 <li key={project.id} className="s-enter" style={{ animationDelay: `${Math.min(index, 8) * 26}ms` }}>
+                  <ProjectCardMenu
+                    projectId={project.id}
+                    slug={project.slug}
+                  >
                   <Link href={`/projects/${project.id}`} className="group block">
                     <span className="s-artifact s-thumb block aspect-[16/10] w-full">
                       {project.content ? (
@@ -170,6 +192,7 @@ export function ProjectsScreen({ projects }: { projects: PresentedProject[] }) {
                       </span>
                     </span>
                   </Link>
+                  </ProjectCardMenu>
                 </li>
               ))}
             </ul>

@@ -25,6 +25,12 @@ export interface PresentedProject {
   preview: PreviewSpec;
   /** Null when the project has no generated version yet. */
   content: PresentedPreviewContent | null;
+  /**
+   * The public address, when the project is live. Already known here — the
+   * publication summary this function receives carries the slug — so the card
+   * can offer "copy link" without the gallery loading anything extra.
+   */
+  slug: string | null;
 }
 
 /**
@@ -126,6 +132,7 @@ export function presentProject(
       shape: SHAPE_BY_TYPE[project.project_type] ?? "form",
       accent: accentFor(project.id),
     },
+    slug: publication?.isPublished ? publication.slug : null,
     content: stage3?.output
       ? {
           eyebrow: stage3.output.hero.eyebrow,

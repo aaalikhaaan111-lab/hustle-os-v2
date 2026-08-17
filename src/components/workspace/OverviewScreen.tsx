@@ -7,6 +7,7 @@ import { HowItWorks } from "@/components/workspace-ui/HowItWorks";
 import { formatAge } from "@/lib/workspace/formatAge";
 import type { PresentedProject } from "@/lib/workspace/present";
 import { ProjectThumb, ProjectThumbEmpty } from "@/components/workspace/ProjectThumb";
+import { ProjectCardMenu } from "@/components/workspace/ProjectCardMenu";
 
 /* The six lifecycle stages drove a progress bar on this screen. The bar is
    gone — six stages with three of them unreachable is a meter measuring mostly
@@ -84,6 +85,10 @@ export function OverviewScreen({ active, recent, activeResponses }: OverviewScre
           <ul className="mt-6 grid grid-cols-1 gap-x-6 gap-y-8 sm:grid-cols-2 lg:grid-cols-3">
             {cards.slice(0, 6).map((project, index) => (
               <li key={project.id} className="s-enter" style={{ animationDelay: `${Math.min(index, 6) * 26}ms` }}>
+                <ProjectCardMenu
+                  projectId={project.id}
+                  slug={project.slug}
+                >
                 <Link href={`/projects/${project.id}`} className="group block">
                   <span className="s-artifact s-thumb block aspect-[16/10] w-full">
                     {project.content ? (
@@ -106,6 +111,7 @@ export function OverviewScreen({ active, recent, activeResponses }: OverviewScre
                     </span>
                   </span>
                 </Link>
+                </ProjectCardMenu>
               </li>
             ))}
           </ul>
