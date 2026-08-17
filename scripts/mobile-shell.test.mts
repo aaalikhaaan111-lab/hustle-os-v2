@@ -79,6 +79,42 @@ const cssCode = tokens.replace(/\/\*[\s\S]*?\*\//g, "");
 const frameRule = cssCode.split(".studio-frame {")[1]?.split("}")[0] ?? "";
 check("the frame is not translated", !/transform/.test(frameRule),
   "the compensation was itself the thing that moved the app");
+
+/* ── two defaults that were never declared ───────────────────────────────── */
+
+/**
+ * TAILWIND v4 GIVES `border-b` A WIDTH AND NO COLOUR.
+ *
+ * Unqualified, it falls through to `currentColor` — which on a bar whose text
+ * is near-black drew a near-black hairline between the sidebar, the header and
+ * the content. That was not a token or a decision; it was the initial value
+ * showing through, and shadcn's own stylesheet carries the rule that prevents
+ * it.
+ *
+ * It must be LAYERED. Five rules in this codebase declare
+ * `border: 1px solid transparent` to reserve a button's border box without
+ * drawing one; unlayered, the default matched their specificity, won on source
+ * order, and outlined every ghost button in the product.
+ */
+const baseLayer = tokens.split("@layer base {")[1]?.split("\n}")[0] ?? "";
+check("a default border colour is declared, in the base layer",
+  /border-color:\s*var\(--color-border\)/.test(baseLayer),
+  "without it every bare `border-b` renders currentColor, i.e. near-black");
+check("and it is scoped to the studio, leaving the landing page alone",
+  /\.studio/.test(baseLayer));
+
+/**
+ * ONE FOCUS RING PER CONTROL. `.studio :focus-visible` is unlayered, so it beat
+ * the composer textarea's own `outline-none` utility and drew a 2px ring 2px
+ * OUTSIDE the 3px glow the composer shell already draws — roughly seven pixels
+ * of stacked halo around the most-used control in the product.
+ */
+check("the composer does not draw a second focus ring inside its own",
+  /\.s-composer :focus-visible[\s\S]{0,120}outline: none/.test(cssCode),
+  "the shell owns the focus state; the field inside it must not repeat it");
+check("and the composer ring is derived from the token, not restated",
+  /box-shadow: 0 0 0 3px color-mix\(in oklab, var\(--ring\)/.test(cssCode),
+  "a hand-copied oklch drifts from the palette the moment the palette moves");
 /*
  * THE ROOT CAUSE, and where the anchor actually lives now.
  *

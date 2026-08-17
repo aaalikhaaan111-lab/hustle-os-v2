@@ -106,9 +106,52 @@
 
 .studio ::selection { background: var(--accent); color: var(--accent-foreground); }
 
+/**
+ * THE DEFAULT BORDER COLOUR.
+ *
+ * Tailwind v4 gives `border`, `border-b` and friends a WIDTH and no colour, so
+ * an unqualified `border-b` falls through to `currentColor` — which, on a bar
+ * whose text is near-black, drew a near-black hairline. That is the dark line
+ * that separated the sidebar and the header from the content: not a token, not
+ * a design decision, just the initial value showing through.
+ *
+ * shadcn's own stylesheet carries this rule; it was never brought across when
+ * the token set was installed. Scoped to `.studio` deliberately — the landing
+ * page is frozen and must keep whatever it already renders.
+ *
+ * IT MUST BE IN `@layer base`. Five rules in this codebase declare
+ * `border: 1px solid transparent` to reserve a button's border box without
+ * drawing one. Unlayered, this rule matched their specificity and won on source
+ * order, which drew an outline around every ghost button in the product. Layered
+ * base loses to unlayered CSS and to Tailwind's utilities, which is exactly the
+ * precedence a default wants: it fills in only where nothing else has spoken.
+ */
+@layer base {
+  .studio, .studio *, .studio *::before, .studio *::after {
+    border-color: var(--color-border);
+  }
+}
+
 .studio :focus-visible {
   outline: 2px solid var(--ring);
   outline-offset: 2px;
+}
+
+/**
+ * ONE FOCUS RING PER CONTROL.
+ *
+ * The rule above is unlayered, so it beat the composer textarea's own
+ * `outline-none` utility and drew a 2px ring 2px OUTSIDE the 3px glow the
+ * composer shell already draws on `:focus-within` — roughly seven pixels of
+ * stacked halo around the most-used control in the product.
+ *
+ * Where a container renders the focus state, the control inside it must not
+ * render a second one. The container keeps the ring, so nothing is lost for
+ * keyboard users.
+ */
+.s-composer :focus-visible,
+.s-field :focus-visible {
+  outline: none;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════
@@ -403,9 +446,14 @@
   transition: border-color var(--t-base) var(--ease), box-shadow var(--t-base) var(--ease);
 }
 
+/*
+ * The ring is derived from `--ring` rather than restating its oklch by hand,
+ * so it cannot drift from the token set, and it is 3px at 40% — shadcn's own
+ * proportion — sitting tight against the border instead of floating off it.
+ */
 .s-composer:focus-within {
   border-color: var(--ring);
-  box-shadow: 0 0 0 3px oklch(0.737 0.021 106.9 / 0.35);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--ring) 40%, transparent);
 }
 
 .s-composer[data-state="disabled"] { opacity: 0.6; }
