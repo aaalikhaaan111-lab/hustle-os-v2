@@ -35,6 +35,11 @@ export interface WorkspaceComposerProps {
   };
   /** True while the model is producing something. */
   generating?: boolean;
+  /**
+   * The front-door treatment: bigger type and more air, for the one screen
+   * where the composer IS the screen rather than the foot of a conversation.
+   */
+  hero?: boolean;
 }
 
 /**
@@ -48,10 +53,11 @@ export interface WorkspaceComposerProps {
  * coloured shadow. Seven effects, on the one surface a person needs to be able
  * to think next to.
  *
- * WHAT IT IS. A field on the floor of the room. One tone lighter than the
- * canvas, one hairline, and a top edge that runs the full width so it reads as
- * the bottom of the conversation rather than as an object floating in front of
- * it. Focus changes the hairline to the accent. That is the whole treatment.
+ * WHAT IT IS. One generous field. In a conversation it docks beneath the last
+ * message inside the column of paper, so it reads as the bottom of what you
+ * are reading rather than a bar pinned to the window. On the New Project
+ * screen it takes the `hero` treatment and becomes the subject: larger type,
+ * more air, floating on the colour field.
  *
  * The send key is the only accented thing, and it only becomes accented once
  * there is something to send — so the brightest pixel on the screen is always
@@ -74,6 +80,7 @@ export function WorkspaceComposer({
   textareaRef,
   voice,
   generating,
+  hero,
 }: WorkspaceComposerProps) {
   const innerRef = useRef<HTMLTextAreaElement>(null);
   const ref = textareaRef ?? innerRef;
@@ -89,7 +96,7 @@ export function WorkspaceComposer({
 
   return (
     <form
-      className="s-composer"
+      className={hero ? "s-composer s-composer--hero" : "s-composer"}
       data-state={disabled ? "disabled" : voice?.listening ? "listening" : generating ? "generating" : undefined}
       onSubmit={(event) => {
         event.preventDefault();
@@ -152,7 +159,7 @@ export function WorkspaceComposer({
           disabled={!canSend}
           aria-label={sendLabel}
           title={keyboardHint ? `${sendLabel} · ${keyboardHint}` : sendLabel}
-          className="s-btn s-btn--primary s-btn--icon ml-auto h-9 w-9 rounded-[var(--r-sm)]"
+          className="s-btn s-btn--primary s-btn--icon ml-auto h-9 w-9 rounded-full"
         >
           {sending ? (
             <span

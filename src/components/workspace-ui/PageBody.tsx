@@ -14,7 +14,7 @@ const MEASURE = 1080;
 export function PageBody({ className = "", children }: { className?: string; children: ReactNode }) {
   return (
     <div
-      className={`mx-auto w-full px-5 pb-24 pt-8 sm:px-8 sm:pb-16 sm:pt-14 ${className}`}
+      className={`mx-auto w-full px-5 pb-24 pt-9 sm:px-10 sm:pb-16 sm:pt-14 ${className}`}
       style={{ maxWidth: MEASURE }}
     >
       {children}
@@ -45,7 +45,8 @@ export function PageHeading({
   return (
     <header className="flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
       <div className="min-w-0 flex-1">
-        {eyebrow && <p className="s-eyebrow mb-3">{eyebrow}</p>}
+        {eyebrow && <p className="s-eyebrow mb-2.5">{eyebrow}</p>}
+        {/* Serif. A screen title is a name, and names are set in the voice. */}
         <h1 className="s-display">{title}</h1>
         {lead && <p className="s-body mt-3 max-w-xl">{lead}</p>}
       </div>

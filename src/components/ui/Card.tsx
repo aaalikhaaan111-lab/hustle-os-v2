@@ -5,7 +5,7 @@ export function Card({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
   return (
     <div
       className={cn(
-        "v-surface v-interactive",
+        "s-panel ",
         className
       )}
       {...props}
@@ -25,7 +25,7 @@ export function CardTitle({
 }: HTMLAttributes<HTMLHeadingElement>) {
   return (
     <h3
-      className={cn("v-title", className)}
+      className={cn("s-title", className)}
       {...props}
     />
   );
@@ -35,7 +35,7 @@ export function CardDescription({
   className,
   ...props
 }: HTMLAttributes<HTMLParagraphElement>) {
-  return <p className={cn("v-body", className)} {...props} />;
+  return <p className={cn("s-body", className)} {...props} />;
 }
 
 export function CardContent({ className, ...props }: HTMLAttributes<HTMLDivElement>) {

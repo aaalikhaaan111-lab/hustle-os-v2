@@ -432,7 +432,20 @@ export function CreateExperience({ userId, initialDraft }: CreateExperienceProps
   const showChoices = turn?.phase === "ask" && turn.choices.length > 0;
 
   return (
-    <div className={cn("creation-canvas relative flex h-full min-h-0 flex-col", started && "is-started", turn?.transition === "focus" && "is-focused")}>
+    /* THE FRONT DOOR OPENS ON THE SKY.
+       Nothing has been made yet, so this is the one screen allowed to be purely
+       inviting: the colour field, a question in the display face, one generous
+       place to answer it. The moment the conversation starts the field is
+       dropped and the screen becomes calm paper, because from then on the words
+       are the subject. */
+    <div
+      className={cn(
+        "creation-canvas relative flex h-full min-h-0 flex-col",
+        !started && "s-sky",
+        started && "is-started",
+        turn?.transition === "focus" && "is-focused",
+      )}
+    >
 
       <div ref={scrollRef} className="relative z-10 min-h-0 flex-1 overflow-y-auto overscroll-contain">
         <div className={cn("mx-auto flex min-h-full w-full max-w-[720px] flex-col px-3.5 sm:px-7", started ? "py-5 sm:py-10" : "py-5 sm:py-9")}>
@@ -479,39 +492,30 @@ export function CreateExperience({ userId, initialDraft }: CreateExperienceProps
                may not yet know the shape of the product; and the openings as
                plain lines rather than capsules, because a row of pills reads as
                a filter bar and these are ways to begin. */
-            <section className="flex w-full flex-col gap-9 pt-2">
+            <section className="flex min-h-[58vh] w-full flex-col justify-center gap-8 py-4">
               <div className="s-enter flex flex-col gap-4">
-                <p className="s-opening max-w-[20ch]">{t("emptyPrompt")}</p>
-                <p className="s-body max-w-md">{t("emptyHint")}</p>
+                <p className="s-greet max-w-[16ch]">{t("emptyPrompt")}</p>
+                <p className="s-body max-w-md text-[1rem]">{t("emptyHint")}</p>
               </div>
 
-              <HowItWorks className="s-enter" />
-
-              {/* This turn's suggestions, and the only ones on the screen. They
-                  belong to the opening question, so they disappear the moment
-                  the conversation starts — unlike the three standing buttons
-                  that used to sit above the composer forever. */}
-              <div className="s-enter flex flex-col items-start gap-1">
+              {/* The openings, as quiet pills on the field. This is the one
+                  place a capsule is right: they ARE ways of narrowing an open
+                  question, and they read as things you may pick up. */}
+              <div className="s-enter flex flex-wrap gap-2">
                 {STARTING_POINTS.map((point) => (
                   <button
                     key={point.id}
                     type="button"
                     disabled={isSending || creating}
                     onClick={() => pickStartingPoint(point)}
-                    className="group -mx-3 flex min-h-[48px] w-full items-center gap-3 rounded-[var(--r-md)] px-3 text-left text-[15.5px] transition-colors disabled:opacity-50"
-                    style={{ color: "var(--color-ink-secondary)", transitionDuration: "var(--t-fast)" }}
+                    className="s-btn s-btn--secondary text-[14.5px] disabled:opacity-50"
                   >
-                    <span
-                      aria-hidden
-                      className="grid h-6 w-6 shrink-0 place-items-center rounded-full text-[12px] transition-transform group-hover:translate-x-0.5"
-                      style={{ background: "var(--color-accent-soft)", color: "var(--color-accent)" }}
-                    >
-                      →
-                    </span>
                     {t(point.labelKey)}
                   </button>
                 ))}
               </div>
+
+              <HowItWorks className="s-enter mt-1" />
             </section>
           ) : (
             <section className="flex flex-col gap-6">
@@ -586,7 +590,13 @@ export function CreateExperience({ userId, initialDraft }: CreateExperienceProps
 
                 {isSending && (
                   <div className="flex items-center gap-2.5 text-sm text-ink-secondary" aria-live="polite">
-                    <span className="creation-signal-dot" aria-hidden />
+                    {/* The same three dots the conversation and the preview use. Work in
+                        progress looks identical wherever it happens. */}
+                    <span className="s-thinking flex items-center gap-1" aria-hidden>
+                      <span />
+                      <span />
+                      <span />
+                    </span>
                     <span key={thinkingStep} className="animate-field-in">{t(THINKING_STEP_KEYS[thinkingStep])}</span>
                   </div>
                 )}
@@ -602,7 +612,13 @@ export function CreateExperience({ userId, initialDraft }: CreateExperienceProps
                     job row itself. */}
                 {creating && (
                   <div className="flex items-center gap-2.5 text-sm text-ink-secondary" aria-live="polite" role="status">
-                    <span className="creation-signal-dot" aria-hidden />
+                    {/* The same three dots the conversation and the preview use. Work in
+                        progress looks identical wherever it happens. */}
+                    <span className="s-thinking flex items-center gap-1" aria-hidden>
+                      <span />
+                      <span />
+                      <span />
+                    </span>
                     <span className="animate-field-in">
                       {creationPhase === "persisting"
                         ? t("progressPreparing")
@@ -664,6 +680,7 @@ export function CreateExperience({ userId, initialDraft }: CreateExperienceProps
             </div>
           )}
           <WorkspaceComposer
+            hero={!started}
             value={input}
             placeholder={refineTarget ? t("refinePlaceholder") : t("placeholder")}
             sendLabel={t("send")}

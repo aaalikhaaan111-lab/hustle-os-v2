@@ -1,6 +1,5 @@
 import { WorkspaceShell } from "@/components/workspace-ui/WorkspaceShell";
-import { PageBody } from "@/components/workspace-ui/PageBody";
-import { WsBlock, WsHeadingSkeleton, WsRowSkeleton } from "@/components/workspace-ui/Skeletons";
+import { WsBlock } from "@/components/workspace-ui/Skeletons";
 
 /**
  * What Overview looks like while its two queries run.
@@ -17,40 +16,32 @@ import { WsBlock, WsHeadingSkeleton, WsRowSkeleton } from "@/components/workspac
 export default function DashboardLoading() {
   return (
     <WorkspaceShell initials="">
-      <PageBody>
-        <WsHeadingSkeleton action />
-
-        {/* The active project: the artifact beside its metadata column. */}
-        <div className="mt-12 border-t pt-8" style={{ borderColor: "var(--color-border)" }}>
-          <div className="flex flex-col gap-6 sm:flex-row sm:gap-8">
-            <WsBlock className="h-[190px] w-full shrink-0 sm:h-[210px] sm:w-[300px]" radius="var(--r-lg)" />
-            <div className="flex min-w-0 flex-1 flex-col justify-between gap-6">
-              <div>
-                <WsBlock className="h-[13px] w-40" />
-                <WsBlock className="mt-3 h-[15px] w-full max-w-lg" />
-              </div>
-              <div>
-                <div className="flex items-baseline justify-between gap-3">
-                  <WsBlock className="h-[11px] w-28" />
-                  <WsBlock className="h-[13px] w-8" />
-                </div>
-                <WsBlock className="mt-2 h-1 w-full" radius="9999px" />
-                <WsBlock className="mt-3.5 h-[13px] w-48" />
-              </div>
+      {/* The greeting band, then the sheet of work — the real composition, so
+          nothing jumps when the data lands. */}
+      <div className="min-h-full">
+        <section className="s-sky-band px-5 pb-12 pt-12 sm:px-10 sm:pb-16 sm:pt-20">
+          <div className="mx-auto w-full max-w-[1120px]">
+            <WsBlock className="h-[42px] w-[18rem] max-w-full sm:h-[56px] sm:w-[26rem]" />
+            <WsBlock className="mt-5 h-[16px] w-[22rem] max-w-full" />
+            <div className="mt-8 flex gap-3">
+              <WsBlock className="h-11 w-40" radius="999px" />
+              <WsBlock className="h-11 w-52" radius="999px" />
             </div>
           </div>
-        </div>
-
-        {/* Recent projects, as index rows rather than a three-column grid. */}
-        <div className="mt-12">
-          <WsBlock className="h-[11px] w-32" />
-          <ul className="mt-3">
+        </section>
+        <div className="s-sheet mx-auto w-full max-w-[1160px] px-5 pb-16 pt-8 sm:px-10 sm:pt-10">
+          <WsBlock className="h-[20px] w-32" />
+          <ul className="mt-6 grid grid-cols-1 gap-x-6 gap-y-8 sm:grid-cols-2 lg:grid-cols-3">
             {[0, 1, 2].map((i) => (
-              <WsRowSkeleton key={i} />
+              <li key={i}>
+                <WsBlock className="aspect-[16/10] w-full" radius="var(--r-xl)" />
+                <WsBlock className="mt-3 h-[17px] w-40 max-w-full" />
+                <WsBlock className="mt-2 h-[13px] w-28" />
+              </li>
             ))}
           </ul>
         </div>
-      </PageBody>
+      </div>
     </WorkspaceShell>
   );
 }

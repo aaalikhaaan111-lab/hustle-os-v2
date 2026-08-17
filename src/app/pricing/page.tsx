@@ -165,15 +165,18 @@ export default async function PricingPage() {
           It is now one table. The plans are columns, the capabilities are rows,
           and the differences line up horizontally where they can be read. Pro
           is marked by tone and a label rather than by a border nobody sees. */}
-      <div className="mx-auto w-full max-w-[1080px] px-5 pb-20 pt-14 sm:px-8">
-        <header className="max-w-2xl">
+      <section className="s-sky-band px-5 pb-14 pt-14 sm:px-10 sm:pb-16 sm:pt-20">
+        <div className="mx-auto w-full max-w-[1080px]">
           <p className="s-eyebrow mb-3">{t("pageTitle")}</p>
-          <h1 className="s-display">{t("lead")}</h1>
-        </header>
+          <h1 className="s-greet max-w-[18ch]">{t("lead")}</h1>
+        </div>
+      </section>
+
+      <div className="mx-auto w-full max-w-[1080px] px-5 pb-20 sm:px-10">
 
         {/* Wide: a real table. Narrow: the same data as three stacked blocks,
             because a three-column table on a phone is a horizontal scroll. */}
-        <div className="mt-14 hidden md:block">
+        <div className="hidden pt-4 md:block">
           <table className="w-full border-collapse text-left">
             <thead>
               <tr>
@@ -192,7 +195,10 @@ export default async function PricingPage() {
                       )}
                     </span>
                     <span className="mt-3 flex items-baseline gap-1.5">
-                      <span className="text-[34px] font-medium leading-none tracking-[-0.035em]">
+                      <span
+                        className="text-[38px] font-medium leading-none tracking-[-0.02em]"
+                        style={{ fontFamily: "var(--font-display), Georgia, serif" }}
+                      >
                         {PRICE[plan]}
                       </span>
                       {plan !== "free" && <span className="s-meta">{t("perMonth")}</span>}
@@ -229,7 +235,7 @@ export default async function PricingPage() {
           </table>
         </div>
 
-        <div className="mt-12 flex flex-col gap-10 md:hidden">
+        <div className="flex flex-col gap-10 pt-6 md:hidden">
           {ORDER.map((plan) => (
             <section key={plan} className="border-t pt-6" style={{ borderColor: "var(--color-border)" }}>
               <p className="flex items-center gap-2">
@@ -244,7 +250,12 @@ export default async function PricingPage() {
                 )}
               </p>
               <p className="mt-3 flex items-baseline gap-1.5">
-                <span className="text-[32px] font-medium leading-none tracking-[-0.035em]">{PRICE[plan]}</span>
+                <span
+                  className="text-[34px] font-medium leading-none tracking-[-0.02em]"
+                  style={{ fontFamily: "var(--font-display), Georgia, serif" }}
+                >
+                  {PRICE[plan]}
+                </span>
                 {plan !== "free" && <span className="s-meta">{t("perMonth")}</span>}
               </p>
               <p className="s-body mt-2">{tagline[plan]}</p>

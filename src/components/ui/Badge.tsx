@@ -25,7 +25,7 @@ export function Badge({ variant = "default", className, ...props }: BadgeProps) 
   return (
     <span
       className={cn(
-        // 13px rather than 12px: this is the same size as `v-meta`, and a badge
+        // 13px rather than 12px: this is the same size as `s-meta`, and a badge
         // is meta. 12px was the product's smallest text and it was being used
         // for the one word that says whether something is published.
         "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[0.8125rem] font-medium leading-snug",

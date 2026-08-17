@@ -95,8 +95,8 @@ export function ConfirmEmailPending({ email, reason = "signup" }: ConfirmEmailPe
         <InfoIcon className="h-5 w-5" />
       </div>
       <div>
-        <h1 className="v-display">{t("checkEmailTitle")}</h1>
-        <p className="v-body mt-2">
+        <h1 className="s-display">{t("checkEmailTitle")}</h1>
+        <p className="s-body mt-2">
           {reason === "unconfirmed_login" ? t("errorEmailNotConfirmed") : t("checkEmailDescription")}
         </p>
         <p className="mt-1 text-[0.9375rem] font-semibold break-all text-ink">{email}</p>
@@ -122,7 +122,7 @@ export function ConfirmEmailPending({ email, reason = "signup" }: ConfirmEmailPe
               : t("resendIn", { seconds: secondsLeft })}
         </Button>
         {result?.status === "requested" && (
-          <p className="v-body" role="status">{t("resendRequested")}</p>
+          <p className="s-body" role="status">{t("resendRequested")}</p>
         )}
         {result?.status === "error" && result.error && (
           <p className="text-[0.9375rem] text-danger" role="alert">{result.error}</p>
@@ -132,13 +132,13 @@ export function ConfirmEmailPending({ email, reason = "signup" }: ConfirmEmailPe
       {/* The way out for someone who already has an account. Offering it costs
           nothing and needs no knowledge of which case this is — which is the
           point, because knowing would mean telling. */}
-      <p className="v-meta">{t("checkEmailExisting")}</p>
+      <p className="s-meta">{t("checkEmailExisting")}</p>
 
       <div className="flex flex-col items-center gap-2">
         <Button href="/login" variant="secondary">
           {t("backToLogin")}
         </Button>
-        <a href="/signup" className="v-meta font-medium underline hover:text-ink">
+        <a href="/signup" className="s-meta font-medium underline hover:text-ink">
           {t("changeEmail")}
         </a>
       </div>

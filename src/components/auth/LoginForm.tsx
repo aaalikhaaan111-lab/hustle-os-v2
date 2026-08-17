@@ -44,15 +44,15 @@ export function LoginForm() {
   return (
     <div className="mx-auto flex w-full max-w-sm flex-col gap-8 py-12 sm:py-20">
       <div className="flex flex-col items-center gap-2 text-center">
-        <h1 className="v-display">{t("loginTitle")}</h1>
-        <p className="v-body">{t("loginSubtitle")}</p>
+        <h1 className="s-greet">{t("loginTitle")}</h1>
+        <p className="s-body">{t("loginSubtitle")}</p>
       </div>
 
       <Card>
         <CardContent className="flex flex-col gap-5 py-5">
           <div className="flex flex-col gap-2">
             <GoogleSignInButton label={t("continueWithGoogle")} next={next} />
-            <p className="v-meta text-center">{t("googleConsentNotice")}</p>
+            <p className="s-meta text-center">{t("googleConsentNotice")}</p>
           </div>
 
           <div className="flex items-center gap-3">
@@ -95,7 +95,7 @@ export function LoginForm() {
         </CardContent>
       </Card>
 
-      <p className="v-body text-center">
+      <p className="s-body text-center">
         {t("noAccount")}{" "}
         <Link href="/signup" className="font-medium text-accent hover:text-accent-hover">
           {t("signUp")}

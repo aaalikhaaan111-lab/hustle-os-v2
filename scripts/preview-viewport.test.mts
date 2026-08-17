@@ -198,25 +198,28 @@ const quadrants = new Set(
 );
 check("the four brackets cover four quadrants", quadrants.size === 4, [...quadrants].join(","));
 
-/* ── 4. the rail's toggles expose their state, not just their colour ────── */
+/* ── 4. the controls expose their state, not just their colour ─────────── */
 
-// To the start of the next declaration: RailButton's props type closes with a
-// brace in the first column, so stopping at the first one would cut the body.
-const railButton = buildScreen.match(/function RailButton[\s\S]*?(?=\n\/\*\*|\nfunction )/)?.[0] ?? "";
-check("RailButton is defined, with its body", /VentrioButton/.test(railButton));
+/**
+ * `RailButton` is gone with the floating rail it belonged to. `BarButton` is
+ * the control inside the capsule that now sits over the page, and it carries
+ * the same obligation: `on` only paints a button, so without `aria-pressed`
+ * the selected device and the fullscreen state are conveyed by colour alone.
+ */
+const barButton = buildScreen.match(/function BarButton[\s\S]*?(?=\n\/\*\*|\nfunction )/)?.[0] ?? "";
+check("BarButton is defined, with its body", /VentrioButton/.test(barButton));
+check("a toggle reports its pressed state", /"aria-pressed":\s*active/.test(barButton));
 
-// `on` only paints the button. Without aria-pressed the selected device and the
-// fullscreen state are conveyed by colour alone.
-check(
-  "a toggle in the rail reports its pressed state",
-  /"aria-pressed":\s*active/.test(railButton),
-);
+// The device switcher is not a BarButton — it is a labelled segmented control,
+// and it has to report state too.
+check("the device switcher reports its pressed state",
+  /aria-pressed=\{device === mode\}/.test(buildScreen));
 
-// Buttons that simply act — reload, copy link — pass no `active`, and must not
+// Buttons that simply act — refresh, copy link — pass no `active`, and must not
 // claim a pressed state they do not have.
 check(
-  "a plain action in the rail stays a plain button",
-  /active === undefined \? \{\}/.test(railButton),
+  "a plain action stays a plain button",
+  /active === undefined \? \{\}/.test(barButton),
 );
 
 /* ── 5. copying the share link says what happened ───────────────────────── */

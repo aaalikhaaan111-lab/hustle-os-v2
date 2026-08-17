@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Geist, Geist_Mono, Lora } from "next/font/google";
+import { Alegreya, Geist, Geist_Mono, Lora } from "next/font/google";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages, getTranslations } from "next-intl/server";
 import { headers } from "next/headers";
@@ -7,6 +7,34 @@ import { AppShell } from "@/components/layout/AppShell";
 import { clientMessages } from "@/i18n/clientMessages";
 import "./globals.css";
 import "./studio.css";
+
+/**
+ * Ventrio's voice.
+ *
+ * The product had no display face at all — every screen was Geist Sans from
+ * the wordmark down to the timestamps, which is why the typography read as
+ * weak: there was nothing for the eye to land on and nothing that sounded like
+ * anyone in particular.
+ *
+ * Alegreya is a humanist serif drawn for long-form literature, with a visibly
+ * calligraphic hand. It is warm rather than grand — deliberately NOT Playfair,
+ * which is the high-contrast display serif every "premium" template reaches
+ * for. Ventrio's premise is that you describe what you want in your own words,
+ * and a written face says that before a sentence is read.
+ *
+ * It carries Cyrillic, which ruled out Fraunces and Instrument Serif: the
+ * product runs in Russian, and a display face that falls back on half its
+ * users is not a display face.
+ *
+ * Greetings, project names and section titles only. Everything operational
+ * stays in Geist — a serif button is a costume.
+ */
+const alegreya = Alegreya({
+  variable: "--font-display",
+  subsets: ["latin", "cyrillic"],
+  weight: ["500", "700"],
+  style: ["normal", "italic"],
+});
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -53,7 +81,7 @@ export default async function RootLayout({
   const requestHeaders = await headers();
   if (requestHeaders.get("x-ventrio-public-route") === "1") {
     return (
-      <html lang="en" className={`${geistSans.variable} ${geistMono.variable} ${lora.variable} h-full antialiased`}>
+      <html lang="en" className={`${geistSans.variable} ${geistMono.variable} ${lora.variable} ${alegreya.variable} h-full antialiased`}>
         <body className="min-h-full">{children}</body>
       </html>
     );
@@ -83,7 +111,7 @@ export default async function RootLayout({
   return (
     <html
       lang={locale}
-      className={`${geistSans.variable} ${geistMono.variable} ${lora.variable} h-full antialiased`}
+      className={`${geistSans.variable} ${geistMono.variable} ${lora.variable} ${alegreya.variable} h-full antialiased`}
     >
       <body className="min-h-full">
         <NextIntlClientProvider locale={locale} messages={messages}>

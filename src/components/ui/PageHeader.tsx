@@ -19,8 +19,8 @@ export function PageHeader({ title, description, actions }: PageHeaderProps) {
        no eyebrow and no rule, and lets the content below it be the subject. */
     <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
       <div className="min-w-0">
-        <h1 className="v-display">{title}</h1>
-        {description && <p className="v-body mt-1.5 max-w-2xl">{description}</p>}
+        <h1 className="s-display">{title}</h1>
+        {description && <p className="s-body mt-1.5 max-w-2xl">{description}</p>}
       </div>
       {actions && <div className="flex shrink-0 items-center gap-2">{actions}</div>}
     </div>

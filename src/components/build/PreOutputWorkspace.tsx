@@ -34,6 +34,7 @@ import type { Locale } from "@/i18n/locale";
 import type { ProjectPublicationState } from "@/lib/publishing/types";
 import type { WorkspaceUsage } from "@/lib/workspace/usage";
 import { AssistantTurn, UserTurn } from "@/components/build/ConversationTurn";
+import { ProjectHead } from "@/components/workspace/ProjectHead";
 
 interface PreOutputWorkspaceProps {
   projectId: string;
@@ -403,6 +404,7 @@ export function PreOutputWorkspace({
   return (
     <BuildScreen
       projectId={projectId}
+      projectHead={<ProjectHead name={projectName} published={Boolean(publication?.isPublished)} />}
       /**
        * The panel says what this screen knows, and no more.
        *

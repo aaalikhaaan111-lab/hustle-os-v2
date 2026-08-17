@@ -9,12 +9,10 @@ import {
 } from "@/lib/workspace/workspaceMode";
 import { useTranslations } from "next-intl";
 import {
-  IconChat,
   IconClose,
   IconCopy,
   IconDesktop,
   IconExpand,
-  IconEye,
   IconMinimize,
   IconExternal,
   IconMobile,
@@ -64,6 +62,12 @@ export interface BuildScreenProps {
    * project the person opened in the meantime.
    */
   projectId: string;
+  /**
+   * The project's identity, rendered in the head of the conversation card.
+   * Supplied rather than derived so this screen keeps knowing nothing about
+   * routing or publication shape.
+   */
+  projectHead?: ReactNode;
   /**
    * The conversation. It is told whether it is sharing the screen (so it can set
    * its reading measure) and how to open the preview, so the approved "first
@@ -138,6 +142,7 @@ export interface BuildScreenProps {
  */
 export function BuildScreen({
   chat,
+  projectHead,
   preview,
   previewStatus,
   onPreviewRetry = null,
@@ -293,23 +298,49 @@ export function BuildScreen({
 
       <div className="relative flex min-h-0 flex-1 overflow-hidden">
       {showChat && (
+        /* THE CONVERSATION IS A COLUMN OF PAPER ON THE CANVAS.
+           It was a flush pane sharing a hard vertical rule with the preview —
+           two boxes in a frame. It floats now: inset, its own surface, its own
+           soft edge. Nothing divides the two halves of the screen; they sit on
+           the same desk. */
         <div
-          className="flex min-h-0 min-w-0 flex-col transition-[flex-basis] duration-[var(--t-slow)] ease-[var(--ease)]"
-          style={{ flex: previewOpen && !narrow ? "0 0 41%" : "1 1 100%" }}
+          className="flex min-h-0 min-w-0 flex-col p-3 transition-[flex-basis] duration-[var(--t-slow)] ease-[var(--ease)] md:py-4 md:pl-4 md:pr-2"
+          style={{ flex: previewOpen && !narrow ? "0 0 43%" : "1 1 100%" }}
         >
+          <div
+            className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-[var(--r-xl)] border"
+            style={{
+              borderColor: "var(--color-border)",
+              background: "var(--color-surface)",
+              boxShadow: "var(--shadow-soft)",
+            }}
+          >
+            {/* THE CARD NAMES WHAT THE CONVERSATION IS ABOUT.
+                This was a bar across the top of the whole app. It is the head
+                of the card now: no rule across the screen, and the name sits
+                with the thing it names. Desktop only — on a phone the bar above
+                the canvas already carries it. */}
+            {!narrow && projectHead && (
+              <div className="flex shrink-0 items-center gap-2.5 px-4 pb-1 pt-4">{projectHead}</div>
+            )}
           {chat({
             previewOpen,
             canOpenPreview: !previewOpen,
             openPreview: () => changePreviewOpen(true),
           })}
+          </div>
         </div>
       )}
 
       {previewOpen && (
         <section
           aria-label={t("previewRegion")}
-          className="s-fade flex min-h-0 min-w-0 flex-1 flex-col border-l"
-          style={{ borderColor: "var(--color-border)", background: "var(--color-canvas)" }}
+          /* OPEN SKY. The preview was a bordered panel filled with canvas
+             grey, which made the thing you made look like a file inside a
+             pane. It is a colour field now — the same field the New Project
+             screen opens on — so the page you built is the only object in it,
+             and the screen visibly warms when there is something to see. */
+          className="s-fade s-sky relative flex min-h-0 min-w-0 flex-1 flex-col"
         >
           {/* ── The preview toolbar ──────────────────────────────────────
               Everything that acts on the generated product lives here, above
@@ -322,7 +353,13 @@ export function BuildScreen({
               It scrolls rather than wraps on a narrow screen: a toolbar that
               reflows to two rows pushes the preview down the page every time
               the viewport changes. */}
-          <div className="flex h-12 shrink-0 items-center px-4">
+          {/* THE CONTROLS BELONG TO THE THING THEY ACT ON.
+              They were a full-width strip pinned to the top of the panel, in
+              the shape of an editor toolbar. A floating capsule over the sky,
+              centred above the page it controls — closer to the chrome on a
+              photograph than to a builder's ribbon. */}
+          <div className="pointer-events-none absolute inset-x-0 top-0 z-20 flex justify-center px-4 pt-4">
+          <div className="s-capsule pointer-events-auto flex max-w-full items-center px-1">
             {/* The part that may scroll: the title, the status, and the
                 controls you can do without for a moment. The outer row has no
                 gap of its own, so on a wide toolbar this sits flush against the
@@ -479,8 +516,12 @@ export function BuildScreen({
               </BarButton>
             </div>
           </div>
+          </div>
 
-          <div className="min-h-0 flex-1 overflow-auto px-4 pb-5 lg:pb-8 lg:pl-8 lg:pr-[92px] lg:pt-2">
+          {/* Top padding clears the floating capsule. `lg:pr-[92px]` reserved a
+              gutter for a rail of buttons down the right edge that no longer
+              exists, and it was pushing the page off-centre. */}
+          <div className="min-h-0 flex-1 overflow-auto px-4 pb-6 pt-[4.75rem] lg:px-8 lg:pb-10">
             {/* Full-width centring container. The frame measures this to decide
                 its scale, so its width must not depend on the frame — see
                 ViewportFrame. The border therefore lives on the frame itself. */}
@@ -540,34 +581,13 @@ export function BuildScreen({
 
       </div>
 
-      {/* ── The panel toggle ─────────────────────────────────────────────
-          All that is left of the floating rail. Switching between conversation
-          and preview is a layout choice, not a product control, and it has to
-          stay reachable when the preview is closed and its toolbar is not on
-          screen. Everything that acts on the generated product moved into that
-          toolbar. */}
-      <div className="pointer-events-none absolute inset-y-0 right-4 z-20 hidden items-center lg:flex">
-        <div
-          className="pointer-events-auto flex flex-col gap-1 rounded-[var(--r-md)] border p-1"
-          style={{ borderColor: "var(--color-border)", background: "var(--color-surface-elevated)" }}
-        >
-          <RailButton
-            label={t("focusChat")}
-            active={!previewOpen}
-            onClick={() => changePreviewOpen(false)}
-            disabled={!previewOpen}
-          >
-            <IconChat className="h-[18px] w-[18px]" />
-          </RailButton>
-          <RailButton
-            label={previewOpen ? t("closePreview") : t("openPreview")}
-            active={previewOpen}
-            onClick={() => changePreviewOpen(!previewOpen)}
-          >
-            <IconEye className="h-[18px] w-[18px]" />
-          </RailButton>
-        </div>
-      </div>
+      {/* THE FLOATING RAIL IS GONE.
+          Two icon buttons in a pill down the right edge, for switching between
+          the conversation and the page. It was the last survivor of an older
+          layout, it reserved a 92px gutter that pushed the page off-centre, and
+          it duplicated a control that already exists in two better places:
+          Close lives in the capsule attached to the page, and on a phone the
+          mode switch sits above both surfaces. */}
 
       {copied && (
         <div
@@ -678,41 +698,6 @@ export function OpenPreviewButton({ onOpen, label, icon }: { onOpen: () => void;
   );
 }
 
-/** A control in the floating rail: square, quiet until it matters. */
-function RailButton({
-  label,
-  onClick,
-  active,
-  disabled,
-  children,
-}: {
-  label: string;
-  onClick: () => void;
-  active?: boolean;
-  disabled?: boolean;
-  children: ReactNode;
-}) {
-  return (
-    <VentrioButton
-      variant="icon"
-      size="md"
-      label={label}
-      tipSide="left"
-      on={active}
-      // `on` only paints the button. Without aria-pressed the selected device
-      // and the fullscreen state are conveyed by colour alone, so a screen
-      // reader hears three identical "Mobile / Tablet / Desktop" buttons with
-      // no way to tell which one is in effect. Only the toggles get it: the
-      // buttons that just act, like reload, take no `active` and must stay
-      // plain buttons rather than claiming a pressed state they do not have.
-      {...(active === undefined ? {} : { "aria-pressed": active })}
-      disabled={disabled}
-      onClick={onClick}
-    >
-      {children}
-    </VentrioButton>
-  );
-}
 
 /**
  * A control in the preview toolbar.

@@ -43,18 +43,16 @@ export interface WorkspaceShellProps {
 }
 
 /**
- * The rail is 232px, labelled, and does not collapse.
+ * The sidebar is 244px, labelled, and does not collapse.
  *
- * It was 68px of bare icons with tooltips. That is fine for someone who uses a
- * tool every day and learns the glyphs; it is hostile to the person this
- * product is for, who has never used a builder and should not have to hover a
- * shape to discover what it does. Every destination now says its own name.
- *
- * It still does not collapse. The toggle that used to be here existed mainly
- * to undo the cost of a 236px column, and a fixed width removes a piece of
- * state, a stored preference and two render paths through one function.
+ * It was 68px of bare icons with tooltips — fine for someone who uses a tool
+ * daily and learns the glyphs, hostile to a person who has never opened a
+ * builder. Every destination says its own name, and the column fills: the
+ * work you have made is listed in it, which is both the fastest way back into
+ * a project and the reason the rail is no longer three rows over 600px of
+ * nothing.
  */
-const RAIL = 232;
+const RAIL = 244;
 
 const NARROW_QUERY = "(max-width: 767px)";
 
@@ -128,39 +126,43 @@ export function WorkspaceShell({
 
   const isActive = (href: string) => pathname === href;
 
-  /* ── Desktop rail ─────────────────────────────────────────────────────── */
+  /* ── The sidebar ──────────────────────────────────────────────────────
+     Identity, the one action the product is for, where you can go, everything
+     you have made, then you. */
 
   const railLink = ({ href, label, Icon }: NavEntry) => (
     <Link
       key={href}
       href={href}
       aria-current={isActive(href) ? "page" : undefined}
-      className="s-nav-item h-10 w-full px-3"
+      className="s-nav-item h-9 w-full px-3"
     >
-      <Icon className="h-[18px] w-[18px] shrink-0" />
+      <Icon className="h-[17px] w-[17px] shrink-0" />
       <span className="min-w-0 truncate">{label}</span>
     </Link>
   );
 
   const rail = (
     <aside
-      className="s-inset hidden shrink-0 flex-col border-r px-3 py-4 md:flex"
-      style={{ width: RAIL, borderColor: "var(--color-border)" }}
+      className="hidden shrink-0 flex-col border-r px-3 pb-3 pt-4 md:flex"
+      style={{ width: RAIL, borderColor: "var(--color-border)", background: "var(--color-surface)" }}
     >
-      <Link href="/dashboard" className="mb-5 flex items-center gap-2.5 px-2 py-1">
-        <VentrioMark size={26} />
-        <span className="text-[16px] font-semibold tracking-[-0.02em]">Ventrio</span>
+      <Link href="/dashboard" className="mb-4 flex items-center gap-2.5 px-2">
+        <VentrioMark size={24} />
+        <span
+          className="text-[19px] font-medium tracking-[-0.01em]"
+          style={{ fontFamily: "var(--font-display), Georgia, serif" }}
+        >
+          Ventrio
+        </span>
       </Link>
 
-      {/* Starting something new is the product's whole point, so it is a real
-          button standing above the navigation rather than the third item in a
-          list of places to go. */}
       <Link href="/create" className="s-btn s-btn--primary mb-5 w-full">
         <IconPlus className="h-4 w-4" />
         {t("navNewProject")}
       </Link>
 
-      <nav aria-label={t("navLabel")} className="flex flex-1 flex-col gap-0.5 overflow-y-auto">
+      <nav aria-label={t("navLabel")} className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto">
         {primary.map(railLink)}
 
         {projectItems.length > 0 && (
@@ -170,14 +172,13 @@ export function WorkspaceShell({
           </>
         )}
 
-        {/* Recents belong in the rail only when no project is open — otherwise
-            this project's own destinations are the ones that matter. Each
-            carries the project's colour, the same one its preview uses, so it
-            is recognisable before it is read. */}
+        {/* EVERYTHING YOU HAVE MADE, listed. Each carries the project's own
+            colour — the same one its preview uses — so it is recognisable
+            before it is read. */}
         {!project && recent.length > 0 && (
           <>
-            <p className="s-eyebrow mb-1 mt-5 px-3">{t("navRecent")}</p>
-            {recent.slice(0, 5).map((item) => (
+            <p className="s-eyebrow mb-1 mt-6 px-3">{t("navRecent")}</p>
+            {recent.slice(0, 8).map((item) => (
               <Link
                 key={item.id}
                 href={`/projects/${item.id}`}
@@ -195,11 +196,11 @@ export function WorkspaceShell({
         )}
       </nav>
 
-      <div className="flex flex-col gap-0.5 border-t pt-3" style={{ borderColor: "var(--color-border)" }}>
+      <div className="mt-3 flex flex-col gap-0.5 border-t pt-3" style={{ borderColor: "var(--color-border)" }}>
         {railLink({ href: "/settings", label: t("navSettings"), Icon: IconSettings })}
-        <Link href="/settings?section=profile" className="s-nav-item h-10 w-full px-3">
+        <Link href="/settings?section=profile" className="s-nav-item h-11 w-full px-3">
           <span
-            className="grid h-[22px] w-[22px] shrink-0 place-items-center rounded-full text-[10px] font-semibold"
+            className="grid h-[26px] w-[26px] shrink-0 place-items-center rounded-full text-[11px] font-semibold"
             style={{ background: "var(--color-accent-soft)", color: "var(--color-accent)" }}
             aria-hidden
           >
@@ -222,10 +223,10 @@ export function WorkspaceShell({
   const bottomBar = (
     <nav
       aria-label={t("navLabel")}
-      className="s-inset flex shrink-0 items-stretch border-t md:hidden"
+      className="flex shrink-0 items-stretch border-t md:hidden"
       style={{
         borderColor: "var(--color-border)",
-        // The home indicator sits over the last few pixels of the screen.
+        background: "var(--color-surface)",
         paddingBottom: "env(safe-area-inset-bottom)",
       }}
     >
@@ -243,71 +244,55 @@ export function WorkspaceShell({
     </nav>
   );
 
-  /* ── Header ───────────────────────────────────────────────────────────── */
+  /* ── The bar, and there is only one, and only on a phone ──────────────
+     THE GLOBAL HEADER IS GONE ON DESKTOP.
 
-  const header = (
+     It was a 56px strip naming the current screen — above a sidebar that
+     already highlights the current screen, and above a page whose own title
+     said it a third time: "Projects / Projects / 18 projects." It cost a rule
+     across the top of every page and 56px of the only dimension a conversation
+     needs.
+
+     On a phone there is no sidebar, so something has to carry the way back and
+     the name of where you are. That is all this is. In the workspace the
+     project's identity lives in the head of the conversation card, beside the
+     work. */
+
+  const mobileBar = (
     <header
-      className="flex h-14 shrink-0 items-center gap-3 border-b px-4 sm:px-6"
-      style={{ borderColor: "var(--color-border)" }}
+      className="flex h-14 shrink-0 items-center gap-3 border-b px-4 md:hidden"
+      style={{ borderColor: "var(--color-border)", background: "var(--color-surface)" }}
     >
-      {/* RENDERED ON `narrow`, NOT HIDDEN WITH A UTILITY.
-          These used to be `md:hidden` and `hidden md:flex`, and BOTH were
-          showing at every width — the header carried two back arrows side by
-          side on a phone and on a 1440px screen. `.s-nav-item` sets
-          `display: flex` and, like the button sheet, it is deliberately
-          unlayered so Tailwind's preflight cannot reset it; an unlayered rule
-          beats a layered utility whatever its specificity, so `hidden` and
-          `md:flex` both lost to it silently.
-
-          The shell already subscribes to the same media query for the tab bar,
-          so the honest fix is to render one control or the other rather than
-          to draw both and try to hide one.
-
-          On a phone this is the ONLY way out of a project — the build route
-          hides the tab bar, because the composer owns that edge. */}
-      {narrow &&
-        (project ? (
-          <Link
-            href="/projects"
-            aria-label={t("projectsTitle")}
-            className="s-nav-item h-10 w-10 shrink-0 items-center justify-center rounded-[var(--r-md)]"
-          >
-            <IconBack className="h-[18px] w-[18px]" />
-          </Link>
-        ) : (
-          <Link href="/dashboard" aria-label="Ventrio" className="shrink-0">
-            <VentrioMark size={24} />
-          </Link>
-        ))}
-
       {project ? (
-        <div className="flex min-w-0 flex-1 items-center gap-2.5">
-          {!narrow && (
-            <Link
-              href="/projects"
-              className="s-nav-item h-8 shrink-0 items-center gap-1.5 rounded-[var(--r-sm)] px-2 text-[13.5px] font-medium"
-            >
-              <IconBack className="h-4 w-4" />
-              {t("projectsTitle")}
-            </Link>
-          )}
-          <span className="min-w-0 truncate text-[15px] font-medium tracking-[-0.015em]">
-            {project.name || t("untitledProject")}
-          </span>
-          <StatusPill state={project.state} />
-        </div>
+        <Link
+          href="/projects"
+          aria-label={t("projectsTitle")}
+          className="s-nav-item h-10 w-10 shrink-0 items-center justify-center rounded-[var(--r-md)]"
+        >
+          <IconBack className="h-[18px] w-[18px]" />
+        </Link>
       ) : (
-        <span className="min-w-0 flex-1 truncate text-[15px] font-medium tracking-[-0.015em]">
-          {pathname === "/settings"
+        <Link href="/dashboard" aria-label="Ventrio" className="shrink-0">
+          <VentrioMark size={24} />
+        </Link>
+      )}
+
+      <span
+        className="min-w-0 flex-1 truncate text-[17px] font-medium"
+        style={{ fontFamily: "var(--font-display), Georgia, serif" }}
+      >
+        {project
+          ? project.name || t("untitledProject")
+          : pathname === "/settings"
             ? t("navSettings")
             : pathname === "/projects"
               ? t("projectsTitle")
               : pathname === "/create"
                 ? t("navNewProject")
                 : t("navOverview")}
-        </span>
-      )}
+      </span>
 
+      {project && <StatusPill state={project.state} />}
       <div className="flex shrink-0 items-center gap-2">{actions}</div>
     </header>
   );
@@ -317,7 +302,7 @@ export function WorkspaceShell({
       {rail}
 
       <div className="flex min-w-0 flex-1 flex-col">
-        {header}
+        {narrow && mobileBar}
 
         <main className={`relative min-h-0 flex-1 ${fill ? "overflow-hidden" : "overflow-auto"}`}>
           {/* Keyed on the route so each page arrives rather than swapping. */}
@@ -327,8 +312,7 @@ export function WorkspaceShell({
         </main>
 
         {/* The build screen fills the frame and owns its own bottom edge; a tab
-            bar under it would sit on top of the composer. Every other route
-            gets the bar. */}
+            bar under it would sit on top of the composer. */}
         {narrow && !fill && bottomBar}
       </div>
     </div>

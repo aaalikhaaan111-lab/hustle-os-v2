@@ -1245,7 +1245,11 @@
     "stepImprove": "Improve it",
     "stepPublish": "Put it online",
     "stepsLabel": "How Ventrio works",
-    "viewportHint": "See how your page looks on {device}"
+    "viewportHint": "See how your page looks on {device}",
+    "greetReturning": "What are we making today?",
+    "greetFirst": "Let's make something.",
+    "homeContinue": "Pick up where you left off",
+    "homeYourWork": "Your work"
   },
   "branding": {
     "madeWith": "Made with Ventrio",

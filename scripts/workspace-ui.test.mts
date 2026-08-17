@@ -66,11 +66,20 @@ for (const control of ["viewportDesktop", "viewportMobile", "fullScreen", "copyP
   check(`the toolbar owns ${control}`, toolbar.includes(control), "missing from the toolbar block");
 }
 
-// The rail keeps only the two layout toggles.
-const rail = buildScreen.slice(buildScreen.indexOf("The panel toggle"), buildScreen.indexOf("{copied && ("));
-check("the rail no longer carries the viewport", !/viewportDesktop|viewportMobile/.test(rail));
-check("nor sharing", !/copyPreviewLink/.test(rail));
-check("but still switches surface", /focusChat/.test(rail) && /openPreview/.test(rail));
+/**
+ * THE FLOATING RAIL IS GONE, so there is nothing left to keep out of it.
+ *
+ * It was two icon buttons in a pill down the right edge for switching between
+ * the conversation and the page. It reserved a 92px gutter that pushed the
+ * page off-centre, and it duplicated a control that exists in two better
+ * places: Close lives in the capsule attached to the page, and on a phone the
+ * mode switch sits above both surfaces.
+ */
+check("the floating rail is retired", !/RailButton/.test(code(buildScreen)));
+check("and its gutter with it", !/lg:pr-\[92px\]/.test(code(buildScreen)),
+  "92px reserved for a rail that no longer exists, pushing the page off-centre");
+check("closing the page is still reachable", /closePreview/.test(buildScreen));
+check("and switching surface on a phone still is", /ModeSwitch/.test(buildScreen));
 
 /* ── 3. no product controls left in the chat ─────────────────────────────── */
 
@@ -103,8 +112,12 @@ check(
 );
 check("and its fixed overlay with it", !/fixed inset-0 z-\[90\]/.test(createExperience));
 check(
+  // Comment-stripped, and the window is 700 rather than 400: the indicator is
+  // now the same three-dot element the conversation and the preview use, which
+  // is four spans instead of one. The property under test is unchanged —
+  // progress renders INLINE in the stream, not in a detached overlay.
   "progress is rendered inside the message stream",
-  /creating && \([\s\S]{0,400}progressPreparing/.test(createExperience),
+  /creating && \([\s\S]{0,700}progressPreparing/.test(code(createExperience)),
 );
 
 /**
@@ -164,11 +177,34 @@ check("discovery choices stack too", (createExperience.match(/choice-stack/g) ??
  * are plain lines. The rule the hero violated still holds and is asserted right
  * below: no display face, no signal dot, nothing on this screen is a grid.
  */
-check("the empty state opens with a question, not a hero",
-  /emptyPrompt/.test(createCode) && /s-opening/.test(createCode) && !/s-display/.test(createCode));
-check("and the starting points are lines, not capsules",
-  /STARTING_POINTS\.map/.test(createCode) && !/rounded-full border/.test(createCode),
-  "a row of capsules reads as a filter bar; these are openings");
+/**
+ * THE FRONT DOOR GREETS YOU, and this assertion has now moved three times, so
+ * it is worth writing down what the rule actually is.
+ *
+ *   v1  a marketing hero: an "IDEA → POSSIBILITY" eyebrow, a headline at
+ *       clamp(2.35rem, 8vw, 5.2rem), a subhead, a signal dot. Removed as "a
+ *       landing page inside the product".
+ *   v2  17px, which read as a form label on the first screen of the product.
+ *   v3  24px, still described as weak typography.
+ *   v4  the greeting, in the display serif, on the colour field.
+ *
+ * v4 is not a return to v1, and the difference is what this checks. A hero
+ * SELLS: it has an eyebrow, a signal dot and a subhead written at the reader.
+ * A greeting ASKS: it is the assistant's own question, in the product's voice,
+ * with the answer field directly under it. Both reference products do exactly
+ * this on their creation screen.
+ *
+ * What must stay true is that the display face never appears in the THREAD —
+ * the original defect was a reply promoted to headline type.
+ */
+check("the front door greets rather than sells",
+  /emptyPrompt/.test(createCode) && /s-greet/.test(createCode));
+check("with no eyebrow, signal dot or marketing subhead",
+  !/openingSignal/.test(createCode) && !/creation-signal-dot/.test(createCode),
+  "checked against comment-stripped source: the prose explaining the rule names the very strings it forbids");
+check("and no display face anywhere in the thread",
+  !/s-greet|s-display/.test(createCode.slice(createCode.indexOf("messages.map"))),
+  "a reply set as a headline is the defect this rule exists for");
 check("and the marketing hero is gone",
   !/openingSignal/.test(createCode) && !/clamp\(2\.35rem/.test(createCode),
   "an 83px display headline and an eyebrow are an advertisement for a product already open");

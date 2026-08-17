@@ -1245,7 +1245,11 @@
     "stepImprove": "Улучшите",
     "stepPublish": "Опубликуйте",
     "stepsLabel": "Как работает Ventrio",
-    "viewportHint": "Как страница выглядит: {device}"
+    "viewportHint": "Как страница выглядит: {device}",
+    "greetReturning": "Что создаём сегодня?",
+    "greetFirst": "Давайте что-нибудь создадим.",
+    "homeContinue": "Продолжить с того же места",
+    "homeYourWork": "Ваши работы"
   },
   "branding": {
     "madeWith": "Сделано в Ventrio",

@@ -124,50 +124,83 @@ check("no platform screen hardcodes a colour", painted.length === 0, painted.joi
 check("the studio defines one radius scale",
   /--r-sm:\s*11px/.test(studioBlock) && /--r-md:\s*14px/.test(studioBlock) && /--r-lg:\s*20px/.test(studioBlock));
 
-/* ── one type scale, and it is short ─────────────────────────────────────── */
+/* ── one type scale, in two voices ───────────────────────────────────────
+   The `v-*` scale that used to live in globals.css is retired: it was the
+   platform's SECOND type system, and its steps are these. There is one place
+   now, and it names a display face as well as a UI face — the product had no
+   display face at all, every screen set in one grotesk from the wordmark down
+   to the timestamps, which is why the typography read as weak. */
 
-/**
- * Each step exists, and no step is defined more than twice: once at the base
- * and at most one responsive override. The point is that a screen cannot invent
- * a fifth size, not that the scale is unable to change at a breakpoint.
- */
-for (const cls of ["v-display", "v-title", "v-body", "v-meta"]) {
-  const count = (globals.match(new RegExp(`\\.${cls}\\s*\\{`, "g")) ?? []).length;
+const STEPS = ["s-greet", "s-display", "s-opening", "s-title", "s-body", "s-meta"];
+for (const cls of STEPS) {
+  const count = (tokens.match(new RegExp(`\\.${cls}\\s*\\{`, "g")) ?? []).length;
   check(`${cls} exists`, count >= 1);
   check(`${cls} is not redefined ad hoc`, count <= 2, `${count} definitions`);
 }
+
+check("the retired second scale is gone from globals",
+  !/\.v-display|\.v-title|\.v-body|\.v-meta|\.v-surface|\.v-panel/.test(globals),
+  "two type systems is what made the product read as two products");
+
 /**
- * The BASE is the mobile size, because the base is what a phone gets. Scoped to
- * the first definition on purpose: the desktop override is also `.v-body {` and
- * also carries a font-size, so an unscoped regex passes on the desktop rule
- * while the phone renders whatever it likes.
+ * The voice is a serif and the work is a grotesk. Greetings, screen titles and
+ * project names are set in the display face; nothing operational is — a serif
+ * button is a costume.
  */
-const bodyBase = globals.split(".v-body {")[1]?.split("}")[0] ?? "";
-const bodyRem = Number((bodyBase.match(/font-size:\s*([\d.]+)rem/) ?? [])[1]);
-check("mobile body type is not desktop-dashboard small", bodyRem >= 1,
-  `${bodyRem}rem — 15px is normal on a desktop dashboard and small at arm's length`);
-check("and desktop steps back down rather than up",
-  /@media[^{]*min-width:\s*768px[\s\S]*?\.v-body\s*\{\s*font-size:\s*0\.9375rem/.test(globals));
+for (const cls of ["s-greet", "s-display", "s-opening", "s-title"]) {
+  const rule = tokens.split(`.${cls} {`)[1]?.split("}")[0] ?? "";
+  check(`${cls} is set in the display face`, /--font-display/.test(rule));
+}
+for (const cls of ["s-body", "s-meta", "s-eyebrow", "s-btn"]) {
+  const rule = tokens.split(`.${cls} {`)[1]?.split("}")[0] ?? "";
+  check(`${cls} is not`, !/--font-display/.test(rule));
+}
+
+check("the display face carries Cyrillic",
+  /subsets:\s*\["latin",\s*"cyrillic"\]/.test(nocode(read("src/app/layout.tsx")).split("Alegreya({")[1] ?? ""),
+  "the product runs in Russian; a display face that falls back on half its users is not one");
+
+/**
+ * The greeting is the largest step, and the question the assistant asks is
+ * deliberately smaller than it. Both are larger than the title, which is
+ * larger than the body — a scale whose steps a person can actually see, unlike
+ * the 17px-title-over-15px-body it replaced.
+ */
+const size = (cls: string) => {
+  const rule = tokens.split(`.${cls} {`)[1]?.split("}")[0] ?? "";
+  return Number((rule.match(/font-size:\s*([\d.]+)rem/) ?? [])[1]);
+};
+check("the scale is genuinely stepped",
+  size("s-greet") > size("s-display") &&
+  size("s-display") > size("s-opening") &&
+  size("s-opening") > size("s-title") &&
+  size("s-title") > size("s-body") &&
+  size("s-body") > size("s-meta"),
+  [size("s-greet"), size("s-display"), size("s-opening"), size("s-title"), size("s-body"), size("s-meta")].join(" / "));
 
 /* ── two surface treatments, no decorative shadows ───────────────────────── */
 
-check("there is a surface treatment", /\.v-surface\s*\{/.test(globals));
-check("and a panel treatment", /\.v-panel\s*\{/.test(globals));
-for (const cls of ["v-surface", "v-panel"]) {
-  const rule = globals.split(`.${cls} {`)[1]?.split("}")[0] ?? "";
-  check(`${cls} does not float`, !/box-shadow/.test(rule),
-    "a shadow means 'above'; almost nothing in a workspace is above anything");
-}
+check("there is a panel treatment", /\.s-panel\s*\{/.test(tokens));
+check("and a sheet that rises over the field", /\.s-sheet\s*\{/.test(tokens));
+check("the panel does not float", !/box-shadow/.test(tokens.split(".s-panel {")[1]?.split("}")[0] ?? ""),
+  "a shadow means 'above'; a panel sits on the page");
+
+/* ── the sky ─────────────────────────────────────────────────────────────── */
+
+check("there is a creation field", /\.s-sky\s*\{/.test(tokens) && /\.s-sky-band\s*\{/.test(tokens));
+check("built from the accent rather than an invented palette",
+  /--sky-1:\s*rgb\(91 75 214/.test(tokens),
+  "the field is the brand colour at low alpha, not a second identity");
 
 /* ── the legacy marketing chrome is gone from shared components ──────────── */
 
 const header = nocode(read("src/components/ui/PageHeader.tsx"));
-check("the page header uses the shared scale", /v-display/.test(header));
+check("the page header uses the shared scale", /s-display/.test(header));
 check("its uppercase accent eyebrow is retired", !/tracking-\[0\.18em\]/.test(header));
 check("and its rule is gone", !/border-b border-border/.test(header));
 
 const card = nocode(read("src/components/ui/Card.tsx"));
-check("cards use the shared surface", /v-surface/.test(card));
+check("cards use the shared surface", /s-panel/.test(card));
 check("and have no drop shadow", !/shadow-\[/.test(card));
 
 /* ── touch targets on the surfaces a phone actually uses ─────────────────── */
@@ -336,11 +369,11 @@ const empty = nocode(read("src/components/ui/EmptyState.tsx"));
 check("the empty state is not a drop zone", !/border-dashed/.test(empty),
   "a dashed outline is the web's convention for somewhere to drag a file");
 check("and uses the shared surface and scale",
-  /v-surface/.test(empty) && /v-title/.test(empty) && /v-body/.test(empty));
+  /s-panel/.test(empty) && /s-title/.test(empty) && /s-body/.test(empty));
 
 const skeleton = nocode(read("src/components/ui/Skeleton.tsx"));
 check("a placeholder has the geometry of the thing it replaces",
-  /v-surface/.test(skeleton) && !/rounded-3xl/.test(skeleton),
+  /s-panel/.test(skeleton) && !/rounded-3xl/.test(skeleton),
   "rounded-3xl against a 16px card re-flowed the list the moment data arrived");
 
 const badge = nocode(read("src/components/ui/Badge.tsx"));

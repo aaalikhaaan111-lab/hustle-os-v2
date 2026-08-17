@@ -12,6 +12,7 @@ import { CodegenPreview } from "@/components/workspace/CodegenPreview";
 import { AppPreview } from "@/components/workspace/AppPreview";
 import { BuildScreen, OpenPreviewButton } from "@/components/workspace/BuildScreen";
 import { IconEye } from "@/components/workspace-ui/parts";
+import { ProjectHead } from "@/components/workspace/ProjectHead";
 import type { CreationDirection } from "@/lib/build/creationTypes";
 import type { Stage3ProjectOutput, Stage3Status } from "@/lib/build/stage3Types";
 import type { Locale } from "@/i18n/locale";
@@ -121,6 +122,9 @@ export function WorkspaceView(props: WorkspaceViewProps) {
   return (
     <BuildScreen
       projectId={props.projectId}
+      projectHead={
+        <ProjectHead name={props.projectName} published={Boolean(props.publication?.isPublished)} />
+      }
       /**
        * Explicit, never the default. This screen used to pass nothing and take
        * `"empty"`, so a stored version that would not recompile was reported as

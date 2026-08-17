@@ -87,8 +87,8 @@ check("no shadow reaching the conversation", !!shadowLayer && (() => {
   return blur / 2 - y + spread < 0;
 })(), shadowDecl.slice(0, 90));
 check("the composer is compact",
-  /padding: 0\.75rem/.test(composerRule) && /h-9/.test(composer),
-  "12px of padding and a compact control row");
+  /padding: 0\.875rem/.test(composerRule) && /h-9/.test(composer),
+  "14px of padding and a compact control row");
 check("its text stays 16px on mobile", /text-\[16px\]/.test(composer),
   "anything smaller and iOS zooms the page on focus");
 

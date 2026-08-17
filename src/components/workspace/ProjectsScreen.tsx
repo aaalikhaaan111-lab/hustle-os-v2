@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { IconPlus, IconSearch, ProductPreview, StatusPill } from "@/components/workspace-ui/parts";
-import { PageBody, PageHeading } from "@/components/workspace-ui/PageBody";
 import { formatAge } from "@/lib/workspace/formatAge";
 import type { PresentedProject } from "@/lib/workspace/present";
 import { HowItWorks } from "@/components/workspace-ui/HowItWorks";
@@ -57,30 +56,33 @@ export function ProjectsScreen({ projects }: { projects: PresentedProject[] }) {
   const publishedCount = projects.filter((p) => p.state === "published").length;
 
   return (
-    <PageBody>
-      {/* No eyebrow. The shell's header bar already says "Projects" directly
-          above this, and the title says it a third time. */}
-      <PageHeading
-        title={
-          projects.length === 0
-            ? t("startFirstTitle")
-            : t("projectsCount", { count: projects.length })
-        }
-        lead={
-          projects.length === 0
-            ? t("startFirstBody")
-            : publishedCount > 0
-              ? t("projectsCountLive", { count: projects.length, live: publishedCount })
-              : undefined
-        }
-        actions={
-          <Link href="/create" className="s-btn s-btn--primary">
-            <IconPlus className="h-4 w-4" />
+    <div className="min-h-full">
+      {/* THE SAME COMPOSITION AS HOME: a band of sky with the count in the
+          display face, then the work on a sheet that rises over it. This was a
+          page heading, a search row and a grid — correct, and indistinguishable
+          from a file browser. */}
+      <section className="s-sky-band px-5 pb-10 pt-10 sm:px-10 sm:pb-12 sm:pt-16">
+        <div className="mx-auto flex w-full max-w-[1120px] flex-wrap items-end justify-between gap-5">
+          <div className="min-w-0">
+            <h1 className="s-display">
+              {projects.length === 0 ? t("startFirstTitle") : t("projectsCount", { count: projects.length })}
+            </h1>
+            <p className="s-body mt-2.5 max-w-lg">
+              {projects.length === 0
+                ? t("startFirstBody")
+                : publishedCount > 0
+                  ? t("projectsCountLive", { count: projects.length, live: publishedCount })
+                  : t("projectsSorted")}
+            </p>
+          </div>
+          <Link href="/create" className="s-btn s-btn--primary h-11 px-5 text-[1rem]">
+            <IconPlus className="h-[18px] w-[18px]" />
             {t("navNewProject")}
           </Link>
-        }
-      />
+        </div>
+      </section>
 
+      <div className="s-sheet mx-auto w-full max-w-[1160px] px-5 pb-16 pt-7 sm:px-10 sm:pt-9">
       {projects.length === 0 ? (
         /* No box. An empty index is an empty page with one thing to do on it —
            drawing a dashed rectangle around the absence only makes the absence
@@ -94,7 +96,7 @@ export function ProjectsScreen({ projects }: { projects: PresentedProject[] }) {
       ) : (
         <>
           <div
-            className="mt-10 flex flex-wrap items-center gap-x-6 gap-y-3 border-b pb-3"
+            className="flex flex-wrap items-center gap-x-6 gap-y-3 border-b pb-3"
             style={{ borderColor: "var(--color-border)" }}
           >
             <label
@@ -137,29 +139,22 @@ export function ProjectsScreen({ projects }: { projects: PresentedProject[] }) {
           {visible.length === 0 ? (
             <p className="s-body mt-12">{t("projectsNoMatch", { query })}</p>
           ) : (
-            /* A GALLERY, NOT A LEDGER.
-               These were text rows: a name, a grey line, a timestamp. That is
-               how you list invoices. What is actually here is the set of things
-               this person has MADE, and the first thing anyone wants from that
-               list is to recognise their own work — which needs a picture, not
-               a filename. Each project now leads with its own preview, and the
-               name and state read underneath it. */
-            <ul className="mt-8 grid grid-cols-1 gap-x-6 gap-y-9 sm:grid-cols-2 lg:grid-cols-3">
+            /* A GALLERY, NOT A LEDGER. These were rows of names and timestamps,
+               which is how you list invoices. What is here is the set of things
+               this person MADE, and the first thing anyone wants is to
+               recognise their own work — which needs a picture, not a
+               filename. */
+            <ul className="mt-8 grid grid-cols-1 gap-x-6 gap-y-8 sm:grid-cols-2 lg:grid-cols-3">
               {visible.map((project, index) => (
-                <li
-                  key={project.id}
-                  className="s-enter"
-                  style={{ animationDelay: `${Math.min(index, 8) * 26}ms` }}
-                >
+                <li key={project.id} className="s-enter" style={{ animationDelay: `${Math.min(index, 8) * 26}ms` }}>
                   <Link href={`/projects/${project.id}`} className="group block">
                     <span className="s-artifact block aspect-[16/10] w-full overflow-hidden">
                       <ProductPreview project={project.preview} density="sm" />
                     </span>
-
-                    <span className="mt-3.5 block min-w-0">
+                    <span className="mt-3 block min-w-0">
                       <span
-                        className="block truncate text-[16px] font-medium tracking-[-0.015em]"
-                        style={{ color: "var(--color-ink)" }}
+                        className="block truncate text-[17px] font-medium"
+                        style={{ fontFamily: "var(--font-display), Georgia, serif", color: "var(--color-ink)" }}
                       >
                         {project.name || t("untitledProject")}
                       </span>
@@ -176,6 +171,7 @@ export function ProjectsScreen({ projects }: { projects: PresentedProject[] }) {
           )}
         </>
       )}
-    </PageBody>
+      </div>
+    </div>
   );
 }

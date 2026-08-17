@@ -31,7 +31,7 @@ export function EmptyState({
   return (
     <div
       className={cn(
-        "v-surface flex flex-col items-center justify-center text-center",
+        "s-panel flex flex-col items-center justify-center text-center",
         isCompact ? "px-6 py-10" : "px-6 py-14 sm:px-8",
         className
       )}
@@ -49,9 +49,9 @@ export function EmptyState({
           {icon}
         </div>
       )}
-      <h3 className="v-title">{title}</h3>
+      <h3 className="s-title">{title}</h3>
       {description && (
-        <p className={cn("v-body mt-2", isCompact ? "max-w-[240px]" : "max-w-sm")}>
+        <p className={cn("s-body mt-2", isCompact ? "max-w-[240px]" : "max-w-sm")}>
           {description}
         </p>
       )}

@@ -53,8 +53,8 @@ export function SignupForm() {
   return (
     <div className="mx-auto flex w-full max-w-sm flex-col gap-8 py-12 sm:py-20">
       <div className="flex flex-col items-center gap-2 text-center">
-        <h1 className="v-display">{t("signupTitle")}</h1>
-        <p className="v-body">{t("signupSubtitle")}</p>
+        <h1 className="s-greet">{t("signupTitle")}</h1>
+        <p className="s-body">{t("signupSubtitle")}</p>
       </div>
 
       <Card>
@@ -70,8 +70,8 @@ export function SignupForm() {
             {/* 11px was the smallest text in the product, and it was being
                 used for the notice that says what agreeing to Google sign-in
                 means. Consent text is the last thing that should be hard to
-                read. This is the `v-meta` size, like every other aside. */}
-            <p className="v-meta text-center">{t("googleConsentNotice")}</p>
+                read. This is the `s-meta` size, like every other aside. */}
+            <p className="s-meta text-center">{t("googleConsentNotice")}</p>
             {showConsentNotice && !consent && (
               <p role="alert" className="text-center text-[0.8125rem] font-medium text-danger">
                 {t("googleConsentValidation")}
@@ -140,7 +140,7 @@ export function SignupForm() {
         </CardContent>
       </Card>
 
-      <p className="v-body text-center">
+      <p className="s-body text-center">
         {t("alreadyHaveAccount")}{" "}
         <Link href="/login" className="font-medium text-accent hover:text-accent-hover">
           {t("logIn")}
