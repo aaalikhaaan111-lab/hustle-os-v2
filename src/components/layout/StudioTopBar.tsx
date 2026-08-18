@@ -5,7 +5,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { VentrioMark } from "@/components/workspace-ui/parts";
-import { LanguageSwitcher } from "@/components/layout/LanguageSwitcher";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 /**
@@ -84,9 +83,11 @@ export function StudioTopBar({ isAuthenticated }: { isAuthenticated: boolean }) 
             viewport and gave the whole page a horizontal scroll. Everything
             secondary moved into the disclosure below. */}
         <div className="ml-auto flex shrink-0 items-center gap-2">
-          <span className="hidden md:flex">
-            <LanguageSwitcher />
-          </span>
+          {/* THE LANGUAGE CONTROL LIVES IN THE FOOTER, once.
+              It was in both the header and the footer of every public page, so
+              the same setting was offered twice on one screen — and the header
+              copy sat at the right edge, where its menu opened partly outside
+              the viewport. One control, in the place that already had it. */}
           {isAuthenticated ? (
             <Link href="/dashboard" className="s-btn s-btn--secondary">
               {t("openProjects")}
@@ -153,9 +154,6 @@ export function StudioTopBar({ isAuthenticated }: { isAuthenticated: boolean }) 
               {t("login")}
             </Link>
           )}
-          <div className="border-t pt-2 mt-2" style={{ borderColor: "var(--color-border)" }}>
-            <LanguageSwitcher />
-          </div>
         </nav>
       )}
     </header>

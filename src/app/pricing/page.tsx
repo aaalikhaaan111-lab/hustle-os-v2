@@ -153,165 +153,87 @@ export default async function PricingPage() {
 
   return (
     <>
-      {/* PRICING, AS A COMPARISON RATHER THAN THREE BROCHURES.
+      {/* PRICING AS THREE PLANS, READ ONCE.
 
-          It was three equal bordered cards side by side, each repeating the
-          same five feature lines with its own tick marks — so the one thing a
-          person actually wants (what changes between plans) had to be found by
-          reading the same list three times and diffing it by eye. Pro was
-          "highlighted" with a 40%-opacity accent border, which at that opacity
-          is not a highlight.
+          The table before this made a reader scan a 3x5 grid and diff cells to
+          answer "which one do I want", and it left a third of the page empty
+          where rows collapsed. Plans are cards again — but not the three equal
+          brochures that preceded the table. Each card states the price, one
+          sentence of what the plan is for, its own capability list, and its
+          own call to action, so a decision can be made from one column without
+          reading the other two. Pro is the recommended plan and looks it: a
+          filled surface, a label, and a raised edge.
 
-          It is now one table. The plans are columns, the capabilities are rows,
-          and the differences line up horizontally where they can be read. Pro
-          is marked by tone and a label rather than by a border nobody sees. */}
-      <section className="px-5 pb-8 pt-10 sm:px-10 sm:pb-10 sm:pt-14">
+          Nothing about entitlements changed. Every line still reads from
+          `PLANS`, the same object the quota resolver and the publish action
+          enforce against. */}
+      <section className="px-5 pb-10 pt-10 sm:px-10 sm:pt-16">
         <div className="mx-auto w-full max-w-[1080px]">
           <p className="s-eyebrow mb-3">{t("pageTitle")}</p>
-          <h1 className="s-greet max-w-[18ch]">{t("lead")}</h1>
+          <h1 className="s-display max-w-[16ch]">{t("lead")}</h1>
         </div>
       </section>
 
       <div className="mx-auto w-full max-w-[1080px] px-5 pb-20 sm:px-10">
-
-        {/* Wide: a real table. Narrow: the same data as three stacked blocks,
-            because a three-column table on a phone is a horizontal scroll. */}
-        <div className="hidden pt-4 md:block">
-          <table className="w-full border-collapse text-left">
-            <thead>
-              <tr>
-                <th className="w-[26%] pb-6 align-bottom" />
-                {ORDER.map((plan) => (
-                  <th
-                    key={plan}
-                    /* Tone across the whole column, not a 40%-opacity border
-                       nobody sees and not a chip alone. The recommendation
-                       should be legible from the shape of the table. */
-                    className={`w-[24.6%] pb-6 pl-6 align-bottom ${
-                      plan === "pro" ? "rounded-t-[var(--r-lg)] bg-muted/60" : ""
-                    }`}
-                  >
-                    <span className="flex items-center gap-2">
-                      <span className="s-eyebrow">{name[plan]}</span>
-                      {plan === "pro" && (
-                        <span
-                          className="rounded-full px-2 py-0.5 text-[11.5px] font-medium"
-                          style={{ background: "var(--color-accent-soft)", color: "var(--color-accent)" }}
-                        >
-                          {t("mostPeople")}
-                        </span>
-                      )}
-                    </span>
-                    <span className="mt-3 flex items-baseline gap-1.5">
-                      <span
-                        className="text-[38px] font-medium leading-none tracking-[-0.02em]"
-                      >
-                        {PRICE[plan]}
-                      </span>
-                      {plan !== "free" && <span className="s-meta">{t("perMonth")}</span>}
-                    </span>
-                    <span className="s-meta mt-2.5 block font-normal">{tagline[plan]}</span>
-                    {/* THE CTA BELONGS WITH THE PRICE. It used to be the last
-                        row of the table, so choosing a plan meant reading five
-                        capability rows first and then hunting for a button at
-                        the bottom of the page. Deciding happens at the price. */}
-                    <span className="mt-5 block font-normal normal-case tracking-normal">
-                      {action(plan)}
-                    </span>
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {/* A row whose three answers are identical is not a comparison.
-                  "Your own web address" and "Help finding and shaping the idea"
-                  are the same on every plan, and printing each of them three
-                  times filled a third of the table with repetition a reader has
-                  to check before discovering it says nothing. Those collapse to
-                  one cell across the plans, which is also the clearest possible
-                  statement that the capability is included everywhere. */}
-              {ROWS.map((row) => {
-                const values = ORDER.map((plan) => row.value(plan));
-                const identical = values.every((v) => v === values[0]);
-                return (
-                  <tr key={row.label} className="border-t" style={{ borderColor: "var(--color-border)" }}>
-                    <th
-                      scope="row"
-                      className="py-4 pr-6 align-top text-[14px] font-normal"
-                      style={{ color: "var(--color-ink-muted)" }}
+        <div className="grid gap-5 md:grid-cols-3 md:items-start">
+          {ORDER.map((plan) => {
+            const recommended = plan === "pro";
+            return (
+              <section
+                key={plan}
+                aria-labelledby={`plan-${plan}`}
+                className={`flex flex-col rounded-[var(--r-lg)] border p-6 ${
+                  recommended
+                    ? "bg-muted/60 shadow-[var(--shadow-soft)] md:-mt-3 md:pb-8 md:pt-8"
+                    : "bg-background"
+                }`}
+                style={recommended ? { borderColor: "var(--color-ink)" } : undefined}
+              >
+                <div className="flex items-center gap-2">
+                  <h2 id={`plan-${plan}`} className="s-eyebrow">{name[plan]}</h2>
+                  {recommended && (
+                    <span
+                      className="rounded-full px-2 py-0.5 text-[11.5px] font-medium"
+                      style={{ background: "var(--color-ink)", color: "var(--color-canvas)" }}
                     >
-                      {row.label}
-                    </th>
-                    {identical ? (
-                      <td colSpan={ORDER.length} className="py-4 pl-6 align-top text-[15px]"
-                          style={{ color: "var(--color-ink)" }}>
-                        {values[0]}
-                        <span className="s-meta ml-2">{t("onEveryPlan")}</span>
-                      </td>
-                    ) : (
-                      values.map((value, i) => (
-                        <td
-                          key={ORDER[i]}
-                          className={`py-4 pl-6 align-top text-[15px] ${
-                            ORDER[i] === "pro" ? "bg-muted/60" : ""
-                          }`}
-                          style={{ color: "var(--color-ink)" }}
-                        >
-                          {value}
-                        </td>
-                      ))
-                    )}
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+                      {t("mostPeople")}
+                    </span>
+                  )}
+                </div>
 
-        <div className="flex flex-col gap-10 pt-6 md:hidden">
-          {ORDER.map((plan) => (
-            <section key={plan} className="border-t pt-6" style={{ borderColor: "var(--color-border)" }}>
-              <p className="flex items-center gap-2">
-                <span className="s-eyebrow">{name[plan]}</span>
-                {plan === "pro" && (
-                  <span
-                    className="rounded-full px-2 py-0.5 text-[11.5px] font-medium"
-                    style={{ background: "var(--color-accent-soft)", color: "var(--color-accent)" }}
-                  >
-                    {t("mostPeople")}
+                <p className="mt-4 flex items-baseline gap-1.5">
+                  <span className="text-[40px] font-medium leading-none tracking-[-0.03em]">
+                    {PRICE[plan]}
                   </span>
-                )}
-              </p>
-              <p className="mt-3 flex items-baseline gap-1.5">
-                <span
-                  className="text-[34px] font-medium leading-none tracking-[-0.02em]"
-                >
-                  {PRICE[plan]}
-                </span>
-                {plan !== "free" && <span className="s-meta">{t("perMonth")}</span>}
-              </p>
-              <p className="s-body mt-2">{tagline[plan]}</p>
-              {/* The VALUES only, with no row label beside them.
-                  These strings are full sentences — "1 published project",
-                  "Ventrio branding on published projects" — written for a
-                  bullet list, so pairing each with its own noun as a label read
-                  as the same thing said twice down the whole column. The labels
-                  earn their place in the desktop table, where they are the row
-                  headers that make three columns comparable; on one column
-                  there is nothing to compare and the sentence is enough. */}
-              <ul className="mt-6 flex flex-col gap-2.5">
-                {ROWS.map((row) => (
-                  <li key={row.label} className="flex items-start gap-2.5 text-[15px]"
-                      style={{ color: "var(--color-ink)" }}>
-                    <span aria-hidden className="mt-[9px] h-[3px] w-[3px] shrink-0 rounded-full"
-                          style={{ background: "var(--color-ink-muted)" }} />
-                    {row.value(plan)}
-                  </li>
-                ))}
-              </ul>
-              <div className="mt-7">{action(plan)}</div>
-            </section>
-          ))}
+                  {plan !== "free" && <span className="s-meta">{t("perMonth")}</span>}
+                </p>
+
+                <p className="s-body mt-3 min-h-[2.75rem]">{tagline[plan]}</p>
+
+                {/* The CTA sits with the price, because that is where the
+                    decision is made — it used to be the last row of a table
+                    five capability rows further down. */}
+                <div className="mt-6">{action(plan)}</div>
+
+                <ul className="mt-7 flex flex-col gap-3">
+                  {ROWS.map((row) => (
+                    <li
+                      key={row.label}
+                      className="flex items-start gap-2.5 text-[14.5px] leading-snug"
+                      style={{ color: "var(--color-ink)" }}
+                    >
+                      <span
+                        aria-hidden
+                        className="mt-[7px] h-[3px] w-[3px] shrink-0 rounded-full"
+                        style={{ background: "var(--color-ink-muted)" }}
+                      />
+                      {row.value(plan)}
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            );
+          })}
         </div>
 
         <p id="billing-note" className="s-meta mt-14 max-w-2xl">
