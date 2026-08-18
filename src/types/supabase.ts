@@ -741,6 +741,8 @@ export type Database = {
           starting_stage: string
           status: string
           target_audience: string | null
+          thumbnail_captured_at: string | null
+          thumbnail_url: string | null
           time_availability: string
           updated_at: string
           user_id: string
@@ -762,6 +764,8 @@ export type Database = {
           starting_stage: string
           status?: string
           target_audience?: string | null
+          thumbnail_captured_at?: string | null
+          thumbnail_url?: string | null
           time_availability: string
           updated_at?: string
           user_id: string
@@ -783,6 +787,8 @@ export type Database = {
           starting_stage?: string
           status?: string
           target_audience?: string | null
+          thumbnail_captured_at?: string | null
+          thumbnail_url?: string | null
           time_availability?: string
           updated_at?: string
           user_id?: string
@@ -1048,7 +1054,21 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      /**
+       * Projects whose stored picture is missing or older than the project.
+       *
+       * A view because PostgREST filters compare a column to a value and never
+       * to another column, so `thumbnail_captured_at < updated_at` cannot be
+       * written as a query parameter. Read by the worker only.
+       */
+      projects_needing_thumbnail: {
+        Row: {
+          id: string
+          snapshot_fields: Json | null
+          updated_at: string
+        }
+        Relationships: []
+      }
     }
     Functions: {
       consume_ai_usage: {

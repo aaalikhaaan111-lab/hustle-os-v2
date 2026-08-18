@@ -30,6 +30,8 @@
 import { claimableJobs, expireStaleForUser } from "../src/lib/jobs/generationJobs";
 import { runGeneratePhase } from "../src/lib/v2/app/runGeneration";
 import type { GenerateMessage } from "../src/lib/v2/app/generationQueue";
+import { captureDueThumbnails } from "./captureTask";
+import { closeThumbnailBrowser } from "./thumbnail";
 
 /** How long to wait when there was nothing to do. */
 const IDLE_MS = Number(process.env.VENTRIO_WORKER_IDLE_MS ?? 5_000);
@@ -173,7 +175,18 @@ async function main(): Promise<void> {
         if (stale > 0) log("stale_recovered", { jobs: stale });
       }
 
-      if (!worked) await sleep(IDLE_MS);
+      /**
+       * Pictures, only when there is nothing better to do.
+       *
+       * A screenshot is worth nothing next to a generation, so this never runs
+       * on a tick that did real work — and when it does run it takes a couple of
+       * projects and stops. A capture that fails, hangs or finds no browser
+       * returns 0 and the loop sleeps exactly as it would have.
+       */
+      if (!worked) {
+        const captured = await captureDueThumbnails(log);
+        if (captured === 0) await sleep(IDLE_MS);
+      }
     } catch (error) {
       log("loop_error", {
         error: error instanceof Error ? `${error.name}: ${error.message.slice(0, 200)}` : "unknown",
@@ -182,6 +195,7 @@ async function main(): Promise<void> {
     }
   }
 
+  await closeThumbnailBrowser();
   log("stopped", { inFlight });
 }
 

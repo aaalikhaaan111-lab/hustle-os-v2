@@ -9,6 +9,7 @@ import type { PresentedProject } from "@/lib/workspace/present";
 import { HowItWorks } from "@/components/workspace-ui/HowItWorks";
 import { ProjectThumb, ProjectThumbEmpty } from "@/components/workspace/ProjectThumb";
 import { AppThumb } from "@/components/workspace/AppThumb";
+import { ProjectShot } from "@/components/workspace/ProjectShot";
 import { ProjectCardMenu } from "@/components/workspace/ProjectCardMenu";
 import {
   Empty,
@@ -181,7 +182,9 @@ export function ProjectsScreen({ projects }: { projects: PresentedProject[] }) {
                           shows its own name and routes, and a project with nothing shows an
                           empty state. No frames are run here — the gallery must stay fast and
                           must not reflow as cards arrive. */}
-                      {project.content ? (
+                      {project.thumbnailUrl ? (
+                        <ProjectShot src={project.thumbnailUrl} name={project.name} />
+                      ) : project.content ? (
                         <ProjectThumb content={project.content} />
                       ) : project.app ? (
                         <AppThumb app={project.app} />

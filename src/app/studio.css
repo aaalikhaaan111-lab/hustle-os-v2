@@ -586,6 +586,19 @@
   font-size: calc(100cqw / 70);
 }
 
+/* A STORED SCREENSHOT NEEDS NONE OF THAT.
+   It is already a picture at the card's own 16:10, so it is sized to the
+   container directly rather than through the em trick above. The numbers there
+   happen to resolve to the same box — 70em is 100cqw and 43.75em is its 16:10
+   height — but relying on that coincidence would break the day the page render
+   changes size. Stated here because this rule is UNLAYERED and would otherwise
+   beat the component's own `w-full h-full` utilities silently. */
+.s-thumb > img {
+  width: 100%;
+  height: 100%;
+  font-size: inherit;
+}
+
 /* ═══════════════════════════════════════════════════════════════════════
    11. THE FIVE STEPS
    ═══════════════════════════════════════════════════════════════════════ */

@@ -79,15 +79,52 @@ loudly once and then never again:
 
 Render works the same way as a Background Worker with `npm run worker`.
 
+## Project thumbnails
+
+The worker also photographs generated apps for the gallery, on ticks where it
+found no job to run. This needs a browser, and it is the only thing here that
+does.
+
+`playwright-core` is the dependency rather than `playwright` ON PURPOSE: the
+latter downloads ~150 MB of Chromium on every install, including Vercel's,
+where nothing uses it. So the browser is installed on this host and pointed at:
+
+    # in the build command
+    npx playwright install chromium
+
+    # in the environment
+    VENTRIO_CHROMIUM_PATH=/root/.cache/ms-playwright/chromium-*/chrome-linux/chrome
+
+On Railway the path is stable per image; `ls /root/.cache/ms-playwright` after
+the first build to read it off. Some images also need
+`npx playwright install-deps chromium` for the shared libraries.
+
+**Leaving it unset is a supported state.** The worker logs
+`thumbnail_unavailable` once and carries on generating; the gallery keeps
+drawing the fallbacks it drew before. Capture is the one thing here allowed to
+be absent.
+
+Optional tuning: `VENTRIO_THUMBNAIL_BATCH` (default 2) and
+`VENTRIO_THUMBNAIL_TIMEOUT_MS` (default 20000).
+
+One more prerequisite, in the database rather than here: the migration
+`20260818140000_add_project_thumbnails.sql` creates the storage bucket and —
+importantly — stops `set_projects_updated_at` from treating a capture as a
+change to the project. Without that carve-out every capture makes its own
+project stale again and the worker re-photographs the same handful forever.
+
 ## Reading the logs
 
 One structured line per event, and never a prompt, a key or generated source:
 
-    started          the process is polling
-    job_claimed      jobId, projectId, briefChars
-    job_finished     outcome, durationMs, and the gate's issues when refused
-    job_threw        the run threw; the row is left for the stale sweep
-    stale_recovered  jobs the sweep ended and refunded
-    draining         SIGTERM/SIGINT: no new work, current job finishes
+    started               the process is polling
+    job_claimed           jobId, projectId, briefChars
+    job_finished          outcome, durationMs, and the gate's issues when refused
+    job_threw             the run threw; the row is left for the stale sweep
+    stale_recovered       jobs the sweep ended and refunded
+    thumbnail_captured    projectId, bytes, durationMs
+    thumbnail_skipped     nothing photographable; the attempt is recorded anyway
+    thumbnail_unavailable no browser; capture is off, generation is unaffected
+    draining              SIGTERM/SIGINT: no new work, current job finishes
 
 `briefChars` is a length, deliberately. The brief itself is the person's idea.

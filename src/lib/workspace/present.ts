@@ -33,6 +33,14 @@ export interface PresentedProject {
   /** Null when the project has no generated version yet. */
   content: PresentedPreviewContent | null;
   /**
+   * A stored screenshot of the project running, or null until one exists.
+   *
+   * Captured once by the worker (`worker/captureTask.ts`) and served from
+   * storage, so the gallery loads an image instead of running anything. It is
+   * FIRST in the card's ladder: a real picture beats every drawing below it.
+   */
+  thumbnailUrl: string | null;
+  /**
    * A v2 application's own shape: what it is called and the routes it answers.
    *
    * This is real data from the generated product — not a headline and palette
@@ -157,6 +165,7 @@ export function presentProject(
     updated: relativeAge(project.updated_at),
     hasOutput,
     hasApp: appState !== null,
+    thumbnailUrl: project.thumbnail_url ?? null,
     preview: {
       shape: SHAPE_BY_TYPE[project.project_type] ?? "form",
       accent: accentFor(project.id),
