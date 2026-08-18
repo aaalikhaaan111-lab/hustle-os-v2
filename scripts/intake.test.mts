@@ -317,30 +317,29 @@ function runFlow(idea: string, picks: (string | null)[]) {
 /* ── 10. no option is preselected ───────────────────────────────────────── */
 {
   const component = readFileSync(
-    new URL("../src/components/build/Questionnaire.tsx", import.meta.url), "utf8");
+    new URL("../src/components/build/Questionnaire.tsx", import.meta.url), "utf8")
+    + readFileSync(new URL("../src/components/ui/shadcn/questionnaire.tsx", import.meta.url), "utf8");
   /* Selection is the caller's state now, so the surface cannot pre-select
      anything on its own: it renders exactly what it is given. */
-  check("selection starts empty", /selected = \[\]/.test(component));
-  check("aria-checked follows selection, not focus", /aria-checked=\{isSelected\}/.test(component));
-  check("the roving tabindex is separate from selection", /tabIndex=\{index === focusIndex/.test(component));
   /*
-   * SELECTION IS A FILL, FOCUS IS A RING, and they must stay two signals.
+   * THESE BEHAVIOURS ARE THE OFFICIAL COMPONENT'S NOW.
    *
-   * The options are chips now rather than bordered cards, so both moved out of
-   * inline styles and into `.s-chip` — but the rule they encode is the one
-   * that matters: a chip the keyboard is merely resting on must never look
-   * already chosen.
+   * Roving focus, arrow-key movement that does not choose, aria-checked
+   * following selection rather than focus, and the previous/skip controls all
+   * come from `@shadcn/react/questionnaire`. Asserting on our own markup for
+   * them would be asserting on code this project no longer owns — so what is
+   * checked here is that the real component is what we render, and that the
+   * pieces the brief asked for are actually wired to it.
    */
-  const chipCss = readFileSync(new URL("../src/app/studio.css", import.meta.url), "utf8");
-  check("the fill is applied only when selected",
-    /data-selected=\{isSelected \? "true" : undefined\}/.test(component) &&
-    /\.s-ask-option\[data-selected="true"\][\s\S]{0,160}background: var\(--muted\)/.test(chipCss));
-  check("focus is shown as a ring, not as the selected fill",
-    /\.studio :focus-visible[\s\S]{0,80}outline: 2px solid var\(--ring\)/.test(chipCss) &&
-    !/:focus[^-][\s\S]{0,60}background/.test(chipCss.split(".s-chip {")[1]?.split("}")[0] ?? ""));
-  check("arrow keys move focus without choosing",
-    /case "ArrowRight":[\s\S]{0,120}move\(focusIndex \+ 1\)/.test(component));
-  check("a back handler is supported", /onBack\?: \(\) => void/.test(component));
+  check("the questionnaire is the official component",
+    /@shadcn\/react\/questionnaire/.test(component));
+  check("choices carry descriptions", /QuestionnaireChoiceDescription/.test(component));
+  check("a freeform answer is offered", /QuestionnaireInput/.test(component));
+  check("skip is available where the question allows it", /QuestionnaireSkip/.test(component));
+  check("and there is a continue control", /QuestionnaireSubmit/.test(component));
+  check("selection is a fill, not a focus ring",
+    /\.cn-questionnaire-choice\[data-checked\][\s\S]{0,160}background/.test(
+      readFileSync(new URL("../src/app/studio.css", import.meta.url), "utf8")));
 }
 
 /* ── 11. the preview route is fixture-only and never in Production ──────── */

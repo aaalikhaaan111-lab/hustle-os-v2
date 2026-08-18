@@ -116,8 +116,17 @@ check(
  * test is therefore that the composer is passed to the questionnaire rather
  * than rendered beside it.
  */
+/*
+ * THE OFFICIAL COMPONENT, not a reimplementation.
+ *
+ * Choice semantics, roving focus, keyboard shortcuts, validation, skip and
+ * submit all come from `@shadcn/react/questionnaire` via the vendored registry
+ * source. Asserting on our own markup for those would be asserting on code we
+ * no longer own, so the checks here are: we use the real component, we pass it
+ * the composer, and we allow a freeform answer.
+ */
 check("the composer is rendered inside the questionnaire",
-  /<Questionnaire[\s\S]{0,900}composer=\{/.test(createExperience));
+  /<VentrioQuestionnaire[\s\S]{0,900}composer=\{/.test(createExperience));
 check("clarifications and proposals feed one surface",
   /showDirections\s*\?[\s\S]{0,200}turn\?\.choices/.test(createExperience));
 check(
@@ -125,7 +134,7 @@ check(
   !/<\/div>\s*\n\s*\{showChoices && \(/.test(createExperience),
 );
 check("the build question is the surface the composer expands into",
-  /<Questionnaire[\s\S]{0,1400}composer=\{/.test(preOutput));
+  /<VentrioQuestionnaire[\s\S]{0,1400}composer=\{/.test(preOutput));
 check(
   "and no longer sits in the footer above the composer",
   !/shrink-0 px-5 pb-5 pt-2[\s\S]{0,200}<StructuredChoice/.test(preOutput),
@@ -141,7 +150,9 @@ const optionsRegion = createCode.slice(
 );
 check("no timer hides the options", !/set(?:Timeout|Interval)/.test(optionsRegion));
 check("no opacity transition fades the conversation out", !/settled-state/.test(createCode), "the 24% dim is back");
-check("selection ends them", /setSelectedDirection\(index\)/.test(createExperience));
+/* Selection lives inside the official component now; what ends the question
+   from this side is the answer being submitted. */
+check("answering ends them", /onAnswer=\{onAskAnswer\}/.test(createExperience));
 check("sending a message ends them", /setTurn\(null\)/.test(createExperience));
 check("a new turn replaces them", /setTurn\(result\.turn\)/.test(createExperience));
 
@@ -221,14 +232,15 @@ check("every conversation surface uses the one component",
     /UserTurn/.test(readFileSync(new URL(`../${f}`, import.meta.url), "utf8"))));
 
 // The question in the workspace is a message too, not a form label.
-check("the build question uses body type", /text-\[15px\] font-normal leading-\[1\.55\]/.test(structured));
+check("the build question uses body type",
+  /\.cn-questionnaire-title[\s\S]{0,140}font-size: 0\.9375rem/.test(read("src/app/studio.css")));
 check("and is not truncated mid-sentence", !/truncate text-\[13px\]/.test(structured));
 check("nor framed as a panel", !/rounded-\[14px\] border/.test(code(structured)));
 
 /* ── 6. the options themselves stay compact ──────────────────────────────── */
 
 check("options are rows inside the surface, not cards in the transcript",
-  /<Questionnaire/.test(createExperience) && !/className="choice-stack"/.test(createExperience));
+  /<VentrioQuestionnaire/.test(createExperience) && !/className="choice-stack"/.test(createExperience));
 check("never columns", !/grid-cols-/.test(createCode));
 const css = read("src/app/globals.css");
 check("a row is one line of supporting text", /\.choice-row-hint \{[\s\S]{0,220}white-space: nowrap/.test(css));

@@ -156,8 +156,17 @@ check(
  * impossible rather than guarded: there is only ever one strip and it always
  * describes the question being asked.
  */
+/*
+ * THE OFFICIAL COMPONENT, not a reimplementation.
+ *
+ * Choice semantics, roving focus, keyboard shortcuts, validation, skip and
+ * submit all come from `@shadcn/react/questionnaire` via the vendored registry
+ * source. Asserting on our own markup for those would be asserting on code we
+ * no longer own, so the checks here are: we use the real component, we pass it
+ * the composer, and we allow a freeform answer.
+ */
 check("the proposal renders in the composer-attached surface",
-  /<Questionnaire[\s\S]{0,900}composer=\{/.test(createExperience));
+  /<VentrioQuestionnaire[\s\S]{0,900}composer=\{/.test(createExperience));
 check("with one chip per direction",
   /turn\?\.directions \?\? \[\]\)\.map/.test(createExperience));
 check("and the large card is gone", !/direction-card|DirectionCard/.test(createCode));
@@ -171,7 +180,7 @@ check("and the large card is gone", !/direction-card|DirectionCard/.test(createC
  * is asserted below: nothing on this screen is a column grid on a phone.
  */
 check("discovery choices use that same surface",
-  (createExperience.match(/<Questionnaire/g) ?? []).length === 1 &&
+  (createExperience.match(/<VentrioQuestionnaire/g) ?? []).length === 1 &&
   /showDirections\s*\?/.test(createExperience),
   "clarifications and proposals must not drift into two presentations again");
 /**
@@ -235,9 +244,10 @@ check("and the marketing hero is gone",
  * occupy about the height of one message, which is what stops it looking like
  * permanent UI.
  */
-check("intake options are full-width rows", /className="s-ask-option"/.test(structuredChoice));
+check("intake options come from the official component",
+  /@shadcn\/react\/questionnaire/.test(read("src/components/ui/shadcn/questionnaire.tsx")));
 check("and the answer is never limited to the options",
-  /typeHint/.test(structuredChoice),
+  /freeformLabel/.test(structuredChoice),
   "a closed list of buttons tells people those are the only allowed answers");
 check("and no longer scroll sideways", !/overflow-x-auto/.test(code(structuredChoice)));
 check("nor snap horizontally", !/snap-x|snap-mandatory/.test(code(structuredChoice)));

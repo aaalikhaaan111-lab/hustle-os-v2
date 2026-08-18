@@ -10,7 +10,7 @@ import { editProjectOutputAction, generateFirstVersionAction } from "@/lib/actio
 import type { CreationDirection } from "@/lib/build/creationTypes";
 import { isProjectOutputEditRequest } from "@/lib/build/editIntent";
 import { classifyBuildIntent } from "@/lib/build/buildIntent";
-import { Questionnaire } from "./Questionnaire";
+import { VentrioQuestionnaire } from "./Questionnaire";
 import { useBuildIntake } from "@/lib/build/useBuildIntake";
 import type { DesignPreviewId } from "@/lib/build/intake";
 import { intakeGenerationBrief, type IntakeAnswers } from "@/lib/build/intake";
@@ -691,23 +691,21 @@ export function PreOutputWorkspace({
                     {note}
                   </p>
                 )}
-                <Questionnaire
+                <VentrioQuestionnaire
                   key={intake.step?.id ?? "no-question"}
                   question={intake.step ? tb(intake.step.titleKey as never) : undefined}
-                  progress={intake.progress ?? undefined}
                   disabled={busy}
-                  typeHint={tb("askTypeHint")}
+                  freeformLabel={tb("askTypeHint")}
                   options={(intake.step?.options ?? []).map((option) => ({
                     id: option.id,
                     label: tb(option.labelKey as never),
                     hint: option.hintKey ? tb(option.hintKey as never) : undefined,
                     preview: "preview" in option ? (option as { preview: DesignPreviewId }).preview : undefined,
                   }))}
-                  onChoose={intake.choose}
+                  submitLabel={tb("intakeContinue")}
+                  onAnswer={({ ids }) => intake.choose(ids[0] ?? null)}
                   onSkip={intake.step ? () => intake.choose(null) : undefined}
                   skipLabel={intake.step ? tb(intake.step.deferKey as never) : undefined}
-                  onBack={intake.back ?? undefined}
-                  backLabel={tb("intakeBack")}
                   composer={
                 <WorkspaceComposer
                   value={input}

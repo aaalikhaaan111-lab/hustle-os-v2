@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { Questionnaire } from "@/components/build/Questionnaire";
+import { VentrioQuestionnaire } from "@/components/build/Questionnaire";
 import { planIntake, type DesignPreviewId, type IntakeAnswers } from "@/lib/build/intake";
 import "@/app/studio.css";
 
@@ -45,7 +45,6 @@ export function IntakePreview() {
   const showChrome = params.get("chrome") !== "0";
   const plan = planIntake(idea);
   const step = plan.steps.find((s) => !(s.id in answers)) ?? null;
-  const stepIndex = step ? plan.steps.findIndex((s) => s.id === step.id) : -1;
 
   function choose(optionId: string | null) {
     if (!step || dispatched) return;
@@ -104,23 +103,21 @@ export function IntakePreview() {
       </div>
 
       {step && (
-        <Questionnaire
-          typeHint="Or just type your own answer below."
+        <VentrioQuestionnaire
+          freeformLabel="Or answer in your own words"
+          submitLabel="Continue"
           key={step.id}
           question={tb(step.titleKey as never)}
           onSkip={() => choose(null)}
           skipLabel={tb(step.deferKey as never)}
           composer={null}
-          progress={plan.steps.length > 1 ? `${stepIndex + 1} / ${plan.steps.length}` : undefined}
           options={step.options.map((option) => ({
             id: option.id,
             label: tb(option.labelKey as never),
             hint: option.hintKey ? tb(option.hintKey as never) : undefined,
             preview: "preview" in option ? (option as { preview: DesignPreviewId }).preview : undefined,
           }))}
-          onChoose={choose}
-          onBack={stepIndex > 0 ? () => setAnswers({}) : undefined}
-          backLabel={tb("intakeBack")}
+          onAnswer={({ ids }) => choose(ids[0] ?? null)}
         />
       )}
 

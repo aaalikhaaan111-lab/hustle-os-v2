@@ -815,11 +815,10 @@ body:has(.studio-frame) {
 /**
  * ONE SURFACE: the composer, temporarily expanded into a question.
  *
- * The shell owns the border, the radius and the shadow that `.s-composer`
- * normally draws for itself, and the composer inside it gives all three up.
- * That is what makes this read as one box growing upward to hold a question
- * rather than as a panel parked above a text field — which is what the chips,
- * and the bordered cards before them, both looked like.
+ * The shell owns the border, radius and shadow that `.s-composer` normally
+ * draws for itself, and the composer inside gives all three up — so this reads
+ * as one box growing upward to hold a question rather than a panel parked
+ * above a text field.
  */
 .s-ask-shell {
   display: flex;
@@ -832,7 +831,6 @@ body:has(.studio-frame) {
   animation: s-ask-in 180ms var(--ease) both;
 }
 
-/* The composer surrenders its own frame to the shell it now lives in. */
 .s-ask-shell .s-composer {
   border: 0;
   border-radius: 0;
@@ -840,7 +838,6 @@ body:has(.studio-frame) {
   background: transparent;
 }
 
-/* Focus belongs to the whole surface, since the whole surface is the control. */
 .s-ask-shell:focus-within {
   border-color: var(--ring);
   box-shadow: 0 0 0 3px color-mix(in oklab, var(--ring) 40%, transparent);
@@ -852,87 +849,123 @@ body:has(.studio-frame) {
   background: var(--border);
 }
 
-/**
- * An answer is a row, not a chip and not a card.
- *
- * Full width so it can carry a sentence of explanation, one line tall so five
- * of them still fit above a composer on a phone, and flat until it is hovered
- * or chosen so the surface stays quiet while being read.
- */
-.s-ask-row {
-  display: flex;
-  align-items: center;
-  gap: 0.25rem;
-}
-
-.s-ask-option {
-  display: flex;
-  align-items: center;
-  gap: 0.625rem;
-  width: 100%;
-  padding: 0.5rem 0.625rem;
-  border: 1px solid transparent;
-  border-radius: var(--r-sm);
-  background: transparent;
-  color: var(--foreground);
-  text-align: left;
-  cursor: pointer;
-  transition:
-    background-color var(--t-fast) var(--ease),
-    border-color var(--t-fast) var(--ease);
-}
-
-@media (hover: hover) {
-  .s-ask-option:not(:disabled):hover { background: var(--muted); }
-}
-
-/* Selection fills; focus rings (from the studio-wide :focus-visible rule).
-   Two signals, two jobs — an option under the keyboard cursor is not chosen. */
-.s-ask-option[data-selected="true"] {
-  background: var(--muted);
-  border-color: var(--ring);
-}
-
-.s-ask-option:disabled { opacity: 0.5; cursor: default; }
-
-.s-ask-tick {
-  width: 0.75rem;
-  flex-shrink: 0;
-  font-size: 0.8125rem;
-  color: var(--color-accent);
-}
-
-.s-ask-thumb {
-  display: block;
-  width: 3rem;
-  height: 1.875rem;
-  flex-shrink: 0;
-  overflow: hidden;
-  border-radius: 5px;
-}
-
-/* Skip, back, and anything else the question offers: available, never loud. */
-.s-ask-quiet {
-  border-radius: 999px;
-  padding: 0.1875rem 0.5rem;
-  font-size: 0.75rem;
-  font-weight: 500;
-  color: var(--color-ink-secondary);
-  transition: background-color var(--t-fast) var(--ease);
-}
-
-@media (hover: hover) {
-  .s-ask-quiet:not(:disabled):hover { background: var(--muted); }
-}
-
-.s-ask-quiet:disabled { opacity: 0.5; }
-
-/* The question arrives rather than appearing: it is new information in a
-   conversation, and a step that swaps instantly is hard to notice at all. */
 @keyframes s-ask-in {
   from { opacity: 0; transform: translateY(6px); }
   to { opacity: 1; transform: none; }
 }
+
+/**
+ * THEMING shadcn's Questionnaire.
+ *
+ * The registry component carries `cn-questionnaire-*` hook classes and expects
+ * the host project to paint them — that is how the Base UI components are
+ * meant to be themed, and it is why this is styling rather than a rewrite.
+ * Every value below is a Ventrio token, so the official component looks like
+ * this product rather than like the docs site.
+ */
+.s-ask-form { padding: 0.875rem 0.875rem 0.75rem; }
+.s-ask-form fieldset { display: flex; flex-direction: column; gap: 0.625rem; border: 0; padding: 0; margin: 0; min-width: 0; }
+
+.cn-questionnaire-title {
+  font-size: 0.9375rem;
+  font-weight: 400;
+  line-height: 1.55;
+  color: var(--foreground);
+  padding: 0;
+}
+
+.cn-questionnaire-choices { display: flex; flex-direction: column; gap: 0.25rem; }
+
+/* An answer is a row: full width so it can carry a sentence, one line tall so
+   several still fit above a composer on a phone. */
+.cn-questionnaire-choice {
+  gap: 0.625rem;
+  padding: 0.5rem 0.625rem;
+  border: 1px solid transparent;
+  border-radius: var(--r-sm);
+  color: var(--foreground);
+  font-size: 0.875rem;
+}
+
+@media (hover: hover) {
+  .cn-questionnaire-choice:hover { background: var(--muted); }
+}
+
+.cn-questionnaire-choice[data-checked] {
+  background: var(--color-accent-soft);
+  border-color: var(--color-accent);
+}
+
+/* The radio/checkbox mark the component renders for itself. */
+.cn-questionnaire-choice-indicator {
+  width: 1rem;
+  height: 1rem;
+  margin-top: 0.0625rem;
+  border-color: var(--border);
+  background: var(--background);
+  color: var(--color-accent-foreground);
+}
+
+/* The component sets `rounded-full` on a radio itself; a blanket radius here
+   overrode it and turned every single-select question into checkboxes. Only
+   the checkbox case needs a radius from us. */
+.cn-questionnaire-choice[data-type="checkbox"] .cn-questionnaire-choice-indicator {
+  border-radius: 4px;
+}
+
+.cn-questionnaire-choice[data-checked] .cn-questionnaire-choice-indicator {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+}
+
+.cn-questionnaire-choice-indicator-check { width: 0.75rem; height: 0.75rem; }
+.cn-questionnaire-choice-indicator-dot { width: 0.375rem; height: 0.375rem; background: currentColor; }
+
+.cn-questionnaire-choice-description {
+  display: block;
+  margin-top: 0.125rem;
+  font-size: 0.78125rem;
+  line-height: 1.35;
+  color: var(--color-ink-muted);
+}
+
+.cn-questionnaire-shortcut {
+  min-width: 1.25rem;
+  padding: 0 0.25rem;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-size: 0.6875rem;
+  line-height: 1.25rem;
+  text-align: center;
+  color: var(--color-ink-muted);
+}
+
+/* The freeform answer, which is why the choices are never a closed set. */
+.cn-questionnaire-input {
+  width: 100%;
+  min-height: 2.25rem;
+  padding: 0.4375rem 0.625rem;
+  border: 1px solid var(--input);
+  border-radius: var(--r-sm);
+  background: var(--background);
+  font-size: 0.875rem;
+  color: var(--foreground);
+}
+
+.cn-questionnaire-input::placeholder { color: var(--muted-foreground); }
+.cn-questionnaire-input:focus-visible { outline: none; border-color: var(--ring); }
+
+.cn-questionnaire-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 0.125rem;
+}
+
+.cn-questionnaire-skip { margin-right: auto; }
+
+.cn-questionnaire-error { font-size: 0.78125rem; color: var(--destructive); }
 
 /* ── the microphone ─────────────────────────────────────────────────────── */
 

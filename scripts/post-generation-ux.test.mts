@@ -66,8 +66,17 @@ const publishing = read("src/lib/actions/publishing.ts");
  * test is therefore that the composer is passed to the questionnaire rather
  * than rendered beside it.
  */
+/*
+ * THE OFFICIAL COMPONENT, not a reimplementation.
+ *
+ * Choice semantics, roving focus, keyboard shortcuts, validation, skip and
+ * submit all come from `@shadcn/react/questionnaire` via the vendored registry
+ * source. Asserting on our own markup for those would be asserting on code we
+ * no longer own, so the checks here are: we use the real component, we pass it
+ * the composer, and we allow a freeform answer.
+ */
 check("the composer is rendered inside the questionnaire",
-  /<Questionnaire[\s\S]{0,900}composer=\{/.test(createExperience));
+  /<VentrioQuestionnaire[\s\S]{0,900}composer=\{/.test(createExperience));
 check("clarifications and proposals feed one surface",
   /showDirections\s*\?[\s\S]{0,200}turn\?\.choices/.test(createExperience));
 check(
@@ -90,12 +99,14 @@ const optionsRegion = createExperience.slice(
 check("no timer hides the options", !/setTimeout|setInterval/.test(code(optionsRegion)));
 
 // They disappear on the three events that should end them.
-check("selection ends them", /setSelectedDirection\(index\)/.test(createExperience));
+/* Selection lives inside the official component now; what ends the question
+   from this side is the answer being submitted. */
+check("answering ends them", /onAnswer=\{onAskAnswer\}/.test(createExperience));
 check("sending a message ends them", /setTurn\(null\)/.test(createExperience));
 check("a new turn replaces them", /setTurn\(result\.turn\)/.test(createExperience));
 
 check("options stay compact rows inside the surface",
-  /className="s-ask-option"/.test(read("src/components/build/Questionnaire.tsx")));
+  /\.cn-questionnaire-choice \{/.test(read("src/app/studio.css")));
 check("and never become columns", !/grid-cols-/.test(code(createExperience)));
 
 /* ── 2. the preview cannot go white in silence ───────────────────────────── */

@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
-import { Questionnaire } from "@/components/build/Questionnaire";
+import { VentrioQuestionnaire } from "@/components/build/Questionnaire";
 import {
   ensureCreationDraftAction,
   generateCreationTurnAction,
@@ -74,10 +74,8 @@ export function CreateExperience({ userId, initialDraft, fresh = false }: Create
   // failure — hides the "Retry" button so it doesn't offer a retry that can
   // only fail again the same way.
   const [noteIsLimitReached, setNoteIsLimitReached] = useState(false);
-  const [selectedDirection, setSelectedDirection] = useState<number | null>(null);
-  const [selectedChoices, setSelectedChoices] = useState<string[]>([]);
   const [refineTarget, setRefineTarget] = useState<string | null>(null);
-  const [generationRetry, setGenerationRetry] = useState<{ direction: CreationDirection; index: number } | null>(null);
+  const [generationRetry, setGenerationRetry] = useState<{ direction: CreationDirection } | null>(null);
   /**
    * The person's own idea, offered as a direction after discovery failed.
    *
@@ -158,10 +156,9 @@ export function CreateExperience({ userId, initialDraft, fresh = false }: Create
     return next;
   }
 
-  function chooseDirection(direction: CreationDirection, index: number) {
+  function chooseDirection(direction: CreationDirection) {
     if (creating || isSending || !projectId || selectionLockRef.current) return;
     selectionLockRef.current = true;
-    setSelectedDirection(index);
     setGenerationRetry(null);
     setFallbackDirection(null);
     setCreationPhase("persisting");
@@ -175,7 +172,6 @@ export function CreateExperience({ userId, initialDraft, fresh = false }: Create
         if (result.error || !result.projectId) {
           selectionLockRef.current = false;
           setCreationPhase("idle");
-          setSelectedDirection(null);
           setNote(result.error ?? t("errorSaveFailed"));
           return;
         }
@@ -217,7 +213,6 @@ export function CreateExperience({ userId, initialDraft, fresh = false }: Create
         }
         selectionLockRef.current = false;
         setCreationPhase("idle");
-        setSelectedDirection(null);
         setNote(t("errorSaveFailed"));
       }
     })();
@@ -242,7 +237,6 @@ export function CreateExperience({ userId, initialDraft, fresh = false }: Create
     setNoteIsLimitReached(false);
     setGenerationRetry(null);
     setFallbackDirection(null);
-    setSelectedChoices([]);
     startSending(async () => {
       try {
         const activeSessionId = sessionOverride ?? getOrCreateSessionId();
@@ -397,42 +391,13 @@ export function CreateExperience({ userId, initialDraft, fresh = false }: Create
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  /* The questionnaire collects the selection and submits it, so a choice
+     arriving here is already the final answer. */
   function pickChoice(choice: CreationChoice) {
     if (!turn || isSending || creating) return;
-    if (turn.choiceMode === "single") {
-      send(choice.title, null);
-      return;
-    }
-    setSelectedChoices((current) =>
-      current.includes(choice.id)
-        ? current.filter((id) => id !== choice.id)
-        : [...current, choice.id]
-    );
+    send(choice.title, null);
   }
 
-  function submitMultipleChoices() {
-    if (!turn || selectedChoices.length === 0) return;
-    const answer = turn.choices
-      .filter((choice) => selectedChoices.includes(choice.id))
-      .map((choice) => choice.title)
-      .join(", ");
-    send(answer, null);
-  }
-
-
-  function beginRefine(name: string) {
-    if (creating || isSending) return;
-    setNote(null);
-    setNoteIsLimitReached(false);
-    setGenerationRetry(null);
-    setFallbackDirection(null);
-    setRefineTarget(name);
-    setInput("");
-    requestAnimationFrame(() => {
-      textareaRef.current?.focus();
-      scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
-    });
-  }
 
   // The same dictation hook the workspace composers use — one implementation,
   // and the permission request happens inside the click it starts from.
@@ -469,45 +434,41 @@ export function CreateExperience({ userId, initialDraft, fresh = false }: Create
         label: choice.title,
         hint: choice.description ?? undefined,
       }));
-  const askSelected = showDirections
-    ? (selectedDirection === null ? [] : [String(selectedDirection)])
-    : selectedChoices;
 
-  function onAskChoose(optionId: string) {
-    if (showDirections) {
-      const index = Number(optionId);
-      const direction = turn?.directions[index];
-      if (direction) chooseDirection(direction, index);
+  /**
+   * One answer, whichever kind of question asked it.
+   *
+   * A typed answer wins over a chosen one: if someone wrote something, that is
+   * the more specific reply and the choices were only suggestions. For a
+   * direction proposal a typed answer is a refinement of the direction they
+   * had selected, which is what the old "Refine" link used to set up.
+   */
+  function onAskAnswer({ ids, text }: { ids: string[]; text: string }) {
+    if (text) {
+      const named = showDirections ? turn?.directions[Number(ids[0])]?.name ?? null : null;
+      send(text, named);
       return;
     }
-    const choice = turn?.choices.find((candidate) => candidate.id === optionId);
+    if (showDirections) {
+      const index = Number(ids[0]);
+      const direction = turn?.directions[index];
+      if (direction) chooseDirection(direction);
+      return;
+    }
+    if (multipleMode) {
+      const answer = (turn?.choices ?? [])
+        .filter((choice) => ids.includes(choice.id))
+        .map((choice) => choice.title)
+        .join(", ");
+      if (answer) send(answer, null);
+      return;
+    }
+    const choice = turn?.choices.find((candidate) => candidate.id === ids[0]);
     if (choice) pickChoice(choice);
   }
 
-  /* Multi-select needs a confirm; proposals offer another set. Both are quiet
-     actions inside the surface rather than controls scattered beside it. */
-  const askActions = showDirections ? (
-    <VentrioButton
-      variant="ghost"
-      size="sm"
-      disabled={creating || isSending}
-      onClick={() => send(t("anotherMsg"), null)}
-      weight="medium"
-      className="text-[13px]"
-    >
-      {t("showAnother")}
-    </VentrioButton>
-  ) : showChoices && turn?.choiceMode === "multiple" ? (
-    <VentrioButton
-      variant="primary"
-      size="sm"
-      disabled={isSending || creating || selectedChoices.length === 0}
-      onClick={submitMultipleChoices}
-      weight="medium"
-    >
-      {t("continueChoices")}
-    </VentrioButton>
-  ) : null;
+  const multipleMode = showChoices && turn?.choiceMode === "multiple";
+
 
   return (
     /* THE FRONT DOOR OPENS ON THE SKY.
@@ -702,7 +663,7 @@ export function CreateExperience({ userId, initialDraft, fresh = false }: Create
                     variant="ghost"
                     size="sm"
                     onClick={() =>
-                      generationRetry ? chooseDirection(generationRetry.direction, generationRetry.index) : retry()
+                      generationRetry ? chooseDirection(generationRetry.direction) : retry()
                     }
                     disabled={isSending || creating}
                     weight="medium" className="text-[13px]"
@@ -716,7 +677,7 @@ export function CreateExperience({ userId, initialDraft, fresh = false }: Create
                   <VentrioButton
                     variant="ghost"
                     size="sm"
-                    onClick={() => chooseDirection(fallbackDirection, 0)}
+                    onClick={() => chooseDirection(fallbackDirection)}
                     disabled={isSending || creating}
                     weight="medium" className="text-[13px]"
                   >
@@ -733,24 +694,14 @@ export function CreateExperience({ userId, initialDraft, fresh = false }: Create
               the question and shrinks back once it is answered. With no
               question it returns the composer untouched, which is what stops
               this ever becoming permanent furniture. */}
-          <Questionnaire
+          <VentrioQuestionnaire
             question={askQuestion}
             options={askOptions}
-            selected={askSelected}
             multiple={showChoices && turn?.choiceMode === "multiple"}
             disabled={isSending || creating}
-            typeHint={t("orType")}
-            onChoose={onAskChoose}
-            actions={askActions}
-            onSecondary={
-              showDirections
-                ? (optionId) => {
-                    const direction = turn?.directions[Number(optionId)];
-                    if (direction) beginRefine(direction.name);
-                  }
-                : undefined
-            }
-            secondaryLabel={t("refine")}
+            freeformLabel={t("orType")}
+            submitLabel={t("continueChoices")}
+            onAnswer={onAskAnswer}
             composer={
           <WorkspaceComposer
             hero={!started}
