@@ -7,6 +7,7 @@ import { HowItWorks } from "@/components/workspace-ui/HowItWorks";
 import { formatAge } from "@/lib/workspace/formatAge";
 import type { PresentedProject } from "@/lib/workspace/present";
 import { ProjectThumb, ProjectThumbEmpty } from "@/components/workspace/ProjectThumb";
+import { LiveThumb } from "@/components/workspace/LiveThumb";
 import { ProjectCardMenu } from "@/components/workspace/ProjectCardMenu";
 
 /* The six lifecycle stages drove a progress bar on this screen. The bar is
@@ -91,14 +92,18 @@ export function OverviewScreen({ active, recent, activeResponses }: OverviewScre
                 >
                 <Link href={`/projects/${project.id}`} className="group block">
                   <span className="s-artifact s-thumb block aspect-[16/10] w-full">
-                    {project.content ? (
+                    {/* A published project runs itself in the card — the real
+                        generated output rather than a drawing of it. Everything else
+                        falls back through the same ladder as before. */}
+                    {project.slug && project.hasApp ? (
+                      <LiveThumb
+    slug={project.slug}
+    label={project.name || t("untitledProject")}
+    fallback={<ProjectThumbEmpty label={t("summaryAppVersion")} />}
+  />
+                    ) : project.content ? (
                       <ProjectThumb content={project.content} />
                     ) : (
-                      /* "No first version yet" is reserved for projects that genuinely
-                         have none. A project built by the v2 pipeline has a real, often
-                         published, version whose bytes simply are not reconstructible into
-                         a thumbnail here — so it says what it has rather than claiming an
-                         absence that is untrue. */
                       <ProjectThumbEmpty
                         label={project.hasOutput ? t("summaryAppVersion") : t("summaryNoVersion")}
                       />

@@ -813,64 +813,124 @@ body:has(.studio-frame) {
 /* ── the questionnaire ──────────────────────────────────────────────────── */
 
 /**
- * A CHIP, NOT A CARD.
+ * ONE SURFACE: the composer, temporarily expanded into a question.
  *
- * The options were full-width bordered cards stacked above the composer: three
- * tall rectangles that read as a form docked to the page rather than as a
- * question somebody just asked. A chip is the width of its own words, wraps
- * onto as many lines as it needs, and lets the whole question occupy about the
- * height of one message.
+ * The shell owns the border, the radius and the shadow that `.s-composer`
+ * normally draws for itself, and the composer inside it gives all three up.
+ * That is what makes this read as one box growing upward to hold a question
+ * rather than as a panel parked above a text field — which is what the chips,
+ * and the bordered cards before them, both looked like.
  */
-.s-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4375rem;
-  max-width: 100%;
-  min-height: 2rem;
-  padding: 0.3125rem 0.75rem;
-  border: 1px solid var(--border);
-  border-radius: 999px;
+.s-ask-shell {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--input);
+  border-radius: var(--r-lg);
   background: var(--background);
+  box-shadow: 0 1px 2px 0 oklch(0.153 0.006 107.1 / 0.05);
+  overflow: hidden;
+  animation: s-ask-in 180ms var(--ease) both;
+}
+
+/* The composer surrenders its own frame to the shell it now lives in. */
+.s-ask-shell .s-composer {
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  background: transparent;
+}
+
+/* Focus belongs to the whole surface, since the whole surface is the control. */
+.s-ask-shell:focus-within {
+  border-color: var(--ring);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--ring) 40%, transparent);
+}
+
+.s-ask-seam {
+  height: 1px;
+  margin: 0 0.875rem;
+  background: var(--border);
+}
+
+/**
+ * An answer is a row, not a chip and not a card.
+ *
+ * Full width so it can carry a sentence of explanation, one line tall so five
+ * of them still fit above a composer on a phone, and flat until it is hovered
+ * or chosen so the surface stays quiet while being read.
+ */
+.s-ask-row {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.s-ask-option {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  width: 100%;
+  padding: 0.5rem 0.625rem;
+  border: 1px solid transparent;
+  border-radius: var(--r-sm);
+  background: transparent;
   color: var(--foreground);
-  font-size: 0.8125rem;
-  font-weight: 500;
-  line-height: 1.2;
+  text-align: left;
   cursor: pointer;
   transition:
     background-color var(--t-fast) var(--ease),
-    border-color var(--t-fast) var(--ease),
-    color var(--t-fast) var(--ease);
+    border-color var(--t-fast) var(--ease);
 }
 
 @media (hover: hover) {
-  .s-chip:not(:disabled):hover { background: var(--muted); border-color: var(--ring); }
+  .s-ask-option:not(:disabled):hover { background: var(--muted); }
 }
 
-/* Selection is a fill, focus is a ring — two signals doing two jobs, so a
-   chip the keyboard is merely resting on never looks already chosen. */
-.s-chip[data-selected="true"] {
-  background: var(--primary);
-  border-color: var(--primary);
-  color: var(--primary-foreground);
+/* Selection fills; focus rings (from the studio-wide :focus-visible rule).
+   Two signals, two jobs — an option under the keyboard cursor is not chosen. */
+.s-ask-option[data-selected="true"] {
+  background: var(--muted);
+  border-color: var(--ring);
 }
 
-.s-chip:disabled { opacity: 0.5; cursor: default; }
+.s-ask-option:disabled { opacity: 0.5; cursor: default; }
 
-.s-chip-preview {
-  display: block;
-  width: 1.75rem;
-  height: 1.125rem;
-  overflow: hidden;
-  border-radius: 4px;
+.s-ask-tick {
+  width: 0.75rem;
   flex-shrink: 0;
+  font-size: 0.8125rem;
+  color: var(--color-accent);
 }
+
+.s-ask-thumb {
+  display: block;
+  width: 3rem;
+  height: 1.875rem;
+  flex-shrink: 0;
+  overflow: hidden;
+  border-radius: 5px;
+}
+
+/* Skip, back, and anything else the question offers: available, never loud. */
+.s-ask-quiet {
+  border-radius: 999px;
+  padding: 0.1875rem 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--color-ink-secondary);
+  transition: background-color var(--t-fast) var(--ease);
+}
+
+@media (hover: hover) {
+  .s-ask-quiet:not(:disabled):hover { background: var(--muted); }
+}
+
+.s-ask-quiet:disabled { opacity: 0.5; }
 
 /* The question arrives rather than appearing: it is new information in a
    conversation, and a step that swaps instantly is hard to notice at all. */
-.s-ask { animation: s-ask-in 160ms var(--ease) both; }
-
 @keyframes s-ask-in {
-  from { opacity: 0; transform: translateY(4px); }
+  from { opacity: 0; transform: translateY(6px); }
   to { opacity: 1; transform: none; }
 }
 
@@ -898,4 +958,99 @@ body:has(.studio-frame) {
 @keyframes s-mic-pulse {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.45; }
+}
+
+/* ── the sidebar mark, which is also the toggle ──────────────────────────── */
+
+/**
+ * A logo that is silently a button tells nobody it can be pressed. The mark and
+ * a panel glyph share one box and cross-fade on hover or keyboard focus, so the
+ * affordance appears exactly when someone is looking for it — and nothing in
+ * the layout moves, because both glyphs are stacked in the same 22px square.
+ */
+.s-mark-swap {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+}
+
+.s-mark-swap > * {
+  grid-area: 1 / 1;
+  transition: opacity var(--t-fast) var(--ease);
+}
+
+.s-mark-hint { opacity: 0; color: var(--color-ink-secondary); }
+
+@media (hover: hover) {
+  .s-mark-toggle:hover .s-mark-hint { opacity: 1; }
+  .s-mark-toggle:hover .s-mark-swap > :first-child { opacity: 0; }
+}
+
+.s-mark-toggle:focus-visible .s-mark-hint { opacity: 1; }
+.s-mark-toggle:focus-visible .s-mark-swap > :first-child { opacity: 0; }
+
+/**
+ * THE APP RESPONDS WHEN THE DRAWER OPENS.
+ *
+ * On a phone the navigation was a sheet that slid over a page which carried on
+ * as if nothing had happened — so it read as an unrelated panel rather than as
+ * this application's own navigation. The frame now eases back and dims very
+ * slightly behind it: enough to say "that came from here", not enough to be a
+ * effect. Reduced motion turns the movement off and keeps the dimming.
+ */
+.studio-frame {
+  transition: transform var(--t-base) var(--ease), filter var(--t-base) var(--ease);
+}
+
+body:has([data-slot="sheet-content"][data-state="open"]) .studio-frame {
+  transform: scale(0.985);
+  filter: brightness(0.97);
+}
+
+/* ── a published project, showing itself ────────────────────────────────── */
+
+/**
+ * The card runs the real application rather than drawing a picture of one.
+ *
+ * The frame is laid out at desktop width and scaled down, because a generated
+ * page composed for 1120px shown at 344px would otherwise render its mobile
+ * layout — which is not what the card is trying to show. `transform` scales a
+ * rendered document faithfully; the container clips what falls outside.
+ *
+ * Inert by construction: no pointer events, no tab stop, and the sandbox has
+ * no `allow-same-origin`, so nothing inside can reach the page hosting it.
+ */
+.s-livethumb {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: var(--muted);
+}
+
+.s-livethumb iframe {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 1120px;
+  height: 700px;
+  border: 0;
+  pointer-events: none;
+  /* `cqw`, not a viewport unit: the card is ~344px in a three-up grid and full
+     width on a phone, and the window says nothing useful about which. The
+     containing `.s-thumb` already declares `container-type: inline-size`. */
+  transform: scale(calc(100cqw / 1120));
+  transform-origin: top left;
+}
+
+/* Shown while the frame is still being built, and instead of it if the build
+   never lands — a card must never be an empty rectangle. */
+.s-livethumb-fallback {
+  position: absolute;
+  inset: 0;
+  display: block;
 }

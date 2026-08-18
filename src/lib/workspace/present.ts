@@ -23,6 +23,12 @@ export interface PresentedProject {
   state: ProjectState;
   updated: RelativeAge;
   hasOutput: boolean;
+  /**
+   * True only for the v2 application pipeline. A card can run one of these in
+   * a frame; a stage-3 output has no such document and must not be asked for
+   * one, or the fetch 404s and the card renders nothing at all.
+   */
+  hasApp: boolean;
   preview: PreviewSpec;
   /** Null when the project has no generated version yet. */
   content: PresentedPreviewContent | null;
@@ -139,6 +145,7 @@ export function presentProject(
     state: publication?.isPublished ? "published" : "draft",
     updated: relativeAge(project.updated_at),
     hasOutput,
+    hasApp: appState !== null,
     preview: {
       shape: SHAPE_BY_TYPE[project.project_type] ?? "form",
       accent: accentFor(project.id),
