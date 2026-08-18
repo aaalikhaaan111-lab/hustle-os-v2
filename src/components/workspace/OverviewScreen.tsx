@@ -57,7 +57,7 @@ export function OverviewScreen({ active, recent, activeResponses }: OverviewScre
           <p className="s-body mt-3 max-w-lg">{t("startFirstBody")}</p>
 
           <div className="mt-6 flex flex-wrap items-center gap-3">
-            <Link href="/create" className="s-btn s-btn--primary">
+            <Link href="/create?fresh=1" className="s-btn s-btn--primary">
               <IconPlus className="h-[18px] w-[18px]" />
               {t("navNewProject")}
             </Link>

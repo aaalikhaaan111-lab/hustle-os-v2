@@ -45,11 +45,13 @@ const THINKING_STEP_KEYS = ["thinkingStep1", "thinkingStep2", "thinkingStep3"] a
 interface CreateExperienceProps {
   userId: string;
   initialDraft: PersistedCreationDraft | null;
+  /** Arrived via "New project": start clean, whatever is remembered. */
+  fresh?: boolean;
 }
 
 type CreationPhase = "idle" | "resetting" | "persisting" | "generating" | "handoff";
 
-export function CreateExperience({ userId, initialDraft }: CreateExperienceProps) {
+export function CreateExperience({ userId, initialDraft, fresh = false }: CreateExperienceProps) {
   const t = useTranslations("create");
   const tb = useTranslations("build");
   const locale = useLocale();
@@ -107,11 +109,21 @@ export function CreateExperience({ userId, initialDraft }: CreateExperienceProps
 
   useEffect(() => {
     try {
+      if (fresh) {
+        // The server draft was already skipped; the remembered session id is
+        // the other half of the same resume and has to go with it, or the next
+        // send would attach to the conversation this screen just left behind.
+        window.localStorage.removeItem(storageKey);
+        // Drop the marker from the address bar so a refresh resumes what is
+        // being written now instead of wiping it and starting over again.
+        window.history.replaceState(null, "", "/create");
+        return;
+      }
       if (initialDraft?.sessionId) window.localStorage.setItem(storageKey, initialDraft.sessionId);
     } catch {
       // Server persistence remains authoritative when storage is unavailable.
     }
-  }, [initialDraft?.sessionId, storageKey]);
+  }, [fresh, initialDraft?.sessionId, storageKey]);
 
 
   useEffect(() => {

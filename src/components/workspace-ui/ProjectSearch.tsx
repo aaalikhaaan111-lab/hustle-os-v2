@@ -77,7 +77,7 @@ export function ProjectSearch({
         <CommandEmpty>{t("searchNoResults")}</CommandEmpty>
 
         <CommandGroup heading={t("searchGo")}>
-          <CommandItem onSelect={() => go("/create")}>
+          <CommandItem onSelect={() => go("/create?fresh=1")}>
             <IconPlus className="h-4 w-4" />
             {t("navNewProject")}
           </CommandItem>

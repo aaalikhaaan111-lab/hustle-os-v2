@@ -84,7 +84,7 @@ export function ProjectsScreen({ projects }: { projects: PresentedProject[] }) {
                   : t("projectsSorted")}
             </p>
           </div>
-          <Link href="/create" className="s-btn s-btn--primary">
+          <Link href="/create?fresh=1" className="s-btn s-btn--primary">
             <IconPlus className="h-[18px] w-[18px]" />
             {t("navNewProject")}
           </Link>
@@ -99,7 +99,7 @@ export function ProjectsScreen({ projects }: { projects: PresentedProject[] }) {
             <EmptyDescription>{t("projectsNothingYet")}</EmptyDescription>
           </EmptyHeader>
           <EmptyContent>
-            <Link href="/create" className="s-btn s-btn--primary">
+            <Link href="/create?fresh=1" className="s-btn s-btn--primary">
               <IconPlus className="h-4 w-4" />
               {t("navNewProject")}
             </Link>

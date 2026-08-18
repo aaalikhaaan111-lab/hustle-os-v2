@@ -10,11 +10,22 @@ import { WorkspaceShell } from "@/components/workspace-ui/WorkspaceShell";
 import { loadShellNav } from "@/lib/workspace/shellNav";
 import { loadCreationDraftAction } from "@/lib/actions/creation";
 
+interface CreatePageProps {
+  searchParams: Promise<{ fresh?: string }>;
+}
+
 // The AI-first creation experience. /build/new redirects here so the retired
 // questionnaire can no longer become a user's primary creation path.
 // An unfinished Stage 3 creation session resumes from server persistence. A
 // second project is only created after the user intentionally starts over.
-export default async function CreatePage() {
+export default async function CreatePage({ searchParams }: CreatePageProps) {
+  // "New project" means a new project. Every entry point that says those words
+  // links here with `?fresh=1`, and that is the whole fix for the reported bug:
+  // the route used to resume the most recent unfinished creation session on
+  // every visit, so pressing New project reopened the conversation you were
+  // trying to leave. A bare /create still resumes, which is what makes a
+  // refresh mid-conversation safe.
+  const fresh = "fresh" in (await searchParams);
   const supabase = await createClient();
   const user = await getCurrentUser(supabase);
 
@@ -22,7 +33,7 @@ export default async function CreatePage() {
     redirect("/login");
   }
 
-  const initialDraft = await loadCreationDraftAction();
+  const initialDraft = fresh ? null : await loadCreationDraftAction();
 
   // The creation surface renders in the language of the conversation, not the
   // account cookie. Someone writing in Russian was getting Russian answers
@@ -43,7 +54,7 @@ export default async function CreatePage() {
   return (
     <NextIntlClientProvider locale={locale} messages={messages}>
       <WorkspaceShell initials={nav.initials} email={nav.email} recent={nav.recent} defaultCollapsed fill>
-        <CreateExperience userId={user.id} initialDraft={initialDraft} />
+        <CreateExperience userId={user.id} initialDraft={initialDraft} fresh={fresh} />
       </WorkspaceShell>
     </NextIntlClientProvider>
   );
