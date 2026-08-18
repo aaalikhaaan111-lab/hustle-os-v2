@@ -104,10 +104,10 @@ export function WorkspaceShell(props: WorkspaceShellProps) {
       /* The shell is a fixed, non-scrolling frame; the provider's own wrapper
          must not add a second full-height box inside it. */
       className="studio studio-room studio-frame min-h-0"
-      /* 3rem, not 3.25rem: the rail's own `p-2` plus a `size-8` button is
-         exactly 48px, so any other width leaves the icons sitting off-centre
-         against one edge. */
-      style={{ "--sidebar-width": "15.5rem", "--sidebar-width-icon": "3rem" } as React.CSSProperties}
+      /* 3.5rem: the rail's own `p-2` on each side plus a 40px control. Every
+         sidebar control is 40px wide in both states, so nothing resizes when
+         the rail does and nothing sits off-centre against an edge. */
+      style={{ "--sidebar-width": "15.5rem", "--sidebar-width-icon": "3.5rem" } as React.CSSProperties}
     >
       <ShellBody {...props} />
     </SidebarProvider>
@@ -131,7 +131,7 @@ function ShellBody({ project, recent = [], initials, email, fill = false, action
   const t = useTranslations("workspace");
   const tProfile = useTranslations("profile");
   const pathname = usePathname();
-  const { isMobile, toggleSidebar, setOpenMobile } = useSidebar();
+  const { isMobile, state, toggleSidebar, setOpenMobile } = useSidebar();
 
   const primary: NavEntry[] = [
     { href: "/dashboard", label: t("navOverview"), Icon: IconOverview },
@@ -201,9 +201,20 @@ function ShellBody({ project, recent = [], initials, email, fill = false, action
                   onClick={toggleSidebar}
                   tooltip={t("sidebarExpand")}
                   aria-label={t("sidebarCollapse")}
-                  className="group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:gap-0"
+                  aria-expanded={state === "expanded"}
+                  className="s-mark-toggle group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:gap-0"
                 >
-                  <VentrioMark size={22} />
+                  {/* THE MARK SAYS WHAT IT DOES, on hover and on focus.
+                      It was a logo that silently happened to be a button, so
+                      nothing on screen suggested the rail could be collapsed at
+                      all. The mark and a panel glyph occupy the same box and
+                      cross-fade: at rest you see Ventrio, on hover or keyboard
+                      focus you see the control. Nothing moves and nothing is
+                      added to the layout. */}
+                  <span className="s-mark-swap" aria-hidden>
+                    <VentrioMark size={22} />
+                    <PanelLeft className="s-mark-hint h-[19px] w-[19px]" />
+                  </span>
                   <span className="text-[15px] font-semibold group-data-[collapsible=icon]:hidden">
                     Ventrio
                   </span>
