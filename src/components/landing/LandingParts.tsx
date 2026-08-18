@@ -1,65 +1,23 @@
 "use client";
 
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { VentrioMark } from "@/components/workspace-ui/parts";
 
 /**
- * The one entrance on the page.
+ * The chip button.
  *
- * A band rises a little as it enters the viewport, once, and never again. It
- * exists so a long page reads as a sequence rather than arriving all at once —
- * and it is the only scroll-linked motion here, because motion that reacts to
- * every pixel of scroll is the thing that makes a landing page feel like a
- * demo rather than a product.
+ * THE LABEL IS PRESENT TWICE, ON PURPOSE. The reference's one genuinely
+ * distinctive control keeps its label in an `overflow: hidden` window with two
+ * stacked copies; on hover the stack translates exactly one line-height, so the
+ * first copy leaves as the second arrives. Measured on the reference: a 15.6px
+ * translate against a 15.6px line box, and the button's width does not change
+ * between states — which is what keeps the swap from nudging the layout.
  *
- * `once: true` by construction: the observer disconnects on the first
- * intersection, so scrolling back up never replays anything.
+ * The arrow does the same thing horizontally, so the whole control moves as one
+ * idea rather than as two animated parts.
  */
-export function Reveal({
-  children,
-  delay = 0,
-  className = "",
-}: {
-  children: ReactNode;
-  /** Milliseconds, for staggering siblings. Kept small deliberately. */
-  delay?: number;
-  className?: string;
-}) {
-  const ref = useRef<HTMLDivElement | null>(null);
-  const [shown, setShown] = useState(false);
-
-  useEffect(() => {
-    const node = ref.current;
-    if (!node) return;
-    // Anything already on screen at load is shown immediately rather than
-    // animated, so the hero never fades in under the reader.
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (!entries.some((entry) => entry.isIntersecting)) return;
-        observer.disconnect();
-        setShown(true);
-      },
-      { rootMargin: "0px 0px -12% 0px" },
-    );
-    observer.observe(node);
-    return () => observer.disconnect();
-  }, []);
-
-  return (
-    <div
-      ref={ref}
-      className={`lp-reveal ${className}`}
-      data-shown={shown ? "true" : undefined}
-      style={delay ? { transitionDelay: `${delay}ms` } : undefined}
-    >
-      {children}
-    </div>
-  );
-}
-
-/** The chip button: an accent tile beside a dark pill. */
 export function Chip({
   href,
   label,
@@ -72,18 +30,43 @@ export function Chip({
   return (
     <Link href={href} className={`lp-chip${large ? " lp-chip--lg" : ""}`}>
       <span className="lp-chip-icon" aria-hidden>
-        <svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M3 8h9M8.5 4.5 12 8l-3.5 3.5" />
-        </svg>
+        <span className="lp-swap">
+          <span className="lp-swap-a">
+            <Arrow />
+          </span>
+          <span className="lp-swap-b">
+            <Arrow />
+          </span>
+        </span>
       </span>
-      <span className="lp-chip-label">{label}</span>
+      <span className="lp-chip-label">
+        {/* The second copy is decorative: screen readers read the first. */}
+        <span className="lp-swap">
+          <span className="lp-swap-a">{label}</span>
+          <span className="lp-swap-b" aria-hidden>
+            {label}
+          </span>
+        </span>
+      </span>
     </Link>
   );
 }
 
+function Arrow() {
+  return (
+    <svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 8h9M8.5 4.5 12 8l-3.5 3.5" />
+    </svg>
+  );
+}
+
 /**
- * The header. Transparent over the hero and gaining its hairline only once the
- * page has moved, so the top of the page is the hero rather than a bar.
+ * The header.
+ *
+ * Every destination is a real page except "How it works", which is a section
+ * that exists only here. In-page links used to be the whole nav, and they
+ * landed at approximate positions under the sticky bar — `scroll-margin-top`
+ * in the stylesheet fixes where the one remaining anchor lands.
  */
 export function LandingHeader({ isAuthenticated }: { isAuthenticated: boolean }) {
   const t = useTranslations("landing");
@@ -96,6 +79,13 @@ export function LandingHeader({ isAuthenticated }: { isAuthenticated: boolean })
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
+  const links = [
+    { href: "#how", label: t("navHow") },
+    { href: "/pricing", label: t("navPricing") },
+    { href: "/about", label: t("navAbout") },
+    { href: "/faq", label: t("navFaq") },
+  ];
+
   return (
     <header className="lp-header" data-stuck={stuck ? "true" : undefined}>
       <div className="lp-wrap lp-header-inner">
@@ -105,10 +95,17 @@ export function LandingHeader({ isAuthenticated }: { isAuthenticated: boolean })
         </Link>
 
         <nav className="lp-nav" aria-label={t("menuLabel")}>
-          <a href="#how">{t("navHow")}</a>
-          <a href="#after">{t("navAfter")}</a>
-          <a href="#pricing">{t("navPricing")}</a>
-          <a href="#faq">{t("navFaq")}</a>
+          {links.map((link) =>
+            link.href.startsWith("#") ? (
+              <a key={link.href} href={link.href}>
+                <span>{link.label}</span>
+              </a>
+            ) : (
+              <Link key={link.href} href={link.href}>
+                <span>{link.label}</span>
+              </Link>
+            ),
+          )}
         </nav>
 
         <div className="flex items-center justify-self-end">
@@ -123,12 +120,60 @@ export function LandingHeader({ isAuthenticated }: { isAuthenticated: boolean })
 }
 
 /**
- * The after-launch list.
+ * The card deck: one open at a time, driven by the pointer.
  *
- * One item open at a time, the rest reduced to their headings — so the column
- * reads as a set of choices rather than four paragraphs competing for the same
- * attention. Buttons, not clickable divs: this is a real disclosure and the
- * keyboard should reach it.
+ * THIS IS WHAT REPLACES THE SCROLL REVEAL. The page is now fully present the
+ * moment it loads; what moves is what you point at. Hovering a card expands it
+ * — it widens, lifts onto the page's surface colour and shows its explanation —
+ * while the others fall back to a ghosted numeral and a title. It is the
+ * reference's card behaviour, verified there by hovering the fourth card and
+ * watching the second collapse.
+ *
+ * Focus does the same thing as hover, so a keyboard reaches every explanation,
+ * and the deck is a list of buttons rather than divs for the same reason.
+ *
+ * On touch there is no hover: below the wide breakpoint the stylesheet lays
+ * these out as a normal grid with every explanation visible, so nothing is
+ * hidden behind an interaction that device cannot perform.
+ */
+export function CardDeck({
+  cards,
+}: {
+  cards: { n: number; title: string; body: string }[];
+}) {
+  const [open, setOpen] = useState(0);
+
+  return (
+    <div className="lp-deck">
+      {cards.map((card, index) => (
+        <button
+          key={card.n}
+          type="button"
+          className="lp-card"
+          data-open={index === open ? "true" : undefined}
+          aria-expanded={index === open}
+          onMouseEnter={() => setOpen(index)}
+          onFocus={() => setOpen(index)}
+          onClick={() => setOpen(index)}
+        >
+          <span className="lp-card-n" aria-hidden>
+            {String(card.n).padStart(2, "0")}
+          </span>
+          <span className="lp-card-text">
+            <span className="lp-card-title">{card.title}</span>
+            <span className="lp-card-body">
+              <span>{card.body}</span>
+            </span>
+          </span>
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/**
+ * The after-launch list. Same single-open rule as the deck, laid out
+ * vertically, so the two disclosures on the page behave identically.
  */
 export function FeatureList({
   items,
@@ -148,6 +193,7 @@ export function FeatureList({
           aria-expanded={index === open}
           onClick={() => setOpen(index)}
           onMouseEnter={() => setOpen(index)}
+          onFocus={() => setOpen(index)}
         >
           <h3>{item.title}</h3>
           <span className="lp-list-body">
@@ -157,4 +203,9 @@ export function FeatureList({
       ))}
     </div>
   );
+}
+
+/** Kept as a plain passthrough so callers do not need to change shape. */
+export function Plain({ children }: { children: ReactNode }) {
+  return <>{children}</>;
 }

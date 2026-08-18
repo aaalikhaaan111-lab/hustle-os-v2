@@ -36,12 +36,28 @@
   padding-inline: var(--lp-gutter);
 }
 
-/* Section rhythm. One number, so every band on the page breathes the same. */
-.lp-section { padding-block: 5rem; }
+/**
+ * SECTION RHYTHM, and where an anchor lands.
+ *
+ * One number, so every band breathes the same — and the sections that follow
+ * another one drop their top padding rather than each carrying an inline
+ * override, which is what left the page looking unevenly spaced.
+ *
+ * `scroll-margin-top` clears the sticky header. Without it "How it works"
+ * landed with its own heading hidden underneath the bar, which is the
+ * "approximate position" the nav used to jump to.
+ */
+.lp-section {
+  padding-block: 5rem;
+  scroll-margin-top: 5.5rem;
+}
 
 @media (min-width: 768px) {
-  .lp-section { padding-block: 8rem; }
+  .lp-section { padding-block: 8rem; scroll-margin-top: 6rem; }
 }
+
+/* Consecutive bands share one gap instead of stacking two. */
+.lp-section + .lp-section { padding-top: 0; }
 
 /* ── the header ─────────────────────────────────────────────────────────── */
 
@@ -105,19 +121,39 @@
 
 @media (min-width: 880px) { .lp-nav { margin-inline: auto; overflow: visible; } }
 
+/* A rule that grows from the left rather than a background that blinks on:
+   the same "state changed" signal, with somewhere for the eye to follow. */
 .lp-nav a {
+  position: relative;
   flex-shrink: 0;
-  padding: 0.4375rem 0.75rem;
-  border-radius: 999px;
+  padding: 0.4375rem 0.25rem;
+  margin-inline: 0.5rem;
   font-size: 0.875rem;
   font-weight: 500;
   color: var(--muted-foreground);
-  transition: background-color 140ms ease, color 140ms ease;
+  transition: color var(--lp-fast) var(--lp-ease);
+}
+
+.lp-nav a::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0.125rem;
+  height: 1px;
+  background: currentColor;
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform var(--lp-base) var(--lp-ease);
 }
 
 @media (hover: hover) {
-  .lp-nav a:hover { background: var(--muted); color: var(--foreground); }
+  .lp-nav a:hover { color: var(--foreground); }
+  .lp-nav a:hover::after { transform: scaleX(1); }
 }
+
+.lp-nav a:focus-visible { color: var(--foreground); }
+.lp-nav a:focus-visible::after { transform: scaleX(1); }
 
 /* The chip button: an accent tile beside a dark pill. The reference's one
    genuinely distinctive control, rebuilt in Ventrio's own colours. */
@@ -133,7 +169,7 @@
   font-weight: 600;
   line-height: 1;
   box-shadow: 0 1px 2px oklch(0.153 0.006 107.1 / 0.08);
-  transition: transform 140ms ease, box-shadow 140ms ease;
+  transition: transform var(--lp-fast) var(--lp-ease), box-shadow var(--lp-fast) var(--lp-ease);
 }
 
 .lp-chip-icon {
@@ -154,6 +190,47 @@
   white-space: nowrap;
 }
 
+/**
+ * THE LABEL SWAP.
+ *
+ * A window one line tall holding two stacked copies. On hover the stack rises
+ * exactly its own line-height, so the first copy leaves as the second arrives
+ * and the control never changes size — measured on the reference as a 15.6px
+ * translate against a 15.6px line box.
+ */
+.lp-swap {
+  position: relative;
+  display: block;
+  overflow: hidden;
+  height: 1.15em;
+  line-height: 1.15em;
+}
+
+.lp-swap-a,
+.lp-swap-b {
+  display: grid;
+  place-items: center;
+  height: 1.15em;
+  transition: transform var(--lp-base) var(--lp-ease);
+}
+
+.lp-swap-b { position: absolute; inset: 0; transform: translateY(100%); }
+
+.lp-chip:hover .lp-swap-a,
+.lp-chip:focus-visible .lp-swap-a { transform: translateY(-100%); }
+
+.lp-chip:hover .lp-swap-b,
+.lp-chip:focus-visible .lp-swap-b { transform: translateY(0); }
+
+/* The arrow travels sideways rather than vertically, so the whole control
+   reads as one gesture instead of two animations. */
+.lp-chip-icon .lp-swap { overflow: hidden; width: 1.15em; }
+.lp-chip-icon .lp-swap-b { transform: translateX(-100%); }
+.lp-chip:hover .lp-chip-icon .lp-swap-a,
+.lp-chip:focus-visible .lp-chip-icon .lp-swap-a { transform: translateX(100%); }
+.lp-chip:hover .lp-chip-icon .lp-swap-b,
+.lp-chip:focus-visible .lp-chip-icon .lp-swap-b { transform: translateX(0); }
+
 @media (hover: hover) {
   .lp-chip:hover { transform: translateY(-1px); box-shadow: 0 6px 16px -8px oklch(0.153 0.006 107.1 / 0.35); }
 }
@@ -170,8 +247,12 @@
  * object on a page rather than a background. Ventrio's canvas is its own warm
  * paper with a soft light, not a painted landscape.
  */
+/* The canvas is inset by the page gutter like every other band, so its edges
+   line up with the section headings below it rather than sitting a few pixels
+   proud of them. */
 .lp-hero-canvas {
   position: relative;
+  margin-top: 0.5rem;
   overflow: hidden;
   border-radius: 1.5rem;
   border: 1px solid var(--border);
@@ -243,6 +324,10 @@
     align-items: end;
     gap: 3rem;
   }
+
+  /* The supporting sentence sits on the heading's last baseline rather than
+     floating a few pixels below it — the two columns were visibly out. */
+  .lp-head > p { padding-bottom: 0.35rem; }
 }
 
 .lp-h2 {
@@ -291,51 +376,120 @@
   margin-bottom: 0.625rem;
 }
 
-/* ── numbered cards ─────────────────────────────────────────────────────── */
+/* ── the card deck ─────────────────────────────────────────────────────── */
 
-.lp-cards {
+/**
+ * ONE OPEN AT A TIME, DRIVEN BY THE POINTER.
+ *
+ * The reference's card row is not four equal cards — it is a horizontal
+ * accordion: the card under the pointer widens, lifts onto the page's surface
+ * colour and shows its explanation, while the rest fall back to a ghosted
+ * numeral and a title. Verified there by hovering the fourth card and watching
+ * the second collapse.
+ *
+ * `flex-grow` does the widening, so the row always fills its width exactly and
+ * no card is ever a fraction of a pixel out.
+ */
+.lp-deck {
   margin-top: 3rem;
   display: grid;
   gap: 1rem;
   grid-template-columns: repeat(1, minmax(0, 1fr));
 }
 
-@media (min-width: 700px) { .lp-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-@media (min-width: 1050px) { .lp-cards { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+@media (min-width: 700px) { .lp-deck { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+/**
+ * The accordion only exists where there is a pointer to drive it. On touch the
+ * deck stays a plain grid with every explanation visible, because hiding
+ * content behind an interaction the device cannot perform is how a landing page
+ * loses half its content on a phone.
+ */
+@media (min-width: 1050px) and (hover: hover) {
+  .lp-deck { display: flex; align-items: stretch; }
+  .lp-card { flex: 1 1 0; min-width: 0; }
+  .lp-card[data-open="true"] { flex-grow: 2.6; }
+}
 
 .lp-card {
   position: relative;
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  min-height: 15rem;
+  gap: 1rem;
+  min-height: 17rem;
   padding: 1.5rem;
   border: 1px solid var(--border);
   border-radius: 1.25rem;
+  background: var(--muted);
+  text-align: left;
+  cursor: pointer;
+  transition:
+    flex-grow var(--lp-base) var(--lp-ease),
+    background-color var(--lp-base) var(--lp-ease),
+    border-color var(--lp-base) var(--lp-ease),
+    box-shadow var(--lp-base) var(--lp-ease);
+}
+
+/* The open card is the one on the page's own surface; the closed ones sit
+   back into the section. */
+.lp-card[data-open="true"] {
   background: var(--card);
-  transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease;
+  border-color: color-mix(in oklab, var(--foreground) 14%, var(--border));
+  box-shadow: 0 18px 40px -30px oklch(0.153 0.006 107.1 / 0.5);
 }
 
-@media (hover: hover) {
-  .lp-card:hover {
-    transform: translateY(-3px);
-    border-color: color-mix(in oklab, var(--lp-accent) 40%, var(--border));
-    box-shadow: 0 12px 30px -18px oklch(0.153 0.006 107.1 / 0.4);
-  }
-}
-
-/* The ghosted numeral: structure that says "there are four of these and this
-   is the second", without a decorative graphic. */
 .lp-card-n {
   font-size: 2.75rem;
   font-weight: 600;
   letter-spacing: -0.04em;
   line-height: 1;
-  color: color-mix(in oklab, var(--foreground) 12%, transparent);
+  color: color-mix(in oklab, var(--foreground) 13%, transparent);
+  transition: color var(--lp-base) var(--lp-ease);
 }
 
-.lp-card h3 { margin-top: auto; padding-top: 2rem; font-size: 1.0625rem; font-weight: 600; letter-spacing: -0.02em; }
-.lp-card p { margin-top: 0.5rem; font-size: 0.875rem; line-height: 1.55; color: var(--muted-foreground); }
+.lp-card[data-open="true"] .lp-card-n { color: color-mix(in oklab, var(--lp-accent) 45%, transparent); }
+
+.lp-card-text { margin-top: auto; display: block; }
+
+.lp-card-title {
+  display: block;
+  font-size: 1.0625rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--muted-foreground);
+  transition: color var(--lp-base) var(--lp-ease);
+}
+
+.lp-card[data-open="true"] .lp-card-title { color: var(--foreground); }
+
+/* The explanation is what the open state reveals. `grid-template-rows` so it
+   opens to its own height without anybody measuring anything. */
+.lp-card-body {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  transition:
+    grid-template-rows var(--lp-base) var(--lp-ease),
+    opacity var(--lp-base) var(--lp-ease);
+}
+
+.lp-card-body > span {
+  overflow: hidden;
+  font-size: 0.875rem;
+  line-height: 1.55;
+  color: var(--muted-foreground);
+}
+
+.lp-card[data-open="true"] .lp-card-body { grid-template-rows: 1fr; opacity: 1; }
+.lp-card[data-open="true"] .lp-card-body > span { padding-top: 0.5rem; }
+
+/* Where there is no pointer, every card is open. */
+@media (hover: none), (max-width: 1049px) {
+  .lp-card-body { grid-template-rows: 1fr; opacity: 1; }
+  .lp-card-body > span { padding-top: 0.5rem; }
+  .lp-card-title { color: var(--foreground); }
+}
 
 /* ── the split: list on the left, real product on the right ─────────────── */
 
@@ -481,6 +635,8 @@
 
 /* ── closing ────────────────────────────────────────────────────────────── */
 
+/* Same radius, same border, same inset as the hero canvas: the page opens and
+   closes on the same object. */
 .lp-closing {
   border-radius: 1.5rem;
   border: 1px solid var(--border);
@@ -496,19 +652,35 @@
 /* ── motion ─────────────────────────────────────────────────────────────── */
 
 /**
- * One entrance, used everywhere: a short rise as a band enters the viewport.
- * It exists so a long page reads as a sequence rather than arriving all at
- * once, and it is the only scroll-linked motion here.
+ * NOTHING HERE WAITS FOR A SCROLL.
+ *
+ * The page used to fade each band in as it entered the viewport. That is a page
+ * performing at a reader; it also means the first thing a visitor does — scroll
+ * — is answered by content that is not there yet. The page is fully present on
+ * load, and every transition below is a response to a pointer, a focus ring or
+ * a tap.
+ *
+ * One duration scale, one easing, everything under 260ms.
  */
-.lp-reveal {
-  opacity: 0;
-  transform: translateY(14px);
-  transition: opacity 620ms cubic-bezier(0.22, 1, 0.36, 1), transform 620ms cubic-bezier(0.22, 1, 0.36, 1);
+.lp {
+  --lp-fast: 140ms;
+  --lp-base: 220ms;
+  --lp-ease: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-.lp-reveal[data-shown="true"] { opacity: 1; transform: none; }
+/* Tap feedback, because a touch device has no hover to give. */
+@media (hover: none) {
+  .lp-chip:active { transform: scale(0.975); }
+  .lp-card:active { background: var(--muted); }
+  .lp-list-item:active h3 { color: var(--foreground); }
+  .lp-nav a:active { background: var(--muted); }
+}
 
 @media (prefers-reduced-motion: reduce) {
-  .lp-reveal { opacity: 1; transform: none; transition: none; }
-  .lp * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+  .lp *,
+  .lp *::before,
+  .lp *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
 }

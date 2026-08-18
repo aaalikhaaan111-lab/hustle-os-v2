@@ -3,7 +3,7 @@ import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 import { PLANS, type PlanId } from "@/lib/billing/plans";
 import { LandingComposer } from "@/components/landing/LandingComposer";
-import { Chip, FeatureList, LandingHeader, Reveal } from "@/components/landing/LandingParts";
+import { CardDeck, Chip, FeatureList, LandingHeader } from "@/components/landing/LandingParts";
 import "@/components/landing/landing.css";
 
 /**
@@ -68,7 +68,7 @@ export async function Landing({
       <LandingHeader isAuthenticated={isAuthenticated} />
 
       {/* ── hero ─────────────────────────────────────────────────────────── */}
-      <section className="lp-wrap" style={{ paddingTop: "0.5rem" }}>
+      <section className="lp-wrap">
         <div className="lp-hero-canvas">
           <p className="lp-eyebrow">{t("heroEyebrow")}</p>
           <h1 className="lp-h1">
@@ -87,8 +87,7 @@ export async function Landing({
 
       {/* ── the loop ─────────────────────────────────────────────────────── */}
       <section id="how" className="lp-wrap lp-section">
-        <Reveal>
-          <div className="lp-head">
+        <div className="lp-head">
             <div>
               <p className="lp-eyebrow">{t("loopEyebrow")}</p>
               <h2 className="lp-h2">
@@ -97,25 +96,21 @@ export async function Landing({
             </div>
             <p>{t("loopLede")}</p>
           </div>
-        </Reveal>
 
         <div className="lp-loop">
-          {loop.map((step, index) => (
-            <Reveal key={step.n} delay={index * 60}>
-              <div className="lp-loop-step">
-                <span className="lp-loop-n">{String(step.n).padStart(2, "0")}</span>
-                <h3>{step.title}</h3>
-                <p>{step.body}</p>
-              </div>
-            </Reveal>
+          {loop.map((step) => (
+            <div key={step.n} className="lp-loop-step">
+              <span className="lp-loop-n">{String(step.n).padStart(2, "0")}</span>
+              <h3>{step.title}</h3>
+              <p>{step.body}</p>
+            </div>
           ))}
         </div>
       </section>
 
       {/* ── why it is different ──────────────────────────────────────────── */}
-      <section className="lp-wrap lp-section" style={{ paddingTop: 0 }}>
-        <Reveal>
-          <div className="lp-head">
+      <section className="lp-wrap lp-section">
+        <div className="lp-head">
             <div>
               <p className="lp-eyebrow">{t("whyEyebrow")}</p>
               <h2 className="lp-h2">
@@ -124,25 +119,13 @@ export async function Landing({
             </div>
             <p>{t("whyLede")}</p>
           </div>
-        </Reveal>
 
-        <div className="lp-cards">
-          {why.map((card, index) => (
-            <Reveal key={card.n} delay={index * 70}>
-              <article className="lp-card">
-                <span className="lp-card-n">{String(card.n).padStart(2, "0")}</span>
-                <h3>{card.title}</h3>
-                <p>{card.body}</p>
-              </article>
-            </Reveal>
-          ))}
-        </div>
+        <CardDeck cards={why} />
       </section>
 
       {/* ── after launch: list + a real conversation ─────────────────────── */}
-      <section id="after" className="lp-wrap lp-section" style={{ paddingTop: 0 }}>
-        <Reveal>
-          <div className="lp-head">
+      <section id="after" className="lp-wrap lp-section">
+        <div className="lp-head">
             <div>
               <p className="lp-eyebrow">{t("afterEyebrow")}</p>
               <h2 className="lp-h2">
@@ -151,15 +134,11 @@ export async function Landing({
             </div>
             <p>{t("afterLede")}</p>
           </div>
-        </Reveal>
 
         <div className="lp-split">
-          <Reveal>
-            <FeatureList items={after} />
-          </Reveal>
+          <FeatureList items={after} />
 
-          <Reveal delay={80}>
-            {/* Ventrio's own surfaces, drawn rather than screenshotted: the
+          {/* Ventrio's own surfaces, drawn rather than screenshotted: the
                 conversation shape, the message shapes and the result line are
                 the ones the workspace uses. Nothing here reports a number the
                 product does not produce. */}
@@ -180,14 +159,12 @@ export async function Landing({
                 <p className="lp-result">{t("demoResult")}</p>
               </div>
             </div>
-          </Reveal>
         </div>
       </section>
 
       {/* ── messengers, honestly labelled ────────────────────────────────── */}
-      <section className="lp-wrap lp-section" style={{ paddingTop: 0 }}>
-        <Reveal>
-          <div className="lp-head">
+      <section className="lp-wrap lp-section">
+        <div className="lp-head">
             <div>
               <p className="lp-eyebrow">{t("chatEyebrow")}</p>
               <h2 className="lp-h2">
@@ -196,13 +173,11 @@ export async function Landing({
             </div>
             <p>{t("chatLede")}</p>
           </div>
-        </Reveal>
       </section>
 
       {/* ── pricing, from the real entitlements ──────────────────────────── */}
-      <section id="pricing" className="lp-wrap lp-section" style={{ paddingTop: 0 }}>
-        <Reveal>
-          <div className="lp-head">
+      <section id="pricing" className="lp-wrap lp-section">
+        <div className="lp-head">
             <div>
               <p className="lp-eyebrow">{t("priceEyebrow")}</p>
               <h2 className="lp-h2">
@@ -211,12 +186,10 @@ export async function Landing({
             </div>
             <p>{t("priceLede")}</p>
           </div>
-        </Reveal>
 
         <div className="lp-plans">
-          {plans.map((plan, index) => (
-            <Reveal key={plan} delay={index * 70}>
-              <article className="lp-plan" data-recommended={plan === "pro" ? "true" : undefined}>
+          {plans.map((plan) => (
+            <article key={plan} className="lp-plan" data-recommended={plan === "pro" ? "true" : undefined}>
                 <p className="lp-plan-name">
                   {tp(`${plan}Name` as never)}
                   {plan === "pro" && <span className="lp-plan-tag">{tp("mostPeople")}</span>}
@@ -240,23 +213,19 @@ export async function Landing({
                   <Chip href={start} label={t("ctaStart")} />
                 </div>
               </article>
-            </Reveal>
           ))}
         </div>
 
-        <Reveal>
-          <p className="mt-8 text-[13px]" style={{ color: "var(--muted-foreground)" }}>
+        <p className="mt-8 text-[13px]" style={{ color: "var(--muted-foreground)" }}>
             <Link href="/pricing" className="underline underline-offset-4">
               {t("priceSee")}
             </Link>
           </p>
-        </Reveal>
       </section>
 
       {/* ── questions ───────────────────────────────────────────────────── */}
-      <section id="faq" className="lp-wrap lp-section" style={{ paddingTop: 0 }}>
-        <Reveal>
-          <div className="lp-head">
+      <section id="faq" className="lp-wrap lp-section">
+        <div className="lp-head">
             <div>
               <p className="lp-eyebrow">{t("faqEyebrow")}</p>
               <h2 className="lp-h2">
@@ -264,24 +233,20 @@ export async function Landing({
               </h2>
             </div>
           </div>
-        </Reveal>
 
         <div className="lp-faq">
-          {faq.map((item, index) => (
-            <Reveal key={item.q} delay={(index % 2) * 60}>
-              <div className="lp-faq-item">
+          {faq.map((item) => (
+            <div key={item.q} className="lp-faq-item">
                 <h3>{item.q}</h3>
                 <p>{item.a}</p>
               </div>
-            </Reveal>
           ))}
         </div>
       </section>
 
       {/* ── closing ─────────────────────────────────────────────────────── */}
-      <section className="lp-wrap lp-section" style={{ paddingTop: 0 }}>
-        <Reveal>
-          <div className="lp-closing">
+      <section className="lp-wrap lp-section">
+        <div className="lp-closing">
             <h2 className="lp-h2">{t("closeTitle")}</h2>
             <p className="lp-lede">{t("closeLede")}</p>
             <div className="lp-hero-actions">
@@ -289,7 +254,6 @@ export async function Landing({
               <p className="lp-hero-note">{t("heroNote")}</p>
             </div>
           </div>
-        </Reveal>
       </section>
 
       <div className="lp-wrap">{footer}</div>

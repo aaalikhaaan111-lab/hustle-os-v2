@@ -87,11 +87,34 @@ check("navigation survives on narrow screens",
   !/\.lp-nav \{[^}]*display: none/.test(css),
   "the destinations used to vanish under 880px with nothing in their place");
 
-/* ── 5. motion is restrained and optional ────────────────────────────────── */
+/* ── 5. motion answers the pointer, never the scroll ─────────────────────── */
 
-check("there is one entrance, not many", (css.match(/@keyframes/g) ?? []).length === 0);
-check("and it is disabled under reduced motion",
-  /@media \(prefers-reduced-motion: reduce\)[\s\S]{0,200}\.lp-reveal/.test(css));
+/**
+ * THE SCROLL-REVEAL SYSTEM IS GONE and must not come back.
+ *
+ * A page that fades each band in as you reach it answers the reader's first
+ * action — scrolling — with content that is not there yet. Everything on this
+ * page is present at load; what moves is what the visitor points at.
+ */
+check("nothing is revealed on scroll",
+  !/lp-reveal/.test(css) && !/IntersectionObserver/.test(read("src/components/landing/LandingParts.tsx")),
+  "an entrance tied to scroll position is the thing this page stopped doing");
+check("there are no entrance keyframes at all", (css.match(/@keyframes/g) ?? []).length === 0);
+
+/* The interactions that replaced it, each verified in the browser against the
+   reference: a label that swaps in place, and a card deck that opens one at a
+   time under the pointer. */
+check("the button swaps its label without resizing",
+  /\.lp-swap\b/.test(css) && /translateY\(-100%\)/.test(css));
+check("the card deck opens one card at a time",
+  /\.lp-card\[data-open="true"\][\s\S]{0,200}flex-grow/.test(css));
+check("and every card is open where there is no pointer to hover with",
+  /@media \(hover: none\), \(max-width: 1049px\)[\s\S]{0,200}grid-template-rows: 1fr/.test(css),
+  "hiding copy behind hover loses it entirely on a phone");
+check("touch gets its own feedback",
+  /@media \(hover: none\)[\s\S]{0,300}:active/.test(css));
+check("and all of it stops under reduced motion",
+  /@media \(prefers-reduced-motion: reduce\)[\s\S]{0,220}transition-duration: 0\.01ms/.test(css));
 
 /* ── report ─────────────────────────────────────────────────────────────── */
 
