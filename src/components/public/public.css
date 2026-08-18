@@ -340,6 +340,89 @@
   border-radius: 0.875rem;
   border-color: var(--border);
   box-shadow: 0 24px 60px -32px oklch(0.153 0.006 107.1 / 0.4);
+  /**
+   * The box morphs between items instead of jumping.
+   *
+   * Radix writes the panel's measured size into
+   * `--radix-navigation-menu-viewport-{width,height}` on every change, so
+   * transitioning those two properties is what makes moving from "How it works"
+   * to "Questions" read as one surface resizing rather than two surfaces
+   * swapping. Transitions do not run on a freshly inserted element, so this
+   * costs nothing on the first open — that moment is the keyframe below.
+   */
+  transition:
+    width var(--lp-base) var(--lp-ease),
+    height var(--lp-base) var(--lp-ease);
+}
+
+/* ── navigation motion ──────────────────────────────────────────────────── */
+
+/**
+ * WHY THIS IS HAND-WRITTEN RATHER THAN THE REGISTRY'S CLASSES.
+ *
+ * `navigation-menu.tsx` ships `animate-in`, `animate-out`, `zoom-in-90` and
+ * `zoom-out-95` on the viewport. Those are `tw-animate-css` utilities, and this
+ * project neither installs nor imports that package — so every one of them
+ * compiled to NOTHING and the panel appeared and vanished in a single frame.
+ * That is the whole of the "changes state too abruptly" report; there was no
+ * animation to be too fast.
+ *
+ * THESE MUST BE @keyframes, NOT TRANSITIONS. Radix's Presence reads
+ * `animationName` off the computed style to decide whether to keep a closing
+ * node mounted long enough to animate. A transition on `[data-state="closed"]`
+ * never gets to run, because the element is already gone.
+ *
+ * `zoom-in-90` would also have been wrong: a 10% scale jump on a 350px panel is
+ * a pop. This travels 6px and 1.5%.
+ */
+@keyframes lp-nav-in {
+  from { opacity: 0; transform: translateY(-6px) scale(0.985); filter: blur(6px); }
+  to { opacity: 1; transform: none; filter: blur(0); }
+}
+
+@keyframes lp-nav-out {
+  from { opacity: 1; transform: none; filter: blur(0); }
+  to { opacity: 0; transform: translateY(-4px) scale(0.99); filter: blur(4px); }
+}
+
+.lp-header [data-slot="navigation-menu-viewport"][data-state="open"] {
+  animation: lp-nav-in 220ms var(--lp-ease);
+}
+
+.lp-header [data-slot="navigation-menu-viewport"][data-state="closed"] {
+  animation: lp-nav-out 180ms var(--lp-ease);
+}
+
+/**
+ * The contents, when the pointer moves from one item to the next.
+ *
+ * Radix marks the outgoing and incoming panels with `data-motion`, so the old
+ * copy leaves while the box is still resizing and the new one arrives into it.
+ * Without this the text swaps instantly inside a smoothly resizing box, which
+ * reads as a glitch rather than as a transition.
+ */
+@keyframes lp-nav-panel-in { from { opacity: 0; transform: translateY(-2px); } to { opacity: 1; transform: none; } }
+@keyframes lp-nav-panel-out { from { opacity: 1; } to { opacity: 0; } }
+
+.lp-nav-panel[data-motion="from-start"],
+.lp-nav-panel[data-motion="from-end"] { animation: lp-nav-panel-in 200ms var(--lp-ease); }
+
+.lp-nav-panel[data-motion="to-start"],
+.lp-nav-panel[data-motion="to-end"] { animation: lp-nav-panel-out 160ms var(--lp-ease); }
+
+/* The registry sets 300ms on the chevron, slower than the panel it belongs to. */
+.lp-nav-trigger > svg { transition-duration: var(--lp-fast); }
+
+/**
+ * Reduced motion keeps the state change, drops the travel.
+ *
+ * The `@media (prefers-reduced-motion)` block at the end of this file zeroes
+ * every duration, but Radix still waits for `animationend` before unmounting —
+ * so the animation has to remain declared and merely become instantaneous,
+ * which is exactly what a 0.01ms duration does.
+ */
+@media (prefers-reduced-motion: reduce) {
+  .lp-header [data-slot="navigation-menu-viewport"] { transition: none; }
 }
 
 /* ── the hero canvas ────────────────────────────────────────────────────── */
@@ -482,11 +565,17 @@
 /* ── the four cards ────────────────────────────────────────────────────── */
 
 /**
- * NOT INTERACTIVE. They were buttons in a hover accordion — pointing at one
- * widened it and collapsed its neighbours, so reading the row moved the row.
- * They are a plain grid of equal cards now. Nothing a visitor does changes the
- * layout: the only thing hover adds is a figure inside the card being pointed
- * at, and it occupies space that is already reserved.
+ * A HOVER ACCORDION, RESTORED.
+ *
+ * The version this replaces gave every card a fixed height and revealed a small
+ * drawing inside whichever one the pointer was over. The drawings were the
+ * problem: four illustrations competing with four sentences, in a section whose
+ * job is to be read. Reserving their space also forced a permanent gap between
+ * the number and the title, so the calm default state was not calm.
+ *
+ * This is the earlier behaviour from `c60abfc`/`07d7728`: text only, one card
+ * widening under the pointer while its neighbours narrow, and the explanation
+ * opening inside the widened card. Nothing is hidden behind an image.
  */
 .lp-deck {
   margin-top: 3rem;
@@ -496,29 +585,47 @@
 }
 
 @media (min-width: 700px) { .lp-deck { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-@media (min-width: 1050px) { .lp-deck { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+
+/**
+ * The accordion only exists where there is a pointer to drive it. On touch the
+ * deck stays a plain grid with every explanation visible, because hiding
+ * content behind an interaction the device cannot perform is how a landing page
+ * loses half its content on a phone.
+ */
+@media (min-width: 1050px) and (hover: hover) {
+  .lp-deck { display: flex; align-items: stretch; }
+  .lp-card { flex: 1 1 0; min-width: 0; }
+  .lp-card[data-open="true"] { flex-grow: 2.6; }
+}
 
 .lp-card {
   position: relative;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
+  gap: 1rem;
   min-height: 17rem;
   padding: 1.5rem;
   border: 1px solid var(--border);
   border-radius: 1.25rem;
-  background: var(--card);
+  background: var(--muted);
+  text-align: left;
+  cursor: pointer;
   transition:
+    flex-grow var(--lp-base) var(--lp-ease),
+    background-color var(--lp-base) var(--lp-ease),
     border-color var(--lp-base) var(--lp-ease),
     box-shadow var(--lp-base) var(--lp-ease);
 }
 
 .lp-card:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
 
-@media (hover: hover) {
-  .lp-card:hover {
-    border-color: color-mix(in oklab, var(--foreground) 14%, var(--border));
-    box-shadow: 0 16px 36px -30px oklch(0.153 0.006 107.1 / 0.45);
-  }
+/* The open card is the one on the page's own surface; the closed ones sit
+   back into the section. */
+.lp-card[data-open="true"] {
+  background: var(--card);
+  border-color: color-mix(in oklab, var(--foreground) 14%, var(--border));
+  box-shadow: 0 18px 40px -30px oklch(0.153 0.006 107.1 / 0.5);
 }
 
 .lp-card-n {
@@ -527,149 +634,53 @@
   letter-spacing: -0.04em;
   line-height: 1;
   color: color-mix(in oklab, var(--foreground) 13%, transparent);
+  transition: color var(--lp-base) var(--lp-ease);
 }
 
-/**
- * The figure: three bars standing for a page, a control, a thread. Its box is
- * always there — `flex: 1` on reserved space — so revealing it cannot resize
- * anything. Only opacity, a small rise and a blur change.
- */
-/**
- * The reveal container. Fixed height, so the space a figure will occupy is
- * reserved whether or not it is showing — that reservation is exactly what
- * keeps the four cards the same size and stops the row moving when a pointer
- * crosses it.
- */
-.lp-figure {
-  flex: none;
-  height: 6.5rem;
-  display: flex;
-  align-items: center;
-  margin-block: 1rem;
-  opacity: 0;
-  transform: translateY(6px) scale(0.98);
-  filter: blur(5px);
-  transition:
-    opacity var(--lp-base) var(--lp-ease),
-    transform var(--lp-base) var(--lp-ease),
-    filter var(--lp-base) var(--lp-ease);
-}
+.lp-card[data-open="true"] .lp-card-n { color: color-mix(in oklab, var(--lp-accent) 45%, transparent); }
 
-/* The drawing itself. Small pictures of the product — see LandingParts for what
-   each one is claiming. */
-.lp-fig { position: relative; width: 100%; }
+.lp-card-text { margin-top: auto; display: block; }
 
-.lp-fig-bar { display: block; height: 0.375rem; border-radius: 999px; background: var(--muted); }
-.lp-fig-bar--title { width: 58%; height: 0.5rem; background: color-mix(in oklab, var(--foreground) 20%, var(--muted)); }
-.lp-fig-bar--short { width: 40%; }
-.lp-fig-bar + .lp-fig-bar { margin-top: 0.375rem; }
-
-/* 01 — a pile of versions, newest in front. */
-.lp-fig--versions { height: 5.75rem; }
-.lp-fig-sheet {
-  position: absolute;
-  border: 1px solid var(--border);
-  border-radius: 0.625rem;
-  background: var(--background);
-}
-.lp-fig-sheet--back { inset: 0 2.5rem 2rem 0; opacity: 0.4; }
-.lp-fig-sheet--mid { inset: 0.5rem 1.25rem 1.25rem 0.75rem; opacity: 0.7; }
-.lp-fig-sheet--front {
-  inset: 1.125rem 0 0 1.5rem;
-  padding: 0.625rem;
-  box-shadow: 0 10px 26px -20px oklch(0.153 0.006 107.1 / 0.55);
-}
-.lp-fig-tag {
-  position: absolute;
-  right: 0;
-  top: 0.375rem;
-  padding: 0.125rem 0.4rem;
-  border-radius: 999px;
-  background: var(--lp-accent);
-  color: #fff;
-  font-size: 0.625rem;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-}
-
-/* 02 — you say it, and one value on the page is different. */
-.lp-fig--say { display: flex; flex-direction: column; gap: 0.5rem; }
-.lp-fig-bubble {
-  align-self: flex-end;
-  max-width: 94%;
-  padding: 0.375rem 0.625rem;
-  border-radius: 0.75rem 0.75rem 0.25rem 0.75rem;
-  background: var(--secondary, var(--muted));
-  color: var(--foreground);
-  font-size: 0.6875rem;
-  line-height: 1.35;
-}
-.lp-fig-page {
-  padding: 0.625rem;
-  border: 1px solid var(--border);
-  border-radius: 0.625rem;
-  background: var(--background);
-}
-.lp-fig-price {
+.lp-card-title {
   display: block;
-  margin: 0.375rem 0;
-  font-size: 1.125rem;
-  font-weight: 650;
-  letter-spacing: -0.03em;
-  line-height: 1;
-  color: var(--lp-accent);
+  font-size: 1.0625rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--muted-foreground);
+  transition: color var(--lp-base) var(--lp-ease);
 }
 
-/* 03 — the project, and what is being held about it. */
-.lp-fig--memory { display: flex; flex-direction: column; gap: 0.625rem; }
-.lp-fig-proj {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 0.625rem;
-  border: 1px solid var(--border);
-  border-radius: 0.625rem;
-  background: var(--background);
+.lp-card[data-open="true"] .lp-card-title { color: var(--foreground); }
+
+/* The explanation is what the open state reveals. `grid-template-rows` so it
+   opens to its own height without anybody measuring anything. */
+.lp-card-body {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  transition:
+    grid-template-rows var(--lp-base) var(--lp-ease),
+    opacity var(--lp-base) var(--lp-ease);
 }
-.lp-fig-dot { width: 0.5rem; height: 0.5rem; border-radius: 999px; background: var(--lp-accent); flex: none; }
-.lp-fig-proj .lp-fig-bar--title { width: 62%; margin: 0; }
-.lp-fig-chips { display: flex; flex-wrap: wrap; gap: 0.3125rem; }
-.lp-fig-chips > span {
-  padding: 0.1875rem 0.5rem;
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  background: var(--card);
-  font-size: 0.625rem;
-  line-height: 1.4;
+
+.lp-card-body > span {
+  overflow: hidden;
+  font-size: 0.875rem;
+  line-height: 1.55;
   color: var(--muted-foreground);
 }
 
-/* 04 — the conversation and the running product, side by side. */
-.lp-fig--split { display: grid; grid-template-columns: 0.85fr 1.15fr; gap: 0.5rem; }
-.lp-fig-chat { display: flex; flex-direction: column; justify-content: center; gap: 0.3125rem; }
-.lp-fig-msg { height: 0.875rem; border-radius: 0.4rem; background: var(--muted); }
-.lp-fig-msg--me { margin-left: 28%; background: color-mix(in oklab, var(--lp-accent) 28%, var(--muted)); }
-.lp-fig-pane {
-  padding: 0.625rem;
-  border: 1px solid var(--border);
-  border-radius: 0.625rem;
-  background: var(--background);
+.lp-card[data-open="true"] .lp-card-body { grid-template-rows: 1fr; opacity: 1; }
+.lp-card[data-open="true"] .lp-card-body > span { padding-top: 0.5rem; }
+
+/* Where there is no pointer, every card is open. */
+@media (hover: none), (max-width: 1049px) {
+  .lp-card-body { grid-template-rows: 1fr; opacity: 1; }
+  .lp-card-body > span { padding-top: 0.5rem; }
+  .lp-card-title { color: var(--foreground); }
+  .lp-card { cursor: default; }
 }
 
-@media (hover: hover) {
-  .lp-card:hover .lp-figure,
-  .lp-card:focus-visible .lp-figure { opacity: 1; transform: none; filter: blur(0); }
-}
-
-/* No hover to depend on: the figure is simply present, quietly. */
-@media (hover: none) {
-  .lp-figure { opacity: 0.65; transform: none; filter: none; margin-block: 0.75rem; }
-  .lp-card { min-height: 0; }
-}
-
-.lp-card-text { display: block; }
-.lp-card-title { display: block; font-size: 1.0625rem; font-weight: 600; letter-spacing: -0.02em; }
-.lp-card-body { display: block; margin-top: 0.5rem; font-size: 0.875rem; line-height: 1.55; color: var(--muted-foreground); }
 
 /* ── the split: list on the left, real product on the right ─────────────── */
 
@@ -893,7 +904,6 @@
     animation-duration: 0.01ms !important;
     transition-duration: 0.01ms !important;
   }
-  .lp-figure { filter: none; transform: none; }
 }
 
 
@@ -928,141 +938,194 @@
  * something. No clip is commissioned yet and none is invented here.
  */
 /**
- * The demonstrations inside the stage.
+ * The scenes inside the stage.
  *
- * Each one is a small working picture of the claim beside it, not a poster of
- * one. They share a surface language with the card figures — bordered page,
- * bubble, chip — so the whole site draws the product the same way.
+ * They render inside `.studio`, so `--card`, `--border`, `--secondary`,
+ * `--radius` and the rest resolve to the PLATFORM's values, and the turns
+ * themselves are the platform's own `s-turn-*` classes. What this block adds is
+ * only the one thing the workspace never needs: scale. A conversation shown at
+ * a sixth of its usual size still has to be legible, so the type and padding
+ * step down with the stage — the shapes, colours and radii are untouched.
  */
-.lp-demo {
+.lp-scene {
   position: absolute;
   inset: 0;
   display: flex;
   flex-direction: column;
   justify-content: center;
-  gap: 0.875rem;
-  padding: clamp(1.25rem, 4%, 2rem);
-}
-
-/* The page being changed. */
-.lp-demo-page {
-  padding: clamp(0.875rem, 3%, 1.25rem);
-  border: 1px solid var(--border);
-  border-radius: 0.875rem;
+  gap: 0.625rem;
+  padding: clamp(1rem, 3cqw, 1.5rem);
   background: var(--background);
-  box-shadow: 0 14px 34px -28px oklch(0.153 0.006 107.1 / 0.5);
+  /* Legibility first: the stage is ~600px wide on a desktop and these scenes
+     are the only place on the page where product copy has to be READ rather
+     than recognised. */
+  font-size: clamp(0.75rem, 2.1cqw, 0.9375rem);
+  line-height: 1.5;
 }
 
-.lp-demo-page .lp-fig-bar { margin-top: 0.5rem; }
+/**
+ * Scale only — the shapes and colours above are the platform's.
+ *
+ * `:last-child` in `.s-turn-assistant > div:last-child` gives the workspace
+ * rule a higher specificity than a two-class override, so the reply kept its
+ * full 15px next to an 11px bubble. Matching that shape is what makes the two
+ * sides of the conversation the same size again.
+ */
+.lp-scene .s-turn-user > div,
+.lp-scene .s-turn-assistant > div:last-child {
+  font-size: inherit;
+  line-height: 1.5;
+}
 
-/* Both headlines share one fixed box, so the rewrite cannot resize the page. */
-.lp-demo-headline { position: relative; display: block; min-height: 2.6em; }
-.lp-demo-h {
+.lp-scene .s-turn-user > div { padding: 0.375rem 0.6875rem; }
+
+.lp-scene .s-turn-mark {
+  width: 1.25rem;
+  height: 1.25rem;
+  margin-top: 0.0625rem;
+}
+
+.lp-scene .s-turn-assistant { gap: 0.5rem; }
+
+/* ── the project preview, as the workspace frames it ────────────────────── */
+
+.lp-scene-preview {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--card);
+  overflow: hidden;
+}
+
+.lp-scene-preview-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.4375rem 0.625rem;
+  border-bottom: 1px solid var(--border);
+  background: var(--muted);
+}
+
+.lp-scene-preview-bar > span {
+  width: 0.375rem;
+  height: 0.375rem;
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--foreground) 18%, transparent);
+}
+
+.lp-scene-preview-body { padding: 0.75rem 0.875rem 0.875rem; }
+
+/* Both headlines occupy one box so a rewrite cannot resize the page. */
+.lp-scene-headline { position: relative; display: block; min-height: 2.5em; }
+
+.lp-scene-h {
   position: absolute;
   inset: 0;
-  font-size: clamp(0.8125rem, 2.1cqw, 1.0625rem);
+  font-size: 1.15em;
   font-weight: 600;
-  line-height: 1.3;
+  line-height: 1.25;
   letter-spacing: -0.02em;
   color: var(--foreground);
 }
-.lp-demo-h--after { font-size: clamp(1rem, 2.8cqw, 1.375rem); }
 
-/* The thing someone said, in their own words. */
-.lp-demo-say {
-  align-self: flex-end;
-  width: fit-content;
-  max-width: 80%;
-  padding: 0.4375rem 0.75rem;
-  border-radius: 0.875rem 0.875rem 0.25rem 0.875rem;
-  /* The stage ground is `--muted`, and `--secondary` is the SAME value in this
-     token set — a bubble painted with it is invisible. The person's own words
-     are the dark bubble, which is also the convention the workspace uses. */
-  background: var(--foreground);
-  color: var(--background);
-  font-size: clamp(0.6875rem, 1.7cqw, 0.8125rem);
-  line-height: 1.4;
-}
+.lp-scene-h--after { font-size: 1.45em; }
 
-/* The section that arrived because they asked for it. */
-.lp-demo-form {
+.lp-scene-preview-body > .lp-scene-h--after { position: static; display: block; }
+
+.lp-scene-rule {
   display: block;
-  margin-top: 0.75rem;
-  padding: 0.75rem;
-  border: 1px solid var(--border);
-  border-radius: 0.625rem;
+  height: 0.3125rem;
+  margin-top: 0.5rem;
+  border-radius: 999px;
   background: var(--muted);
 }
-.lp-demo-field {
+
+.lp-scene-rule--short { width: 42%; }
+
+/* The section that arrived because somebody asked for it. */
+.lp-scene-form {
   display: block;
-  height: 1.375rem;
-  border-radius: 0.375rem;
+  margin-top: 0.625rem;
+  padding: 0.625rem;
   border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--muted);
+}
+
+.lp-scene-field {
+  display: block;
+  height: 1.25rem;
+  border: 1px solid var(--border);
+  border-radius: calc(var(--radius) - 4px);
   background: var(--background);
 }
-.lp-demo-field + .lp-demo-field { margin-top: 0.4375rem; }
-.lp-demo-submit {
+
+.lp-scene-field + .lp-scene-field { margin-top: 0.375rem; }
+
+.lp-scene-submit {
   display: block;
   margin-top: 0.5rem;
-  padding: 0.375rem;
+  padding: 0.3125rem;
   border-radius: 999px;
-  background: var(--foreground);
-  color: var(--background);
-  font-size: clamp(0.625rem, 1.6cqw, 0.75rem);
+  background: var(--primary);
+  color: var(--primary-foreground);
   font-weight: 600;
   text-align: center;
 }
 
-/* Responses arriving. */
-.lp-demo--replies { justify-content: center; }
-.lp-demo-count {
-  align-self: flex-start;
-  padding: 0.25rem 0.625rem;
-  border-radius: 999px;
-  background: var(--foreground);
-  color: var(--background);
-  font-size: clamp(0.625rem, 1.6cqw, 0.75rem);
-  font-weight: 600;
-}
-.lp-demo-replies { display: flex; flex-direction: column; gap: 0.5rem; }
-.lp-demo-reply {
-  padding: 0.5rem 0.75rem;
-  border: 1px solid var(--border);
-  border-radius: 0.75rem 0.75rem 0.75rem 0.25rem;
-  background: var(--background);
-  font-size: clamp(0.6875rem, 1.7cqw, 0.8125rem);
-  line-height: 1.4;
+/* ── responses, as the product lists them ───────────────────────────────── */
+
+.lp-scene--panel { justify-content: flex-start; gap: 0.5rem; }
+
+.lp-scene-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding-bottom: 0.125rem;
 }
 
-/* A conversation picked back up. */
-.lp-demo--thread { justify-content: center; gap: 0.5rem; }
-.lp-demo-msg {
-  align-self: flex-start;
-  width: fit-content;
-  max-width: 78%;
-  padding: 0.4375rem 0.75rem;
-  border-radius: 0.875rem;
-  background: var(--background);
-  border: 1px solid var(--border);
-  font-size: clamp(0.6875rem, 1.7cqw, 0.8125rem);
-  line-height: 1.4;
+.lp-scene-head-title { font-weight: 600; color: var(--foreground); }
+
+.lp-scene-count {
+  padding: 0.125rem 0.5rem;
+  border-radius: 999px;
+  background: var(--secondary);
+  color: var(--secondary-foreground);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
 }
-.lp-demo-msg--me {
-  align-self: flex-end;
-  border-color: transparent;
-  background: var(--foreground);
-  color: var(--background);
-  border-bottom-right-radius: 0.25rem;
+
+.lp-scene-rows { display: flex; flex-direction: column; }
+
+.lp-scene-row {
+  padding: 0.5rem 0.125rem;
+  border-top: 1px solid var(--border);
+  color: var(--foreground);
 }
-.lp-demo-gap {
+
+.lp-scene-row:first-child { border-top: 0; }
+
+/* ── the conversation picked back up ────────────────────────────────────── */
+
+.lp-scene--thread { justify-content: center; }
+
+.lp-scene-gap {
   align-self: center;
-  margin-block: 0.375rem;
-  padding: 0.125rem 0.625rem;
+  margin-block: 0.125rem;
+  padding: 0.0625rem 0.5rem;
   border-radius: 999px;
   background: var(--muted);
-  font-size: clamp(0.5625rem, 1.4cqw, 0.6875rem);
+  color: var(--muted-foreground);
+  font-size: 0.85em;
+}
+
+/* The real composer, at stage scale and inert. */
+.lp-scene-composer {
+  margin-top: 0.25rem;
+  padding: 0.4375rem 0.625rem;
   color: var(--muted-foreground);
 }
+
 
 /* Says out loud that the stage is an illustration. */
 .lp-stage-note {

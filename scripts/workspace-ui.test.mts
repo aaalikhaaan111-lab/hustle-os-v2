@@ -319,6 +319,44 @@ check("unpublished projects get an empty state", /analyticsUnpublishedTitle/.tes
 check("published-but-quiet projects get their own", /analyticsQuietTitle/.test(analytics));
 check("zeroes are not shown as measurements", /state === "live" \?/.test(analytics));
 
+/* ── the clarification panel is its own object ───────────────────────────── */
+
+/**
+ * The questionnaire used to draw ONE border around the question AND the
+ * composer, with the composer's own border stripped inside it, so the input
+ * appeared to grow upward to hold a question. The intent was that a question
+ * belongs to the composer; the result was a single tall surface in which the
+ * transcript, the question and the input all read as one oversized card.
+ *
+ * These check the SEPARATION only. The interaction is the registry's and is
+ * asserted by its own presence below — nothing about answering, typing a
+ * freeform reply, skipping or submitting moved.
+ */
+const ask = read("src/components/build/Questionnaire.tsx");
+const studioCss = read("src/app/studio.css");
+
+check("the composer is a sibling of the panel, not a child of it",
+  /<\/div>\s*\{composer\}\s*<\/>/.test(ask),
+  "wrapping the composer is what made one oversized surface");
+check("the combined shell is gone",
+  !/s-ask-shell/.test(ask) && !/s-ask-shell/.test(studioCss) &&
+  !/s-ask-seam/.test(ask) && !/s-ask-seam/.test(studioCss));
+check("the panel is bounded and separated from what follows it",
+  /\.s-ask-panel \{[\s\S]{0,320}border: 1px solid var\(--border\)/.test(studioCss) &&
+  /\.s-ask-panel \{[\s\S]{0,320}margin-bottom:/.test(studioCss));
+check("and the composer keeps its own border and focus ring",
+  !/\.s-ask-panel \.s-composer/.test(studioCss),
+  "the old rule stripped the composer's border so the two would merge");
+check("no question means no panel at all",
+  /if \(options\.length === 0\) return <>\{composer\}<\/>;/.test(ask),
+  "a clarification that is always there is furniture, not a clarification");
+
+/* The behaviour is still the registry component's, untouched. */
+check("answering, freeform, skip and submit are still the registry's",
+  /<QuestionnaireChoices>/.test(ask) && /<QuestionnaireInput/.test(ask) &&
+  /<QuestionnaireSkip/.test(ask) && /<QuestionnaireSubmit/.test(ask) &&
+  /onAnswer\(\{ ids, text: text\.trim\(\) \}\)/.test(ask));
+
 /* ── report ──────────────────────────────────────────────────────────────── */
 
 if (failures.length > 0) {

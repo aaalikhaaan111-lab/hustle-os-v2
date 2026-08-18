@@ -833,33 +833,98 @@ body:has(.studio-frame) {
  * as one box growing upward to hold a question rather than a panel parked
  * above a text field.
  */
-.s-ask-shell {
-  display: flex;
-  flex-direction: column;
+/**
+ * The settings search field.
+ *
+ * WHAT IT REPLACES. A Tailwind `focus-visible:outline-2 outline-offset-2` in
+ * the accent colour: a hard 2px ring floating two pixels off the field, plus
+ * `appearance: auto`, which left the platform's own search chrome underneath
+ * it. Together they read as a browser widget dropped into the panel rather
+ * than a Ventrio control.
+ *
+ * The focus state is the one the composer already uses — the border takes the
+ * ring colour and a soft 3px halo sits flush against it. Same language, and
+ * still unmistakably focused for a keyboard.
+ */
+.s-search {
+  width: 100%;
+  appearance: none;
+  -webkit-appearance: none;
+  padding: 0.5rem 0.75rem;
   border: 1px solid var(--input);
-  border-radius: var(--r-lg);
+  border-radius: var(--r-md);
   background: var(--background);
-  box-shadow: 0 1px 2px 0 oklch(0.153 0.006 107.1 / 0.05);
-  overflow: hidden;
-  animation: s-ask-in 180ms var(--ease) both;
+  font: inherit;
+  font-size: 0.875rem;
+  color: var(--foreground);
+  transition:
+    border-color 160ms var(--ease),
+    box-shadow 160ms var(--ease);
 }
 
-.s-ask-shell .s-composer {
-  border: 0;
-  border-radius: 0;
-  box-shadow: none;
-  background: transparent;
-}
+.s-search::placeholder { color: var(--color-ink-muted); }
 
-.s-ask-shell:focus-within {
+/* The platform's clear button is its own shape and its own hit area; the field
+   is cleared by selecting the text like any other input here. */
+.s-search::-webkit-search-cancel-button,
+.s-search::-webkit-search-decoration { -webkit-appearance: none; }
+
+.s-search:focus { outline: none; }
+
+.s-search:focus-visible {
+  outline: none;
   border-color: var(--ring);
   box-shadow: 0 0 0 3px color-mix(in oklab, var(--ring) 40%, transparent);
 }
 
-.s-ask-seam {
-  height: 1px;
-  margin: 0 0.75rem;
-  background: var(--border);
+/**
+ * Where search just sent you.
+ *
+ * A result can name a row that is not focusable in its own right — a usage
+ * meter, the signed-in address — so landing on it needs to be visible as well
+ * as programmatic. The halo fades on its own; nothing is left marked.
+ */
+@keyframes s-found {
+  0%, 65% { box-shadow: 0 0 0 3px color-mix(in oklab, var(--ring) 45%, transparent); }
+  100% { box-shadow: 0 0 0 3px transparent; }
+}
+
+[data-found="true"] {
+  border-radius: var(--r-md);
+  animation: s-found 1.4s var(--ease);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-found="true"] { animation-duration: 0.01ms; }
+}
+
+/**
+ * A TEMPORARY CLARIFICATION PANEL, ABOVE THE COMPOSER.
+ *
+ * This used to draw ONE border around the question AND the composer, with the
+ * composer's own border stripped inside it, so the text box appeared to grow
+ * upward to hold the question. The intent was that a question belongs to the
+ * composer. The result was a single tall surface in which the transcript, the
+ * question and the input all read as one oversized card.
+ *
+ * It is its own object now: bounded, compact, on the card surface rather than
+ * the page's, and separated from the composer by ordinary spacing. The composer
+ * keeps its own border and its own focus ring and never changes shape, so when
+ * the question is answered the panel simply leaves and the conversation is
+ * exactly where it was.
+ */
+.s-ask-panel {
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  background: var(--card);
+  overflow: hidden;
+  margin-bottom: 0.625rem;
+  animation: s-ask-in 180ms var(--ease) both;
+}
+
+.s-ask-panel:focus-within {
+  border-color: var(--ring);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--ring) 40%, transparent);
 }
 
 @keyframes s-ask-in {

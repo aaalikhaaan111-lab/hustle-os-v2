@@ -451,11 +451,6 @@
     "menuHelpB": "Contact",
     "menuHelpBDesc": "Talk to the person building it.",
     "faqToggle": "Show answer",
-    "figSay": "make the price bigger",
-    "figPrice": "$29",
-    "figMemory1": "audience",
-    "figMemory2": "tone of voice",
-    "figMemory3": "what it sells",
     "stageDemoNote": "An illustration of the product. A short clip will replace it.",
     "demoWordsSay": "make the headline shorter",
     "demoDoesSay": "add a booking form",
@@ -467,7 +462,8 @@
     "demoAgainOld": "make the header smaller",
     "demoAgainReply": "Done — the live page is updated.",
     "demoAgainGap": "two weeks later",
-    "demoAgainNew": "now add a page for classes"
+    "demoAgainNew": "now add a page for classes",
+    "demoAgainPlaceholder": "Ask for the next change…"
   },
   "info": {
     "backHome": "Back to Ventrio",
@@ -1407,7 +1403,28 @@
     "sidebarCollapse": "Collapse sidebar",
     "sidebarExpand": "Expand sidebar",
     "settingsSearch": "Search settings",
-    "settingsNoMatch": "No settings match that."
+    "settingsNoMatch": "No settings match that.",
+    "settingsSearchKeywords": {
+      "accountEmail": "email address sign in login",
+      "contact": "contact support help email us",
+      "cookies": "cookies tracking consent",
+      "deleteAccount": "delete account close remove erase data",
+      "displayName": "name profile identity how you appear",
+      "logout": "sign out log out leave session",
+      "personalInstructions": "preferences tone style rules context memory custom",
+      "preferredName": "nickname what to call me first name address me",
+      "privacyPolicy": "privacy policy data protection gdpr",
+      "terms": "terms of use conditions agreement legal",
+      "themeDark": "dark mode night theme appearance",
+      "themeLight": "light theme appearance colour color scheme",
+      "themeSystem": "system theme automatic follow device appearance",
+      "usageBuilds": "projects generated builds limit quota remaining",
+      "usageChanges": "ai changes edits requests limit quota remaining",
+      "usageEvolution": "evolution credits improvements limit quota remaining",
+      "workDescription": "job role occupation what i do business work"
+    },
+    "settingsSearchResults": "Results",
+    "settingsSearchSections": "Sections"
   },
   "branding": {
     "madeWith": "Made with Ventrio",

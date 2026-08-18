@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
 import { LanguageSwitcher } from "@/components/layout/LanguageSwitcher";
 import { LogoutButton } from "@/components/profile/LogoutButton";
@@ -25,9 +25,15 @@ import {
   CardTitle,
 } from "@/components/ui/shadcn/card";
 import type { WorkspaceUsage } from "@/lib/workspace/usage";
+import {
+  SETTINGS_ENTRIES,
+  SETTINGS_SECTIONS,
+  SETTINGS_SECTION_LABELS,
+  type SettingsLabelRef,
+  type SettingsSection,
+} from "@/lib/settings/registry";
 
-export type SettingsSection =
-  | "profile" | "usage" | "appearance" | "language" | "privacy" | "account";
+export type { SettingsSection };
 type Section = SettingsSection;
 
 /**
@@ -92,19 +98,107 @@ export function SettingsClient({
    */
   const [query, setQuery] = useState("");
 
-  const sections: { id: Section; label: string; Icon: (p: { className?: string }) => ReactNode }[] = [
-    { id: "profile", label: t("settingsProfile"), Icon: IconUser },
-    { id: "usage", label: t("usage"), Icon: IconAnalytics },
-    { id: "appearance", label: t("settingsAppearance"), Icon: IconPalette },
-    { id: "language", label: t("settingsLanguage"), Icon: IconGlobe },
-    { id: "privacy", label: t("settingsPrivacy"), Icon: IconShield },
-    { id: "account", label: t("settingsAccount"), Icon: IconSettings },
-  ];
+  /**
+   * Everything the search can resolve a label in.
+   *
+   * `useTranslations` is per-namespace, and the registry names its namespace
+   * per entry, so the three the settings surface draws from are opened once and
+   * dispatched by name. Adding a namespace to the registry without adding it
+   * here fails to compile, which is the point.
+   */
+  const label = (ref: SettingsLabelRef): string => {
+    /* Dispatched with three explicit calls rather than a lookup table: the
+       three translators are different generic types, and a union of them is
+       not callable. */
+    if (ref.ns === "profile") return tProfile(ref.key as never);
+    if (ref.ns === "footer") return tFooter(ref.key as never);
+    return t(ref.key as never);
+  };
+
+  const ICONS: Record<Section, (p: { className?: string }) => ReactNode> = {
+    profile: IconUser,
+    usage: IconAnalytics,
+    appearance: IconPalette,
+    language: IconGlobe,
+    privacy: IconShield,
+    account: IconSettings,
+  };
+
+  /* The navigation IS the registry — there is no second list to fall behind. */
+  const sections = SETTINGS_SECTIONS.map((id) => ({
+    id,
+    label: label(SETTINGS_SECTION_LABELS[id]),
+    Icon: ICONS[id],
+  }));
 
   const initials = (displayName || email || "?").slice(0, 2).toUpperCase();
 
+  /**
+   * The aliases, as one object per locale keyed by entry id.
+   *
+   * `t.raw` because this is deliberately data rather than a sentence: adding
+   * "dark mode" as a way to reach the theme setting should not require touching
+   * the registry, and a missing entry is simply no aliases rather than an error.
+   */
+  const keywords = ((t as unknown as { raw: (key: string) => unknown }).raw(
+    "settingsSearchKeywords",
+  ) ?? {}) as Record<string, string>;
+
   const q = query.trim().toLowerCase();
-  const visible = q ? sections.filter((item) => item.label.toLowerCase().includes(q)) : sections;
+
+  /**
+   * Results: every section heading and every individual setting inside them.
+   *
+   * A setting matches on the label a person can actually see or on its aliases,
+   * so "dark mode" finds Appearance's dark option and "пароль" finds nothing
+   * rather than something wrong. Sections are listed first because choosing one
+   * is the coarser, safer answer when the query is vague.
+   */
+  const sectionHits = q
+    ? sections.filter((item) => item.label.toLowerCase().includes(q))
+    : [];
+  const entryHits = q
+    ? SETTINGS_ENTRIES.filter((entry) => {
+        const text = `${label(entry.label)} ${keywords[entry.id] ?? ""}`.toLowerCase();
+        return text.includes(q);
+      })
+    : [];
+  const hasResults = sectionHits.length > 0 || entryHits.length > 0;
+
+  /**
+   * Opening a section and focusing something inside it are two renders apart:
+   * the control does not exist until the section it lives in is mounted.
+   *
+   * The anchor rides in a ref rather than in state, so consuming it does not
+   * schedule another render. `jump` is what actually wakes the effect — a plain
+   * counter, because choosing a result inside the section you are already in
+   * must still scroll and highlight, and `section` alone would not have
+   * changed.
+   */
+  const pendingAnchor = useRef<string | null>(null);
+  const [jump, setJump] = useState(0);
+
+  useEffect(() => {
+    const id = pendingAnchor.current;
+    if (!id) return;
+    pendingAnchor.current = null;
+    const node = document.getElementById(id);
+    if (!node) return;
+    node.scrollIntoView({ block: "center", behavior: "smooth" });
+    /* Focus where focus means something; the highlight is what makes a row
+       that cannot hold focus — a usage meter, the signed-in address — land in
+       the same place the search promised. */
+    node.focus({ preventScroll: true });
+    node.setAttribute("data-found", "true");
+    const clear = window.setTimeout(() => node.removeAttribute("data-found"), 1400);
+    return () => window.clearTimeout(clear);
+  }, [jump]);
+
+  function goTo(target: Section, anchor?: string) {
+    pendingAnchor.current = anchor ?? null;
+    setSection(target);
+    setJump((n) => n + 1);
+  }
 
   const body = (
     /* TITLE, SEARCH AND SECTIONS IN ONE COLUMN, CONTENT IN THE OTHER.
@@ -123,7 +217,7 @@ export function SettingsClient({
             onChange={(event) => setQuery(event.target.value)}
             placeholder={t("settingsSearch")}
             aria-label={t("settingsSearch")}
-            className="w-full rounded-[var(--r-md)] border bg-surface px-3 py-2 text-[14px] text-ink transition-colors placeholder:text-ink-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+            className="s-search"
           />
         </div>
 
@@ -137,26 +231,82 @@ export function SettingsClient({
             embedded ? "-mx-6 px-6 md:-mx-0 md:px-0" : "-mx-5 px-5 md:px-0"
           }`}
         >
-          {visible.length === 0 && (
+          {q && !hasResults && (
             <p className="s-meta px-1 py-2">{t("settingsNoMatch")}</p>
           )}
-          {visible.map((item) => {
-            const active = section === item.id;
-            return (
-              <VentrioButton
-                key={item.id}
-                variant="ghost"
-                size="md"
-                on={active}
-                aria-current={active ? "true" : undefined}
-                onClick={() => setSection(item.id)}
-                align="start" weight="medium" className="md:w-full"
-              >
-                <item.Icon className="h-[17px] w-[17px] shrink-0" />
-                {item.label}
-              </VentrioButton>
-            );
-          })}
+
+          {/* Searching replaces the section list with what was actually found,
+              rather than filtering the list and leaving individual settings
+              unreachable — the whole point of the search is the things that are
+              NOT sections. */}
+          {q
+            ? (
+              <>
+                {sectionHits.map((item) => (
+                  <VentrioButton
+                    key={`section-${item.id}`}
+                    variant="ghost"
+                    size="md"
+                    onClick={() => goTo(item.id)}
+                    align="start" weight="medium" className="md:w-full"
+                  >
+                    <item.Icon className="h-[17px] w-[17px] shrink-0" />
+                    {item.label}
+                  </VentrioButton>
+                ))}
+
+                {entryHits.map((entry) => {
+                  const inner = (
+                    <>
+                      <span className="min-w-0 truncate">{label(entry.label)}</span>
+                      {/* Which section it lives in, so a bare label like
+                          "Contact" is not ambiguous. */}
+                      <span className="ml-auto shrink-0 pl-2 text-[12px] text-ink-muted">
+                        {label(SETTINGS_SECTION_LABELS[entry.section])}
+                      </span>
+                    </>
+                  );
+                  return entry.href ? (
+                    <VentrioLinkButton
+                      key={entry.id}
+                      href={entry.href}
+                      variant="ghost"
+                      size="md"
+                      align="start" weight="normal" className="md:w-full"
+                    >
+                      {inner}
+                    </VentrioLinkButton>
+                  ) : (
+                    <VentrioButton
+                      key={entry.id}
+                      variant="ghost"
+                      size="md"
+                      onClick={() => goTo(entry.section, entry.anchor)}
+                      align="start" weight="normal" className="md:w-full"
+                    >
+                      {inner}
+                    </VentrioButton>
+                  );
+                })}
+              </>
+            )
+            : sections.map((item) => {
+              const active = section === item.id;
+              return (
+                <VentrioButton
+                  key={item.id}
+                  variant="ghost"
+                  size="md"
+                  on={active}
+                  aria-current={active ? "true" : undefined}
+                  onClick={() => goTo(item.id)}
+                  align="start" weight="medium" className="md:w-full"
+                >
+                  <item.Icon className="h-[17px] w-[17px] shrink-0" />
+                  {item.label}
+                </VentrioButton>
+              );
+            })}
         </nav>
       </aside>
 
@@ -198,11 +348,13 @@ export function SettingsClient({
             <Panel title={t("usage")} description={t("usageNote")}>
               <ul className="flex flex-col gap-5">
                 {[
-                  { label: t("usageChanges"), counter: usage.aiChanges },
-                  { label: t("usageBuilds"), counter: usage.projectBuilds },
-                  { label: t("usageEvolution"), counter: usage.evolutionCredits },
-                ].map(({ label, counter }) => (
-                  <li key={label}>
+                  { id: "usageChanges", label: t("usageChanges"), counter: usage.aiChanges },
+                  { id: "usageBuilds", label: t("usageBuilds"), counter: usage.projectBuilds },
+                  { id: "usageEvolution", label: t("usageEvolution"), counter: usage.evolutionCredits },
+                ].map(({ id, label, counter }) => (
+                  /* `tabIndex={-1}` so search can focus a row that is a meter
+                     rather than a control. It stays out of the tab order. */
+                  <li key={id} id={`setting-${id}`} tabIndex={-1}>
                     <div className="flex items-baseline justify-between gap-2">
                       <span className="text-[14px]" style={{ color: "var(--color-ink-secondary)" }}>
                         {label}
@@ -234,6 +386,7 @@ export function SettingsClient({
                   one that does not exist yet is disabled and says why. */}
               <div className="flex flex-col gap-1.5" role="radiogroup" aria-label={t("settingsAppearance")}>
                 <VentrioButton
+                  id="setting-themeLight"
                   variant="secondary"
                   size="lg"
                   on
@@ -248,6 +401,7 @@ export function SettingsClient({
                   </span>
                 </VentrioButton>
                 <VentrioButton
+                  id="setting-themeDark"
                   variant="secondary"
                   size="lg"
                   disabled
@@ -262,6 +416,7 @@ export function SettingsClient({
                   </span>
                 </VentrioButton>
                 <VentrioButton
+                  id="setting-themeSystem"
                   variant="secondary"
                   size="lg"
                   disabled
@@ -320,12 +475,18 @@ export function SettingsClient({
 
           {section === "account" && (
             <Panel title={t("settingsAccount")} description={t("settingsAccountBody")}>
-              <div className="flex items-center justify-between gap-4 rounded-[var(--r-md)] bg-muted/60 px-4 py-3 text-[14px]">
+              <div
+                id="setting-accountEmail"
+                tabIndex={-1}
+                className="flex items-center justify-between gap-4 rounded-[var(--r-md)] bg-muted/60 px-4 py-3 text-[14px]"
+              >
                 <span className="shrink-0 text-muted-foreground">{t("settingsEmail")}</span>
                 <span className="min-w-0 truncate font-medium">{email}</span>
               </div>
               <div className="mt-6 flex flex-wrap items-center gap-3">
-                <LogoutButton />
+                <span id="setting-logout" tabIndex={-1}>
+                  <LogoutButton />
+                </span>
                 {/* Real destination — the existing deletion flow with its own
                     confirmation. Nothing is deleted from here. */}
                 <VentrioLinkButton href="/delete-account" variant="danger" size="md">

@@ -61,14 +61,6 @@ export async function Landing({ isAuthenticated }: { isAuthenticated: boolean })
   const PRICE: Record<PlanId, string> = { free: "$0", pro: "$19", studio: "$49" };
   const plans: PlanId[] = ["free", "pro", "studio"];
 
-  /* The words inside the card drawings, so the illustrations speak the
-     visitor's language rather than English. */
-  const figures = {
-    say: t("figSay"),
-    price: t("figPrice"),
-    memory: [t("figMemory1"), t("figMemory2"), t("figMemory3")],
-  };
-
   return (
     <>
       {/* ── hero ─────────────────────────────────────────────────────────── */}
@@ -124,7 +116,7 @@ export async function Landing({ isAuthenticated }: { isAuthenticated: boolean })
             <p>{t("whyLede")}</p>
           </div>
 
-        <CardDeck cards={why} figures={figures} />
+        <CardDeck cards={why} />
       </section>
 
       {/* ── after launch: list + a real conversation ─────────────────────── */}

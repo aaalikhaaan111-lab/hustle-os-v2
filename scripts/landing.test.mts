@@ -99,22 +99,45 @@ check("navigation survives on narrow screens",
 check("nothing is revealed on scroll",
   !/lp-reveal/.test(css) && !/IntersectionObserver/.test(read("src/components/landing/LandingParts.tsx")),
   "an entrance tied to scroll position is the thing this page stopped doing");
-check("the one keyframe animation is a transition, not an entrance",
-  (css.match(/@keyframes/g) ?? []).length === 1 && /@keyframes lp-blur/.test(css),
-  "a keyframe that runs on load is an entrance; this one only runs while a label travels");
+/**
+ * Keyframes are allowed, entrances are not. Every animation on this page is
+ * bound to a `:hover`, a `[data-state]` or a `[data-motion]` — nothing runs
+ * because the page loaded or because a band scrolled into view.
+ */
+check("no keyframe animation runs on load",
+  /@keyframes lp-blur/.test(css) && /@keyframes lp-nav-in/.test(css) &&
+  !/animation:[^;]*(?:lp-blur|lp-nav)[^;]*(?:infinite|backwards)/.test(css) &&
+  !/lp-reveal|scroll-timeline|view-timeline/.test(css),
+  "an entrance is a keyframe nobody asked for");
 
 /* The interactions that replaced it, each verified in the browser against the
    reference: a label that swaps in place, and a card deck that opens one at a
    time under the pointer. */
 check("the button swaps its label without resizing",
   /\.lp-swap\b/.test(css) && /translateY\(-100%\)/.test(css));
-check("a card is not interactive and reveals its figure on hover alone",
-  /<article key=\{card\.n\} className="lp-card"/.test(read("src/components/landing/LandingParts.tsx")) &&
-  /@media \(hover: hover\)[\s\S]{0,240}\.lp-card:hover \.lp-figure/.test(css),
-  "the deck used to resize like an accordion; now only the hovered card changes, and only visually");
-check("and the figure is simply present where there is no pointer to hover with",
-  /@media \(hover: none\)[\s\S]{0,200}\.lp-figure \{ opacity: 0\.65/.test(css),
-  "a visual revealed only on hover does not exist on a phone");
+/**
+ * The deck is a text accordion again. The version between carried a small
+ * drawing in every card and revealed it on hover — four illustrations competing
+ * with four sentences, and a permanent gap reserved for them in the resting
+ * state, which is what stopped the calm default from being calm.
+ */
+const deck = read("src/components/landing/LandingParts.tsx");
+check("the deck is a hover accordion, and carries no figures",
+  /\.lp-card\[data-open="true"\] \{ flex-grow: 2\.6; \}/.test(css) &&
+  !/lp-figure|lp-fig\b/.test(css) && !/lp-figure|CardFigure/.test(deck),
+  "the drawings were the thing the section was asked to lose");
+/**
+ * `onMouseMove`, never `onMouseEnter`: opening a card reflows the row, and a
+ * reflow that slides another card under a stationary cursor fires `mouseenter`
+ * on it — which made the last card literally unselectable.
+ */
+check("and a reflow cannot steal the selection",
+  /onMouseMove=/.test(deck) && !/onMouseEnter=/.test(deck));
+check("keyboard and touch reach it the same way",
+  /onFocus=/.test(deck) && /onClick=/.test(deck) && /aria-expanded=/.test(deck));
+check("and every explanation is open where there is no pointer",
+  /@media \(hover: none\), \(max-width: 1049px\) \{[\s\S]{0,240}\.lp-card-body \{ grid-template-rows: 1fr/.test(css),
+  "copy behind an interaction the device cannot perform is copy a phone never sees");
 check("touch gets its own feedback",
   /@media \(hover: none\)[\s\S]{0,300}:active/.test(css));
 check("and all of it stops under reduced motion",
@@ -166,6 +189,44 @@ check("the app shell stands down where the public shell is mounted",
 check("and the anchor lands clear of the sticky header",
   /scroll-margin-top/.test(css));
 
+/* ── 6c. the navigation actually animates ────────────────────────────────── */
+
+/**
+ * The registry ships `animate-in` / `zoom-in-90` / `animate-out` on the
+ * viewport. Those are `tw-animate-css` utilities and this project neither
+ * installs nor imports that package, so every one of them compiled to nothing
+ * and the panel appeared and vanished in a single frame.
+ */
+check("the animation utilities the registry assumes are still absent",
+  !/tw-animate-css|tailwindcss-animate/.test(read("package.json")),
+  "if this is ever installed, delete the hand-written keyframes rather than stacking both");
+check("so the panel carries its own enter and leave",
+  /@keyframes lp-nav-in/.test(css) && /@keyframes lp-nav-out/.test(css) &&
+  /\[data-state="open"\] \{\s*animation: lp-nav-in/.test(css) &&
+  /\[data-state="closed"\] \{\s*animation: lp-nav-out/.test(css));
+
+/**
+ * KEYFRAMES, NOT TRANSITIONS. Radix's Presence reads `animationName` off the
+ * computed style to decide whether to hold a closing node in the DOM. A
+ * transition on `[data-state="closed"]` never runs — the element is already
+ * gone.
+ */
+check("the leave is an animation, so Radix waits for it",
+  !/\[data-state="closed"\] \{\s*transition:/.test(css));
+check("it moves on opacity, translate, scale and blur",
+  /@keyframes lp-nav-in \{[\s\S]{0,200}opacity: 0;[\s\S]{0,120}translateY\(-6px\) scale\(0\.985\);[\s\S]{0,80}blur\(6px\)/.test(css));
+check("in the 180-240ms band, on the page's one easing",
+  /animation: lp-nav-in 220ms var\(--lp-ease\)/.test(css) &&
+  /animation: lp-nav-out 180ms var\(--lp-ease\)/.test(css));
+
+/* Moving between items is one surface resizing, not two swapping. */
+check("the panel morphs between items instead of jumping",
+  /transition:\s*\n?\s*width var\(--lp-base\)/.test(css) &&
+  /\[data-motion="from-start"\]/.test(css) && /\[data-motion="to-end"\]/.test(css));
+check("and the chevron keeps pace with the panel it belongs to",
+  /\.lp-nav-trigger > svg \{ transition-duration: var\(--lp-fast\); \}/.test(css),
+  "the registry sets 300ms, slower than the thing it is announcing");
+
 /* ── 7. the after-launch stage demonstrates rather than asserts ──────────── */
 
 /**
@@ -211,6 +272,18 @@ check("the stage says out loud that it is an illustration, in both languages",
 check("each topic demonstrates its own claim",
   /demoWordsBefore/.test(stage) && /demoWordsAfter/.test(stage) &&
   /demoDoesButton/.test(stage) && /demoReplyCount/.test(stage) && /demoAgainGap/.test(stage));
+/**
+ * The scenes are built from the PLATFORM's components inside the platform's
+ * token scope, not redrawn on the landing palette. That is what stops the
+ * landing's picture of the product drifting away from the product.
+ */
+check("the scenes run in the platform's own token scope",
+  /className="studio lp-scene/.test(stage));
+check("and use the workspace's real conversation, mark and composer",
+  /s-turn-user/.test(stage) && /s-turn-assistant/.test(stage) &&
+  /s-turn-mark/.test(stage) && /s-composer/.test(stage) && /VentrioMark/.test(stage));
+check("nothing in them is a stock image or an invented metric",
+  !/<img|background-image|unsplash/.test(stage));
 check("and the FAQ is a real single-open accordion, shared with /faq",
   /aria-expanded=/.test(faqComponent) &&
   /\.lp-faq-a \{[\s\S]{0,160}grid-template-rows: 0fr/.test(css) &&

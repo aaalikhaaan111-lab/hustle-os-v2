@@ -24,10 +24,17 @@ import {
  * icon placeholder swapped for the lucide icon this project already uses.
  * Nothing about the interaction is reimplemented here.
  *
- * WHAT THIS FILE ADDS is only the thing the registry cannot know: that in
- * Ventrio the question belongs to the composer. The composer is passed in and
- * rendered inside the same border, so the text box visibly grows upward to
- * hold a question and shrinks back when it is answered.
+ * WHAT THIS FILE ADDS is only placement. The question used to be drawn inside
+ * the SAME border as the composer, so the text box appeared to grow upward to
+ * hold it. The intent was that a question belongs to the composer; the result
+ * was one tall surface in which the transcript, the question and the input all
+ * looked like a single oversized card.
+ *
+ * The question is its own bounded panel now, sitting above the composer with
+ * ordinary spacing between them. The composer keeps its own border and its own
+ * focus ring and never changes shape. Nothing about the interaction moved: the
+ * `<Q>` block below is the registry component with the same items, the same
+ * freeform row, the same skip and the same submit.
  *
  * With no question it returns the composer untouched — which is what keeps it
  * from ever being permanent furniture.
@@ -53,7 +60,7 @@ export function VentrioQuestionnaire({
 }: {
   question?: string;
   options: QuestionnaireOption[];
-  /** The live composer, rendered inside the same surface. */
+  /** The live composer, rendered as a sibling below the panel. */
   composer: ReactNode;
   name?: string;
   multiple?: boolean;
@@ -71,56 +78,70 @@ export function VentrioQuestionnaire({
   if (options.length === 0) return <>{composer}</>;
 
   return (
-    <div className="s-ask-shell" data-testid="questionnaire">
-      <Q
-        items={[{ name, choices: options.map((option) => ({ value: option.id })) }]}
-        className="s-ask-form"
-        onSubmit={(event) => {
-          event.preventDefault();
-          if (disabled) return;
-          const data = new FormData(event.currentTarget);
-          const ids = data.getAll(name).map(String).filter(Boolean);
-          onAnswer({ ids, text: text.trim() });
-          setText("");
-        }}
-      >
-        <QuestionnaireItem name={name} multiple={multiple}>
-          {question && <QuestionnaireTitle>{question}</QuestionnaireTitle>}
+    <>
+      <div className="s-ask-panel" data-testid="questionnaire">
+        <Q
+          items={[
+            { name, choices: options.map((option) => ({ value: option.id })) },
+          ]}
+          className="s-ask-form"
+          onSubmit={(event) => {
+            event.preventDefault();
+            if (disabled) return;
+            const data = new FormData(event.currentTarget);
+            const ids = data.getAll(name).map(String).filter(Boolean);
+            onAnswer({ ids, text: text.trim() });
+            setText("");
+          }}
+        >
+          <QuestionnaireItem name={name} multiple={multiple}>
+            {question && <QuestionnaireTitle>{question}</QuestionnaireTitle>}
 
-          <QuestionnaireChoices>
-            {options.map((option) => (
-              <QuestionnaireChoice key={option.id} value={option.id} disabled={disabled}>
-                {option.label}
-                {option.hint && (
-                  <QuestionnaireChoiceDescription>{option.hint}</QuestionnaireChoiceDescription>
-                )}
-              </QuestionnaireChoice>
-            ))}
-          </QuestionnaireChoices>
+            <QuestionnaireChoices>
+              {options.map((option) => (
+                <QuestionnaireChoice
+                  key={option.id}
+                  value={option.id}
+                  disabled={disabled}
+                >
+                  {option.label}
+                  {option.hint && (
+                    <QuestionnaireChoiceDescription>
+                      {option.hint}
+                    </QuestionnaireChoiceDescription>
+                  )}
+                </QuestionnaireChoice>
+              ))}
+            </QuestionnaireChoices>
 
-          {/* The answer does not have to be one of the choices. */}
-          {freeformLabel && (
-            <QuestionnaireInput
-              placeholder={freeformLabel}
-              value={text}
-              disabled={disabled}
-              onChange={(event) => setText(event.target.value)}
-            />
-          )}
-
-          <QuestionnaireActions>
-            {onSkip && (
-              <QuestionnaireSkip type="button" disabled={disabled} onClick={onSkip}>
-                {skipLabel}
-              </QuestionnaireSkip>
+            {/* The answer does not have to be one of the choices. */}
+            {freeformLabel && (
+              <QuestionnaireInput
+                placeholder={freeformLabel}
+                value={text}
+                disabled={disabled}
+                onChange={(event) => setText(event.target.value)}
+              />
             )}
-            <QuestionnaireSubmit disabled={disabled}>{submitLabel}</QuestionnaireSubmit>
-          </QuestionnaireActions>
-        </QuestionnaireItem>
-      </Q>
 
-      <div className="s-ask-seam" aria-hidden />
+            <QuestionnaireActions>
+              {onSkip && (
+                <QuestionnaireSkip
+                  type="button"
+                  disabled={disabled}
+                  onClick={onSkip}
+                >
+                  {skipLabel}
+                </QuestionnaireSkip>
+              )}
+              <QuestionnaireSubmit disabled={disabled}>
+                {submitLabel}
+              </QuestionnaireSubmit>
+            </QuestionnaireActions>
+          </QuestionnaireItem>
+        </Q>
+      </div>
       {composer}
-    </div>
+    </>
   );
 }

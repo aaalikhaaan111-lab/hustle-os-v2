@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { motion, useReducedMotion, type Transition } from "motion/react";
 import { useTranslations } from "next-intl";
+import { VentrioMark } from "@/components/workspace-ui/parts";
 
 /**
  * The after-launch section: selectable topics on the left, one media stage on
@@ -13,13 +14,18 @@ import { useTranslations } from "next-intl";
  * none of them. The stage is a fixed 16:10 box that never changes size, so
  * switching topics cannot move the page.
  *
- * WHAT THE STAGE SHOWS NOW. It used to hold a drawn "poster" per topic — three
- * grey bars and a "media coming" label — which is a placeholder pretending to
- * be an illustration. Each topic now runs a small demonstration of the specific
- * thing it claims: a headline actually being rewritten, a form actually
- * appearing in a page, responses actually arriving, a conversation actually
- * resuming after a gap. They are CSS and Motion, so they cost nothing to load
- * and cannot go stale.
+ * WHAT THE STAGE SHOWS NOW, AND WHY IT LOOKS LIKE THE PRODUCT. The first
+ * version of these scenes was drawn from scratch — generic bubbles and boxes
+ * that happened to sit on the landing page's palette. They demonstrated the
+ * right ideas in the wrong product's clothes.
+ *
+ * Each scene is now rendered inside `.studio`, the platform's own token scope,
+ * and built from the platform's own classes: `s-turn-user` and
+ * `s-turn-assistant` are the real conversation turns, `s-turn-mark` is the real
+ * speaker mark, `s-composer` is the real input. Nothing here is a copy of those
+ * shapes; they ARE those shapes, so the demo cannot drift away from the
+ * workspace it is describing — restyling the product restyles the landing's
+ * picture of it.
  *
  * THE MEDIA SLOT IS STILL THE POINT. Every section declares a `video` it will
  * play once one exists; while that is undefined the demonstration runs instead.
@@ -114,6 +120,46 @@ export function AfterStage({
 
 type T = ReturnType<typeof useTranslations<"landing">>;
 
+/**
+ * The workspace's own project preview, at stage scale.
+ *
+ * A bordered card on the platform's card surface with a hairline head — the
+ * same framing a project wears everywhere else in Ventrio.
+ */
+function Preview({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="lp-scene-preview">
+      <div className="lp-scene-preview-bar" aria-hidden>
+        <span />
+        <span />
+        <span />
+      </div>
+      <div className="lp-scene-preview-body">{children}</div>
+    </div>
+  );
+}
+
+/** Ventrio's reply, in the real assistant turn. */
+function Reply({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="s-turn-assistant">
+      <span className="s-turn-mark" aria-hidden>
+        <VentrioMark size={12} />
+      </span>
+      <div className="lp-scene-reply">{children}</div>
+    </div>
+  );
+}
+
+/** The person's turn, in the real user turn. */
+function Said({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="s-turn-user">
+      <div>{children}</div>
+    </div>
+  );
+}
+
 function StageDemo({ id, reduce, t }: { id: SectionId; reduce: boolean; t: T }) {
   const d = (delay: number, duration = 0.26): Transition =>
     reduce ? { duration: 0 } : { duration, ease: EASE, delay };
@@ -121,39 +167,39 @@ function StageDemo({ id, reduce, t }: { id: SectionId; reduce: boolean; t: T }) 
   /* ── change the words ────────────────────────────────────────────────── */
   if (id === "words") {
     return (
-      <div className="lp-demo">
-        <div className="lp-demo-page">
-          {/* Both headlines occupy the same fixed box, so the swap cannot
-              resize the page under itself. */}
-          <span className="lp-demo-headline">
+      <div className="studio lp-scene">
+        <Preview>
+          {/* Both headlines share one box, so the rewrite cannot resize the
+              page underneath itself. */}
+          <span className="lp-scene-headline">
             <motion.span
-              className="lp-demo-h"
+              className="lp-scene-h"
               initial={{ opacity: 1, filter: "blur(0px)" }}
               animate={{ opacity: 0, filter: reduce ? "blur(0px)" : "blur(4px)" }}
-              transition={d(0.5, 0.22)}
+              transition={d(0.55, 0.22)}
             >
               {t("demoWordsBefore")}
             </motion.span>
             <motion.span
-              className="lp-demo-h lp-demo-h--after"
+              className="lp-scene-h lp-scene-h--after"
               initial={{ opacity: 0, filter: reduce ? "blur(0px)" : "blur(4px)" }}
               animate={{ opacity: 1, filter: "blur(0px)" }}
-              transition={d(0.72, 0.26)}
+              transition={d(0.78, 0.26)}
             >
               {t("demoWordsAfter")}
             </motion.span>
           </span>
-          <span className="lp-fig-bar" />
-          <span className="lp-fig-bar lp-fig-bar--short" />
-        </div>
-        <motion.span
-          className="lp-demo-say"
+          <span className="lp-scene-rule" />
+          <span className="lp-scene-rule lp-scene-rule--short" />
+        </Preview>
+
+        <motion.div
           initial={{ opacity: 0, y: reduce ? 0 : 6 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={d(0.12, 0.24)}
+          transition={d(0.14, 0.24)}
         >
-          {t("demoWordsSay")}
-        </motion.span>
+          <Said>{t("demoWordsSay")}</Said>
+        </motion.div>
       </div>
     );
   }
@@ -161,30 +207,30 @@ function StageDemo({ id, reduce, t }: { id: SectionId; reduce: boolean; t: T }) 
   /* ── change what it does ─────────────────────────────────────────────── */
   if (id === "device") {
     return (
-      <div className="lp-demo">
-        <div className="lp-demo-page">
-          <span className="lp-fig-bar lp-fig-bar--title" />
-          <span className="lp-fig-bar" />
-          {/* The new section arrives inside space already reserved for it. */}
+      <div className="studio lp-scene">
+        <Preview>
+          <span className="lp-scene-h lp-scene-h--after">{t("demoWordsAfter")}</span>
+          <span className="lp-scene-rule" />
+          {/* The section arrives into space already reserved for it. */}
           <motion.span
-            className="lp-demo-form"
+            className="lp-scene-form"
             initial={{ opacity: 0, scale: reduce ? 1 : 0.97 }}
             animate={{ opacity: 1, scale: 1 }}
-            transition={d(0.55, 0.3)}
+            transition={d(0.6, 0.3)}
           >
-            <span className="lp-demo-field" />
-            <span className="lp-demo-field" />
-            <span className="lp-demo-submit">{t("demoDoesButton")}</span>
+            <span className="lp-scene-field" />
+            <span className="lp-scene-field" />
+            <span className="lp-scene-submit">{t("demoDoesButton")}</span>
           </motion.span>
-        </div>
-        <motion.span
-          className="lp-demo-say"
+        </Preview>
+
+        <motion.div
           initial={{ opacity: 0, y: reduce ? 0 : 6 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={d(0.12, 0.24)}
+          transition={d(0.14, 0.24)}
         >
-          {t("demoDoesSay")}
-        </motion.span>
+          <Said>{t("demoDoesSay")}</Said>
+        </motion.div>
       </div>
     );
   }
@@ -193,53 +239,64 @@ function StageDemo({ id, reduce, t }: { id: SectionId; reduce: boolean; t: T }) 
   if (id === "feedback") {
     const replies = [t("demoReply1"), t("demoReply2"), t("demoReply3")];
     return (
-      <div className="lp-demo lp-demo--replies">
-        <motion.span
-          className="lp-demo-count"
-          initial={{ opacity: 0, y: reduce ? 0 : -4 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={d(0.1, 0.22)}
-        >
-          {t("demoReplyCount", { count: replies.length })}
-        </motion.span>
-        <span className="lp-demo-replies">
+      <div className="studio lp-scene lp-scene--panel">
+        <div className="lp-scene-head">
+          <span className="lp-scene-head-title">{t("after3")}</span>
+          <motion.span
+            className="lp-scene-count"
+            initial={{ opacity: 0, y: reduce ? 0 : -4 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={d(0.1, 0.22)}
+          >
+            {t("demoReplyCount", { count: replies.length })}
+          </motion.span>
+        </div>
+        <div className="lp-scene-rows">
           {replies.map((reply, i) => (
             <motion.span
               key={reply}
-              className="lp-demo-reply"
+              className="lp-scene-row"
               initial={{ opacity: 0, y: reduce ? 0 : 8 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={d(0.22 + i * 0.11, 0.26)}
+              transition={d(0.24 + i * 0.11, 0.26)}
             >
               {reply}
             </motion.span>
           ))}
-        </span>
+        </div>
       </div>
     );
   }
 
   /* ── start again from anywhere ───────────────────────────────────────── */
   return (
-    <div className="lp-demo lp-demo--thread">
-      <span className="lp-demo-msg lp-demo-msg--me">{t("demoAgainOld")}</span>
-      <span className="lp-demo-msg">{t("demoAgainReply")}</span>
+    <div className="studio lp-scene lp-scene--thread">
+      <Said>{t("demoAgainOld")}</Said>
+      <Reply>{t("demoAgainReply")}</Reply>
       <motion.span
-        className="lp-demo-gap"
+        className="lp-scene-gap"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        transition={d(0.4, 0.24)}
+        transition={d(0.42, 0.24)}
       >
         {t("demoAgainGap")}
       </motion.span>
-      <motion.span
-        className="lp-demo-msg lp-demo-msg--me"
+      <motion.div
         initial={{ opacity: 0, y: reduce ? 0 : 8 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={d(0.62, 0.28)}
+        transition={d(0.64, 0.28)}
       >
-        {t("demoAgainNew")}
-      </motion.span>
+        <Said>{t("demoAgainNew")}</Said>
+      </motion.div>
+      {/* The composer the conversation is picked back up in. */}
+      <motion.div
+        className="s-composer lp-scene-composer"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={d(0.86, 0.24)}
+      >
+        <span>{t("demoAgainPlaceholder")}</span>
+      </motion.div>
     </div>
   );
 }
