@@ -47,7 +47,21 @@ export function buildCspHeader(nonce: string, isProd: boolean, pathname?: string
     `default-src 'self'`,
     `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${isProd ? "" : " 'unsafe-eval'"}`,
     `style-src 'self' 'unsafe-inline'`,
-    `img-src 'self' https://i.ytimg.com${isCodegenPreview ? " data:" : ""}${paddle}`,
+    /**
+     * The Supabase origin is admitted for IMAGES as well as `connect-src`.
+     *
+     * Project thumbnails are captured by the worker and served from Supabase
+     * Storage, so every card in the gallery loads an image from that host.
+     * Without this the browser blocks each one BEFORE the network — no failed
+     * request, no console error the card can react to, just three `<img>`
+     * elements with `naturalWidth === 0` and a gallery that looks like the
+     * feature was never deployed. Found exactly that way.
+     *
+     * It is the same origin `connect-src` already trusts, and the only public
+     * bucket on it is the thumbnails one; everything else there still requires
+     * a token the CSP has no bearing on.
+     */
+    `img-src 'self' https://i.ytimg.com${supabaseOrigin ? ` ${supabaseOrigin}` : ""}${isCodegenPreview ? " data:" : ""}${paddle}`,
     `font-src 'self'`,
     `connect-src 'self'${supabaseOrigin ? ` ${supabaseOrigin}` : ""}${paddle}`,
     `frame-src ${isCodegenPreview ? "'self' " : ""}https://www.youtube.com${paddle}`,

@@ -28,8 +28,17 @@ const directive = (csp: string, name: string): string =>
 
 const BASE_FRAME_SRC = "frame-src https://www.youtube.com";
 const EXCEPTION_FRAME_SRC = "frame-src 'self' https://www.youtube.com";
-const BASE_IMG_SRC = "img-src 'self' https://i.ytimg.com";
-const EXCEPTION_IMG_SRC = "img-src 'self' https://i.ytimg.com data:";
+/**
+ * The Supabase origin is part of the base `img-src`, because project
+ * thumbnails are served from its storage. It is read from the environment the
+ * same way the builder reads it — hardcoding the string here meant these
+ * assertions only ever exercised the case where the variable is UNSET, and
+ * passed while the real header (which always has it) went unchecked.
+ */
+const SUPABASE_ORIGIN = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
+const SUPABASE_PART = SUPABASE_ORIGIN ? ` ${SUPABASE_ORIGIN}` : "";
+const BASE_IMG_SRC = `img-src 'self' https://i.ytimg.com${SUPABASE_PART}`;
+const EXCEPTION_IMG_SRC = `img-src 'self' https://i.ytimg.com${SUPABASE_PART} data:`;
 
 /** Every route that must never see the exception. */
 const UNCHANGED_PATHS = [
@@ -182,6 +191,25 @@ for (const isProd of [false, true]) {
     directive(buildCspHeader("N", false), "frame-src") === BASE_FRAME_SRC);
   check("omitting the pathname yields the base img-src",
     directive(buildCspHeader("N", false), "img-src") === BASE_IMG_SRC);
+}
+
+/**
+ * The thumbnail gallery, which is what the storage origin is for.
+ *
+ * A blocked image produces NO failed request and no console error — just an
+ * `<img>` with `naturalWidth === 0`, which looks exactly like a feature that
+ * was never deployed. That is how this was found, and it is worth a test.
+ */
+{
+  const csp = buildCspHeader("N", true, "/projects");
+  const img = directive(csp, "img-src");
+  check("the gallery may load thumbnails from Supabase storage",
+    SUPABASE_ORIGIN === "" || img.includes(SUPABASE_ORIGIN),
+    img);
+  check("and admitting it for images does not admit it for scripts",
+    SUPABASE_ORIGIN === "" || !directive(csp, "script-src").includes(SUPABASE_ORIGIN));
+  check("nor for frames",
+    SUPABASE_ORIGIN === "" || !directive(csp, "frame-src").includes(SUPABASE_ORIGIN));
 }
 
 console.log(`\ncsp: ${passed} passed, ${failures.length} failed`);
