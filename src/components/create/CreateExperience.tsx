@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
-import { AskStrip } from "@/components/create/AskStrip";
+import { Questionnaire } from "@/components/build/Questionnaire";
 import {
   ensureCreationDraftAction,
   generateCreationTurnAction,
@@ -443,7 +443,71 @@ export function CreateExperience({ userId, initialDraft, fresh = false }: Create
   });
 
   const showDirections = turn?.phase === "propose" && turn.directions.length > 0;
+
+
   const showChoices = turn?.phase === "ask" && turn.choices.length > 0;
+
+  /**
+   * ONE QUESTION AT A TIME, whichever kind it is.
+   *
+   * Clarifications and direction proposals were two separate presentations
+   * with two separate sets of controls. They are the same interaction — "here
+   * is what I need to know, here are some answers, or say your own" — so they
+   * are assembled into one shape here and rendered by one component.
+   */
+  // No legend here: the assistant's message is rendered directly above this
+  // surface and already asks the question.
+  const askQuestion = undefined;
+  const askOptions = showDirections
+    ? (turn?.directions ?? []).map((direction, index) => ({
+        id: String(index),
+        label: direction.name,
+        hint: direction.concept,
+      }))
+    : (turn?.choices ?? []).map((choice) => ({
+        id: choice.id,
+        label: choice.title,
+        hint: choice.description ?? undefined,
+      }));
+  const askSelected = showDirections
+    ? (selectedDirection === null ? [] : [String(selectedDirection)])
+    : selectedChoices;
+
+  function onAskChoose(optionId: string) {
+    if (showDirections) {
+      const index = Number(optionId);
+      const direction = turn?.directions[index];
+      if (direction) chooseDirection(direction, index);
+      return;
+    }
+    const choice = turn?.choices.find((candidate) => candidate.id === optionId);
+    if (choice) pickChoice(choice);
+  }
+
+  /* Multi-select needs a confirm; proposals offer another set. Both are quiet
+     actions inside the surface rather than controls scattered beside it. */
+  const askActions = showDirections ? (
+    <VentrioButton
+      variant="ghost"
+      size="sm"
+      disabled={creating || isSending}
+      onClick={() => send(t("anotherMsg"), null)}
+      weight="medium"
+      className="text-[13px]"
+    >
+      {t("showAnother")}
+    </VentrioButton>
+  ) : showChoices && turn?.choiceMode === "multiple" ? (
+    <VentrioButton
+      variant="primary"
+      size="sm"
+      disabled={isSending || creating || selectedChoices.length === 0}
+      onClick={submitMultipleChoices}
+      weight="medium"
+    >
+      {t("continueChoices")}
+    </VentrioButton>
+  ) : null;
 
   return (
     /* THE FRONT DOOR OPENS ON THE SKY.
@@ -562,7 +626,7 @@ export function CreateExperience({ userId, initialDraft, fresh = false }: Create
                           from the composer and read as navigation sitting near
                           a message; they are a strip docked above the composer
                           now, which is where the answer is going to be typed.
-                          See AskStrip, below the conversation. */}
+                          See Questionnaire, which the composer expands into. */}
 
                       {/* Directions are likewise docked to the composer. */}
                     </div>
@@ -623,93 +687,6 @@ export function CreateExperience({ userId, initialDraft, fresh = false }: Create
         style={{ background: "linear-gradient(to top, var(--color-canvas) 68%, transparent)" }}
       >
         <div className="mx-auto w-full max-w-[704px]">
-          {/* THE QUESTION, ATTACHED TO THE ANSWER.
-              Clarifications and direction proposals both arrive here, directly
-              above the composer, as chips rather than as a stack of full-width
-              cards inside the transcript. */}
-          {showChoices && (
-            <AskStrip
-              multiple={turn?.choiceMode === "multiple"}
-              options={(turn?.choices ?? []).map((choice) => ({
-                id: choice.id,
-                label: choice.title,
-                hint: choice.description ?? undefined,
-              }))}
-              selected={selectedChoices}
-              disabled={isSending || creating}
-              hint={t("orType")}
-              onPick={(option) => {
-                const choice = turn?.choices.find((candidate) => candidate.id === option.id);
-                if (choice) pickChoice(choice);
-              }}
-              footer={
-                turn?.choiceMode === "multiple" ? (
-                  <VentrioButton
-                    variant="primary"
-                    size="sm"
-                    disabled={isSending || creating || selectedChoices.length === 0}
-                    onClick={submitMultipleChoices}
-                    weight="medium"
-                  >
-                    {t("continueChoices")}
-                  </VentrioButton>
-                ) : null
-              }
-            />
-          )}
-
-          {showDirections && (
-            <AskStrip
-              options={(turn?.directions ?? []).map((direction, index) => ({
-                id: String(index),
-                label: direction.name,
-                hint: direction.concept,
-              }))}
-              selected={selectedDirection === null ? [] : [String(selectedDirection)]}
-              disabled={isSending || creating}
-              hint={t("orType")}
-              onPick={(option) => {
-                const index = Number(option.id);
-                const direction = turn?.directions[index];
-                if (direction) chooseDirection(direction, index);
-              }}
-              footer={
-                /* "Refine" was a button welded to the side of every card. It is
-                   one quiet action for the strip now, and "show another" keeps
-                   its place beside it — both still reach the same handlers. */
-                <>
-                  {(turn?.directions ?? []).map((direction, index) => (
-                    <VentrioButton
-                      key={`${direction.name}-${index}`}
-                      variant="ghost"
-                      size="sm"
-                      disabled={isSending || creating}
-                      onClick={() => beginRefine(direction.name)}
-                      weight="medium"
-                      className="text-[13px]"
-                    >
-                      {t("refine")}: {direction.name}
-                    </VentrioButton>
-                  ))}
-                  <VentrioButton
-                    variant="ghost"
-                    size="sm"
-                    disabled={creating || isSending}
-                    onClick={() => send(t("anotherMsg"), null)}
-                    weight="medium"
-                    className="text-[13px]"
-                  >
-                    {t("showAnother")}
-                  </VentrioButton>
-                </>
-              }
-            />
-          )}
-          {refineTarget && (
-            <p className="mb-2 px-1 text-xs leading-5 text-ink-secondary">
-              {t("refineQuestion", { name: refineTarget })}
-            </p>
-          )}
           {/* QUOTA AND PROVIDER FAILURES ARE AN ALERT, not 12px of red text.
               A used-up monthly allowance and a provider that would not answer
               are the two things that stop the product working, and they were
@@ -720,35 +697,61 @@ export function CreateExperience({ userId, initialDraft, fresh = false }: Create
             <Alert variant={noteIsLimitReached ? "default" : "destructive"} className="mb-2">
               <AlertDescription className="flex flex-wrap items-center gap-3">
                 <span className="min-w-0 flex-1">{note}</span>
-              {started && !noteIsLimitReached && (
-                <VentrioButton
-                  variant="ghost"
-                  size="sm"
-                  onClick={() =>
-                    generationRetry ? chooseDirection(generationRetry.direction, generationRetry.index) : retry()
-                  }
-                  disabled={isSending || creating}
-                  weight="medium" className="text-[13px]"
-                >
-                  {t("retry")}
-                </VentrioButton>
-              )}
-              {/* Second, deliberately. Retrying costs a moment and keeps the
-                  conversation; this skips it. The person picks which. */}
-              {fallbackDirection && !noteIsLimitReached && (
-                <VentrioButton
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => chooseDirection(fallbackDirection, 0)}
-                  disabled={isSending || creating}
-                  weight="medium" className="text-[13px]"
-                >
-                  {t("fallbackOffer")}
-                </VentrioButton>
-              )}
+                {started && !noteIsLimitReached && (
+                  <VentrioButton
+                    variant="ghost"
+                    size="sm"
+                    onClick={() =>
+                      generationRetry ? chooseDirection(generationRetry.direction, generationRetry.index) : retry()
+                    }
+                    disabled={isSending || creating}
+                    weight="medium" className="text-[13px]"
+                  >
+                    {t("retry")}
+                  </VentrioButton>
+                )}
+                {/* Second, deliberately. Retrying costs a moment and keeps the
+                    conversation; this skips it. The person picks which. */}
+                {fallbackDirection && !noteIsLimitReached && (
+                  <VentrioButton
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => chooseDirection(fallbackDirection, 0)}
+                    disabled={isSending || creating}
+                    weight="medium" className="text-[13px]"
+                  >
+                    {t("fallbackOffer")}
+                  </VentrioButton>
+                )}
               </AlertDescription>
             </Alert>
           )}
+
+          {/* THE QUESTION AND THE ANSWER ARE ONE SURFACE.
+              Questionnaire takes the composer as a child and draws a single
+              border around both, so the text box visibly grows upward to hold
+              the question and shrinks back once it is answered. With no
+              question it returns the composer untouched, which is what stops
+              this ever becoming permanent furniture. */}
+          <Questionnaire
+            question={askQuestion}
+            options={askOptions}
+            selected={askSelected}
+            multiple={showChoices && turn?.choiceMode === "multiple"}
+            disabled={isSending || creating}
+            typeHint={t("orType")}
+            onChoose={onAskChoose}
+            actions={askActions}
+            onSecondary={
+              showDirections
+                ? (optionId) => {
+                    const direction = turn?.directions[Number(optionId)];
+                    if (direction) beginRefine(direction.name);
+                  }
+                : undefined
+            }
+            secondaryLabel={t("refine")}
+            composer={
           <WorkspaceComposer
             hero={!started}
             value={input}
@@ -774,6 +777,8 @@ export function CreateExperience({ userId, initialDraft, fresh = false }: Create
               requestingLabel: tb("voiceRequesting"),
               listeningLabel: tb("voiceListening"),
             }}
+          />
+            }
           />
           <p role="status" aria-live="polite" className="sr-only">
             {voice.listening ? tb("voiceListening") : ""}

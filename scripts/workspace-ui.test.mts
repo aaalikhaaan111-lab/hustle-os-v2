@@ -38,7 +38,7 @@ const buildScreen = read("src/components/workspace/BuildScreen.tsx");
 const preOutput = read("src/components/build/PreOutputWorkspace.tsx");
 const workspaceView = read("src/components/build/WorkspaceView.tsx");
 const createExperience = read("src/components/create/CreateExperience.tsx");
-const structuredChoice = read("src/components/build/StructuredChoice.tsx");
+const structuredChoice = read("src/components/build/Questionnaire.tsx");
 const analytics = read("src/app/projects/[id]/analytics/page.tsx");
 const publishing = read("src/lib/publishing/queries.ts");
 
@@ -156,8 +156,8 @@ check(
  * impossible rather than guarded: there is only ever one strip and it always
  * describes the question being asked.
  */
-check("the proposal renders in the composer-attached strip",
-  /\{showDirections && \(\s*<AskStrip/.test(createExperience));
+check("the proposal renders in the composer-attached surface",
+  /<Questionnaire[\s\S]{0,900}composer=\{/.test(createExperience));
 check("with one chip per direction",
   /turn\?\.directions \?\? \[\]\)\.map/.test(createExperience));
 check("and the large card is gone", !/direction-card|DirectionCard/.test(createCode));
@@ -170,8 +170,9 @@ check("and the large card is gone", !/direction-card|DirectionCard/.test(createC
  * the weight of a suggestion. The rule they existed to satisfy still holds and
  * is asserted below: nothing on this screen is a column grid on a phone.
  */
-check("discovery choices use the same strip",
-  (createExperience.match(/<AskStrip/g) ?? []).length >= 2,
+check("discovery choices use that same surface",
+  (createExperience.match(/<Questionnaire/g) ?? []).length === 1 &&
+  /showDirections\s*\?/.test(createExperience),
   "clarifications and proposals must not drift into two presentations again");
 /**
  * DELIBERATELY REVERSED, and worth stating rather than quietly editing.
@@ -234,10 +235,10 @@ check("and the marketing hero is gone",
  * occupy about the height of one message, which is what stops it looking like
  * permanent UI.
  */
-check("intake options wrap as chips", /flex flex-wrap items-center gap-1\.5/.test(structuredChoice));
-check("and the answer is never limited to the chips",
+check("intake options are full-width rows", /className="s-ask-option"/.test(structuredChoice));
+check("and the answer is never limited to the options",
   /typeHint/.test(structuredChoice),
-  "a closed list of buttons tells people the chips are the only allowed answers");
+  "a closed list of buttons tells people those are the only allowed answers");
 check("and no longer scroll sideways", !/overflow-x-auto/.test(code(structuredChoice)));
 check("nor snap horizontally", !/snap-x|snap-mandatory/.test(code(structuredChoice)));
 

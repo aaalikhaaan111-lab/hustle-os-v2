@@ -252,12 +252,22 @@ check("and the mark centres in the rail",
   /group-data-\[collapsible=icon\]:justify-center/.test(shell));
 
 /**
- * The rail's own padding (`p-2`) plus a `size-8` button is exactly 48px. Any
- * other icon width leaves every glyph sitting off-centre against one edge.
+ * SIZE MUST NOT CHANGE WHEN THE RAIL DOES.
+ *
+ * Collapsing used to squeeze the tall rows — the mark and the account — from
+ * 48px down to 32px, while every other row kept its own height. Controls are a
+ * consistent 40px wide in both states now, so the rail is that plus its own
+ * `p-2` on each side: 3.5rem. Anything else leaves the glyphs off-centre.
  */
 check("the icon rail is as wide as its contents",
-  /"--sidebar-width-icon":\s*"3rem"/.test(shell),
-  "3.25rem left a 4px bias that made the whole rail look misaligned");
+  /"--sidebar-width-icon":\s*"3.5rem"/.test(shell),
+  "the rail must match a 40px control plus its padding");
+check("and collapsing does not shrink the tall controls",
+  /group-data-\[collapsible=icon\]:h-12!/.test(read("src/components/ui/shadcn/sidebar.tsx")),
+  "the mark and the account row were dropping to 32px on collapse");
+check("the mark advertises that it toggles the rail",
+  /s-mark-toggle/.test(shell) && /s-mark-hint/.test(read("src/app/studio.css")),
+  "a logo that is silently a button tells nobody the rail can be collapsed");
 
 check("search is reachable from the rail", /setSearchOpen\(true\)/.test(shell));
 

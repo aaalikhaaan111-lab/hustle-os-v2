@@ -56,10 +56,20 @@ const publishing = read("src/lib/actions/publishing.ts");
  * impossible rather than guarded: there is only ever one strip and it always
  * describes the question being asked.
  */
-check("choices render in the strip attached to the composer",
-  /\{showChoices && \(\s*<AskStrip/.test(createExperience));
-check("directions render in that same strip",
-  /\{showDirections && \(\s*<AskStrip/.test(createExperience));
+/*
+ * ONE SURFACE, and the composer is inside it.
+ *
+ * The question was a stack of cards in the transcript, then chips floating
+ * above the composer. It is now a single bordered surface that TAKES the
+ * composer as a child — so what a person sees is their text box growing upward
+ * to hold a question and shrinking back when it is answered. The structural
+ * test is therefore that the composer is passed to the questionnaire rather
+ * than rendered beside it.
+ */
+check("the composer is rendered inside the questionnaire",
+  /<Questionnaire[\s\S]{0,900}composer=\{/.test(createExperience));
+check("clarifications and proposals feed one surface",
+  /showDirections\s*\?[\s\S]{0,200}turn\?\.choices/.test(createExperience));
 check(
   "and staleness is structural rather than gated",
   !/isLatestAssistant/.test(createExperience),
@@ -84,7 +94,8 @@ check("selection ends them", /setSelectedDirection\(index\)/.test(createExperien
 check("sending a message ends them", /setTurn\(null\)/.test(createExperience));
 check("a new turn replaces them", /setTurn\(result\.turn\)/.test(createExperience));
 
-check("options stay compact chips", /className="s-chip"/.test(read("src/components/create/AskStrip.tsx")));
+check("options stay compact rows inside the surface",
+  /className="s-ask-option"/.test(read("src/components/build/Questionnaire.tsx")));
 check("and never become columns", !/grid-cols-/.test(code(createExperience)));
 
 /* ── 2. the preview cannot go white in silence ───────────────────────────── */

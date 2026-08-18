@@ -38,7 +38,7 @@ const createExperience = read("src/components/create/CreateExperience.tsx");
 const createCode = code(createExperience);
 const preOutput = read("src/components/build/PreOutputWorkspace.tsx");
 const preOutputCode = code(preOutput);
-const structured = read("src/components/build/StructuredChoice.tsx");
+const structured = read("src/components/build/Questionnaire.tsx");
 
 /* ── 1. nothing generates without a selection ────────────────────────────── */
 
@@ -106,15 +106,26 @@ check(
  * impossible rather than guarded: there is only ever one strip and it always
  * describes the question being asked.
  */
-check("choices render in the strip attached to the composer",
-  /\{showChoices && \(\s*<AskStrip/.test(createExperience));
-check("directions render in that same strip",
-  /\{showDirections && \(\s*<AskStrip/.test(createExperience));
+/*
+ * ONE SURFACE, and the composer is inside it.
+ *
+ * The question was a stack of cards in the transcript, then chips floating
+ * above the composer. It is now a single bordered surface that TAKES the
+ * composer as a child — so what a person sees is their text box growing upward
+ * to hold a question and shrinking back when it is answered. The structural
+ * test is therefore that the composer is passed to the questionnaire rather
+ * than rendered beside it.
+ */
+check("the composer is rendered inside the questionnaire",
+  /<Questionnaire[\s\S]{0,900}composer=\{/.test(createExperience));
+check("clarifications and proposals feed one surface",
+  /showDirections\s*\?[\s\S]{0,200}turn\?\.choices/.test(createExperience));
 check(
   "and not in a block after the conversation",
   !/<\/div>\s*\n\s*\{showChoices && \(/.test(createExperience),
 );
-check("the build question is a turn in the thread", /\{intake\.step && \(/.test(preOutput));
+check("the build question is the surface the composer expands into",
+  /<Questionnaire[\s\S]{0,1400}composer=\{/.test(preOutput));
 check(
   "and no longer sits in the footer above the composer",
   !/shrink-0 px-5 pb-5 pt-2[\s\S]{0,200}<StructuredChoice/.test(preOutput),
@@ -210,14 +221,14 @@ check("every conversation surface uses the one component",
     /UserTurn/.test(readFileSync(new URL(`../${f}`, import.meta.url), "utf8"))));
 
 // The question in the workspace is a message too, not a form label.
-check("the build question uses body type", /text-\[15px\] font-normal leading-\[1\.65\]/.test(structured));
+check("the build question uses body type", /text-\[15px\] font-normal leading-\[1\.55\]/.test(structured));
 check("and is not truncated mid-sentence", !/truncate text-\[13px\]/.test(structured));
 check("nor framed as a panel", !/rounded-\[14px\] border/.test(code(structured)));
 
 /* ── 6. the options themselves stay compact ──────────────────────────────── */
 
-check("options are chips, not full-width rows",
-  /<AskStrip/.test(createExperience) && !/className="choice-stack"/.test(createExperience));
+check("options are rows inside the surface, not cards in the transcript",
+  /<Questionnaire/.test(createExperience) && !/className="choice-stack"/.test(createExperience));
 check("never columns", !/grid-cols-/.test(createCode));
 const css = read("src/app/globals.css");
 check("a row is one line of supporting text", /\.choice-row-hint \{[\s\S]{0,220}white-space: nowrap/.test(css));
@@ -326,7 +337,7 @@ check(
 );
 
 // Both halves matter: the question must still be the thing that is shown.
-check("the question renders in that state", /\{intake\.step && \(/.test(preOutputCode));
+check("the question renders in that state", /intake\.step \? tb\(intake\.step\.titleKey/.test(preOutputCode));
 check(
   "and it is the intake that generates when answered",
   /onComplete: \(answers: IntakeAnswers\) => createFirstVersion\(false, answers\)/.test(preOutputCode),

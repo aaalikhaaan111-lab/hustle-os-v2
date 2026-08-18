@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { StructuredChoice } from "@/components/build/StructuredChoice";
+import { Questionnaire } from "@/components/build/Questionnaire";
 import { planIntake, type DesignPreviewId, type IntakeAnswers } from "@/lib/build/intake";
 import "@/app/studio.css";
 
@@ -104,12 +104,13 @@ export function IntakePreview() {
       </div>
 
       {step && (
-        <StructuredChoice
+        <Questionnaire
           typeHint="Or just type your own answer below."
           key={step.id}
-          labelledById="intake-preview-title"
-          title={tb(step.titleKey as never)}
-          deferLabel={tb(step.deferKey as never)}
+          question={tb(step.titleKey as never)}
+          onSkip={() => choose(null)}
+          skipLabel={tb(step.deferKey as never)}
+          composer={null}
           progress={plan.steps.length > 1 ? `${stepIndex + 1} / ${plan.steps.length}` : undefined}
           options={step.options.map((option) => ({
             id: option.id,

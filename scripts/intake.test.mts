@@ -317,8 +317,10 @@ function runFlow(idea: string, picks: (string | null)[]) {
 /* ── 10. no option is preselected ───────────────────────────────────────── */
 {
   const component = readFileSync(
-    new URL("../src/components/build/StructuredChoice.tsx", import.meta.url), "utf8");
-  check("selection starts empty", /useState<string \| null>\(null\)/.test(component));
+    new URL("../src/components/build/Questionnaire.tsx", import.meta.url), "utf8");
+  /* Selection is the caller's state now, so the surface cannot pre-select
+     anything on its own: it renders exactly what it is given. */
+  check("selection starts empty", /selected = \[\]/.test(component));
   check("aria-checked follows selection, not focus", /aria-checked=\{isSelected\}/.test(component));
   check("the roving tabindex is separate from selection", /tabIndex=\{index === focusIndex/.test(component));
   /*
@@ -332,7 +334,7 @@ function runFlow(idea: string, picks: (string | null)[]) {
   const chipCss = readFileSync(new URL("../src/app/studio.css", import.meta.url), "utf8");
   check("the fill is applied only when selected",
     /data-selected=\{isSelected \? "true" : undefined\}/.test(component) &&
-    /\.s-chip\[data-selected="true"\][\s\S]{0,160}background: var\(--primary\)/.test(chipCss));
+    /\.s-ask-option\[data-selected="true"\][\s\S]{0,160}background: var\(--muted\)/.test(chipCss));
   check("focus is shown as a ring, not as the selected fill",
     /\.studio :focus-visible[\s\S]{0,80}outline: 2px solid var\(--ring\)/.test(chipCss) &&
     !/:focus[^-][\s\S]{0,60}background/.test(chipCss.split(".s-chip {")[1]?.split("}")[0] ?? ""));
@@ -392,7 +394,7 @@ function runFlow(idea: string, picks: (string | null)[]) {
     new URL("../src/components/build/PreOutputWorkspace.tsx", import.meta.url), "utf8");
   const prompt = readFileSync(new URL("../src/lib/actions/buildAi.ts", import.meta.url), "utf8");
 
-  check("the workspace renders the structured choice", /StructuredChoice/.test(workspace));
+  check("the workspace renders the questionnaire", /Questionnaire/.test(workspace));
   check("the final answer calls generation directly",
     /onComplete[\s\S]{0,120}createFirstVersion\(/.test(workspace));
   check("generation still goes through the existing action",

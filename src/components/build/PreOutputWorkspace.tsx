@@ -10,7 +10,7 @@ import { editProjectOutputAction, generateFirstVersionAction } from "@/lib/actio
 import type { CreationDirection } from "@/lib/build/creationTypes";
 import { isProjectOutputEditRequest } from "@/lib/build/editIntent";
 import { classifyBuildIntent } from "@/lib/build/buildIntent";
-import { StructuredChoice } from "./StructuredChoice";
+import { Questionnaire } from "./Questionnaire";
 import { useBuildIntake } from "@/lib/build/useBuildIntake";
 import type { DesignPreviewId } from "@/lib/build/intake";
 import { intakeGenerationBrief, type IntakeAnswers } from "@/lib/build/intake";
@@ -663,28 +663,9 @@ export function PreOutputWorkspace({
                     the last thing in the thread because it is the last thing
                     said, and it stays there until it is answered: nothing
                     dismisses it and nothing chooses for the person. */}
-                {intake.step && (
-                  <div className="ws-turn flex flex-col gap-2.5">
-                    <StructuredChoice
-                      typeHint={tb("askTypeHint")}
-                      key={intake.step.id}
-                      labelledById="build-intake-title"
-                      title={tb(intake.step.titleKey as never)}
-                      deferLabel={tb(intake.step.deferKey as never)}
-                      progress={intake.progress ?? undefined}
-                      disabled={busy}
-                      options={intake.step.options.map((option) => ({
-                        id: option.id,
-                        label: tb(option.labelKey as never),
-                        hint: option.hintKey ? tb(option.hintKey as never) : undefined,
-                        preview: "preview" in option ? (option as { preview: DesignPreviewId }).preview : undefined,
-                      }))}
-                      onChoose={intake.choose}
-                      onBack={intake.back ?? undefined}
-                      backLabel={tb("intakeBack")}
-                    />
-                  </div>
-                )}
+                {/* The intake question is no longer rendered here. It is the
+                    surface the composer expands into, below — the question and
+                    the box you answer it in are one object. */}
 
                 {/* Feedback on real responses is a conversation about the
                     product, not a control over it, so it stays here while the
@@ -710,6 +691,24 @@ export function PreOutputWorkspace({
                     {note}
                   </p>
                 )}
+                <Questionnaire
+                  key={intake.step?.id ?? "no-question"}
+                  question={intake.step ? tb(intake.step.titleKey as never) : undefined}
+                  progress={intake.progress ?? undefined}
+                  disabled={busy}
+                  typeHint={tb("askTypeHint")}
+                  options={(intake.step?.options ?? []).map((option) => ({
+                    id: option.id,
+                    label: tb(option.labelKey as never),
+                    hint: option.hintKey ? tb(option.hintKey as never) : undefined,
+                    preview: "preview" in option ? (option as { preview: DesignPreviewId }).preview : undefined,
+                  }))}
+                  onChoose={intake.choose}
+                  onSkip={intake.step ? () => intake.choose(null) : undefined}
+                  skipLabel={intake.step ? tb(intake.step.deferKey as never) : undefined}
+                  onBack={intake.back ?? undefined}
+                  backLabel={tb("intakeBack")}
+                  composer={
                 <WorkspaceComposer
                   value={input}
                   onChange={setInput}
@@ -734,6 +733,8 @@ export function PreOutputWorkspace({
                     requestingLabel: tb("voiceRequesting"),
                     listeningLabel: tb("voiceListening"),
                   }}
+                />
+                  }
                 />
                 {voice.error && (
                   <p role="alert" className="mt-1.5 text-[13px]" style={{ color: "var(--color-warning)" }}>
