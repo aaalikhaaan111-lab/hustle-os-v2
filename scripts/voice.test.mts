@@ -42,8 +42,14 @@ check("no error means no message", voiceErrorKey(null) === null);
 
 // The whole point of the fix: someone who simply closed the prompt is told to
 // press the button again, not to go hunting through browser settings.
-const SETTINGS_EN = /settings|browser permissions|site permissions/i;
-const SETTINGS_RU = /настройк|разрешения сайта/i;
+/*
+ * "Somewhere you can change the permission" — which is the padlock in the
+ * address bar as often as it is a settings screen, and naming the padlock is a
+ * better instruction than naming a menu. The rule being enforced is that a
+ * BLOCKED origin gets a recovery path and a merely DISMISSED prompt does not.
+ */
+const SETTINGS_EN = /settings|browser permissions|site permissions|padlock|address bar/i;
+const SETTINGS_RU = /настройк|разрешения сайта|замок|адресной строк/i;
 
 check("the dismissed message does not mention settings (en)", !SETTINGS_EN.test(en.voiceDismissed), en.voiceDismissed);
 check("the dismissed message does not mention settings (ru)", !SETTINGS_RU.test(ru.voiceDismissed), ru.voiceDismissed);

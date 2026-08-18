@@ -146,6 +146,7 @@ export type VoiceInputError =
   | "failed"
   | "insecure"
   | "unsupported"
+  | "no-microphone"
   | null;
 
 /**
@@ -168,6 +169,8 @@ export function voiceErrorKey(error: VoiceInputError): string | null {
       return "voiceInsecure";
     case "unsupported":
       return "voiceUnsupported";
+    case "no-microphone":
+      return "voiceNoDevice";
     case "failed":
       return "voiceFailed";
     default:
@@ -384,7 +387,11 @@ export function useVoiceInput({ lang, onTranscript, disabled }: UseVoiceInputOpt
             setError(attempt > 1 ? "permission-blocked" : "permission-dismissed");
           });
         } else if (name === "NotFoundError" || name === "OverconstrainedError") {
-          setError("failed");
+          // No capture device at all. Telling someone dictation "stopped
+          // unexpectedly, try again" when the machine has no microphone sends
+          // them round a loop that cannot end — this is the generic error the
+          // brief asked to stop showing.
+          setError("no-microphone");
           setState("error");
         } else {
           setError("failed");
