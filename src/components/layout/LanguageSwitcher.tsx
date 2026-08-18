@@ -166,7 +166,12 @@ export function LanguageSwitcher({
              panel was `bg-[#14102c]/90` with `text-white` rows — invisible on
              warm paper, which is what made the control disappear from the top
              bar entirely. */
-          className="absolute bottom-full right-0 z-50 mb-2 min-w-[10rem] rounded-[14px] border p-1 backdrop-blur-md"
+          /* It opens upward from a control that now lives only in the footer,
+             and it can never be wider than the window: the header copy that
+             used to sit against the right edge — and open partly off-screen —
+             is gone, and this guard means the surviving one cannot repeat it
+             at any width. */
+          className="absolute bottom-full right-0 z-50 mb-2 min-w-[10rem] max-w-[calc(100vw-2rem)] rounded-[14px] border p-1 backdrop-blur-md"
           style={{
             borderColor: "var(--color-border)",
             background: "var(--color-surface)",

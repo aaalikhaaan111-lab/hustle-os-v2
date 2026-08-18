@@ -71,7 +71,7 @@ export async function PublicFooter() {
     "rounded-sm text-ink-muted transition-colors hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent";
 
   return (
-    <footer className="mt-16 text-sm">
+    <footer className="mt-24 text-sm">
       {/* The footer's own container, so it measures itself rather than
           inheriting whatever column it was dropped into. A full-bleed was
           tried first and is wrong here: it escapes the app shell's drawer
@@ -80,9 +80,13 @@ export async function PublicFooter() {
           hand the landing, and this caps it. */}
       <div
         data-footer-inner
-        className="mx-auto w-full max-w-[1280px] border-t border-border/60 pt-10"
+        /* Real breathing room. The footer was pressed against the last thing
+           on the page and against the bottom of the window: 40px above the
+           rule and 24px under the final line, which on a short page put the
+           copyright a thumb's width from the edge of the screen. */
+        className="mx-auto w-full max-w-[1280px] border-t border-border/60 pt-14 pb-14"
       >
-      <div className="flex flex-col gap-10 md:flex-row md:justify-between">
+      <div className="flex flex-col gap-12 md:flex-row md:justify-between md:gap-16">
         {/* Who this is, in one line, and where to find us.
             `-mt-1` on the wide layout only: the wordmark row is a 20px mark
             beside 15px text, against the sentence-case headings in the columns
@@ -166,7 +170,12 @@ export async function PublicFooter() {
         </nav>
       </div>
 
-      <div className="mt-10 flex flex-col-reverse gap-4 border-t border-border/60 pt-6 text-xs text-ink-muted sm:flex-row sm:items-center sm:justify-between">
+      {/* The bottom line: what this is, and the one control that belongs to the
+          whole site rather than to any page on it. The language switcher lives
+          here and only here — it was duplicated in the public header, where it
+          sat against the right edge of the window and opened partly off-screen.
+          Down here it has the room to open in either direction. */}
+      <div className="mt-14 flex flex-col-reverse gap-5 border-t border-border/60 pt-8 text-xs text-ink-muted sm:flex-row sm:items-center sm:justify-between">
         <p>{t("rights", { year, productName: legalConfig.productName })}</p>
         <LanguageSwitcher />
       </div>

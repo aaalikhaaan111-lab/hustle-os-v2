@@ -1283,13 +1283,13 @@
     "billingSoon": "Billing is not connected yet — we will email you the moment it opens.",
     "billingPending": "not open yet",
     "freeName": "Free",
-    "freeTagline": "Try the whole thing, free.",
+    "freeTagline": "Three projects a month, one of them online. Enough to find out whether the idea works.",
     "freeCta": "Start building",
     "proName": "Pro",
-    "proTagline": "For people putting things online regularly.",
+    "proTagline": "Thirty projects a month, all of them online, and your pages carry no Ventrio mark.",
     "proCta": "Upgrade to Pro",
     "studioName": "Studio",
-    "studioTagline": "For teams, teachers and people making a lot.",
+    "studioTagline": "A hundred projects a month, for people building for others — a class, a client list, a team.",
     "studioCta": "Upgrade to Studio",
     "featureGenerations": "{count} projects a month",
     "featurePublishOne": "1 project online at a time",
@@ -1305,6 +1305,7 @@
     "rowSubdomain": "Web address",
     "rowDiscovery": "Help with the idea",
     "mostPeople": "Most people",
-    "onEveryPlan": "on every plan"
+    "onEveryPlan": "on every plan",
+    "sharedTitle": "On every plan"
   }
 }

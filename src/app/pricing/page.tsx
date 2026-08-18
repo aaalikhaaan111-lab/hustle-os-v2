@@ -81,6 +81,14 @@ export default async function PricingPage() {
     { label: t("rowDiscovery"), value: () => t("featureDiscovery") },
   ];
 
+  /* A capability whose three answers are identical is not a comparison. */
+  const sameOnEveryPlan = (row: { value: (plan: PlanId) => string }) => {
+    const values = ORDER.map((plan) => row.value(plan));
+    return values.every((value) => value === values[0]);
+  };
+  const DIFFERING = ROWS.filter((row) => !sameOnEveryPlan(row));
+  const SHARED = ROWS.filter(sameOnEveryPlan);
+
   const cta: Record<PlanId, string> = {
     free: t("freeCta"),
     pro: t("proCta"),
@@ -215,8 +223,13 @@ export default async function PricingPage() {
                     five capability rows further down. */}
                 <div className="mt-6">{action(plan)}</div>
 
+                {/* ONLY WHAT CHANGES. Two of the five capabilities are
+                    identical on every plan, and printing them in all three
+                    columns filled the cards with text a reader has to check
+                    before discovering it says nothing. They move to one line
+                    under the plans; what is left here is the difference. */}
                 <ul className="mt-7 flex flex-col gap-3">
-                  {ROWS.map((row) => (
+                  {DIFFERING.map((row) => (
                     <li
                       key={row.label}
                       className="flex items-start gap-2.5 text-[14.5px] leading-snug"
@@ -235,6 +248,26 @@ export default async function PricingPage() {
             );
           })}
         </div>
+
+        <section className="mt-8 rounded-[var(--r-lg)] border bg-muted/40 px-6 py-5">
+          <h2 className="s-eyebrow">{t("sharedTitle")}</h2>
+          <ul className="mt-3 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:gap-x-10">
+            {SHARED.map((row) => (
+              <li
+                key={row.label}
+                className="flex items-start gap-2.5 text-[14.5px] leading-snug"
+                style={{ color: "var(--color-ink)" }}
+              >
+                <span
+                  aria-hidden
+                  className="mt-[7px] h-[3px] w-[3px] shrink-0 rounded-full"
+                  style={{ background: "var(--color-ink-muted)" }}
+                />
+                {row.value("free")}
+              </li>
+            ))}
+          </ul>
+        </section>
 
         <p id="billing-note" className="s-meta mt-14 max-w-2xl">
           {t("billingSoon")}
