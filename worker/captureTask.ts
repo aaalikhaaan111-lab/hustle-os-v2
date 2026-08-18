@@ -25,6 +25,23 @@ const BATCH = Number(process.env.VENTRIO_THUMBNAIL_BATCH ?? 2);
 type Log = (event: string, fields?: Record<string, unknown>) => void;
 
 /**
+ * Records that this project was considered, without giving it a picture.
+ *
+ * Leaving `thumbnail_url` alone matters: a project that had a good thumbnail and
+ * now fails to compile keeps the last picture that was true of it rather than
+ * falling back to a drawing.
+ */
+async function stamp(
+  supabase: ReturnType<typeof createServiceClient>,
+  projectId: string,
+): Promise<void> {
+  await supabase
+    .from("projects")
+    .update({ thumbnail_captured_at: new Date().toISOString() })
+    .eq("id", projectId);
+}
+
+/**
  * Captures pictures for up to `BATCH` projects that need one.
  *
  * Returns how many were written, so the loop can tell "did work" from "idle".
@@ -59,28 +76,38 @@ export async function captureDueThumbnails(log: Log): Promise<number> {
     if (written >= BATCH) break;
 
     const state = readAppState(row.snapshot_fields);
-    // No generated app: nothing to photograph. The gallery draws these from
-    // their own content instead, which is already a real picture of them.
-    if (!state) continue;
+    if (!state) {
+      /**
+       * No generated app: nothing to photograph. The gallery draws these from
+       * their own content instead, which is already a real picture of them.
+       *
+       * RECORD THE ATTEMPT ANYWAY, for the same reason a failed capture does.
+       * `continue` alone leaves the project in `projects_needing_thumbnail`
+       * forever — production had 51 of them after the first rollout, re-read
+       * every idle tick and never leaving. Harmless in itself, but the
+       * candidate query is bounded, so enough of them updated more recently
+       * than a real app project would push that app project out of every batch
+       * and it would never be photographed at all.
+       *
+       * Stamping moves them out until something about the project actually
+       * changes — and generating an app IS such a change, so a draft that later
+       * becomes an app comes back into the set on its own.
+       */
+      await stamp(supabase, row.id);
+      continue;
+    }
 
     const startedAt = Date.now();
     const png = await captureAppThumbnail(state.app);
 
     if (!png) {
       /**
-       * STAMP THE ATTEMPT ANYWAY.
-       *
-       * Without this, a project that cannot be captured — one that no longer
-       * compiles, say — stays permanently at the front of the queue and the
-       * worker retries it on every idle tick forever, never reaching the
-       * projects behind it. Recording the attempt moves it out of the candidate
-       * set until something about the project changes, which is exactly when it
-       * is worth trying again.
+       * Same reasoning as above: a project that cannot be captured — one that
+       * no longer compiles, say — would otherwise sit at the head of the queue
+       * and be retried on every idle tick forever, never reaching the projects
+       * behind it.
        */
-      await supabase
-        .from("projects")
-        .update({ thumbnail_captured_at: new Date().toISOString() })
-        .eq("id", row.id);
+      await stamp(supabase, row.id);
       log("thumbnail_skipped", { projectId: row.id, durationMs: Date.now() - startedAt });
       continue;
     }

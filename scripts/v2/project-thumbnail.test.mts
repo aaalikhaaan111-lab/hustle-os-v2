@@ -75,8 +75,23 @@ check("capture runs only on a tick that found no job",
 check("and every failure is swallowed into a null",
   /return null;/.test(capture) && /} catch \{/.test(capture));
 check("a project that cannot be captured still records the attempt",
-  /thumbnail_captured_at: new Date\(\)\.toISOString\(\)/.test(task),
+  /async function stamp\(/.test(task) && /await stamp\(supabase, row\.id\);/.test(task),
   "otherwise it sits at the head of the queue forever and starves the rest");
+/**
+ * Found in production: 51 projects with no generated app sat in
+ * `projects_needing_thumbnail` permanently because the no-app branch `continue`d
+ * without stamping. The candidate query is bounded, so enough of those updated
+ * more recently than a real app project would push it out of every batch.
+ */
+const noAppBranch = task.indexOf("if (!state) {");
+const firstStampCall = task.indexOf("await stamp(supabase, row.id);");
+const captureCall = task.indexOf("await captureAppThumbnail(");
+check("and so does a project that has nothing to photograph",
+  noAppBranch !== -1 && firstStampCall > noAppBranch && firstStampCall < captureCall,
+  "a bounded candidate query plus a permanent backlog starves the real work");
+check("a failed capture keeps the last picture that was true",
+  !/thumbnail_url: null/.test(task),
+  "a project that stops compiling should not lose the thumbnail it already had");
 check("the browser is closed when the worker drains",
   /closeThumbnailBrowser/.test(worker));
 
