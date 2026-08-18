@@ -1,4 +1,4 @@
-import { LandingExperience } from "@/components/landing/LandingExperience";
+import { Landing } from "@/components/landing/Landing";
 import { PublicFooter } from "@/components/layout/PublicFooter";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/supabase/currentUser";
@@ -16,8 +16,6 @@ export default async function Home() {
   const user = await getCurrentUser(supabase);
 
   return (
-    <LandingExperience isAuthenticated={Boolean(user)}>
-      <PublicFooter />
-    </LandingExperience>
+    <Landing isAuthenticated={Boolean(user)} footer={<PublicFooter />} />
   );
 }

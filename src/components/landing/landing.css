@@ -1,0 +1,514 @@
+/* =========================================================================
+   THE LANDING PAGE
+   -------------------------------------------------------------------------
+   Scoped to `.lp` and painted from the same token set the platform uses, so
+   the public page and the product are recognisably one thing. The landing this
+   replaces was a near-black page with a blue glow — a different product from
+   the warm-neutral application behind it.
+
+   The composition language is adapted from the reference: an accent eyebrow, a
+   large display heading whose second clause is muted italic, supporting copy
+   pushed to a right-hand column, generous vertical air, and product surfaces
+   presented in rounded panels. What is NOT taken from it is its palette, its
+   painted artwork, its brand voice, and every claim it makes about customers.
+   ========================================================================= */
+
+.lp {
+  --lp-gutter: 1.25rem;
+  --lp-max: 1200px;
+  /* ONE ACCENT. The page had a blue chip beside a violet composer glow — two
+     accents on one screen. This is the violet the Ventrio mark and the
+     composer already use, so the landing has a single accent rather than a
+     colour invented for it. */
+  --lp-accent: var(--color-accent, #5a51e8);
+  background: var(--background);
+  color: var(--foreground);
+}
+
+@media (min-width: 768px) {
+  .lp { --lp-gutter: 2.5rem; }
+}
+
+.lp-wrap {
+  width: 100%;
+  max-width: var(--lp-max);
+  margin-inline: auto;
+  padding-inline: var(--lp-gutter);
+}
+
+/* Section rhythm. One number, so every band on the page breathes the same. */
+.lp-section { padding-block: 5rem; }
+
+@media (min-width: 768px) {
+  .lp-section { padding-block: 8rem; }
+}
+
+/* ── the header ─────────────────────────────────────────────────────────── */
+
+.lp-header {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  border-bottom: 1px solid transparent;
+  background: color-mix(in oklab, var(--background) 82%, transparent);
+  backdrop-filter: blur(12px);
+  transition: border-color 160ms var(--ease, ease);
+}
+
+.lp-header[data-stuck="true"] { border-bottom-color: var(--border); }
+
+.lp-header-inner {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 0.5rem 1rem;
+  padding-block: 0.625rem;
+}
+
+/* Narrow: brand and action on the first line, destinations on the second. */
+@media (max-width: 879px) {
+  .lp-header-inner > .lp-nav { grid-column: 1 / -1; order: 3; margin-inline: calc(var(--lp-gutter) * -1); padding-inline: var(--lp-gutter); }
+}
+
+@media (min-width: 880px) {
+  .lp-header-inner { grid-template-columns: auto 1fr auto; height: 4rem; padding-block: 0; }
+}
+
+.lp-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--foreground);
+}
+
+/**
+ * THE SAME FOUR DESTINATIONS AT EVERY WIDTH.
+ *
+ * They used to vanish under 880px with nothing in their place, which left a
+ * phone with a wordmark, a button, and no way to reach the page's own
+ * sections. On a narrow screen they become a row that scrolls sideways under
+ * the header — no disclosure to open, and nothing hidden behind a button.
+ */
+.lp-nav {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.lp-nav::-webkit-scrollbar { display: none; }
+
+@media (min-width: 880px) { .lp-nav { margin-inline: auto; overflow: visible; } }
+
+.lp-nav a {
+  flex-shrink: 0;
+  padding: 0.4375rem 0.75rem;
+  border-radius: 999px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--muted-foreground);
+  transition: background-color 140ms ease, color 140ms ease;
+}
+
+@media (hover: hover) {
+  .lp-nav a:hover { background: var(--muted); color: var(--foreground); }
+}
+
+/* The chip button: an accent tile beside a dark pill. The reference's one
+   genuinely distinctive control, rebuilt in Ventrio's own colours. */
+/* Both halves share one height, or the accent tile reads as a stray rectangle
+   jammed against a pill rather than as part of the same control. */
+.lp-chip {
+  display: inline-flex;
+  align-items: stretch;
+  height: 2.5rem;
+  border-radius: 0.625rem;
+  overflow: hidden;
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1;
+  box-shadow: 0 1px 2px oklch(0.153 0.006 107.1 / 0.08);
+  transition: transform 140ms ease, box-shadow 140ms ease;
+}
+
+.lp-chip-icon {
+  display: grid;
+  place-items: center;
+  width: 2.5rem;
+  flex-shrink: 0;
+  background: var(--lp-accent);
+  color: white;
+}
+
+.lp-chip-label {
+  display: grid;
+  place-items: center;
+  padding-inline: 1.125rem;
+  background: var(--primary);
+  color: var(--primary-foreground);
+  white-space: nowrap;
+}
+
+@media (hover: hover) {
+  .lp-chip:hover { transform: translateY(-1px); box-shadow: 0 6px 16px -8px oklch(0.153 0.006 107.1 / 0.35); }
+}
+
+.lp-chip--lg { height: 3rem; font-size: 0.9375rem; }
+.lp-chip--lg .lp-chip-icon { width: 3rem; }
+.lp-chip--lg .lp-chip-label { padding-inline: 1.5rem; }
+
+/* ── the hero canvas ────────────────────────────────────────────────────── */
+
+/**
+ * An inset rounded canvas rather than a full-bleed banner: the page frame stays
+ * visible around it, which is what makes the reference's hero feel like an
+ * object on a page rather than a background. Ventrio's canvas is its own warm
+ * paper with a soft light, not a painted landscape.
+ */
+.lp-hero-canvas {
+  position: relative;
+  overflow: hidden;
+  border-radius: 1.5rem;
+  border: 1px solid var(--border);
+  background:
+    radial-gradient(120% 80% at 50% -10%, color-mix(in oklab, var(--lp-accent) 12%, transparent), transparent 60%),
+    linear-gradient(180deg, var(--card), var(--muted));
+  padding: 4rem 1.5rem 3rem;
+  text-align: center;
+}
+
+@media (min-width: 768px) {
+  .lp-hero-canvas { padding: 6.5rem 3rem 4.5rem; border-radius: 2rem; }
+}
+
+.lp-eyebrow {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: var(--lp-accent);
+}
+
+.lp-h1 {
+  margin-top: 1.25rem;
+  font-size: clamp(2.25rem, 6.2vw, 4.25rem);
+  font-weight: 600;
+  line-height: 1.04;
+  letter-spacing: -0.035em;
+  text-wrap: balance;
+}
+
+/* The signature: the second clause in muted italic, so one line of type
+   carries both the claim and its qualifier. */
+.lp-h1 em { font-style: italic; font-weight: 500; color: var(--muted-foreground); }
+
+.lp-lede {
+  margin: 1.25rem auto 0;
+  max-width: 34rem;
+  font-size: clamp(0.9375rem, 1.6vw, 1.0625rem);
+  line-height: 1.6;
+  color: var(--color-ink-secondary, var(--muted-foreground));
+  text-wrap: pretty;
+}
+
+.lp-hero-actions {
+  margin-top: 2rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.875rem;
+}
+
+.lp-hero-note { font-size: 0.8125rem; color: var(--muted-foreground); }
+
+/* ── section headers ────────────────────────────────────────────────────── */
+
+/**
+ * Asymmetric by design: the heading holds the left column and the supporting
+ * sentence sits in a right-hand column aligned to its foot. It reads as one
+ * statement with a footnote rather than as a stacked title and paragraph.
+ */
+.lp-head {
+  display: grid;
+  gap: 1.25rem;
+}
+
+@media (min-width: 900px) {
+  .lp-head {
+    grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
+    align-items: end;
+    gap: 3rem;
+  }
+}
+
+.lp-h2 {
+  font-size: clamp(1.875rem, 4.2vw, 3rem);
+  font-weight: 600;
+  line-height: 1.08;
+  letter-spacing: -0.03em;
+  text-wrap: balance;
+}
+
+.lp-h2 em { font-style: italic; font-weight: 500; color: var(--muted-foreground); }
+
+.lp-head p {
+  font-size: 0.9375rem;
+  line-height: 1.65;
+  color: var(--color-ink-secondary, var(--muted-foreground));
+  text-wrap: pretty;
+}
+
+/* ── the loop ───────────────────────────────────────────────────────────── */
+
+.lp-loop {
+  margin-top: 3rem;
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+@media (min-width: 900px) { .lp-loop { grid-template-columns: repeat(5, minmax(0, 1fr)); } }
+
+.lp-loop-step {
+  padding: 1.25rem;
+  border: 1px solid var(--border);
+  border-radius: 1rem;
+  background: var(--card);
+}
+
+.lp-loop-step h3 { font-size: 0.9375rem; font-weight: 600; letter-spacing: -0.01em; }
+.lp-loop-step p { margin-top: 0.375rem; font-size: 0.8125rem; line-height: 1.5; color: var(--muted-foreground); }
+
+.lp-loop-n {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--lp-accent);
+  margin-bottom: 0.625rem;
+}
+
+/* ── numbered cards ─────────────────────────────────────────────────────── */
+
+.lp-cards {
+  margin-top: 3rem;
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(1, minmax(0, 1fr));
+}
+
+@media (min-width: 700px) { .lp-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (min-width: 1050px) { .lp-cards { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+
+.lp-card {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-height: 15rem;
+  padding: 1.5rem;
+  border: 1px solid var(--border);
+  border-radius: 1.25rem;
+  background: var(--card);
+  transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease;
+}
+
+@media (hover: hover) {
+  .lp-card:hover {
+    transform: translateY(-3px);
+    border-color: color-mix(in oklab, var(--lp-accent) 40%, var(--border));
+    box-shadow: 0 12px 30px -18px oklch(0.153 0.006 107.1 / 0.4);
+  }
+}
+
+/* The ghosted numeral: structure that says "there are four of these and this
+   is the second", without a decorative graphic. */
+.lp-card-n {
+  font-size: 2.75rem;
+  font-weight: 600;
+  letter-spacing: -0.04em;
+  line-height: 1;
+  color: color-mix(in oklab, var(--foreground) 12%, transparent);
+}
+
+.lp-card h3 { margin-top: auto; padding-top: 2rem; font-size: 1.0625rem; font-weight: 600; letter-spacing: -0.02em; }
+.lp-card p { margin-top: 0.5rem; font-size: 0.875rem; line-height: 1.55; color: var(--muted-foreground); }
+
+/* ── the split: list on the left, real product on the right ─────────────── */
+
+.lp-split { margin-top: 3.5rem; display: grid; gap: 2.5rem; }
+
+@media (min-width: 950px) {
+  .lp-split { grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr); gap: 4rem; align-items: center; }
+}
+
+.lp-list { display: flex; flex-direction: column; }
+
+.lp-list-item {
+  width: 100%;
+  text-align: left;
+  padding: 1.125rem 0;
+  border-top: 1px solid var(--border);
+  cursor: pointer;
+  transition: opacity 160ms ease;
+}
+
+.lp-list-item:first-child { border-top: 0; }
+
+.lp-list-item h3 {
+  font-size: 1.0625rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--muted-foreground);
+  transition: color 160ms ease;
+}
+
+.lp-list-item[data-open="true"] h3 { color: var(--foreground); }
+
+/* Only the open item shows its explanation, so the column stays a list of
+   choices rather than a wall of paragraphs. */
+.lp-list-body {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 220ms var(--ease, ease), opacity 180ms ease;
+  opacity: 0;
+}
+
+.lp-list-item[data-open="true"] .lp-list-body { grid-template-rows: 1fr; opacity: 1; }
+
+.lp-list-body > span {
+  overflow: hidden;
+  display: block;
+  font-size: 0.875rem;
+  line-height: 1.6;
+  color: var(--muted-foreground);
+}
+
+.lp-list-item[data-open="true"] .lp-list-body > span { padding-top: 0.5rem; }
+
+/* The product panel. Real Ventrio surfaces, presented rather than screenshotted. */
+.lp-panel {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 1.25rem;
+  background: var(--card);
+  box-shadow: 0 24px 60px -40px oklch(0.153 0.006 107.1 / 0.45);
+}
+
+.lp-panel-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--border);
+  background: var(--muted);
+}
+
+.lp-panel-dot { width: 0.5rem; height: 0.5rem; border-radius: 999px; background: var(--border); }
+.lp-panel-title { margin-left: 0.5rem; font-size: 0.75rem; font-weight: 500; color: var(--muted-foreground); }
+.lp-panel-body { padding: 1.25rem; }
+
+/* A conversation, shown as one. */
+.lp-msg { display: flex; margin-bottom: 0.75rem; }
+.lp-msg--you { justify-content: flex-end; }
+.lp-msg span {
+  max-width: 82%;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.875rem;
+  font-size: 0.8438rem;
+  line-height: 1.5;
+}
+.lp-msg--you span { background: var(--secondary); color: var(--secondary-foreground); }
+.lp-msg--v span { background: var(--muted); color: var(--foreground); }
+
+.lp-result {
+  margin-top: 0.25rem;
+  padding: 0.75rem 0.875rem;
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+  background: var(--background);
+  font-size: 0.8125rem;
+  color: var(--muted-foreground);
+}
+
+/* ── pricing ────────────────────────────────────────────────────────────── */
+
+.lp-plans { margin-top: 3rem; display: grid; gap: 1rem; }
+
+@media (min-width: 860px) { .lp-plans { grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: start; } }
+
+.lp-plan {
+  display: flex;
+  flex-direction: column;
+  padding: 1.75rem;
+  border: 1px solid var(--border);
+  border-radius: 1.25rem;
+  background: var(--card);
+}
+
+.lp-plan[data-recommended="true"] {
+  border-color: var(--foreground);
+  background: var(--muted);
+}
+
+@media (min-width: 860px) {
+  .lp-plan[data-recommended="true"] { margin-block: -0.75rem; padding-block: 2.5rem; }
+}
+
+.lp-plan-name { display: flex; align-items: center; gap: 0.5rem; font-size: 0.8125rem; font-weight: 600; color: var(--muted-foreground); }
+.lp-plan-tag { padding: 0.125rem 0.5rem; border-radius: 999px; background: var(--foreground); color: var(--background); font-size: 0.6875rem; }
+.lp-plan-price { margin-top: 0.875rem; font-size: 2.5rem; font-weight: 600; letter-spacing: -0.035em; line-height: 1; }
+.lp-plan-per { font-size: 0.8125rem; font-weight: 400; color: var(--muted-foreground); }
+.lp-plan-line { margin-top: 0.75rem; font-size: 0.875rem; line-height: 1.55; color: var(--muted-foreground); min-height: 3.4rem; }
+.lp-plan ul { margin-top: 1.25rem; display: flex; flex-direction: column; gap: 0.5rem; }
+.lp-plan li { display: flex; gap: 0.625rem; font-size: 0.875rem; line-height: 1.45; }
+.lp-plan li::before { content: ""; margin-top: 0.5rem; width: 3px; height: 3px; border-radius: 999px; background: var(--muted-foreground); flex-shrink: 0; }
+.lp-plan-cta { margin-top: 1.5rem; }
+
+/* ── faq ────────────────────────────────────────────────────────────────── */
+
+.lp-faq { margin-top: 3rem; display: grid; gap: 0; }
+
+@media (min-width: 900px) { .lp-faq { grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 4rem; } }
+
+.lp-faq-item { padding: 1.375rem 0; border-top: 1px solid var(--border); }
+.lp-faq-item h3 { font-size: 1rem; font-weight: 600; letter-spacing: -0.015em; }
+.lp-faq-item p { margin-top: 0.5rem; font-size: 0.875rem; line-height: 1.6; color: var(--muted-foreground); }
+
+/* ── closing ────────────────────────────────────────────────────────────── */
+
+.lp-closing {
+  border-radius: 1.5rem;
+  border: 1px solid var(--border);
+  background:
+    radial-gradient(110% 90% at 50% 110%, color-mix(in oklab, var(--lp-accent) 14%, transparent), transparent 60%),
+    var(--card);
+  padding: 3.5rem 1.5rem;
+  text-align: center;
+}
+
+@media (min-width: 768px) { .lp-closing { padding: 5rem 3rem; border-radius: 2rem; } }
+
+/* ── motion ─────────────────────────────────────────────────────────────── */
+
+/**
+ * One entrance, used everywhere: a short rise as a band enters the viewport.
+ * It exists so a long page reads as a sequence rather than arriving all at
+ * once, and it is the only scroll-linked motion here.
+ */
+.lp-reveal {
+  opacity: 0;
+  transform: translateY(14px);
+  transition: opacity 620ms cubic-bezier(0.22, 1, 0.36, 1), transform 620ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.lp-reveal[data-shown="true"] { opacity: 1; transform: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  .lp-reveal { opacity: 1; transform: none; transition: none; }
+  .lp * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}
