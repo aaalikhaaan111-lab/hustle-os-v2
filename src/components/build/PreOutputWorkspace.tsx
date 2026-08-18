@@ -19,7 +19,6 @@ import { ProjectOutputRenderer } from "@/components/build/ProjectOutputRenderer"
 import { AppPreview } from "@/components/workspace/AppPreview";
 import type { WorkspaceAppView } from "@/components/build/WorkspaceView";
 import { PublicationControls } from "@/components/publishing/PublicationControls";
-import { FeedbackPanel } from "@/components/publishing/FeedbackPanel";
 import { BuildScreen, OpenPreviewButton } from "@/components/workspace/BuildScreen";
 import { WorkspaceComposer } from "@/components/workspace-ui/Composer";
 import { UsageMenu } from "@/components/workspace-ui/UsageMenu";
@@ -667,20 +666,12 @@ export function PreOutputWorkspace({
                     surface the composer expands into, below — the question and
                     the box you answer it in are one object. */}
 
-                {/* Feedback on real responses is a conversation about the
-                    product, not a control over it, so it stays here while the
-                    publish actions move to the toolbar. */}
-                {hasVersion && publication && (
-                  <FeedbackPanel
-                    projectId={projectId}
-                    projectLocale={projectLocale}
-                    publication={publication}
-                    onDraftChanged={(nextOutput) => {
-                      setOutput(nextOutput);
-                      setRevealKey((value) => value + 1);
-                    }}
-                  />
-                )}
+                {/* THE RESPONSES PANEL IS NOT IN THE CONVERSATION.
+                    It sat at the foot of the thread on every project that had
+                    published anything, so a chat you had just opened ended with
+                    a feedback section whether or not there was any feedback —
+                    furniture filling the space under the last message. Responses
+                    are what Analytics is for, and that is where they live. */}
               </div>
             </div>
 

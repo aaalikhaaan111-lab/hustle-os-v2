@@ -43,10 +43,15 @@ export const IconPlus = ({ className }: IconProps) => (
     <path d="M9 4v10M4 9h10" />
   </svg>
 );
+/**
+ * Chat. It was two four-point sparkles, which is the universal symbol for "AI
+ * will do something magic" and says nothing about a conversation — so the one
+ * destination people use most was marked by a glyph that did not name it. A
+ * speech bubble does.
+ */
 export const IconBuild = ({ className }: IconProps) => (
   <svg {...s} className={c(className)}>
-    <path d="M9 2.8 10.3 6.5 14 7.8 10.3 9.1 9 12.8 7.7 9.1 4 7.8 7.7 6.5z" />
-    <path d="M13.6 12.4l.5 1.4 1.4.5-1.4.5-.5 1.4-.5-1.4-1.4-.5 1.4-.5z" />
+    <path d="M15.2 9.1a5.6 5.6 0 0 1-5.6 5.6H6.9L3.4 17v-3.2a5.6 5.6 0 0 1-.6-2.5V8.9A5.6 5.6 0 0 1 8.4 3.3h1.2a5.6 5.6 0 0 1 5.6 5.6z" />
   </svg>
 );
 export const IconAnalytics = ({ className }: IconProps) => (

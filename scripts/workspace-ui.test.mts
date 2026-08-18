@@ -100,8 +100,16 @@ check(
     read("src/components/publishing/PublicationControls.tsx").split("if (compact)")[1]?.split("return (")[1]?.slice(0, 900) ?? "",
   ),
 );
-// Feedback is a conversation about responses, so it stays in the conversation.
-check("feedback stays in the chat", /<FeedbackPanel/.test(preOutput));
+/*
+ * FEEDBACK IS NOT IN THE CHAT. It used to sit at the foot of the thread on
+ * every project that had published anything, so a conversation you had just
+ * opened ended with a responses section whether or not there were any
+ * responses — furniture filling the space under the last message. Responses
+ * are what the Analytics screen is for.
+ */
+check("the responses panel is not in the conversation",
+  !/<FeedbackPanel/.test(preOutput),
+  "a feedback section under every chat is filler, not a conversation");
 
 /* ── 4. generation happens in the conversation ───────────────────────────── */
 

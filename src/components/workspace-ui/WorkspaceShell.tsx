@@ -211,7 +211,7 @@ function ShellBody({ project, recent = [], initials, email, fill = false, action
                       cross-fade: at rest you see Ventrio, on hover or keyboard
                       focus you see the control. Nothing moves and nothing is
                       added to the layout. */}
-                  <span className="s-mark-swap" aria-hidden>
+                  <span className="s-mark-swap" data-glyph aria-hidden>
                     <VentrioMark size={18} />
                     <PanelLeft className="s-mark-hint h-[18px] w-[18px]" />
                   </span>
@@ -315,6 +315,7 @@ function ShellBody({ project, recent = [], initials, email, fill = false, action
                     className="group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:gap-0 data-[state=open]:bg-sidebar-accent"
                   >
                     <span
+                      data-glyph
                       className="grid size-8 shrink-0 place-items-center rounded-lg bg-secondary text-[11px] font-semibold text-secondary-foreground"
                       aria-hidden
                     >

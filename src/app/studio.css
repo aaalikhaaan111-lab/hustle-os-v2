@@ -845,7 +845,7 @@ body:has(.studio-frame) {
 
 .s-ask-seam {
   height: 1px;
-  margin: 0 0.875rem;
+  margin: 0 0.75rem;
   background: var(--border);
 }
 
@@ -863,28 +863,33 @@ body:has(.studio-frame) {
  * Every value below is a Ventrio token, so the official component looks like
  * this product rather than like the docs site.
  */
-.s-ask-form { padding: 0.875rem 0.875rem 0.75rem; }
-.s-ask-form fieldset { display: flex; flex-direction: column; gap: 0.625rem; border: 0; padding: 0; margin: 0; min-width: 0; }
+/* COMPACT. This is a temporary clarification inside a conversation, not a
+   form that takes the workspace over — so the surface is tight, the rows are
+   single-line where they can be, and the whole thing stays near the height of
+   a couple of messages. */
+.s-ask-form { padding: 0.625rem 0.75rem 0.5rem; }
+.s-ask-form fieldset { display: flex; flex-direction: column; gap: 0.4375rem; border: 0; padding: 0; margin: 0; min-width: 0; }
 
 .cn-questionnaire-title {
-  font-size: 0.9375rem;
-  font-weight: 400;
-  line-height: 1.55;
+  font-size: 0.875rem;
+  font-weight: 500;
+  line-height: 1.4;
   color: var(--foreground);
   padding: 0;
 }
 
-.cn-questionnaire-choices { display: flex; flex-direction: column; gap: 0.25rem; }
+.cn-questionnaire-choices { display: flex; flex-direction: column; gap: 0.125rem; }
 
 /* An answer is a row: full width so it can carry a sentence, one line tall so
    several still fit above a composer on a phone. */
 .cn-questionnaire-choice {
-  gap: 0.625rem;
-  padding: 0.5rem 0.625rem;
+  gap: 0.5rem;
+  padding: 0.3125rem 0.5rem;
   border: 1px solid transparent;
   border-radius: var(--r-sm);
   color: var(--foreground);
-  font-size: 0.875rem;
+  font-size: 0.8438rem;
+  min-height: 0;
 }
 
 @media (hover: hover) {
@@ -898,9 +903,9 @@ body:has(.studio-frame) {
 
 /* The radio/checkbox mark the component renders for itself. */
 .cn-questionnaire-choice-indicator {
-  width: 1rem;
-  height: 1rem;
-  margin-top: 0.0625rem;
+  width: 0.875rem;
+  height: 0.875rem;
+  margin-top: 0.125rem;
   border-color: var(--border);
   background: var(--background);
   color: var(--color-accent-foreground);
@@ -921,12 +926,17 @@ body:has(.studio-frame) {
 .cn-questionnaire-choice-indicator-check { width: 0.75rem; height: 0.75rem; }
 .cn-questionnaire-choice-indicator-dot { width: 0.375rem; height: 0.375rem; background: currentColor; }
 
+/* One line. A description that wraps to three turns four options into a page,
+   which is the thing that made this feel like a form. */
 .cn-questionnaire-choice-description {
   display: block;
-  margin-top: 0.125rem;
-  font-size: 0.78125rem;
-  line-height: 1.35;
+  margin-top: 0.0625rem;
+  font-size: 0.75rem;
+  line-height: 1.3;
   color: var(--color-ink-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .cn-questionnaire-shortcut {
@@ -943,8 +953,8 @@ body:has(.studio-frame) {
 /* The freeform answer, which is why the choices are never a closed set. */
 .cn-questionnaire-input {
   width: 100%;
-  min-height: 2.25rem;
-  padding: 0.4375rem 0.625rem;
+  min-height: 2rem;
+  padding: 0.3125rem 0.5rem;
   border: 1px solid var(--input);
   border-radius: var(--r-sm);
   background: var(--background);
@@ -959,8 +969,8 @@ body:has(.studio-frame) {
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: 0.5rem;
-  margin-top: 0.125rem;
+  gap: 0.375rem;
+  margin-top: 0;
 }
 
 .cn-questionnaire-skip { margin-right: auto; }
@@ -1049,29 +1059,20 @@ body:has([data-slot="sheet-content"][data-state="open"]) .studio-frame {
 /* ── the accent family ──────────────────────────────────────────────────── */
 
 /**
- * A GREEN THAT SIGNALS, NOT A GREEN THAT DECORATES.
+ * THE GREEN EXPERIMENT IS WITHDRAWN.
  *
- * The supplied palette is bright — #7BC950 measures roughly 1.9:1 on white, so
- * it can never carry text — and a product about somebody's own idea should not
- * look like a toy. It is used as SIGNAL only: the thing that is live, the thing
- * you chose, the route an app opens on. Neutrals still carry the interface and
- * near-black still carries the primary actions.
+ * #7BC950 and its family were tried as Ventrio's accent. They read as a
+ * different, brighter product than the warm-neutral one this platform is, and
+ * on the surfaces that actually used them — a chosen answer, the route an app
+ * opens on — they made an interface about somebody's own idea look playful in
+ * a way it should not.
  *
- * Every tint below sits under `--color-ink`, the near-black the product already
- * reads at, rather than under white — which is what keeps the contrast honest.
+ * The accent tokens go back to the established neutral system. Nothing else
+ * about the palette changes, and no new colour is introduced to replace them.
  */
-:root {
-  --v-green: #7bc950;
-  --v-green-bright: #7ce577;
-  --v-mint: #9cffd9;
-  --v-mint-pale: #b6efd4;
-  --v-sky: #a0ccda;
-}
-
 .studio {
-  /* Chosen and active surfaces: a wash, not a fill. */
-  --color-accent-soft: color-mix(in oklab, var(--v-mint-pale) 34%, var(--background));
-  --color-accent-line: color-mix(in oklab, var(--v-green) 55%, var(--border));
+  --color-accent-soft: var(--muted);
+  --color-accent-line: var(--ring);
 }
 
 /* ── a generated application's card ─────────────────────────────────────── */
@@ -1149,10 +1150,10 @@ body:has([data-slot="sheet-content"][data-state="open"]) .studio-frame {
   text-overflow: ellipsis;
 }
 
-/* The route the app opens on — the one place a card uses colour, and it means
-   "this is where it starts". */
+/* The route the app opens on. Marked by weight and a slightly stronger surface
+   rather than by colour — the gallery stays neutral. */
 .s-appthumb-routes li[data-active] {
-  background: var(--color-accent-soft);
+  background: var(--secondary);
   color: var(--color-ink);
   font-weight: 500;
 }
@@ -1200,3 +1201,34 @@ body:has([data-slot="sheet-content"][data-state="open"]) .studio-frame {
   .studio .group\/card { transition: transform var(--t-fast) var(--ease); }
   .studio .group\/card:hover { transform: translateY(-2px); }
 }
+
+/* ── the collapsed rail's hover labels ──────────────────────────────────── */
+
+/**
+ * A DARK PILL, WHITE TEXT — painted here rather than left to utilities.
+ *
+ * The component asks for `bg-foreground text-background`, but neither
+ * `--color-foreground` nor `--color-background` exists as a custom property at
+ * runtime: both are declared inside `@theme inline`, which substitutes values
+ * into generated utilities instead of emitting variables. Measured on the
+ * page, both read as empty strings — so the two classes resolved to nothing,
+ * the label had no surface, and what appeared beside the rail was bare dark
+ * text floating on the page. That is the "cheap and static" label.
+ *
+ * `--foreground` and `--background` do resolve, so the pill is painted from
+ * them directly and cannot silently lose its surface again.
+ */
+[data-slot="tooltip-content"] {
+  background: var(--foreground);
+  color: var(--background);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  padding: 0.3125rem 0.625rem;
+  border-radius: var(--r-sm);
+  box-shadow: 0 4px 12px -4px oklch(0.153 0.006 107.1 / 0.28);
+  /* Quick in, quicker out, and no travel to speak of: the label should feel
+     like it belongs to the icon rather than flying to it. */
+  animation-duration: 120ms;
+}
+
+[data-slot="tooltip-content"][data-state="closed"] { animation-duration: 90ms; }

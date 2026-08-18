@@ -233,7 +233,7 @@ check("every conversation surface uses the one component",
 
 // The question in the workspace is a message too, not a form label.
 check("the build question uses body type",
-  /\.cn-questionnaire-title[\s\S]{0,140}font-size: 0\.9375rem/.test(read("src/app/studio.css")));
+  /\.cn-questionnaire-title[\s\S]{0,140}font-size: 0\.875rem/.test(read("src/app/studio.css")));
 check("and is not truncated mid-sentence", !/truncate text-\[13px\]/.test(structured));
 check("nor framed as a panel", !/rounded-\[14px\] border/.test(code(structured)));
 
