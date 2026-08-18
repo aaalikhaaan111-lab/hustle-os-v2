@@ -266,6 +266,62 @@ check("search is reachable from the rail", /setSearchOpen\(true\)/.test(shell));
  * "Settings" row and an "Account" row that looked like navigation; the account
  * menu is where the settings sections and signing out actually live.
  */
+/* ── this pass's fixes ───────────────────────────────────────────────────── */
+
+/**
+ * THE MICROPHONE WAS DISABLED BY A HEADER.
+ *
+ * `Permissions-Policy: microphone=()` is an empty allowlist, which turns the
+ * microphone off for the whole origin: getUserMedia rejects before any prompt
+ * is drawn and the browser reports the permission as permanently "denied". So
+ * the product's own dictation could never work and the native permission
+ * request could never appear. `(self)` grants it to this origin only —
+ * cross-origin frames still get nothing, and the generated-app sandbox is
+ * never delegated the feature.
+ */
+const nextConfig = read("next.config.ts");
+check("the microphone is allowed for this origin",
+  /microphone=\(self\)/.test(nextConfig),
+  "microphone=() disables it everywhere, including for Ventrio's own composer");
+check("and nothing else was opened up",
+  /camera=\(\)/.test(nextConfig) && /geolocation=\(\)/.test(nextConfig) &&
+  /payment=\(\)/.test(nextConfig) && /usb=\(\)/.test(nextConfig));
+check("the sandboxed preview is not delegated the microphone",
+  !/allow="[^"]*microphone/.test(read("src/components/workspace/BuildScreen.tsx")));
+
+/**
+ * PORTALLED SURFACES MUST RE-DECLARE THE TOKEN SCOPE.
+ *
+ * Radix portals menus, dialogs, sheets and tooltips to <body>, which is
+ * outside the shell carrying `.studio`. Without the class they render with the
+ * global fallback palette — the settings overlay came up with a violet Save
+ * button in a product whose primary is near-black.
+ */
+for (const file of ["dialog", "dropdown-menu", "context-menu", "sheet", "tooltip", "alert-dialog"]) {
+  check(`the portalled ${file} stays inside the token scope`,
+    /"studio /.test(read(`src/components/ui/shadcn/${file}.tsx`)),
+    "a portal escapes .studio and picks up the global palette instead");
+}
+
+/**
+ * "NEW PROJECT" MEANS A NEW PROJECT. /create resumed the most recent
+ * unfinished creation session on every visit, so the button reopened the
+ * conversation the person was trying to leave.
+ */
+const shellNew = /href="\/create\?fresh=1"/.test(shell);
+check("New project starts a fresh session", shellNew,
+  "without ?fresh the route restores the last unfinished draft");
+
+/**
+ * THE PUBLIC MENU BUTTON WAS DEAD ABOVE THE BREAKPOINT. `.s-btn` sets
+ * `display` unlayered, so `md:hidden` lost and the trigger survived on desktop
+ * while the panel it opens did not — a button that did nothing at most widths.
+ */
+const topBar = read("src/components/layout/StudioTopBar.tsx");
+check("the public menu button renders on a measured breakpoint",
+  /useIsMobile/.test(topBar) && !/s-btn[^"]*md:hidden/.test(topBar),
+  "hiding an unlayered-display control with a Tailwind utility does not work");
+
 check("the account footer opens a menu rather than linking away",
   /DropdownMenuTrigger/.test(shell) && /signOutAction/.test(shell),
   "a footer of loose links is not an account");

@@ -110,7 +110,7 @@ export default async function PricingPage() {
   const action = (plan: PlanId) => {
     if (plan === "free") {
       return (
-        <Link href="/create" className="s-btn s-btn--secondary w-full">
+        <Link href="/create?fresh=1" className="s-btn s-btn--secondary w-full">
           {cta.free}
         </Link>
       );
@@ -182,7 +182,15 @@ export default async function PricingPage() {
               <tr>
                 <th className="w-[26%] pb-6 align-bottom" />
                 {ORDER.map((plan) => (
-                  <th key={plan} className="w-[24.6%] pb-6 pl-6 align-bottom">
+                  <th
+                    key={plan}
+                    /* Tone across the whole column, not a 40%-opacity border
+                       nobody sees and not a chip alone. The recommendation
+                       should be legible from the shape of the table. */
+                    className={`w-[24.6%] pb-6 pl-6 align-bottom ${
+                      plan === "pro" ? "rounded-t-[var(--r-lg)] bg-muted/60" : ""
+                    }`}
+                  >
                     <span className="flex items-center gap-2">
                       <span className="s-eyebrow">{name[plan]}</span>
                       {plan === "pro" && (
@@ -203,6 +211,13 @@ export default async function PricingPage() {
                       {plan !== "free" && <span className="s-meta">{t("perMonth")}</span>}
                     </span>
                     <span className="s-meta mt-2.5 block font-normal">{tagline[plan]}</span>
+                    {/* THE CTA BELONGS WITH THE PRICE. It used to be the last
+                        row of the table, so choosing a plan meant reading five
+                        capability rows first and then hunting for a button at
+                        the bottom of the page. Deciding happens at the price. */}
+                    <span className="mt-5 block font-normal normal-case tracking-normal">
+                      {action(plan)}
+                    </span>
                   </th>
                 ))}
               </tr>
@@ -235,8 +250,13 @@ export default async function PricingPage() {
                       </td>
                     ) : (
                       values.map((value, i) => (
-                        <td key={ORDER[i]} className="py-4 pl-6 align-top text-[15px]"
-                            style={{ color: "var(--color-ink)" }}>
+                        <td
+                          key={ORDER[i]}
+                          className={`py-4 pl-6 align-top text-[15px] ${
+                            ORDER[i] === "pro" ? "bg-muted/60" : ""
+                          }`}
+                          style={{ color: "var(--color-ink)" }}
+                        >
                           {value}
                         </td>
                       ))
@@ -244,14 +264,6 @@ export default async function PricingPage() {
                   </tr>
                 );
               })}
-              <tr className="border-t" style={{ borderColor: "var(--color-border)" }}>
-                <td />
-                {ORDER.map((plan) => (
-                  <td key={plan} className="pl-6 pt-8">
-                    {action(plan)}
-                  </td>
-                ))}
-              </tr>
             </tbody>
           </table>
         </div>

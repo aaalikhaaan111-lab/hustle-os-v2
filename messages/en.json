@@ -615,6 +615,7 @@
     "assistantSend": "Send",
     "assistantNewChat": "New chat",
     "assistantJumpToLatest": "Jump to latest",
+    "askTypeHint": "Or just type your own answer below.",
     "assistantClose": "Close",
     "assistantUnavailable": "The assistant is temporarily unavailable. Your message was saved — try again in a moment.",
     "starterClarifyProblem": "Help me clarify the problem",
