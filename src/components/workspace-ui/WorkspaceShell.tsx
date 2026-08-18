@@ -47,6 +47,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/shadcn/dropdown-menu";
 import { ProjectSearch, SearchShortcut } from "./ProjectSearch";
+import { SettingsOverlay } from "./SettingsOverlay";
+import type { SettingsSection } from "@/app/settings/SettingsClient";
 import { signOutAction } from "@/lib/actions/auth";
 import { ChevronsUpDown, PanelLeft } from "lucide-react";
 
@@ -114,6 +116,14 @@ export function WorkspaceShell(props: WorkspaceShellProps) {
 
 function ShellBody({ project, recent = [], initials, email, fill = false, actions, children }: WorkspaceShellProps) {
   const [searchOpen, setSearchOpen] = useState(false);
+  // Settings opens over whatever is on screen, so closing it returns the person
+  // to the exact conversation, scroll position and preview they left.
+  const [settingsSection, setSettingsSection] = useState<SettingsSection | null>(null);
+
+  function openSettings(section: SettingsSection) {
+    setOpenMobile(false);
+    setSettingsSection(section);
+  }
   // Tracks the visual viewport so the keyboard cannot push the conversation off
   // the top. See the hook — svh alone does not react to a keyboard.
   useAppViewport();
@@ -150,6 +160,12 @@ function ShellBody({ project, recent = [], initials, email, fill = false, action
 
   return (
     <>
+      <SettingsOverlay
+        open={settingsSection !== null}
+        onOpenChange={(next) => !next && setSettingsSection(null)}
+        section={settingsSection ?? "profile"}
+      />
+
       <ProjectSearch
         open={searchOpen}
         onOpenChange={setSearchOpen}
@@ -207,7 +223,7 @@ function ShellBody({ project, recent = [], initials, email, fill = false, action
                     tooltip={t("navNewProject")}
                     className="bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground active:bg-primary active:text-primary-foreground"
                   >
-                    <Link href="/create" onClick={() => setOpenMobile(false)}>
+                    <Link href="/create?fresh=1" onClick={() => setOpenMobile(false)}>
                       <IconPlus className="h-4 w-4 shrink-0" />
                       <span>{t("navNewProject")}</span>
                     </Link>
@@ -304,10 +320,24 @@ function ShellBody({ project, recent = [], initials, email, fill = false, action
                 </DropdownMenuTrigger>
 
                 <DropdownMenuContent
-                  side={isMobile ? "top" : "right"}
-                  align="end"
+                  /* UPWARD, AND ANCHORED TO THE ACCOUNT ROW.
+                     It opened to the RIGHT on desktop, which threw it out over
+                     the conversation as a panel with no visible relationship to
+                     the thing that opened it. An account menu belongs above the
+                     account — that is where every app puts it, and it keeps the
+                     whole interaction inside the sidebar.
+
+                     The width is the trigger's width, so the menu is exactly as
+                     wide as the row it grew from rather than an arbitrary box.
+                     `collisionPadding` keeps it clear of the window edge on
+                     short viewports instead of letting it flip back to the
+                     side. Open/close motion comes from the primitive: a 
+                     150ms fade with a small rise from the trigger's edge. */
+                  side="top"
+                  align="start"
                   sideOffset={8}
-                  className="w-[--radix-dropdown-menu-trigger-width] min-w-56"
+                  collisionPadding={12}
+                  className="w-(--radix-dropdown-menu-trigger-width) min-w-56"
                 >
                   {email && (
                     <>
@@ -324,38 +354,28 @@ function ShellBody({ project, recent = [], initials, email, fill = false, action
                   {/* Every item is an existing settings section. Nothing here
                       opens a screen that has to be built. */}
                   <DropdownMenuGroup>
-                    <DropdownMenuItem asChild>
-                      <Link href="/settings?section=profile" onClick={() => setOpenMobile(false)}>
-                        <IconUser className="h-4 w-4" />
-                        {t("settingsProfile")}
-                      </Link>
+                    <DropdownMenuItem onSelect={() => openSettings("profile")}>
+                      <IconUser className="h-4 w-4" />
+                      {t("settingsProfile")}
                     </DropdownMenuItem>
-                    <DropdownMenuItem asChild>
-                      <Link href="/settings?section=usage" onClick={() => setOpenMobile(false)}>
-                        <IconAnalytics className="h-4 w-4" />
-                        {t("usage")}
-                      </Link>
+                    <DropdownMenuItem onSelect={() => openSettings("usage")}>
+                      <IconAnalytics className="h-4 w-4" />
+                      {t("usage")}
                     </DropdownMenuItem>
-                    <DropdownMenuItem asChild>
-                      <Link href="/settings?section=language" onClick={() => setOpenMobile(false)}>
-                        <IconGlobe className="h-4 w-4" />
-                        {t("settingsLanguage")}
-                      </Link>
+                    <DropdownMenuItem onSelect={() => openSettings("language")}>
+                      <IconGlobe className="h-4 w-4" />
+                      {t("settingsLanguage")}
                     </DropdownMenuItem>
-                    <DropdownMenuItem asChild>
-                      <Link href="/settings?section=privacy" onClick={() => setOpenMobile(false)}>
-                        <IconShield className="h-4 w-4" />
-                        {t("settingsPrivacy")}
-                      </Link>
+                    <DropdownMenuItem onSelect={() => openSettings("privacy")}>
+                      <IconShield className="h-4 w-4" />
+                      {t("settingsPrivacy")}
                     </DropdownMenuItem>
                   </DropdownMenuGroup>
 
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem asChild>
-                    <Link href="/settings" onClick={() => setOpenMobile(false)}>
-                      <IconSettings className="h-4 w-4" />
-                      {t("navSettings")}
-                    </Link>
+                  <DropdownMenuItem onSelect={() => openSettings("profile")}>
+                    <IconSettings className="h-4 w-4" />
+                    {t("navSettings")}
                   </DropdownMenuItem>
 
                   <DropdownMenuSeparator />

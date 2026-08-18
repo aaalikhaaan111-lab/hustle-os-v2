@@ -20,7 +20,7 @@ import { Toaster as Sonner, type ToasterProps } from "sonner";
  */
 const Toaster = ({ ...props }: ToasterProps) => (
   <Sonner
-    className="toaster group"
+    className="studio toaster group"
     icons={{
       success: <CircleCheckIcon className="size-4" />,
       info: <InfoIcon className="size-4" />,

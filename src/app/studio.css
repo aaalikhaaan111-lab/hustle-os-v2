@@ -790,3 +790,112 @@ body:has(.studio-frame) {
 @media (prefers-reduced-motion: reduce) { .ws-tip-pop { animation: none; } }
 
 .wsRoot { color: var(--foreground); background: var(--background); }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   MOTION, AND THE CONTROLS THAT USE IT
+
+   One duration scale, one easing, and a blanket reduced-motion opt-out. The
+   rule everywhere below: motion explains a change of place or state, and
+   nothing moves for decoration. Every transition here is under 200ms, because
+   the product should feel quick rather than animated.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+@media (prefers-reduced-motion: reduce) {
+  .studio *,
+  .studio *::before,
+  .studio *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ── the questionnaire ──────────────────────────────────────────────────── */
+
+/**
+ * A CHIP, NOT A CARD.
+ *
+ * The options were full-width bordered cards stacked above the composer: three
+ * tall rectangles that read as a form docked to the page rather than as a
+ * question somebody just asked. A chip is the width of its own words, wraps
+ * onto as many lines as it needs, and lets the whole question occupy about the
+ * height of one message.
+ */
+.s-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4375rem;
+  max-width: 100%;
+  min-height: 2rem;
+  padding: 0.3125rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--background);
+  color: var(--foreground);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  line-height: 1.2;
+  cursor: pointer;
+  transition:
+    background-color var(--t-fast) var(--ease),
+    border-color var(--t-fast) var(--ease),
+    color var(--t-fast) var(--ease);
+}
+
+@media (hover: hover) {
+  .s-chip:not(:disabled):hover { background: var(--muted); border-color: var(--ring); }
+}
+
+/* Selection is a fill, focus is a ring — two signals doing two jobs, so a
+   chip the keyboard is merely resting on never looks already chosen. */
+.s-chip[data-selected="true"] {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: var(--primary-foreground);
+}
+
+.s-chip:disabled { opacity: 0.5; cursor: default; }
+
+.s-chip-preview {
+  display: block;
+  width: 1.75rem;
+  height: 1.125rem;
+  overflow: hidden;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+
+/* The question arrives rather than appearing: it is new information in a
+   conversation, and a step that swaps instantly is hard to notice at all. */
+.s-ask { animation: s-ask-in 160ms var(--ease) both; }
+
+@keyframes s-ask-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: none; }
+}
+
+/* ── the microphone ─────────────────────────────────────────────────────── */
+
+/**
+ * Dictation states, said with colour and motion rather than only with a label.
+ * `data-state` comes straight from the hook, so the button cannot disagree
+ * with what the microphone is actually doing.
+ */
+.s-mic[data-state="requesting"] { color: var(--color-ink-secondary); }
+
+.s-mic[data-state="listening"] {
+  color: var(--color-accent);
+  animation: s-mic-pulse 1.4s var(--ease) infinite;
+}
+
+.s-mic[data-state="processing"] { color: var(--color-accent); }
+
+.s-mic[data-state="denied"],
+.s-mic[data-state="error"],
+.s-mic[data-state="unsupported"],
+.s-mic[data-state="insecure"] { color: var(--color-warning); }
+
+@keyframes s-mic-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.45; }
+}
