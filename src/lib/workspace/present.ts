@@ -1,5 +1,6 @@
 import type { PreviewSpec, ProjectState } from "@/components/workspace-ui/parts";
 import { parseSnapshotFields } from "@/lib/build/snapshot";
+import { readAppState } from "@/lib/v2/app/projectState";
 import { parseStage3ProjectState } from "@/lib/build/stage3Types";
 import type { ProjectPublicationSummary } from "@/lib/publishing/queries";
 import type { Database } from "@/types/supabase";
@@ -115,7 +116,17 @@ export function presentProject(
 ): PresentedProject {
   const snapshot = parseSnapshotFields(project.snapshot_fields);
   const stage3 = parseStage3ProjectState(project.snapshot_fields);
-  const hasOutput = Boolean(stage3?.output);
+  /**
+   * A PROJECT HAS A VERSION IF EITHER PIPELINE PRODUCED ONE.
+   *
+   * `hasOutput` only ever consulted `stage3.output`, but the v2 pipeline stores
+   * its generated application under a different key entirely
+   * (`snapshot_fields.app_runtime`). Every project built that way therefore
+   * reported "no first version yet" in the gallery — including published ones,
+   * whose version is not merely generated but live on the internet.
+   */
+  const appState = readAppState(project.snapshot_fields);
+  const hasOutput = Boolean(stage3?.output) || appState !== null;
 
   return {
     id: project.id,

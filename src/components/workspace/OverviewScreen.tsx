@@ -94,7 +94,14 @@ export function OverviewScreen({ active, recent, activeResponses }: OverviewScre
                     {project.content ? (
                       <ProjectThumb content={project.content} />
                     ) : (
-                      <ProjectThumbEmpty label={t("summaryNoVersion")} />
+                      /* "No first version yet" is reserved for projects that genuinely
+                         have none. A project built by the v2 pipeline has a real, often
+                         published, version whose bytes simply are not reconstructible into
+                         a thumbnail here — so it says what it has rather than claiming an
+                         absence that is untrue. */
+                      <ProjectThumbEmpty
+                        label={project.hasOutput ? t("summaryAppVersion") : t("summaryNoVersion")}
+                      />
                     )}
                   </span>
                   <span className="mt-3 block min-w-0">
