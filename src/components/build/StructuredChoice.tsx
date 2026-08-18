@@ -55,6 +55,8 @@ interface StructuredChoiceProps {
   onBack?: () => void;
   backLabel?: string;
   labelledById?: string;
+  /** "or just type your answer below" — the caller owns the wording. */
+  typeHint: string;
 }
 
 export function StructuredChoice({
@@ -67,6 +69,7 @@ export function StructuredChoice({
   onBack,
   backLabel,
   labelledById,
+  typeHint,
 }: StructuredChoiceProps) {
   // Where the keyboard cursor is — NOT what is chosen.
   const [focusIndex, setFocusIndex] = useState(0);
@@ -127,7 +130,7 @@ export function StructuredChoice({
       aria-labelledby={labelledById}
       // No border or panel fill: this is the assistant asking, and a framed
       // card around the question made it read as a form docked to the page.
-      className="@container"
+      className="@container s-ask"
       data-testid="structured-choice"
     >
       <header className="flex items-start justify-between gap-3 px-3 pb-2">
@@ -173,23 +176,29 @@ export function StructuredChoice({
       </header>
 
       {/*
-        Container queries, not viewport ones. This panel lives inside the
-        conversation's measure column, which is 560px when the preview is open
-        and 820px when it is not — so the window width says nothing useful
-        about how much room the cards actually have. `@container` makes the row
-        respond to its own box.
+        CHIPS, NOT CARDS.
 
-        The options stack, one row each. They used to scroll sideways, which
-        hid the fourth and fifth behind an edge with nothing to say so.
+        This was a stack of full-width bordered cards, one per option — three
+        tall rectangles that sat above the composer looking like a form docked
+        to the page rather than like a question somebody just asked. It read as
+        permanent UI, which is exactly what a question in a conversation must
+        not do.
+
+        The options are inline chips now: they wrap onto as many lines as they
+        need, they are the width of their own words, and the whole question
+        occupies about the height of one message. Nothing scrolls sideways, so
+        no option can hide off an edge.
+
+        Container queries rather than viewport ones: this lives inside the
+        conversation's measure column, which is 560px with the preview open and
+        820px without, so the window width says nothing useful about the room
+        these actually have.
       */}
       <div
         role="radiogroup"
         aria-labelledby={labelledById}
         onKeyDown={onKeyDown}
-        /* Stacked, not a horizontal filmstrip. Options that scroll sideways
-           hide themselves: the fourth style or audience was off-screen with
-           nothing to say so, and on a phone even the second was. */
-        className="flex flex-col gap-2 px-3 pb-3"
+        className="flex flex-wrap items-center gap-1.5 px-3 pb-2"
       >
         {options.map((option, index) => {
           const isSelected = option.id === selectedId;
@@ -206,35 +215,30 @@ export function StructuredChoice({
               data-option-id={option.id}
               onFocus={() => setFocusIndex(index)}
               onClick={() => pick(option.id)}
-              className="group flex w-full items-center gap-2.5 rounded-[var(--r-sm)] border p-2 text-left outline-none transition-all focus-visible:ring-2 focus-visible:ring-offset-1 disabled:opacity-50"
-              style={{
-                borderColor: isSelected ? "var(--color-accent)" : "var(--color-border)",
-                background: isSelected ? "var(--color-accent-soft)" : "var(--color-surface)",
-                boxShadow: isSelected ? "0 0 0 1px var(--color-accent)" : "none",
-                // Focus reads as a ring in the accent, selection as the fill —
-                // two different signals rather than one doing both jobs.
-                ["--tw-ring-color" as string]: "var(--color-accent-line)",
-              }}
+              title={option.hint}
+              className="s-chip"
+              data-selected={isSelected ? "true" : undefined}
             >
+              {/* The visual directions are the one case where a word is not
+                  enough, so those chips carry a small swatch of the thing. */}
               {option.preview && (
-                <span className="block h-[38px] w-[56px] shrink-0 overflow-hidden rounded-[8px]">
+                <span className="s-chip-preview" aria-hidden>
                   <DesignPreview id={option.preview} />
                 </span>
               )}
-              <span className="min-w-0 flex-1">
-                <span className="block text-[12.5px] font-semibold leading-snug" style={{ color: "var(--color-ink)" }}>
-                  {option.label}
-                </span>
-                {option.hint && (
-                  <span className="mt-0.5 block truncate text-[11px] leading-snug" style={{ color: "var(--color-ink-muted)" }}>
-                    {option.hint}
-                  </span>
-                )}
-              </span>
+              <span className="truncate">{option.label}</span>
             </button>
           );
         })}
       </div>
+
+      {/* THE ANSWER DOES NOT HAVE TO BE ONE OF THESE. The composer is right
+          below and always live; saying so is what stops a list of chips from
+          reading as a closed set of permitted answers. */}
+      <p className="px-3 pb-3 text-[12px]" style={{ color: "var(--color-ink-muted)" }}>
+        {typeHint}
+      </p>
+
     </section>
   );
 }

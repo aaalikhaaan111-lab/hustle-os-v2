@@ -211,7 +211,19 @@ check("and the marketing hero is gone",
 
 // The compact intake was a sideways filmstrip; options off-screen are options
 // nobody knows about.
-check("intake options stack", /flex flex-col gap-2 px-3 pb-3/.test(structuredChoice));
+/*
+ * CHIPS THAT WRAP, not cards that stack.
+ *
+ * The options were full-width bordered cards, one per line — three tall
+ * rectangles above the composer that read as a form docked to the page rather
+ * than as a question somebody just asked. Wrapping chips let the whole question
+ * occupy about the height of one message, which is what stops it looking like
+ * permanent UI.
+ */
+check("intake options wrap as chips", /flex flex-wrap items-center gap-1\.5/.test(structuredChoice));
+check("and the answer is never limited to the chips",
+  /typeHint/.test(structuredChoice),
+  "a closed list of buttons tells people the chips are the only allowed answers");
 check("and no longer scroll sideways", !/overflow-x-auto/.test(code(structuredChoice)));
 check("nor snap horizontally", !/snap-x|snap-mandatory/.test(code(structuredChoice)));
 

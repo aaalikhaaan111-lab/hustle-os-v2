@@ -105,6 +105,7 @@ export function IntakePreview() {
 
       {step && (
         <StructuredChoice
+          typeHint="Or just type your own answer below."
           key={step.id}
           labelledById="intake-preview-title"
           title={tb(step.titleKey as never)}

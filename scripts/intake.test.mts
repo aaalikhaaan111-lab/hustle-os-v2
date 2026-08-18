@@ -321,8 +321,21 @@ function runFlow(idea: string, picks: (string | null)[]) {
   check("selection starts empty", /useState<string \| null>\(null\)/.test(component));
   check("aria-checked follows selection, not focus", /aria-checked=\{isSelected\}/.test(component));
   check("the roving tabindex is separate from selection", /tabIndex=\{index === focusIndex/.test(component));
-  check("the accent fill is applied only when selected", /background: isSelected \? "var\(--color-accent-soft\)"/.test(component));
-  check("focus is shown as a ring, not as the selected fill", /focus-visible:ring-2/.test(component));
+  /*
+   * SELECTION IS A FILL, FOCUS IS A RING, and they must stay two signals.
+   *
+   * The options are chips now rather than bordered cards, so both moved out of
+   * inline styles and into `.s-chip` — but the rule they encode is the one
+   * that matters: a chip the keyboard is merely resting on must never look
+   * already chosen.
+   */
+  const chipCss = readFileSync(new URL("../src/app/studio.css", import.meta.url), "utf8");
+  check("the fill is applied only when selected",
+    /data-selected=\{isSelected \? "true" : undefined\}/.test(component) &&
+    /\.s-chip\[data-selected="true"\][\s\S]{0,160}background: var\(--primary\)/.test(chipCss));
+  check("focus is shown as a ring, not as the selected fill",
+    /\.studio :focus-visible[\s\S]{0,80}outline: 2px solid var\(--ring\)/.test(chipCss) &&
+    !/:focus[^-][\s\S]{0,60}background/.test(chipCss.split(".s-chip {")[1]?.split("}")[0] ?? ""));
   check("arrow keys move focus without choosing",
     /case "ArrowRight":[\s\S]{0,120}move\(focusIndex \+ 1\)/.test(component));
   check("a back handler is supported", /onBack\?: \(\) => void/.test(component));

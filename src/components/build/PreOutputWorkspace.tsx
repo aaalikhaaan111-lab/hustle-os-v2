@@ -666,6 +666,7 @@ export function PreOutputWorkspace({
                 {intake.step && (
                   <div className="ws-turn flex flex-col gap-2.5">
                     <StructuredChoice
+                      typeHint={tb("askTypeHint")}
                       key={intake.step.id}
                       labelledById="build-intake-title"
                       title={tb(intake.step.titleKey as never)}
