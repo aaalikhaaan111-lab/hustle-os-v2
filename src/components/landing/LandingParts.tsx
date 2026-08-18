@@ -4,6 +4,12 @@ import { useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { VentrioMark } from "@/components/workspace-ui/parts";
+import {
+  NavigationMenu,
+  NavigationMenuItem,
+  NavigationMenuLink,
+  NavigationMenuList,
+} from "@/components/ui/shadcn/navigation-menu";
 
 /**
  * The chip button.
@@ -61,12 +67,22 @@ function Arrow() {
 }
 
 /**
- * The header.
+ * The header, on shadcn's Navigation Menu.
  *
- * Every destination is a real page except "How it works", which is a section
- * that exists only here. In-page links used to be the whole nav, and they
- * landed at approximate positions under the sticky bar — `scroll-margin-top`
- * in the stylesheet fixes where the one remaining anchor lands.
+ * The list, the item semantics and the focus behaviour come from the registry
+ * component — `NavigationMenuLink` is what gives each destination its
+ * `data-active` hook and its keyboard handling, and Radix owns the roving
+ * focus. What is Ventrio's is the presentation: the demo's pill-shaped trigger
+ * background is dropped for a rule that grows from the left, because that is
+ * the movement this page already uses on its cards and its disclosure list.
+ *
+ * There is no dropdown. Every destination is a page or a section, so a
+ * `NavigationMenuTrigger` with a viewport panel would be machinery wrapped
+ * around four links — `viewport={false}` removes it.
+ *
+ * DESTINATIONS ARE REAL. Three are pages that exist; `#how` is the one section
+ * that exists nowhere else, and the stylesheet's `scroll-margin-top` is what
+ * makes it land clear of this bar.
  */
 export function LandingHeader({ isAuthenticated }: { isAuthenticated: boolean }) {
   const t = useTranslations("landing");
@@ -94,19 +110,21 @@ export function LandingHeader({ isAuthenticated }: { isAuthenticated: boolean })
           Ventrio
         </Link>
 
-        <nav className="lp-nav" aria-label={t("menuLabel")}>
-          {links.map((link) =>
-            link.href.startsWith("#") ? (
-              <a key={link.href} href={link.href}>
-                <span>{link.label}</span>
-              </a>
-            ) : (
-              <Link key={link.href} href={link.href}>
-                <span>{link.label}</span>
-              </Link>
-            ),
-          )}
-        </nav>
+        <NavigationMenu viewport={false} className="lp-nav" aria-label={t("menuLabel")}>
+          <NavigationMenuList className="lp-nav-list">
+            {links.map((link) => (
+              <NavigationMenuItem key={link.href}>
+                <NavigationMenuLink asChild className="lp-nav-link">
+                  {link.href.startsWith("#") ? (
+                    <a href={link.href}>{link.label}</a>
+                  ) : (
+                    <Link href={link.href}>{link.label}</Link>
+                  )}
+                </NavigationMenuLink>
+              </NavigationMenuItem>
+            ))}
+          </NavigationMenuList>
+        </NavigationMenu>
 
         <div className="flex items-center justify-self-end">
           <Chip
@@ -152,7 +170,10 @@ export function CardDeck({
           className="lp-card"
           data-open={index === open ? "true" : undefined}
           aria-expanded={index === open}
-          onMouseEnter={() => setOpen(index)}
+          /* `onMouseMove` for the same reason as the after-launch list: an
+             expanding card reflows the row, and a reflow must never be able to
+             change the selection under a cursor that did not move. */
+          onMouseMove={() => setOpen(index)}
           onFocus={() => setOpen(index)}
           onClick={() => setOpen(index)}
         >
@@ -192,7 +213,7 @@ export function FeatureList({
           data-open={index === open ? "true" : undefined}
           aria-expanded={index === open}
           onClick={() => setOpen(index)}
-          onMouseEnter={() => setOpen(index)}
+          onMouseMove={() => setOpen(index)}
           onFocus={() => setOpen(index)}
         >
           <h3>{item.title}</h3>

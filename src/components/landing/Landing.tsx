@@ -3,7 +3,8 @@ import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 import { PLANS, type PlanId } from "@/lib/billing/plans";
 import { LandingComposer } from "@/components/landing/LandingComposer";
-import { CardDeck, Chip, FeatureList, LandingHeader } from "@/components/landing/LandingParts";
+import { CardDeck, Chip, LandingHeader } from "@/components/landing/LandingParts";
+import { AfterStage } from "@/components/landing/AfterStage";
 import "@/components/landing/landing.css";
 
 /**
@@ -50,9 +51,12 @@ export async function Landing({
     body: t(`why${n}Body` as never),
   }));
 
-  const after = [1, 2, 3, 4].map((n) => ({
-    title: t(`after${n}` as never),
-    body: t(`after${n}Body` as never),
+  /* Each action drives one state of the stage beside it. */
+  const afterIds = ["words", "device", "feedback", "anywhere"] as const;
+  const after = afterIds.map((id, index) => ({
+    id,
+    title: t(`after${index + 1}` as never),
+    body: t(`after${index + 1}Body` as never),
   }));
 
   const faq = [1, 2, 3, 4, 5, 6].map((n) => ({
@@ -135,31 +139,8 @@ export async function Landing({
             <p>{t("afterLede")}</p>
           </div>
 
-        <div className="lp-split">
-          <FeatureList items={after} />
+        <AfterStage items={after} />
 
-          {/* Ventrio's own surfaces, drawn rather than screenshotted: the
-                conversation shape, the message shapes and the result line are
-                the ones the workspace uses. Nothing here reports a number the
-                product does not produce. */}
-            <div className="lp-panel">
-              <div className="lp-panel-bar">
-                <span className="lp-panel-dot" />
-                <span className="lp-panel-dot" />
-                <span className="lp-panel-dot" />
-                <span className="lp-panel-title">{t("demoTitle")}</span>
-              </div>
-              <div className="lp-panel-body">
-                <div className="lp-msg lp-msg--you">
-                  <span>{t("demoYou")}</span>
-                </div>
-                <div className="lp-msg lp-msg--v">
-                  <span>{t("demoV")}</span>
-                </div>
-                <p className="lp-result">{t("demoResult")}</p>
-              </div>
-            </div>
-        </div>
       </section>
 
       {/* ── messengers, honestly labelled ────────────────────────────────── */}

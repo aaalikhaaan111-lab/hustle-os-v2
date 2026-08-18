@@ -116,6 +116,59 @@ check("touch gets its own feedback",
 check("and all of it stops under reduced motion",
   /@media \(prefers-reduced-motion: reduce\)[\s\S]{0,220}transition-duration: 0\.01ms/.test(css));
 
+/* ── 6. the navigation is the registry component ─────────────────────────── */
+
+const parts = read("src/components/landing/LandingParts.tsx");
+check("navigation uses shadcn's Navigation Menu",
+  /@\/components\/ui\/shadcn\/navigation-menu/.test(parts) &&
+  /<NavigationMenuLink/.test(parts));
+check("with no dropdown machinery wrapped around four links",
+  /viewport=\{false\}/.test(parts));
+check("destinations are real pages plus the one section that is not",
+  /"\/pricing"/.test(parts) && /"\/about"/.test(parts) && /"\/faq"/.test(parts) && /"#how"/.test(parts));
+check("and the anchor lands clear of the sticky header",
+  /scroll-margin-top/.test(css));
+
+/* ── 7. the after-launch stage demonstrates rather than asserts ──────────── */
+
+/**
+ * SELECTION MUST NOT BE STOLEN BY A REFLOW.
+ *
+ * Opening an item expands its description, which reflows the list — and a
+ * reflow that slides a different item under a stationary cursor fires
+ * `mouseenter` on it. With `onMouseEnter` the last item was literally
+ * unselectable: clicking it re-flowed the list and whatever landed under the
+ * pointer took the selection straight back. `mousemove` only fires when the
+ * pointer actually moves.
+ */
+const stage = read("src/components/landing/AfterStage.tsx");
+check("hover selection cannot be triggered by a reflow",
+  !/onMouseEnter=/.test(stage) && /onMouseMove=/.test(stage),
+  "a reflow must never be able to change the selection under a still cursor");
+check("the same rule applies to the card deck",
+  !/onMouseEnter=/.test(parts) && /onMouseMove=/.test(parts));
+check("every action is a real button, so touch needs no hover",
+  (stage.match(/type="button"/g) ?? []).length >= 2);
+check("all four states exist", /"words"/.test(stage) && /"device"/.test(stage) &&
+  /"feedback"/.test(stage) && /"anywhere"/.test(stage));
+check("the stage uses Motion for React", /from "motion\/react"/.test(stage));
+check("and honours reduced motion in its own transitions",
+  /useReducedMotion/.test(stage) && /duration: 0 \}/.test(stage));
+
+/**
+ * The demonstrations are drawn, not screenshotted, and the numbers in them are
+ * labelled as an example — Ventrio counts responses, it does not track
+ * visitors, and the landing must not imply otherwise.
+ */
+check("no image or video assets stand in for the demos",
+  !/<img|<video/.test(stage));
+check("illustrative figures say that they are illustrative",
+  /demoFeedbackNote/.test(stage) &&
+  /Example figures/i.test(en.demoFeedbackNote) &&
+  /для примера/i.test(ru.demoFeedbackNote));
+check("the messenger demo repeats that it is not shipped",
+  /not available yet/i.test(en.demoAnywhereNote) && /пока недоступен/i.test(ru.demoAnywhereNote));
+
 /* ── report ─────────────────────────────────────────────────────────────── */
 
 if (failures.length > 0) {

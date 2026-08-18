@@ -100,65 +100,8 @@
   color: var(--foreground);
 }
 
-/**
- * THE SAME FOUR DESTINATIONS AT EVERY WIDTH.
- *
- * They used to vanish under 880px with nothing in their place, which left a
- * phone with a wordmark, a button, and no way to reach the page's own
- * sections. On a narrow screen they become a row that scrolls sideways under
- * the header — no disclosure to open, and nothing hidden behind a button.
- */
-.lp-nav {
-  display: flex;
-  align-items: center;
-  gap: 0.25rem;
-  overflow-x: auto;
-  scrollbar-width: none;
-  -webkit-overflow-scrolling: touch;
-}
-
-.lp-nav::-webkit-scrollbar { display: none; }
-
-@media (min-width: 880px) { .lp-nav { margin-inline: auto; overflow: visible; } }
-
-/* A rule that grows from the left rather than a background that blinks on:
-   the same "state changed" signal, with somewhere for the eye to follow. */
-.lp-nav a {
-  position: relative;
-  flex-shrink: 0;
-  padding: 0.4375rem 0.25rem;
-  margin-inline: 0.5rem;
-  font-size: 0.875rem;
-  font-weight: 500;
-  color: var(--muted-foreground);
-  transition: color var(--lp-fast) var(--lp-ease);
-}
-
-.lp-nav a::after {
-  content: "";
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0.125rem;
-  height: 1px;
-  background: currentColor;
-  transform: scaleX(0);
-  transform-origin: left;
-  transition: transform var(--lp-base) var(--lp-ease);
-}
-
-@media (hover: hover) {
-  .lp-nav a:hover { color: var(--foreground); }
-  .lp-nav a:hover::after { transform: scaleX(1); }
-}
-
-.lp-nav a:focus-visible { color: var(--foreground); }
-.lp-nav a:focus-visible::after { transform: scaleX(1); }
-
 /* The chip button: an accent tile beside a dark pill. The reference's one
    genuinely distinctive control, rebuilt in Ventrio's own colours. */
-/* Both halves share one height, or the accent tile reads as a stray rectangle
-   jammed against a pill rather than as part of the same control. */
 .lp-chip {
   display: inline-flex;
   align-items: stretch;
@@ -238,6 +181,69 @@
 .lp-chip--lg { height: 3rem; font-size: 0.9375rem; }
 .lp-chip--lg .lp-chip-icon { width: 3rem; }
 .lp-chip--lg .lp-chip-label { padding-inline: 1.5rem; }
+
+/**
+ * The navigation menu, Ventrio's way.
+ *
+ * shadcn's demo styling is a pill-shaped hover background on each trigger. This
+ * page already says "state changed" with a rule that grows from the left — on
+ * its cards, its disclosure list and its links — so the nav says it the same
+ * way rather than introducing a fifth idiom.
+ */
+.lp-nav { max-width: none; }
+
+.lp-nav-list {
+  justify-content: flex-start;
+  gap: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.lp-nav-list::-webkit-scrollbar { display: none; }
+
+@media (min-width: 880px) { .lp-nav { margin-inline: auto; } .lp-nav-list { overflow: visible; } }
+
+.lp-nav-link {
+  position: relative;
+  display: inline-flex;
+  flex-shrink: 0;
+  padding: 0.4375rem 0.25rem;
+  margin-inline: 0.5rem;
+  border-radius: 0;
+  background: transparent;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--muted-foreground);
+  white-space: nowrap;
+  transition: color var(--lp-fast) var(--lp-ease);
+}
+
+/* The registry component paints a background on hover and focus; this page
+   does not want one, and an unset here is cheaper than fighting it later. */
+.lp-nav-link:hover,
+.lp-nav-link:focus,
+.lp-nav-link[data-active="true"] { background: transparent; }
+
+.lp-nav-link::after {
+  content: "";
+  position: absolute;
+  left: 0.25rem;
+  right: 0.25rem;
+  bottom: 0.125rem;
+  height: 1px;
+  background: currentColor;
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform var(--lp-base) var(--lp-ease);
+}
+
+@media (hover: hover) {
+  .lp-nav-link:hover { color: var(--foreground); }
+  .lp-nav-link:hover::after { transform: scaleX(1); }
+}
+
+.lp-nav-link:focus-visible { color: var(--foreground); outline: none; }
+.lp-nav-link:focus-visible::after { transform: scaleX(1); }
 
 /* ── the hero canvas ────────────────────────────────────────────────────── */
 
@@ -684,3 +690,165 @@
     transition-duration: 0.01ms !important;
   }
 }
+
+
+/* ── the after-launch stage ─────────────────────────────────────────────── */
+
+/**
+ * ONE STAGE, FOUR STATES. Each action on the left drives a demonstration on the
+ * right, and every demonstration is HTML and CSS animated with Motion rather
+ * than a screenshot: the headline really shortens, the frame really resizes,
+ * the bars really grow, the thread really sends. A picture of a claim is not
+ * evidence for it.
+ *
+ * The stage holds a minimum height so switching states never makes the page
+ * jump under the reader's cursor.
+ */
+.lp-stage {
+  display: flex;
+  align-items: center;
+  min-height: 22rem;
+  padding: 1.5rem;
+  border: 1px solid var(--border);
+  border-radius: 1.25rem;
+  background: var(--muted);
+}
+
+.lp-stage-inner { width: 100%; }
+
+.lp-frame {
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 0.875rem;
+  background: var(--card);
+  box-shadow: 0 18px 40px -34px oklch(0.153 0.006 107.1 / 0.5);
+}
+
+.lp-frame-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.625rem 0.875rem;
+  border-bottom: 1px solid var(--border);
+  background: var(--background);
+}
+
+.lp-frame-dot { width: 0.4375rem; height: 0.4375rem; border-radius: 999px; background: var(--border); }
+.lp-frame-title { margin-left: 0.5rem; font-size: 0.75rem; font-weight: 500; color: var(--muted-foreground); }
+.lp-frame-body { padding: 1.125rem; }
+
+.lp-demo-head { font-size: 1.25rem; font-weight: 600; letter-spacing: -0.02em; line-height: 1.2; }
+.lp-demo-sub { margin-top: 0.5rem; font-size: 0.8125rem; line-height: 1.5; color: var(--muted-foreground); }
+
+.lp-demo-chat {
+  margin-top: 1.125rem;
+  padding-top: 0.875rem;
+  border-top: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  flex-wrap: wrap;
+}
+
+.lp-demo-you {
+  padding: 0.375rem 0.625rem;
+  border-radius: 0.75rem;
+  background: var(--secondary);
+  color: var(--secondary-foreground);
+  font-size: 0.8125rem;
+}
+
+/* The one control in each demo. It is a real button, so touch works without
+   any hover at all. */
+.lp-demo-run {
+  margin-left: auto;
+  padding: 0.375rem 0.75rem;
+  border-radius: 999px;
+  background: var(--primary);
+  color: var(--primary-foreground);
+  font-size: 0.75rem;
+  font-weight: 600;
+  transition: opacity var(--lp-fast) var(--lp-ease), transform var(--lp-fast) var(--lp-ease);
+}
+
+@media (hover: hover) { .lp-demo-run:hover { opacity: 0.9; } }
+.lp-demo-run:active { transform: scale(0.97); }
+
+.lp-demo-note { margin-top: 0.875rem; font-size: 0.75rem; line-height: 1.5; color: var(--muted-foreground); }
+
+/* B — the width itself is the animation. */
+.lp-device { display: flex; flex-direction: column; align-items: center; width: 100%; }
+
+.lp-seg {
+  display: inline-flex;
+  gap: 0.125rem;
+  padding: 0.1875rem;
+  border-radius: 999px;
+  background: var(--background);
+  border: 1px solid var(--border);
+}
+
+.lp-seg button {
+  padding: 0.3125rem 0.75rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--muted-foreground);
+  transition: background-color var(--lp-fast) var(--lp-ease), color var(--lp-fast) var(--lp-ease);
+}
+
+.lp-seg button[data-on] { background: var(--primary); color: var(--primary-foreground); }
+@media (hover: hover) { .lp-seg button:not([data-on]):hover { color: var(--foreground); } }
+
+.lp-device-frame {
+  max-width: 100%;
+  margin-top: 1.25rem;
+  /* 260ms — the top of the range this stage works in. */
+  transition: width 260ms var(--lp-ease);
+  border: 1px solid var(--border);
+  border-radius: 0.875rem;
+  background: var(--card);
+  overflow: hidden;
+}
+
+.lp-device-screen { display: flex; flex-direction: column; gap: 0.5rem; padding: 1rem; min-height: 9.5rem; }
+.lp-device-line { height: 0.5rem; border-radius: 999px; background: var(--muted); }
+.lp-device-block { height: 3rem; border-radius: 0.5rem; background: var(--muted); }
+
+/* C — the bars really grow. */
+.lp-metrics { display: flex; gap: 1.75rem; }
+.lp-metrics span { display: flex; flex-direction: column; font-size: 0.75rem; color: var(--muted-foreground); }
+.lp-metrics b { font-size: 1.625rem; font-weight: 600; letter-spacing: -0.03em; color: var(--foreground); }
+
+.lp-bars { margin-top: 1.125rem; display: flex; align-items: flex-end; gap: 0.4375rem; height: 4rem; }
+.lp-bars span { flex: 1; border-radius: 0.25rem 0.25rem 0 0; background: color-mix(in oklab, var(--lp-accent) 30%, var(--muted)); }
+
+/* D — a thread, labelled as not yet available. */
+.lp-thread { border: 1px solid var(--border); border-radius: 0.875rem; background: var(--card); overflow: hidden; }
+
+.lp-thread-bar {
+  display: flex; align-items: center; gap: 0.5rem;
+  padding: 0.625rem 0.875rem;
+  border-bottom: 1px solid var(--border);
+  background: var(--background);
+}
+
+.lp-thread-av { width: 1.25rem; height: 1.25rem; border-radius: 999px; background: var(--lp-accent); }
+.lp-thread-name { font-size: 0.8125rem; font-weight: 600; }
+
+.lp-thread-soon {
+  margin-left: auto;
+  padding: 0.0625rem 0.4375rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  font-size: 0.6875rem;
+  color: var(--muted-foreground);
+}
+
+.lp-thread-body { display: flex; flex-direction: column; gap: 0.5rem; padding: 1rem; min-height: 7rem; }
+
+.lp-thread-msg { max-width: 80%; padding: 0.5rem 0.75rem; border-radius: 0.875rem; font-size: 0.8125rem; line-height: 1.45; }
+.lp-thread-msg--you { align-self: flex-end; background: var(--secondary); color: var(--secondary-foreground); }
+.lp-thread-msg--v { align-self: flex-start; background: var(--muted); }
+
+.lp-thread + .lp-demo-run, .lp-thread ~ .lp-demo-run { margin: 0.875rem 1rem; }
