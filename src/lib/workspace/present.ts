@@ -33,6 +33,17 @@ export interface PresentedProject {
   /** Null when the project has no generated version yet. */
   content: PresentedPreviewContent | null;
   /**
+   * A v2 application's own shape: what it is called and the routes it answers.
+   *
+   * This is real data from the generated product — not a headline and palette
+   * invented to look like a page. An application is source code, so there is
+   * no picture of it short of running it, and running eighteen of them in a
+   * gallery is what made the gallery slow. Its structure is the honest thing
+   * that CAN be shown quickly, and it differs between apps, which is what a
+   * gallery needs.
+   */
+  app: { name: string; description: string; routes: string[] } | null;
+  /**
    * The public address, when the project is live. Already known here — the
    * publication summary this function receives carries the slug — so the card
    * can offer "copy link" without the gallery loading anything extra.
@@ -151,6 +162,13 @@ export function presentProject(
       accent: accentFor(project.id),
     },
     slug: publication?.isPublished ? publication.slug : null,
+    app: appState
+      ? {
+          name: appState.app.metadata.name,
+          description: appState.app.metadata.description,
+          routes: appState.app.routes.map((route) => route.title || route.path).slice(0, 5),
+        }
+      : null,
     content: stage3?.output
       ? {
           eyebrow: stage3.output.hero.eyebrow,

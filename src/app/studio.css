@@ -1005,8 +1005,10 @@ body:has(.studio-frame) {
   position: relative;
   display: grid;
   place-items: center;
-  width: 22px;
-  height: 22px;
+  /* The same 18px every other glyph in the rail is drawn at, so the mark reads
+     as one of the controls rather than as a larger object beside them. */
+  width: 18px;
+  height: 18px;
   flex-shrink: 0;
 }
 
@@ -1043,47 +1045,114 @@ body:has([data-slot="sheet-content"][data-state="open"]) .studio-frame {
   filter: brightness(0.97);
 }
 
-/* ── a published project, showing itself ────────────────────────────────── */
+
+/* ── the accent family ──────────────────────────────────────────────────── */
 
 /**
- * The card runs the real application rather than drawing a picture of one.
+ * A GREEN THAT SIGNALS, NOT A GREEN THAT DECORATES.
  *
- * The frame is laid out at desktop width and scaled down, because a generated
- * page composed for 1120px shown at 344px would otherwise render its mobile
- * layout — which is not what the card is trying to show. `transform` scales a
- * rendered document faithfully; the container clips what falls outside.
+ * The supplied palette is bright — #7BC950 measures roughly 1.9:1 on white, so
+ * it can never carry text — and a product about somebody's own idea should not
+ * look like a toy. It is used as SIGNAL only: the thing that is live, the thing
+ * you chose, the route an app opens on. Neutrals still carry the interface and
+ * near-black still carries the primary actions.
  *
- * Inert by construction: no pointer events, no tab stop, and the sandbox has
- * no `allow-same-origin`, so nothing inside can reach the page hosting it.
+ * Every tint below sits under `--color-ink`, the near-black the product already
+ * reads at, rather than under white — which is what keeps the contrast honest.
  */
-.s-livethumb {
-  position: relative;
-  display: block;
+:root {
+  --v-green: #7bc950;
+  --v-green-bright: #7ce577;
+  --v-mint: #9cffd9;
+  --v-mint-pale: #b6efd4;
+  --v-sky: #a0ccda;
+}
+
+.studio {
+  /* Chosen and active surfaces: a wash, not a fill. */
+  --color-accent-soft: color-mix(in oklab, var(--v-mint-pale) 34%, var(--background));
+  --color-accent-line: color-mix(in oklab, var(--v-green) 55%, var(--border));
+}
+
+/* ── a generated application's card ─────────────────────────────────────── */
+
+/**
+ * Drawn at page scale inside `.s-thumb`, like every other card, so the gallery
+ * keeps one aspect ratio and never reflows while things load. Nothing is
+ * fetched and nothing runs: an application has no picture short of a running
+ * copy, and running one per card is what made the gallery slow and made cards
+ * appear at different moments.
+ */
+.s-appthumb {
+  position: absolute;
+  inset: 0;
+  /* `.s-thumb > *` lays its children out at a fixed 70em page width, which is
+     right for a rendered page and wrong for this: it pushed the description off
+     the side of the card. This tile is sized to the card itself. */
   width: 100%;
   height: 100%;
-  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  font-size: calc(100cqw / 34);
+  background: var(--background);
+}
+
+.s-appthumb-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.4em;
+  padding: 0.7em 0.9em;
+  border-bottom: 1px solid var(--border);
   background: var(--muted);
 }
 
-.s-livethumb iframe {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 1120px;
-  height: 700px;
-  border: 0;
-  pointer-events: none;
-  /* `cqw`, not a viewport unit: the card is ~344px in a three-up grid and full
-     width on a phone, and the window says nothing useful about which. The
-     containing `.s-thumb` already declares `container-type: inline-size`. */
-  transform: scale(calc(100cqw / 1120));
-  transform-origin: top left;
+.s-appthumb-dot {
+  width: 0.45em;
+  height: 0.45em;
+  border-radius: 999px;
+  background: var(--border);
 }
 
-/* Shown while the frame is still being built, and instead of it if the build
-   never lands — a card must never be an empty rectangle. */
-.s-livethumb-fallback {
-  position: absolute;
-  inset: 0;
-  display: block;
+.s-appthumb-name {
+  margin-left: 0.5em;
+  font-size: 0.85em;
+  font-weight: 500;
+  color: var(--color-ink-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.s-appthumb-body { flex: 1; padding: 1.1em 1.2em; }
+
+.s-appthumb-desc {
+  margin: 0 0 1em;
+  font-size: 1.05em;
+  line-height: 1.35;
+  color: var(--color-ink);
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.s-appthumb-routes { display: flex; flex-direction: column; gap: 0.55em; }
+
+.s-appthumb-routes li {
+  padding: 0.4em 0.7em;
+  border-radius: 0.4em;
+  font-size: 0.95em;
+  color: var(--color-ink-secondary);
+  background: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* The route the app opens on — the one place a card uses colour, and it means
+   "this is where it starts". */
+.s-appthumb-routes li[data-active] {
+  background: var(--color-accent-soft);
+  color: var(--color-ink);
+  font-weight: 500;
 }

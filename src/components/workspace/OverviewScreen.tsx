@@ -7,7 +7,7 @@ import { HowItWorks } from "@/components/workspace-ui/HowItWorks";
 import { formatAge } from "@/lib/workspace/formatAge";
 import type { PresentedProject } from "@/lib/workspace/present";
 import { ProjectThumb, ProjectThumbEmpty } from "@/components/workspace/ProjectThumb";
-import { LiveThumb } from "@/components/workspace/LiveThumb";
+import { AppThumb } from "@/components/workspace/AppThumb";
 import { ProjectCardMenu } from "@/components/workspace/ProjectCardMenu";
 
 /* The six lifecycle stages drove a progress bar on this screen. The bar is
@@ -95,18 +95,17 @@ export function OverviewScreen({ active, recent, activeResponses }: OverviewScre
                     {/* A published project runs itself in the card — the real
                         generated output rather than a drawing of it. Everything else
                         falls back through the same ladder as before. */}
-                    {project.slug && project.hasApp ? (
-                      <LiveThumb
-    slug={project.slug}
-    label={project.name || t("untitledProject")}
-    fallback={<ProjectThumbEmpty label={t("summaryAppVersion")} />}
-  />
-                    ) : project.content ? (
+                                        {/* Real generated output first, and nothing is drawn that was not
+                        generated: a page-shaped project shows its own page, an application
+                        shows its own name and routes, and a project with nothing shows an
+                        empty state. No frames are run here — the gallery must stay fast and
+                        must not reflow as cards arrive. */}
+                    {project.content ? (
                       <ProjectThumb content={project.content} />
+                    ) : project.app ? (
+                      <AppThumb app={project.app} />
                     ) : (
-                      <ProjectThumbEmpty
-                        label={project.hasOutput ? t("summaryAppVersion") : t("summaryNoVersion")}
-                      />
+                      <ProjectThumbEmpty label={t("summaryNoVersion")} />
                     )}
                   </span>
                   <span className="mt-3 block min-w-0">

@@ -151,7 +151,7 @@ function ShellBody({ project, recent = [], initials, email, fill = false, action
     <SidebarMenuItem key={href}>
       <SidebarMenuButton asChild isActive={isActive(href)} tooltip={label}>
         <Link href={href} onClick={() => setOpenMobile(false)}>
-          <Icon className="h-[17px] w-[17px] shrink-0" />
+          <Icon className="shrink-0" />
           <span>{label}</span>
         </Link>
       </SidebarMenuButton>
@@ -212,8 +212,8 @@ function ShellBody({ project, recent = [], initials, email, fill = false, action
                       focus you see the control. Nothing moves and nothing is
                       added to the layout. */}
                   <span className="s-mark-swap" aria-hidden>
-                    <VentrioMark size={22} />
-                    <PanelLeft className="s-mark-hint h-[19px] w-[19px]" />
+                    <VentrioMark size={18} />
+                    <PanelLeft className="s-mark-hint h-[18px] w-[18px]" />
                   </span>
                   <span className="text-[15px] font-semibold group-data-[collapsible=icon]:hidden">
                     Ventrio
@@ -235,7 +235,7 @@ function ShellBody({ project, recent = [], initials, email, fill = false, action
                     className="bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground active:bg-primary active:text-primary-foreground"
                   >
                     <Link href="/create?fresh=1" onClick={() => setOpenMobile(false)}>
-                      <IconPlus className="h-4 w-4 shrink-0" />
+                      <IconPlus className="shrink-0" />
                       <span>{t("navNewProject")}</span>
                     </Link>
                   </SidebarMenuButton>
@@ -246,7 +246,7 @@ function ShellBody({ project, recent = [], initials, email, fill = false, action
                     disappears is not somewhere people will look. */}
                 <SidebarMenuItem>
                   <SidebarMenuButton onClick={() => setSearchOpen(true)} tooltip={t("searchTitle")}>
-                    <IconSearch className="h-[17px] w-[17px] shrink-0" />
+                    <IconSearch className="shrink-0" />
                     <span>{t("searchTitle")}</span>
                     <SearchShortcut />
                   </SidebarMenuButton>
