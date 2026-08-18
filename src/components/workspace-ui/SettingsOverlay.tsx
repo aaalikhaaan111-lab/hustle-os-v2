@@ -69,12 +69,18 @@ export function SettingsOverlay({
            near-black. Re-declaring the scope on the portalled content is what
            keeps the overlay part of the same design system as the page behind
            it. */
-        className="studio max-h-[min(46rem,calc(100dvh-3rem))] w-[calc(100%-1.5rem)] max-w-4xl gap-0 overflow-hidden p-0 sm:max-w-4xl"
+        /* A FIXED PANEL, NOT ONE THAT RESIZES PER SECTION.
+           The dialog sized itself to its contents, so moving from Usage to
+           Privacy visibly grew or shrank the whole window — the frame jumping
+           around the thing you were reading. The panel now takes one size and
+           keeps it; only the content area changes, and it scrolls inside if a
+           section is taller. */
+        className="studio h-[min(38rem,calc(100dvh-3rem))] w-[calc(100%-1.5rem)] max-w-5xl gap-0 overflow-hidden p-0 sm:max-w-5xl"
       >
         {/* Named for screen readers; the panel draws its own visible heading. */}
         <DialogTitle className="sr-only">{t("settingsTitle")}</DialogTitle>
 
-        <div className="max-h-[inherit] overflow-y-auto overscroll-contain">
+        <div className="h-full overflow-y-auto overscroll-contain">
           {data ? (
             <SettingsClient
               initialSection={section}

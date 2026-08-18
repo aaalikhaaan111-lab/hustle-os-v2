@@ -296,7 +296,9 @@ export function SettingsClient({
   );
 
   // The overlay owns its padding and scrolling; the route owns its column.
-  return embedded ? <div className="p-6 md:p-10">{body}</div> : <PageBody>{body}</PageBody>;
+  // `min-h-full` so a short section still fills the fixed panel and the
+  // section list does not float in the middle of an empty box.
+  return embedded ? <div className="min-h-full p-6 md:p-10">{body}</div> : <PageBody>{body}</PageBody>;
 }
 
 /**
