@@ -16,7 +16,7 @@ function check(name: string, ok: boolean, detail?: string) {
 
 const read = (path: string) => readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
 const landing = read("src/components/landing/Landing.tsx");
-const css = read("src/components/landing/landing.css");
+const css = read("src/components/public/public.css");
 const en = JSON.parse(read("messages/en.json")).landing as Record<string, string>;
 const ru = JSON.parse(read("messages/ru.json")).landing as Record<string, string>;
 const copy = Object.values(en).join(" ") + " " + Object.values(ru).join(" ");
@@ -122,15 +122,47 @@ check("and all of it stops under reduced motion",
 
 /* ── 6. the navigation is the registry component ─────────────────────────── */
 
-const parts = read("src/components/landing/LandingParts.tsx");
+const header = read("src/components/public/PublicHeader.tsx");
+const faqComponent = read("src/components/public/Faq.tsx");
+const shell = read("src/components/public/PublicShell.tsx");
+const appShell = read("src/components/layout/AppShell.tsx");
+const publicRoutes = read("src/components/public/routes.ts");
 check("navigation uses shadcn's Navigation Menu",
-  /@\/components\/ui\/shadcn\/navigation-menu/.test(parts) &&
-  /<NavigationMenuLink/.test(parts));
+  /@\/components\/ui\/shadcn\/navigation-menu/.test(header) &&
+  /<NavigationMenuLink/.test(header));
 check("and every item opens a real panel rather than underlining itself",
-  /<NavigationMenuTrigger/.test(parts) && /<NavigationMenuContent/.test(parts) &&
+  /<NavigationMenuTrigger/.test(header) && /<NavigationMenuContent/.test(header) &&
   /\.lp-nav-panel/.test(css));
-check("destinations are real pages plus the one section that is not",
-  /"\/pricing"/.test(parts) && /"\/about"/.test(parts) && /"\/faq"/.test(parts) && /"#how"/.test(parts));
+check("destinations are real pages plus the homepage sections",
+  /"\/pricing"/.test(header) && /"\/about"/.test(header) &&
+  /"\/faq"/.test(header) && /"\/who-its-for"/.test(header) && /"\/contact"/.test(header));
+/* An in-page target must be rooted at `/`. A bare `#how` resolves against the
+   CURRENT page, so on /pricing it pointed at nothing and did nothing. */
+check("and every in-page target is rooted at the homepage",
+  /"\/#how"/.test(header) && /"\/#after"/.test(header) && /"\/#pricing"/.test(header) &&
+  !/href: "#/.test(header),
+  "a bare hash only works on the one page that has the section");
+
+/* ── 6b. one header, not four ────────────────────────────────────────────── */
+
+/**
+ * The site had FOUR pieces of public chrome: this navigation on `/`, an
+ * `InfoLayout` on the info pages, `BackNav` + `PageHeader` on the legal set,
+ * and `StudioTopBar` mounted by `AppShell` over all of them. /pricing rendered
+ * two stacked headers because of the last one.
+ */
+check("every public route mounts the one shared shell",
+  ["src/app/page.tsx", "src/app/pricing/page.tsx", "src/app/about/page.tsx",
+   "src/app/who-its-for/page.tsx", "src/app/faq/page.tsx", "src/app/contact/page.tsx",
+   "src/app/privacy/page.tsx", "src/app/terms/page.tsx", "src/app/login/page.tsx",
+   "src/app/signup/page.tsx"]
+    .every((f) => /<PublicShell>/.test(read(f))),
+  "a public page with its own chrome is how the site ended up with four headers");
+check("and the shell is the only thing that mounts the header",
+  /<PublicHeader/.test(shell) && /<PublicFooter/.test(shell));
+check("the app shell stands down where the public shell is mounted",
+  /carriesPublicShell/.test(appShell) && /PUBLIC_SHELL_ROUTES/.test(publicRoutes),
+  "two headers on one page is what happens when both sides guess");
 check("and the anchor lands clear of the sticky header",
   /scroll-margin-top/.test(css));
 
@@ -167,15 +199,24 @@ check("and honours reduced motion in its own transitions",
  * labelled as an example — Ventrio counts responses, it does not track
  * visitors, and the landing must not imply otherwise.
  */
-check("the media slots are declared but no asset is invented to fill them",
-  /video\?: string/.test(stage) && !/\.mp4|\.webm|\.gif/.test(stage),
+check("the media slot is declared but no asset is invented to fill it",
+  /const VIDEO: Partial<Record<SectionId, string>> = \{\};/.test(stage) &&
+  !/\.mp4|\.webm|\.gif/.test(stage),
   "the messenger clip was explicitly out of scope; inventing the other three is the same mistake");
-check("an empty slot says it is empty, in both languages",
-  /stageSlotNote/.test(stage) && /stageSoon/.test(stage) &&
-  /coming/i.test(en.stageSoon) && /скоро/i.test(ru.stageSoon));
-check("and the FAQ is a real single-open accordion",
-  /aria-expanded=/.test(parts) && /\.lp-faq-a \{[\s\S]{0,160}grid-template-rows: 0fr/.test(css) &&
-  /\.lp-faq-item\[data-open="true"\] \.lp-faq-a \{ grid-template-rows: 1fr/.test(css));
+check("the stage says out loud that it is an illustration, in both languages",
+  /stageDemoNote/.test(stage) &&
+  /illustration/i.test(en.stageDemoNote) && /иллюстрация/i.test(ru.stageDemoNote),
+  "a drawing of the product must not be mistaken for a recording of it");
+/* Each demonstration has to show the thing its topic claims, not a bar. */
+check("each topic demonstrates its own claim",
+  /demoWordsBefore/.test(stage) && /demoWordsAfter/.test(stage) &&
+  /demoDoesButton/.test(stage) && /demoReplyCount/.test(stage) && /demoAgainGap/.test(stage));
+check("and the FAQ is a real single-open accordion, shared with /faq",
+  /aria-expanded=/.test(faqComponent) &&
+  /\.lp-faq-a \{[\s\S]{0,160}grid-template-rows: 0fr/.test(css) &&
+  /\.lp-faq-item\[data-open="true"\] \.lp-faq-a \{ grid-template-rows: 1fr/.test(css) &&
+  /@\/components\/public\/Faq/.test(read("src/app/faq/page.tsx")),
+  "/faq used to render a second, differently-styled answer to the same question");
 
 /* ── report ─────────────────────────────────────────────────────────────── */
 

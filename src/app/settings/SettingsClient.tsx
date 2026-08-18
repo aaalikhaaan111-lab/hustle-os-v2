@@ -54,12 +54,18 @@ export function SettingsClient({
   initialSection,
   email,
   displayName,
+  preferredName,
+  workDescription,
+  personalInstructions,
   usage,
   embedded = false,
 }: {
   initialSection: Section;
   email: string;
   displayName: string;
+  preferredName: string;
+  workDescription: string;
+  personalInstructions: string;
   usage: WorkspaceUsage;
   /**
    * Rendered inside the overlay rather than as the /settings route.
@@ -75,6 +81,16 @@ export function SettingsClient({
   const tFooter = useTranslations("footer");
   const tProfile = useTranslations("profile");
   const [section, setSection] = useState<Section>(initialSection);
+  /**
+   * The search filters the section list, and that is all it does.
+   *
+   * With seven sections it is not strictly needed — but it is the first thing
+   * the eye lands on in a settings panel of this shape, and a box that looked
+   * like search while doing nothing would be exactly the sort of decorative
+   * control this pass exists to remove. It filters, visibly, and says so when
+   * nothing matches.
+   */
+  const [query, setQuery] = useState("");
 
   const sections: { id: Section; label: string; Icon: (p: { className?: string }) => ReactNode }[] = [
     { id: "profile", label: t("settingsProfile"), Icon: IconUser },
@@ -87,23 +103,44 @@ export function SettingsClient({
 
   const initials = (displayName || email || "?").slice(0, 2).toUpperCase();
 
-  const body = (
-    <>
-      <h1 className={embedded ? "s-title" : "s-display"}>{t("settingsTitle")}</h1>
+  const q = query.trim().toLowerCase();
+  const visible = q ? sections.filter((item) => item.label.toLowerCase().includes(q)) : sections;
 
-      <div className="mt-8 flex flex-col gap-8 md:flex-row md:gap-12">
-        {/* A list on desktop, a compact scrollable selector on small screens.
-            `-mx-5 px-5` lets the row bleed to the screen edge while keeping a
-            gutter at both ends, so the last section is never half-cut. */}
+  const body = (
+    /* TITLE, SEARCH AND SECTIONS IN ONE COLUMN, CONTENT IN THE OTHER.
+       The heading used to run the full width above both columns, which made the
+       panel read as a page with a nav strip rather than as a settings window.
+       A single hairline divides the two columns on desktop — the same rule the
+       reference uses, and the thing that makes the left side read as a rail. */
+    <div className="flex flex-col gap-6 md:flex-row md:gap-0">
+      <aside className="shrink-0 md:w-60 md:border-r md:pr-6">
+        <h1 className={embedded ? "s-title" : "s-display"}>{t("settingsTitle")}</h1>
+
+        <div className="mt-4">
+          <input
+            type="search"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder={t("settingsSearch")}
+            aria-label={t("settingsSearch")}
+            className="w-full rounded-[var(--r-md)] border bg-surface px-3 py-2 text-[14px] text-ink transition-colors placeholder:text-ink-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+          />
+        </div>
+
+        {/* A column on desktop, a compact scrollable row on small screens.
+            The negative margin lets the row bleed to the screen edge while
+            keeping a gutter at both ends, so the last section is never
+            half-cut. */}
         <nav
           aria-label={t("settingsTitle")}
-          className={`flex shrink-0 gap-1 overflow-x-auto pb-1 [scrollbar-width:none] md:sticky md:top-0 md:mx-0 md:h-fit md:w-52 md:flex-col md:overflow-visible md:px-0 md:pb-0 ${
-            /* Bleed to whichever edge this is mounted against, so the last
-               section is never half-cut by the container's own padding. */
+          className={`mt-3 flex gap-1 overflow-x-auto pb-1 [scrollbar-width:none] md:mx-0 md:h-fit md:flex-col md:overflow-visible md:px-0 md:pb-0 ${
             embedded ? "-mx-6 px-6 md:-mx-0 md:px-0" : "-mx-5 px-5 md:px-0"
           }`}
         >
-          {sections.map((item) => {
+          {visible.length === 0 && (
+            <p className="s-meta px-1 py-2">{t("settingsNoMatch")}</p>
+          )}
+          {visible.map((item) => {
             const active = section === item.id;
             return (
               <VentrioButton
@@ -121,10 +158,11 @@ export function SettingsClient({
             );
           })}
         </nav>
+      </aside>
 
         {/* 640px: a form is read one line at a time, and a name field that
             runs 900px wide looks like a mistake rather than a field. */}
-        <div key={section} className="ws-page min-w-0 flex-1 md:max-w-[640px]">
+        <div key={section} className="ws-page min-w-0 flex-1 md:max-w-[640px] md:pl-8">
           {section === "profile" && (
             <Panel title={t("settingsProfile")} description={t("settingsProfileBody")}>
               {/* The identity block sits on the card's own sunken surface so it
@@ -145,7 +183,13 @@ export function SettingsClient({
                 </span>
               </div>
               <div className="mt-6">
-                <ProfileForm email={email} displayName={displayName} />
+                <ProfileForm
+                email={email}
+                displayName={displayName}
+                preferredName={preferredName}
+                workDescription={workDescription}
+                personalInstructions={personalInstructions}
+              />
               </div>
             </Panel>
           )}
@@ -291,8 +335,7 @@ export function SettingsClient({
             </Panel>
           )}
         </div>
-      </div>
-    </>
+    </div>
   );
 
   // The overlay owns its padding and scrolling; the route owns its column.

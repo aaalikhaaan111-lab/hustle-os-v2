@@ -8,16 +8,51 @@ export interface UpdateProfileState {
   success: boolean;
 }
 
-const DISPLAY_NAME_MAX_LENGTH = 80;
+/**
+ * What Settings can save about a person.
+ *
+ * It used to be one field. These are the four the panel now collects, and the
+ * caps are product limits rather than database ones — a check constraint would
+ * turn "you typed too much" into a failed request instead of a message beside
+ * the field.
+ *
+ * `personalInstructions` is deliberately the long one: it is prose a person
+ * writes once about how they want to be worked with, and cutting it to tweet
+ * length would make it useless for the thing it exists for.
+ */
+const LIMITS = {
+  displayName: 80,
+  preferredName: 40,
+  workDescription: 120,
+  personalInstructions: 1200,
+} as const;
 
-export async function updateDisplayNameAction(
+/** Empty means "no answer", which is null — not an empty string. */
+function field(formData: FormData, key: string): string {
+  return String(formData.get(key) ?? "").trim();
+}
+
+export async function updateProfileAction(
   _prevState: UpdateProfileState,
   formData: FormData
 ): Promise<UpdateProfileState> {
-  const displayName = String(formData.get("displayName") ?? "").trim();
+  const displayName = field(formData, "displayName");
+  const preferredName = field(formData, "preferredName");
+  const workDescription = field(formData, "workDescription");
+  const personalInstructions = field(formData, "personalInstructions");
 
-  if (displayName.length > DISPLAY_NAME_MAX_LENGTH) {
-    return { error: `Keep your name under ${DISPLAY_NAME_MAX_LENGTH} characters.`, success: false };
+  const tooLong = (
+    [
+      [displayName, LIMITS.displayName, "name"],
+      [preferredName, LIMITS.preferredName, "preferred name"],
+      [workDescription, LIMITS.workDescription, "description"],
+      [personalInstructions, LIMITS.personalInstructions, "instructions"],
+    ] as const
+  ).find(([value, max]) => value.length > max);
+
+  if (tooLong) {
+    const [, max, label] = tooLong;
+    return { error: `Keep your ${label} under ${max} characters.`, success: false };
   }
 
   const supabase = await createClient();
@@ -32,11 +67,16 @@ export async function updateDisplayNameAction(
 
   const { error } = await supabase
     .from("profiles")
-    .update({ display_name: displayName || null })
+    .update({
+      display_name: displayName || null,
+      preferred_name: preferredName || null,
+      work_description: workDescription || null,
+      personal_instructions: personalInstructions || null,
+    })
     .eq("id", user.id);
 
   if (error) {
-    return { error: "Could not save your name. Please try again.", success: false };
+    return { error: "Could not save your details. Please try again.", success: false };
   }
 
   revalidatePath("/profile");

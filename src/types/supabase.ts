@@ -247,7 +247,10 @@ export type Database = {
           interests: string[] | null
           locale: string
           onboarding_completed_at: string | null
+          personal_instructions: string | null
+          preferred_name: string | null
           updated_at: string
+          work_description: string | null
         }
         Insert: {
           created_at?: string
@@ -261,7 +264,10 @@ export type Database = {
           interests?: string[] | null
           locale?: string
           onboarding_completed_at?: string | null
+          personal_instructions?: string | null
+          preferred_name?: string | null
           updated_at?: string
+          work_description?: string | null
         }
         Update: {
           created_at?: string
@@ -275,7 +281,10 @@ export type Database = {
           interests?: string[] | null
           locale?: string
           onboarding_completed_at?: string | null
+          personal_instructions?: string | null
+          preferred_name?: string | null
           updated_at?: string
+          work_description?: string | null
         }
         Relationships: []
       }

@@ -1,9 +1,8 @@
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
-import { PageHeader } from "@/components/ui/PageHeader";
-import { BackNav } from "@/components/layout/BackNav";
+import { PublicShell } from "@/components/public/PublicShell";
+import { PublicPage } from "@/components/public/PublicPage";
 import { LegalSections } from "@/components/legal/LegalSections";
-import { PublicFooter } from "@/components/layout/PublicFooter";
 import { legalConfig } from "@/config/legal";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -14,7 +13,6 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function PrivacyPage() {
   const t = await getTranslations("legal.privacy");
   const tCommon = await getTranslations("legal.common");
-  const tc = await getTranslations("common");
 
   const cityPart = legalConfig.operatorCity ? `, ${legalConfig.operatorCity}` : "";
   const intro = t("intro", {
@@ -35,20 +33,15 @@ export default async function PrivacyPage() {
   }));
 
   return (
-    <>
-    <div className="mx-auto flex max-w-2xl flex-col gap-6 py-4 sm:py-6">
-      <BackNav fallback="/" label={tc("backToVentrio")} />
-      <PageHeader title={t("pageTitle")} description={intro} />
+    <PublicShell>
+      <PublicPage title={t("pageTitle")} lede={intro} narrow>
       <LegalSections sections={resolvedSections} />
-      <p className="text-xs text-ink-muted">
+      <p className="lp-legal-foot">
         {tCommon("lastUpdated", { date: legalConfig.effectiveDate })}
         <br />
         {tCommon("contactCta", { email: legalConfig.contactEmail })}
       </p>
-    </div>
-      <div className="mx-auto w-[min(100%-2rem,1280px)]">
-        <PublicFooter />
-      </div>
-    </>
+      </PublicPage>
+    </PublicShell>
   );
 }

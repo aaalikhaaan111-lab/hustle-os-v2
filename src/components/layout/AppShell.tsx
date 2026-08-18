@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { usePathname } from "next/navigation";
 import { StudioTopBar } from "@/components/layout/StudioTopBar";
 import { RoutePrefetcher } from "@/components/layout/RoutePrefetcher";
+import { carriesPublicShell } from "@/components/public/routes";
 
 /**
  * One shell for every live surface outside the workspace.
@@ -13,13 +14,14 @@ import { RoutePrefetcher } from "@/components/layout/RoutePrefetcher";
  * circular trigger. Navigation is a top bar that shows its destinations —
  * see `StudioTopBar`.
  *
- * Two routes opt out. The public landing carries its own dock and is frozen.
- * The workspace carries its own rail and header, and mounting a second
- * navigation over it would put two unrelated navs on one screen.
+ * Two kinds of route opt out. Every PUBLIC page now carries the shared
+ * `PublicHeader` through `PublicShell` — the landing did already, and the rest
+ * joined it — so mounting `StudioTopBar` there stacks two headers on one page.
+ * The workspace carries its own rail and header, for the same reason.
  */
 export function AppShell({ children, isAuthenticated }: { children: ReactNode; isAuthenticated: boolean }) {
   const pathname = usePathname();
-  const isLanding = pathname === "/";
+  const isPublic = carriesPublicShell(pathname);
   const isWorkspace =
     pathname === "/dashboard" ||
     pathname === "/projects" ||
@@ -29,7 +31,7 @@ export function AppShell({ children, isAuthenticated }: { children: ReactNode; i
     // The design lab renders its own complete application frame.
     pathname === "/workspace-lab";
 
-  if (isLanding || isWorkspace) {
+  if (isPublic || isWorkspace) {
     return (
       <div className="relative min-h-screen">
         {children}

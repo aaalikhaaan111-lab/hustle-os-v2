@@ -3,16 +3,22 @@ interface LegalSection {
   body: string;
 }
 
+/**
+ * The body of a legal document, in the public site's prose style.
+ *
+ * It used to carry its own Tailwind type scale, which is how the legal pages
+ * ended up reading at a different size from every other page on the site. The
+ * measure, the leading and the heading rhythm now come from `.lp-prose`, so
+ * changing the site's reading style changes these too.
+ */
 export function LegalSections({ sections }: { sections: LegalSection[] }) {
   return (
-    <div className="flex flex-col gap-6">
+    <div className="lp-prose">
       {sections.map((section) => (
-        <div key={section.title} className="flex flex-col gap-2">
-          <h2 className="text-base font-bold tracking-tight text-ink">{section.title}</h2>
-          <p className="whitespace-pre-line text-sm leading-relaxed text-ink-secondary">
-            {section.body}
-          </p>
-        </div>
+        <section key={section.title}>
+          <h2>{section.title}</h2>
+          <p style={{ whiteSpace: "pre-line" }}>{section.body}</p>
+        </section>
       ))}
     </div>
   );

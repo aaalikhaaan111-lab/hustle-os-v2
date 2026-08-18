@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { getTranslations } from "next-intl/server";
-import { PublicFooter } from "@/components/layout/PublicFooter";
+import { PublicShell } from "@/components/public/PublicShell";
+import { PublicPage } from "@/components/public/PublicPage";
 import { PLANS, type PlanId } from "@/lib/billing/plans";
 import { paddleClientConfig } from "@/lib/billing/paddle";
 import { UpgradeButton } from "@/components/billing/UpgradeButton";
@@ -118,14 +119,14 @@ export default async function PricingPage() {
   const action = (plan: PlanId) => {
     if (plan === "free") {
       return (
-        <Link href="/create?fresh=1" className="s-btn s-btn--secondary w-full">
+        <Link href="/create?fresh=1" className="lp-btn lp-btn--secondary">
           {cta.free}
         </Link>
       );
     }
     if (plan === currentPlan) {
       return (
-        <p className="s-meta flex min-h-[2.375rem] items-center justify-center">{t("currentPlan")}</p>
+        <p className="lp-plan-current">{t("currentPlan")}</p>
       );
     }
     if (plan === "pro" && paddle && user) {
@@ -137,14 +138,14 @@ export default async function PricingPage() {
           userId={user.id}
           email={user.email ?? undefined}
           label={cta.pro}
-          className="s-btn s-btn--primary w-full"
+          className="lp-btn lp-btn--primary"
         />
       );
     }
     if (plan === "pro" && paddle && !user) {
       // Checkout needs an account to attach the subscription to.
       return (
-        <Link href="/login?next=%2Fpricing" className="s-btn s-btn--primary w-full">
+        <Link href="/login?next=%2Fpricing" className="lp-btn lp-btn--primary">
           {cta.pro}
         </Link>
       );
@@ -155,130 +156,78 @@ export default async function PricingPage() {
          advertising its own implementation status, which makes the whole page
          read as unfinished. The state is unchanged: it is still disabled and
          still described by the note below, which is where "why" belongs. */
-      <button type="button" disabled aria-describedby="billing-note" className="s-btn s-btn--primary w-full">
+      <button type="button" disabled aria-describedby="billing-note" className="lp-btn lp-btn--primary">
         {cta[plan]}
       </button>
     );
   };
 
   return (
-    <>
-      {/* PRICING AS THREE PLANS, READ ONCE.
+    <PublicShell>
+      <PublicPage eyebrow={t("pageTitle")} title={t("lead")}>
+        {/* PRICING AS THREE PLANS, READ ONCE.
 
-          The table before this made a reader scan a 3x5 grid and diff cells to
-          answer "which one do I want", and it left a third of the page empty
-          where rows collapsed. Plans are cards again — but not the three equal
-          brochures that preceded the table. Each card states the price, one
-          sentence of what the plan is for, its own capability list, and its
-          own call to action, so a decision can be made from one column without
-          reading the other two. Pro is the recommended plan and looks it: a
-          filled surface, a label, and a raised edge.
-
-          Nothing about entitlements changed. Every line still reads from
-          `PLANS`, the same object the quota resolver and the publish action
-          enforce against. */}
-      <section className="px-5 pb-10 pt-10 sm:px-10 sm:pt-16">
-        <div className="mx-auto w-full max-w-[1080px]">
-          <p className="s-eyebrow mb-3">{t("pageTitle")}</p>
-          <h1 className="s-display max-w-[16ch]">{t("lead")}</h1>
-        </div>
-      </section>
-
-      <div className="mx-auto w-full max-w-[1080px] px-5 pb-20 sm:px-10">
-        <div className="grid gap-5 md:grid-cols-3 md:items-start">
+            Nothing about entitlements changed here — every line still reads
+            from `PLANS`, the same object the quota resolver and the publish
+            action enforce against, and the checkout branches are untouched.
+            What changed is the language it is drawn in: this page used the
+            application's `.s-*` classes and its own widths, so arriving from
+            the homepage meant arriving somewhere else. It is the site's own
+            plan card now, the same one the homepage's pricing band uses. */}
+        <div className="lp-plans">
           {ORDER.map((plan) => {
             const recommended = plan === "pro";
             return (
-              <section
+              <article
                 key={plan}
                 aria-labelledby={`plan-${plan}`}
-                className={`flex flex-col rounded-[var(--r-lg)] border p-6 ${
-                  recommended
-                    ? "bg-muted/60 shadow-[var(--shadow-soft)] md:-mt-3 md:pb-8 md:pt-8"
-                    : "bg-background"
-                }`}
-                style={recommended ? { borderColor: "var(--color-ink)" } : undefined}
+                className="lp-plan"
+                data-recommended={recommended ? "true" : undefined}
               >
-                <div className="flex items-center gap-2">
-                  <h2 id={`plan-${plan}`} className="s-eyebrow">{name[plan]}</h2>
-                  {recommended && (
-                    <span
-                      className="rounded-full px-2 py-0.5 text-[11.5px] font-medium"
-                      style={{ background: "var(--color-ink)", color: "var(--color-canvas)" }}
-                    >
-                      {t("mostPeople")}
-                    </span>
-                  )}
-                </div>
-
-                <p className="mt-4 flex items-baseline gap-1.5">
-                  <span className="text-[40px] font-medium leading-none tracking-[-0.03em]">
-                    {PRICE[plan]}
-                  </span>
-                  {plan !== "free" && <span className="s-meta">{t("perMonth")}</span>}
+                <p className="lp-plan-name">
+                  <span id={`plan-${plan}`}>{name[plan]}</span>
+                  {recommended && <span className="lp-plan-tag">{t("mostPeople")}</span>}
                 </p>
 
-                <p className="s-body mt-3 min-h-[2.75rem]">{tagline[plan]}</p>
+                <p className="lp-plan-price">
+                  {PRICE[plan]}
+                  {plan !== "free" && <span className="lp-plan-per"> {t("perMonth")}</span>}
+                </p>
+
+                <p className="lp-plan-line">{tagline[plan]}</p>
 
                 {/* The CTA sits with the price, because that is where the
-                    decision is made — it used to be the last row of a table
-                    five capability rows further down. */}
-                <div className="mt-6">{action(plan)}</div>
+                    decision is made. */}
+                <div className="lp-plan-cta">{action(plan)}</div>
 
                 {/* ONLY WHAT CHANGES. Two of the five capabilities are
-                    identical on every plan, and printing them in all three
-                    columns filled the cards with text a reader has to check
-                    before discovering it says nothing. They move to one line
-                    under the plans; what is left here is the difference. */}
-                <ul className="mt-7 flex flex-col gap-3">
+                    identical on every plan; printing them in all three columns
+                    fills the cards with text that says nothing. They move to
+                    one line under the plans. */}
+                <ul>
                   {DIFFERING.map((row) => (
-                    <li
-                      key={row.label}
-                      className="flex items-start gap-2.5 text-[14.5px] leading-snug"
-                      style={{ color: "var(--color-ink)" }}
-                    >
-                      <span
-                        aria-hidden
-                        className="mt-[7px] h-[3px] w-[3px] shrink-0 rounded-full"
-                        style={{ background: "var(--color-ink-muted)" }}
-                      />
-                      {row.value(plan)}
-                    </li>
+                    <li key={row.label}>{row.value(plan)}</li>
                   ))}
                 </ul>
-              </section>
+              </article>
             );
           })}
         </div>
 
-        <section className="mt-8 rounded-[var(--r-lg)] border bg-muted/40 px-6 py-5">
-          <h2 className="s-eyebrow">{t("sharedTitle")}</h2>
-          <ul className="mt-3 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:gap-x-10">
+        <section className="lp-shared">
+          <h2>{t("sharedTitle")}</h2>
+          <ul>
             {SHARED.map((row) => (
-              <li
-                key={row.label}
-                className="flex items-start gap-2.5 text-[14.5px] leading-snug"
-                style={{ color: "var(--color-ink)" }}
-              >
-                <span
-                  aria-hidden
-                  className="mt-[7px] h-[3px] w-[3px] shrink-0 rounded-full"
-                  style={{ background: "var(--color-ink-muted)" }}
-                />
-                {row.value("free")}
-              </li>
+              <li key={row.label}>{row.value("free")}</li>
             ))}
           </ul>
         </section>
 
-        <p id="billing-note" className="s-meta mt-14 max-w-2xl">
+        <p id="billing-note" className="lp-note">
           {t("billingSoon")}
         </p>
-        <p className="s-meta mt-2 max-w-2xl">{t("note")}</p>
-      </div>
-      <div className="mx-auto w-[min(100%-2rem,1080px)]">
-        <PublicFooter />
-      </div>
-    </>
+        <p className="lp-note">{t("note")}</p>
+      </PublicPage>
+    </PublicShell>
   );
 }

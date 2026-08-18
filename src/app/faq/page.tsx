@@ -1,25 +1,28 @@
 import { getTranslations } from "next-intl/server";
-import { InfoLayout } from "@/components/info/InfoLayout";
+import { PublicShell } from "@/components/public/PublicShell";
+import { PublicPage } from "@/components/public/PublicPage";
+import { Faq } from "@/components/public/Faq";
 
+/**
+ * The same accordion the homepage uses. This page used to render its own
+ * always-open question list in its own type scale — two answers to the same
+ * question, styled differently, on one site.
+ *
+ * Nothing is open on arrival here: the page is nothing but questions, so
+ * choosing one for the visitor would be arbitrary.
+ */
 export default async function FaqPage() {
   const t = await getTranslations("info");
-  const qa = [
-    { q: t("faqQ1"), a: t("faqA1") },
-    { q: t("faqQ2"), a: t("faqA2") },
-    { q: t("faqQ3"), a: t("faqA3") },
-    { q: t("faqQ4"), a: t("faqA4") },
-    { q: t("faqQ5"), a: t("faqA5") },
-  ];
+  const qa = [1, 2, 3, 4, 5].map((n) => ({
+    q: t(`faqQ${n}` as never),
+    a: t(`faqA${n}` as never),
+  }));
+
   return (
-    <InfoLayout eyebrow={t("faqEyebrow")} title={t("faqTitle")}>
-      <div className="flex flex-col divide-y divide-border border-y border-border">
-        {qa.map((item) => (
-          <div key={item.q} className="py-5">
-            <h2 className="text-[16px] font-semibold text-ink">{item.q}</h2>
-            <p className="mt-2 text-[15px] leading-7 text-ink-secondary">{item.a}</p>
-          </div>
-        ))}
-      </div>
-    </InfoLayout>
+    <PublicShell>
+      <PublicPage eyebrow={t("faqEyebrow")} title={t("faqTitle")}>
+        <Faq items={qa} initialOpen={null} />
+      </PublicPage>
+    </PublicShell>
   );
 }

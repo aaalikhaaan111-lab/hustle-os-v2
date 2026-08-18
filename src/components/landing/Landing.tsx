@@ -1,11 +1,11 @@
-import type { ReactNode } from "react";
 import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 import { PLANS, type PlanId } from "@/lib/billing/plans";
 import { LandingComposer } from "@/components/landing/LandingComposer";
-import { CardDeck, Chip, Faq, LandingHeader } from "@/components/landing/LandingParts";
+import { CardDeck } from "@/components/landing/LandingParts";
+import { Chip } from "@/components/public/PublicHeader";
+import { Faq } from "@/components/public/Faq";
 import { AfterStage } from "@/components/landing/AfterStage";
-import "@/components/landing/landing.css";
 
 /**
  * The public landing page.
@@ -27,13 +27,7 @@ import "@/components/landing/landing.css";
  * enforces against, so the page cannot advertise a limit the product does not
  * apply.
  */
-export async function Landing({
-  isAuthenticated,
-  footer,
-}: {
-  isAuthenticated: boolean;
-  footer: ReactNode;
-}) {
+export async function Landing({ isAuthenticated }: { isAuthenticated: boolean }) {
   const t = await getTranslations("landing");
   const tp = await getTranslations("pricing");
 
@@ -67,10 +61,16 @@ export async function Landing({
   const PRICE: Record<PlanId, string> = { free: "$0", pro: "$19", studio: "$49" };
   const plans: PlanId[] = ["free", "pro", "studio"];
 
-  return (
-    <div className="lp">
-      <LandingHeader isAuthenticated={isAuthenticated} />
+  /* The words inside the card drawings, so the illustrations speak the
+     visitor's language rather than English. */
+  const figures = {
+    say: t("figSay"),
+    price: t("figPrice"),
+    memory: [t("figMemory1"), t("figMemory2"), t("figMemory3")],
+  };
 
+  return (
+    <>
       {/* ── hero ─────────────────────────────────────────────────────────── */}
       <section className="lp-wrap">
         <div className="lp-hero-canvas">
@@ -124,7 +124,7 @@ export async function Landing({
             <p>{t("whyLede")}</p>
           </div>
 
-        <CardDeck cards={why} />
+        <CardDeck cards={why} figures={figures} />
       </section>
 
       {/* ── after launch: list + a real conversation ─────────────────────── */}
@@ -230,7 +230,6 @@ export async function Landing({
           </div>
       </section>
 
-      <div className="lp-wrap">{footer}</div>
-    </div>
+    </>
   );
 }

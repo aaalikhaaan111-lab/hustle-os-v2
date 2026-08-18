@@ -1,9 +1,7 @@
-import { BackNav } from "@/components/layout/BackNav";
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
-import { PageHeader } from "@/components/ui/PageHeader";
-import { Card, CardContent } from "@/components/ui/Card";
-import { PublicFooter } from "@/components/layout/PublicFooter";
+import { PublicShell } from "@/components/public/PublicShell";
+import { PublicPage } from "@/components/public/PublicPage";
 import { legalConfig } from "@/config/legal";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -13,31 +11,18 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default async function ContactPage() {
   const t = await getTranslations("legal.contact");
-  const tc = await getTranslations("common");
 
   return (
-    <>
-    <div className="mx-auto flex max-w-2xl flex-col gap-6 py-4 sm:py-6">
-      <BackNav fallback="/" label={tc("backToVentrio")} />
-      <PageHeader title={t("pageTitle")} description={t("intro")} />
-      <Card className="max-w-md">
-        <CardContent className="flex flex-col gap-2 py-6">
-          <span className="s-eyebrow">
-            {t("emailLabel")}
-          </span>
-          <a
-            href={`mailto:${legalConfig.contactEmail}`}
-            className="text-lg font-bold text-accent hover:text-accent-hover"
-          >
-            {legalConfig.contactEmail}
-          </a>
-          <p className="mt-2 text-sm text-ink-secondary">{t("responseNote")}</p>
-        </CardContent>
-      </Card>
-    </div>
-      <div className="mx-auto w-[min(100%-2rem,1280px)]">
-        <PublicFooter />
-      </div>
-    </>
+    <PublicShell>
+      <PublicPage title={t("pageTitle")} lede={t("intro")} narrow>
+        <div className="lp-tile">
+          <p className="lp-eyebrow">{t("emailLabel")}</p>
+          <p className="lp-contact-email">
+            <a href={`mailto:${legalConfig.contactEmail}`}>{legalConfig.contactEmail}</a>
+          </p>
+          <p>{t("responseNote")}</p>
+        </div>
+      </PublicPage>
+    </PublicShell>
   );
 }

@@ -1,206 +1,59 @@
-"use client";
-
-import { useEffect, useState } from "react";
-import Link from "next/link";
-import { useTranslations } from "next-intl";
-import { VentrioMark } from "@/components/workspace-ui/parts";
-import {
-  NavigationMenu,
-  NavigationMenuContent,
-  NavigationMenuItem,
-  NavigationMenuLink,
-  NavigationMenuList,
-  NavigationMenuTrigger,
-} from "@/components/ui/shadcn/navigation-menu";
-
-/**
- * The chip button.
- *
- * THE LABEL IS PRESENT TWICE, ON PURPOSE. The label sits in an `overflow:
- * hidden` window with two stacked copies; on hover the stack translates exactly
- * one line-height, so the first copy leaves as the second arrives and the
- * control never changes size.
- *
- * The swap runs at 260ms with a short blur through the middle of the travel —
- * at the 140ms it used to run, the two labels read as a flicker rather than as
- * one label being replaced by another.
- */
-export function Chip({
-  href,
-  label,
-  large = false,
-}: {
-  href: string;
-  label: string;
-  large?: boolean;
-}) {
-  return (
-    <Link href={href} className={`lp-chip${large ? " lp-chip--lg" : ""}`}>
-      <span className="lp-chip-icon" aria-hidden>
-        <span className="lp-swap">
-          <span className="lp-swap-a">
-            <Arrow />
-          </span>
-          <span className="lp-swap-b">
-            <Arrow />
-          </span>
-        </span>
-      </span>
-      <span className="lp-chip-label">
-        <span className="lp-swap">
-          <span className="lp-swap-a">{label}</span>
-          <span className="lp-swap-b" aria-hidden>
-            {label}
-          </span>
-        </span>
-      </span>
-    </Link>
-  );
-}
-
-function Arrow() {
-  return (
-    <svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M3 8h9M8.5 4.5 12 8l-3.5 3.5" />
-    </svg>
-  );
-}
-
-/**
- * The header, on shadcn's Navigation Menu.
- *
- * MATHEMATICALLY CENTRED. The grid was `auto 1fr auto`, so the middle column
- * began after the brand and ended before the CTA — and because those two are
- * different widths (about 95px against 165px), centring the nav inside that
- * column left it roughly 35px to the left of the actual centre of the page. The
- * columns are `1fr auto 1fr` now: the side tracks are equal by definition, so
- * the middle one is centred in the viewport whatever the brand or the button
- * happen to measure.
- *
- * Each destination is a trigger with a panel rather than a bare link, because
- * the panel is where a visitor finds out what is behind the word before
- * committing a click. Every link inside a panel is a route that exists.
- */
-export function LandingHeader({ isAuthenticated }: { isAuthenticated: boolean }) {
-  const t = useTranslations("landing");
-  const [stuck, setStuck] = useState(false);
-
-  useEffect(() => {
-    const onScroll = () => setStuck(window.scrollY > 8);
-    onScroll();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
-  }, []);
-
-  const menus = [
-    {
-      label: t("navHow"),
-      lead: t("menuHowLead"),
-      links: [
-        { href: "#how", title: t("menuHowA"), desc: t("menuHowADesc") },
-        { href: "#after", title: t("menuHowB"), desc: t("menuHowBDesc") },
-      ],
-    },
-    {
-      label: t("navPricing"),
-      lead: t("menuPriceLead"),
-      links: [
-        { href: "/pricing", title: t("menuPriceA"), desc: t("menuPriceADesc") },
-        { href: "#pricing", title: t("menuPriceB"), desc: t("menuPriceBDesc") },
-      ],
-    },
-    {
-      label: t("navAbout"),
-      lead: t("menuAboutLead"),
-      links: [
-        { href: "/about", title: t("menuAboutA"), desc: t("menuAboutADesc") },
-        { href: "/who-its-for", title: t("menuAboutB"), desc: t("menuAboutBDesc") },
-      ],
-    },
-    {
-      label: t("navFaq"),
-      lead: t("menuHelpLead"),
-      links: [
-        { href: "/faq", title: t("menuHelpA"), desc: t("menuHelpADesc") },
-        { href: "/contact", title: t("menuHelpB"), desc: t("menuHelpBDesc") },
-      ],
-    },
-  ];
-
-  return (
-    <header className="lp-header" data-stuck={stuck ? "true" : undefined}>
-      <div className="lp-wrap lp-header-inner">
-        <Link href="/" className="lp-brand">
-          <VentrioMark size={20} />
-          Ventrio
-        </Link>
-
-        <NavigationMenu className="lp-nav" aria-label={t("menuLabel")}>
-          <NavigationMenuList className="lp-nav-list">
-            {menus.map((menu) => (
-              <NavigationMenuItem key={menu.label}>
-                <NavigationMenuTrigger className="lp-nav-trigger">
-                  {menu.label}
-                </NavigationMenuTrigger>
-                <NavigationMenuContent className="lp-nav-panel">
-                  <p className="lp-nav-lead">{menu.lead}</p>
-                  <ul className="lp-nav-links">
-                    {menu.links.map((link) => (
-                      <li key={link.href}>
-                        <NavigationMenuLink asChild>
-                          {link.href.startsWith("#") ? (
-                            <a href={link.href} className="lp-nav-card">
-                              <span className="lp-nav-card-title">{link.title}</span>
-                              <span className="lp-nav-card-desc">{link.desc}</span>
-                            </a>
-                          ) : (
-                            <Link href={link.href} className="lp-nav-card">
-                              <span className="lp-nav-card-title">{link.title}</span>
-                              <span className="lp-nav-card-desc">{link.desc}</span>
-                            </Link>
-                          )}
-                        </NavigationMenuLink>
-                      </li>
-                    ))}
-                  </ul>
-                </NavigationMenuContent>
-              </NavigationMenuItem>
-            ))}
-          </NavigationMenuList>
-        </NavigationMenu>
-
-        <div className="lp-header-cta">
-          <Chip
-            href={isAuthenticated ? "/dashboard" : "/signup?next=%2Fcreate"}
-            label={isAuthenticated ? t("ctaOpen") : t("ctaStart")}
-          />
-        </div>
-      </div>
-    </header>
-  );
-}
-
 /**
  * The four cards.
  *
- * NOT INTERACTIVE ANY MORE. They were buttons in a hover accordion: pointing at
- * one widened it and collapsed its neighbours, so reading the row moved the row.
- * They are plain articles now, all the same size, and nothing a visitor does
- * changes the layout.
- *
- * What hover adds is a small drawn figure inside the card being pointed at, and
- * only that card. The figure is CSS — a stack of bars standing for a page, a
- * cursor, a thread — because a photograph or a stock illustration here would be
- * decoration, and these are meant to say something about the sentence above
- * them.
- *
- * On touch there is no hover, so the stylesheet shows the figure permanently in
- * a compact form: nothing is behind an interaction the device cannot perform.
+ * The header, the chip button and the FAQ accordion used to live here too. They
+ * are shared public chrome now — `@/components/public/PublicHeader` and
+ * `@/components/public/Faq` — because every one of them appears on pages other
+ * than this one. What is left is the piece that belongs to the homepage alone.
  */
+
+/**
+ * THE FIGURES ARE DRAWINGS OF THE PRODUCT, NOT DECORATION.
+ *
+ * They were three rounded bars of varying width, repeated in all four cards with
+ * the widths shuffled. That is a skeleton loader, not an illustration: it said
+ * "some content goes here" four times and explained none of the four sentences
+ * it sat above.
+ *
+ * Each card now draws the specific thing its sentence claims:
+ *
+ *   01  a stack of versions with the newest in front — version one is the
+ *       bottom of a pile, not the end of one;
+ *   02  a sentence you could actually say, and the one value on the page that
+ *       changed because you said it — no panel, no form, no settings screen;
+ *   03  the project, with the things Ventrio is holding onto about it;
+ *   04  the conversation and the running product side by side, which is the
+ *       literal shape of the workspace.
+ *
+ * They are built from bordered surfaces, bubbles and a real numeral rather than
+ * grey bars, so they read as small pictures of the product. Everything is CSS —
+ * no images to go stale, nothing to load.
+ *
+ * The words inside them are TRANSLATED and passed in. An illustration with
+ * "make the price bigger" hard-coded in English is an English illustration, and
+ * half of Ventrio's visitors do not read English.
+ */
+export interface CardCopy {
+  n: number;
+  title: string;
+  body: string;
+}
+
+export interface FigureCopy {
+  /** The instruction someone speaks in card 02. */
+  say: string;
+  /** The value on the page that changed because they said it. */
+  price: string;
+  /** What Ventrio is holding about the project, in card 03. */
+  memory: string[];
+}
+
 export function CardDeck({
   cards,
+  figures,
 }: {
-  cards: { n: number; title: string; body: string }[];
+  cards: CardCopy[];
+  figures: FigureCopy;
 }) {
   return (
     <div className="lp-deck">
@@ -210,11 +63,8 @@ export function CardDeck({
             {String(card.n).padStart(2, "0")}
           </span>
 
-          {/* The figure. Purely illustrative, hidden from assistive tech. */}
           <span className={`lp-figure lp-figure--${card.n}`} aria-hidden>
-            <span />
-            <span />
-            <span />
+            <CardFigure n={card.n} figures={figures} />
           </span>
 
           <span className="lp-card-text">
@@ -227,43 +77,67 @@ export function CardDeck({
   );
 }
 
-/**
- * The FAQ, as a real accordion.
- *
- * It was six static question-and-answer blocks, every answer always open, which
- * is a wall of text rather than a list of questions. The whole row is the
- * control, one answer is open at a time, and the height animates rather than
- * snapping.
- *
- * SINGLE-OPEN, deliberately: with six items and short answers, letting several
- * stand open recreates the wall this replaces.
- */
-export function Faq({ items }: { items: { q: string; a: string }[] }) {
-  const [open, setOpen] = useState<number | null>(0);
+function CardFigure({ n, figures }: { n: number; figures: FigureCopy }) {
+  /* 01 — a pile of versions, newest in front. */
+  if (n === 1) {
+    return (
+      <span className="lp-fig lp-fig--versions">
+        <span className="lp-fig-sheet lp-fig-sheet--back" />
+        <span className="lp-fig-sheet lp-fig-sheet--mid" />
+        <span className="lp-fig-sheet lp-fig-sheet--front">
+          <span className="lp-fig-bar lp-fig-bar--title" />
+          <span className="lp-fig-bar" />
+          <span className="lp-fig-bar lp-fig-bar--short" />
+        </span>
+        <span className="lp-fig-tag">v3</span>
+      </span>
+    );
+  }
 
+  /* 02 — you say it, and one thing on the page is different. */
+  if (n === 2) {
+    return (
+      <span className="lp-fig lp-fig--say">
+        <span className="lp-fig-bubble">{figures.say}</span>
+        <span className="lp-fig-page">
+          <span className="lp-fig-bar lp-fig-bar--title" />
+          <span className="lp-fig-price">{figures.price}</span>
+          <span className="lp-fig-bar lp-fig-bar--short" />
+        </span>
+      </span>
+    );
+  }
+
+  /* 03 — the project, and what is being held about it. */
+  if (n === 3) {
+    return (
+      <span className="lp-fig lp-fig--memory">
+        <span className="lp-fig-proj">
+          <span className="lp-fig-dot" />
+          <span className="lp-fig-bar lp-fig-bar--title" />
+        </span>
+        <span className="lp-fig-chips">
+          {figures.memory.map((chip) => (
+            <span key={chip}>{chip}</span>
+          ))}
+        </span>
+      </span>
+    );
+  }
+
+  /* 04 — the conversation and the running product, side by side. */
   return (
-    <div className="lp-faq">
-      {items.map((item, index) => {
-        const isOpen = index === open;
-        return (
-          <div key={item.q} className="lp-faq-item" data-open={isOpen ? "true" : undefined}>
-            <button
-              type="button"
-              className="lp-faq-q"
-              aria-expanded={isOpen}
-              onClick={() => setOpen(isOpen ? null : index)}
-            >
-              <span>{item.q}</span>
-              <span className="lp-faq-mark" aria-hidden />
-            </button>
-            <div className="lp-faq-a">
-              <div>
-                <p>{item.a}</p>
-              </div>
-            </div>
-          </div>
-        );
-      })}
-    </div>
+    <span className="lp-fig lp-fig--split">
+      <span className="lp-fig-chat">
+        <span className="lp-fig-msg" />
+        <span className="lp-fig-msg lp-fig-msg--me" />
+        <span className="lp-fig-msg" />
+      </span>
+      <span className="lp-fig-pane">
+        <span className="lp-fig-bar lp-fig-bar--title" />
+        <span className="lp-fig-bar" />
+        <span className="lp-fig-bar lp-fig-bar--short" />
+      </span>
+    </span>
   );
 }

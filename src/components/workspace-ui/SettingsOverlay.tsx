@@ -9,7 +9,8 @@ import {
 } from "@/components/ui/shadcn/dialog";
 import { Skeleton } from "@/components/ui/shadcn/skeleton";
 import { SettingsClient, type SettingsSection } from "@/app/settings/SettingsClient";
-import { loadSettingsDataAction, type SettingsData } from "@/lib/actions/settings";
+import { loadSettingsDataAction } from "@/lib/actions/settings";
+import type { SettingsData } from "@/lib/workspace/settingsData";
 
 /**
  * Settings, over the application rather than instead of it.
@@ -86,6 +87,9 @@ export function SettingsOverlay({
               initialSection={section}
               email={data.email}
               displayName={data.displayName}
+              preferredName={data.preferredName}
+              workDescription={data.workDescription}
+              personalInstructions={data.personalInstructions}
               usage={data.usage}
               embedded
             />
