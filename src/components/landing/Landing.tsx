@@ -3,7 +3,7 @@ import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 import { PLANS, type PlanId } from "@/lib/billing/plans";
 import { LandingComposer } from "@/components/landing/LandingComposer";
-import { CardDeck, Chip, LandingHeader } from "@/components/landing/LandingParts";
+import { CardDeck, Chip, Faq, LandingHeader } from "@/components/landing/LandingParts";
 import { AfterStage } from "@/components/landing/AfterStage";
 import "@/components/landing/landing.css";
 
@@ -215,14 +215,7 @@ export async function Landing({
             </div>
           </div>
 
-        <div className="lp-faq">
-          {faq.map((item) => (
-            <div key={item.q} className="lp-faq-item">
-                <h3>{item.q}</h3>
-                <p>{item.a}</p>
-              </div>
-          ))}
-        </div>
+        <Faq items={faq} />
       </section>
 
       {/* ── closing ─────────────────────────────────────────────────────── */}

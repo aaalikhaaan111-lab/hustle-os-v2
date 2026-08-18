@@ -99,18 +99,22 @@ check("navigation survives on narrow screens",
 check("nothing is revealed on scroll",
   !/lp-reveal/.test(css) && !/IntersectionObserver/.test(read("src/components/landing/LandingParts.tsx")),
   "an entrance tied to scroll position is the thing this page stopped doing");
-check("there are no entrance keyframes at all", (css.match(/@keyframes/g) ?? []).length === 0);
+check("the one keyframe animation is a transition, not an entrance",
+  (css.match(/@keyframes/g) ?? []).length === 1 && /@keyframes lp-blur/.test(css),
+  "a keyframe that runs on load is an entrance; this one only runs while a label travels");
 
 /* The interactions that replaced it, each verified in the browser against the
    reference: a label that swaps in place, and a card deck that opens one at a
    time under the pointer. */
 check("the button swaps its label without resizing",
   /\.lp-swap\b/.test(css) && /translateY\(-100%\)/.test(css));
-check("the card deck opens one card at a time",
-  /\.lp-card\[data-open="true"\][\s\S]{0,200}flex-grow/.test(css));
-check("and every card is open where there is no pointer to hover with",
-  /@media \(hover: none\), \(max-width: 1049px\)[\s\S]{0,200}grid-template-rows: 1fr/.test(css),
-  "hiding copy behind hover loses it entirely on a phone");
+check("a card is not interactive and reveals its figure on hover alone",
+  /<article key=\{card\.n\} className="lp-card"/.test(read("src/components/landing/LandingParts.tsx")) &&
+  /@media \(hover: hover\)[\s\S]{0,240}\.lp-card:hover \.lp-figure/.test(css),
+  "the deck used to resize like an accordion; now only the hovered card changes, and only visually");
+check("and the figure is simply present where there is no pointer to hover with",
+  /@media \(hover: none\)[\s\S]{0,200}\.lp-figure \{ opacity: 0\.65/.test(css),
+  "a visual revealed only on hover does not exist on a phone");
 check("touch gets its own feedback",
   /@media \(hover: none\)[\s\S]{0,300}:active/.test(css));
 check("and all of it stops under reduced motion",
@@ -122,8 +126,9 @@ const parts = read("src/components/landing/LandingParts.tsx");
 check("navigation uses shadcn's Navigation Menu",
   /@\/components\/ui\/shadcn\/navigation-menu/.test(parts) &&
   /<NavigationMenuLink/.test(parts));
-check("with no dropdown machinery wrapped around four links",
-  /viewport=\{false\}/.test(parts));
+check("and every item opens a real panel rather than underlining itself",
+  /<NavigationMenuTrigger/.test(parts) && /<NavigationMenuContent/.test(parts) &&
+  /\.lp-nav-panel/.test(css));
 check("destinations are real pages plus the one section that is not",
   /"\/pricing"/.test(parts) && /"\/about"/.test(parts) && /"\/faq"/.test(parts) && /"#how"/.test(parts));
 check("and the anchor lands clear of the sticky header",
@@ -142,13 +147,15 @@ check("and the anchor lands clear of the sticky header",
  * pointer actually moves.
  */
 const stage = read("src/components/landing/AfterStage.tsx");
-check("hover selection cannot be triggered by a reflow",
-  !/onMouseEnter=/.test(stage) && /onMouseMove=/.test(stage),
-  "a reflow must never be able to change the selection under a still cursor");
-check("the same rule applies to the card deck",
-  !/onMouseEnter=/.test(parts) && /onMouseMove=/.test(parts));
-check("every action is a real button, so touch needs no hover",
-  (stage.match(/type="button"/g) ?? []).length >= 2);
+check("the stage changes on click only",
+  !/onMouseEnter=/.test(stage) && !/onMouseMove=/.test(stage) && /onClick=/.test(stage),
+  "moving a pointer down the list must not play four things at the reader");
+check("and the stage box never changes size when it does",
+  /aspect-ratio: 16 \/ 10/.test(css) && /\.lp-stage \{[\s\S]{0,200}overflow: hidden/.test(css),
+  "a stage that resizes with its contents moves the page under the reader");
+check("every section is a real button inside a tablist",
+  /role="tablist"/.test(stage) && /role="tab"/.test(stage) &&
+  /type="button"/.test(stage) && /aria-selected=/.test(stage));
 check("all four states exist", /"words"/.test(stage) && /"device"/.test(stage) &&
   /"feedback"/.test(stage) && /"anywhere"/.test(stage));
 check("the stage uses Motion for React", /from "motion\/react"/.test(stage));
@@ -160,14 +167,15 @@ check("and honours reduced motion in its own transitions",
  * labelled as an example — Ventrio counts responses, it does not track
  * visitors, and the landing must not imply otherwise.
  */
-check("no image or video assets stand in for the demos",
-  !/<img|<video/.test(stage));
-check("illustrative figures say that they are illustrative",
-  /demoFeedbackNote/.test(stage) &&
-  /Example figures/i.test(en.demoFeedbackNote) &&
-  /для примера/i.test(ru.demoFeedbackNote));
-check("the messenger demo repeats that it is not shipped",
-  /not available yet/i.test(en.demoAnywhereNote) && /пока недоступен/i.test(ru.demoAnywhereNote));
+check("the media slots are declared but no asset is invented to fill them",
+  /video\?: string/.test(stage) && !/\.mp4|\.webm|\.gif/.test(stage),
+  "the messenger clip was explicitly out of scope; inventing the other three is the same mistake");
+check("an empty slot says it is empty, in both languages",
+  /stageSlotNote/.test(stage) && /stageSoon/.test(stage) &&
+  /coming/i.test(en.stageSoon) && /скоро/i.test(ru.stageSoon));
+check("and the FAQ is a real single-open accordion",
+  /aria-expanded=/.test(parts) && /\.lp-faq-a \{[\s\S]{0,160}grid-template-rows: 0fr/.test(css) &&
+  /\.lp-faq-item\[data-open="true"\] \.lp-faq-a \{ grid-template-rows: 1fr/.test(css));
 
 /* ── report ─────────────────────────────────────────────────────────────── */
 
