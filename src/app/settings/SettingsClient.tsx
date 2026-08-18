@@ -5,7 +5,7 @@ import { useTranslations } from "next-intl";
 import { LanguageSwitcher } from "@/components/layout/LanguageSwitcher";
 import { LogoutButton } from "@/components/profile/LogoutButton";
 import { ProfileForm } from "@/components/profile/ProfileForm";
-import { PageBody, PageHeading } from "@/components/workspace-ui/PageBody";
+import { PageBody } from "@/components/workspace-ui/PageBody";
 import {
   IconAnalytics,
   IconGlobe,
@@ -26,7 +26,9 @@ import {
 } from "@/components/ui/shadcn/card";
 import type { WorkspaceUsage } from "@/lib/workspace/usage";
 
-type Section = "profile" | "usage" | "appearance" | "language" | "privacy" | "account";
+export type SettingsSection =
+  | "profile" | "usage" | "appearance" | "language" | "privacy" | "account";
+type Section = SettingsSection;
 
 /**
  * Settings as one product: sections on the left, the selected one on the right.
@@ -53,11 +55,21 @@ export function SettingsClient({
   email,
   displayName,
   usage,
+  embedded = false,
 }: {
   initialSection: Section;
   email: string;
   displayName: string;
   usage: WorkspaceUsage;
+  /**
+   * Rendered inside the overlay rather than as the /settings route.
+   *
+   * The only difference is the frame: the dialog supplies its own padding and
+   * scroll container, so the page shell's wide measure and tall top margin
+   * would double up inside it. Everything below this line is identical, which
+   * is the point — one settings implementation, two places to meet it.
+   */
+  embedded?: boolean;
 }) {
   const t = useTranslations("workspace");
   const tFooter = useTranslations("footer");
@@ -75,9 +87,9 @@ export function SettingsClient({
 
   const initials = (displayName || email || "?").slice(0, 2).toUpperCase();
 
-  return (
-    <PageBody>
-      <PageHeading title={t("settingsTitle")} />
+  const body = (
+    <>
+      <h1 className={embedded ? "s-title" : "s-display"}>{t("settingsTitle")}</h1>
 
       <div className="mt-8 flex flex-col gap-8 md:flex-row md:gap-12">
         {/* A list on desktop, a compact scrollable selector on small screens.
@@ -85,7 +97,11 @@ export function SettingsClient({
             gutter at both ends, so the last section is never half-cut. */}
         <nav
           aria-label={t("settingsTitle")}
-          className="-mx-5 flex shrink-0 gap-1 overflow-x-auto px-5 pb-1 [scrollbar-width:none] md:sticky md:top-8 md:mx-0 md:h-fit md:w-52 md:flex-col md:overflow-visible md:px-0 md:pb-0"
+          className={`flex shrink-0 gap-1 overflow-x-auto pb-1 [scrollbar-width:none] md:sticky md:top-0 md:mx-0 md:h-fit md:w-52 md:flex-col md:overflow-visible md:px-0 md:pb-0 ${
+            /* Bleed to whichever edge this is mounted against, so the last
+               section is never half-cut by the container's own padding. */
+            embedded ? "-mx-6 px-6 md:-mx-0 md:px-0" : "-mx-5 px-5 md:px-0"
+          }`}
         >
           {sections.map((item) => {
             const active = section === item.id;
@@ -276,8 +292,11 @@ export function SettingsClient({
           )}
         </div>
       </div>
-    </PageBody>
+    </>
   );
+
+  // The overlay owns its padding and scrolling; the route owns its column.
+  return embedded ? <div className="p-6 md:p-10">{body}</div> : <PageBody>{body}</PageBody>;
 }
 
 /**
