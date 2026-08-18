@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
+import { AskStrip } from "@/components/create/AskStrip";
 import {
   ensureCreationDraftAction,
   generateCreationTurnAction,
@@ -537,7 +538,6 @@ export function CreateExperience({ userId, initialDraft, fresh = false }: Create
                   faded out exactly when it was needed. */}
               <div className="flex flex-col gap-5">
                 {messages.map((message, index) => {
-                  const isLatestAssistant = message.role === "assistant" && index === messages.length - 1;
                   return message.role === "user" ? (
                     <UserTurn key={index}>{message.content}</UserTurn>
                   ) : (
@@ -557,48 +557,14 @@ export function CreateExperience({ userId, initialDraft, fresh = false }: Create
                           drift this component exists to prevent. */}
                       <AssistantTurn>{message.content}</AssistantTurn>
 
-                      {/* The options this message offered, under this message.
-                          They used to render as a separate block after the whole
-                          conversation, which made them read as navigation that
-                          happened to be nearby rather than as part of what the
-                          assistant just said. Nothing times them out: they stay
-                          until they are used, until the conversation moves on,
-                          or until a newer assistant message replaces them. */}
-                      {isLatestAssistant && showChoices && (
-                        <ChoiceGrid
-                          choices={turn.choices}
-                          multiple={turn.choiceMode === "multiple"}
-                          selected={selectedChoices}
-                          busy={isSending || creating}
-                          onPick={pickChoice}
-                          onContinue={submitMultipleChoices}
-                        />
-                      )}
+                      {/* The options this message offered are NOT rendered
+                          here any more. In the transcript they scrolled away
+                          from the composer and read as navigation sitting near
+                          a message; they are a strip docked above the composer
+                          now, which is where the answer is going to be typed.
+                          See AskStrip, below the conversation. */}
 
-                      {isLatestAssistant && showDirections && (
-                        <div className="choice-stack">
-                          {turn.directions.map((direction, directionIndex) => (
-                            <DirectionRow
-                              key={`${direction.name}-${directionIndex}`}
-                              direction={direction}
-                              index={directionIndex}
-                              selected={selectedDirection === directionIndex}
-                              busy={creating || isSending}
-                              onChoose={() => chooseDirection(direction, directionIndex)}
-                              onRefine={() => beginRefine(direction.name)}
-                            />
-                          ))}
-                          <button
-                            type="button"
-                            disabled={creating || isSending}
-                            onClick={() => send(t("anotherMsg"), null)}
-                            className="direction-another focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-40"
-                          >
-                            <span aria-hidden>↗</span>
-                            {t("showAnother")}
-                          </button>
-                        </div>
-                      )}
+                      {/* Directions are likewise docked to the composer. */}
                     </div>
                   );
                 })}
@@ -657,7 +623,88 @@ export function CreateExperience({ userId, initialDraft, fresh = false }: Create
         style={{ background: "linear-gradient(to top, var(--color-canvas) 68%, transparent)" }}
       >
         <div className="mx-auto w-full max-w-[704px]">
-          {showChoices && <p className="mb-2 px-1 text-xs text-ink-muted">{t("orType")}</p>}
+          {/* THE QUESTION, ATTACHED TO THE ANSWER.
+              Clarifications and direction proposals both arrive here, directly
+              above the composer, as chips rather than as a stack of full-width
+              cards inside the transcript. */}
+          {showChoices && (
+            <AskStrip
+              multiple={turn?.choiceMode === "multiple"}
+              options={(turn?.choices ?? []).map((choice) => ({
+                id: choice.id,
+                label: choice.title,
+                hint: choice.description ?? undefined,
+              }))}
+              selected={selectedChoices}
+              disabled={isSending || creating}
+              hint={t("orType")}
+              onPick={(option) => {
+                const choice = turn?.choices.find((candidate) => candidate.id === option.id);
+                if (choice) pickChoice(choice);
+              }}
+              footer={
+                turn?.choiceMode === "multiple" ? (
+                  <VentrioButton
+                    variant="primary"
+                    size="sm"
+                    disabled={isSending || creating || selectedChoices.length === 0}
+                    onClick={submitMultipleChoices}
+                    weight="medium"
+                  >
+                    {t("continueChoices")}
+                  </VentrioButton>
+                ) : null
+              }
+            />
+          )}
+
+          {showDirections && (
+            <AskStrip
+              options={(turn?.directions ?? []).map((direction, index) => ({
+                id: String(index),
+                label: direction.name,
+                hint: direction.concept,
+              }))}
+              selected={selectedDirection === null ? [] : [String(selectedDirection)]}
+              disabled={isSending || creating}
+              hint={t("orType")}
+              onPick={(option) => {
+                const index = Number(option.id);
+                const direction = turn?.directions[index];
+                if (direction) chooseDirection(direction, index);
+              }}
+              footer={
+                /* "Refine" was a button welded to the side of every card. It is
+                   one quiet action for the strip now, and "show another" keeps
+                   its place beside it — both still reach the same handlers. */
+                <>
+                  {(turn?.directions ?? []).map((direction, index) => (
+                    <VentrioButton
+                      key={`${direction.name}-${index}`}
+                      variant="ghost"
+                      size="sm"
+                      disabled={isSending || creating}
+                      onClick={() => beginRefine(direction.name)}
+                      weight="medium"
+                      className="text-[13px]"
+                    >
+                      {t("refine")}: {direction.name}
+                    </VentrioButton>
+                  ))}
+                  <VentrioButton
+                    variant="ghost"
+                    size="sm"
+                    disabled={creating || isSending}
+                    onClick={() => send(t("anotherMsg"), null)}
+                    weight="medium"
+                    className="text-[13px]"
+                  >
+                    {t("showAnother")}
+                  </VentrioButton>
+                </>
+              }
+            />
+          )}
           {refineTarget && (
             <p className="mb-2 px-1 text-xs leading-5 text-ink-secondary">
               {t("refineQuestion", { name: refineTarget })}
@@ -743,116 +790,3 @@ export function CreateExperience({ userId, initialDraft, fresh = false }: Create
     </div>
   );
 }
-
-
-function ChoiceGrid({
-  choices,
-  multiple,
-  selected,
-  busy,
-  onPick,
-  onContinue,
-}: {
-  choices: CreationChoice[];
-  multiple: boolean;
-  selected: string[];
-  busy: boolean;
-  onPick: (choice: CreationChoice) => void;
-  onContinue: () => void;
-}) {
-  const t = useTranslations("create");
-  return (
-    <div className="emergence flex flex-col gap-3" aria-label={t("choicesLabel")}>
-      {multiple && <p className="text-xs font-medium text-ink-muted">{t("chooseSeveral")}</p>}
-      <div className="choice-stack">
-        {choices.map((choice, index) => {
-          const active = selected.includes(choice.id);
-          return (
-            <div key={choice.id} className="choice-row-wrap" style={{ animationDelay: `${index * 45}ms` }}>
-              <button
-                type="button"
-                disabled={busy}
-                aria-pressed={multiple ? active : undefined}
-                onClick={() => onPick(choice)}
-                className={cn("choice-row", active && "is-selected")}
-              >
-                <span className="choice-row-text">
-                  <span className="choice-row-title">{choice.title}</span>
-                  {choice.description && <span className="choice-row-hint">{choice.description}</span>}
-                </span>
-                {active && <span aria-hidden style={{ color: "var(--color-accent)" }}>✓</span>}
-              </button>
-            </div>
-          );
-        })}
-      </div>
-      {multiple && (
-        <VentrioButton
-          variant="primary"
-          size="sm"
-          disabled={busy || selected.length === 0}
-          onClick={onContinue}
-          className="w-fit"
-        >
-          {t("continueChoices")} <span aria-hidden>→</span>
-        </VentrioButton>
-      )}
-    </div>
-  );
-}
-
-/**
- * One proposed direction, as a row.
- *
- * This replaced a card carrying a display-size heading, three labelled detail
- * rows and two buttons. Everything it dropped — who it is for, what Ventrio
- * will create, why it fits — the assistant has already said in the message
- * directly above; repeating it in a card turned an answer into a form. What is
- * left is the name and one line, which is what a person needs to choose.
- *
- * Refine sits beside the row rather than inside it: a button cannot contain a
- * button, and dropping Refine to make the whole row clickable would cost a real
- * action for a rule about clicking.
- */
-function DirectionRow({
-  direction,
-  index,
-  selected,
-  busy,
-  onChoose,
-  onRefine,
-}: {
-  direction: CreationDirection;
-  index: number;
-  selected: boolean;
-  busy: boolean;
-  onChoose: () => void;
-  onRefine: () => void;
-}) {
-  const t = useTranslations("create");
-  return (
-    <div className="choice-row-wrap" style={{ animationDelay: `${index * 45}ms` }}>
-      <button
-        type="button"
-        disabled={busy}
-        onClick={onChoose}
-        className={cn("choice-row", selected && "is-selected")}
-      >
-        <span className="choice-row-text">
-          <span className="choice-row-title">{direction.name}</span>
-          <span className="choice-row-hint">{direction.concept}</span>
-        </span>
-        {selected && (
-          <span className="shrink-0 text-[13px]" style={{ color: "var(--color-accent)" }}>
-            {t("buildThis")}
-          </span>
-        )}
-      </button>
-      <button type="button" disabled={busy} onClick={onRefine} className="choice-row-aside">
-        {t("refine")}
-      </button>
-    </div>
-  );
-}
-
-

@@ -96,8 +96,20 @@ check(
 
 /* ── 3. options belong to the message that offered them ──────────────────── */
 
-check("choices render inside the assistant turn", /isLatestAssistant && showChoices/.test(createExperience));
-check("directions render inside the assistant turn", /isLatestAssistant && showDirections/.test(createExperience));
+/*
+ * THE OPTIONS LEFT THE TRANSCRIPT.
+ *
+ * They used to render inside the latest assistant turn, which is why they had
+ * to be gated on being the latest one — options belonging to an older question
+ * must never still be clickable. They are a strip docked above the composer
+ * now, rendered straight from the CURRENT `turn`, so staleness is structurally
+ * impossible rather than guarded: there is only ever one strip and it always
+ * describes the question being asked.
+ */
+check("choices render in the strip attached to the composer",
+  /\{showChoices && \(\s*<AskStrip/.test(createExperience));
+check("directions render in that same strip",
+  /\{showDirections && \(\s*<AskStrip/.test(createExperience));
 check(
   "and not in a block after the conversation",
   !/<\/div>\s*\n\s*\{showChoices && \(/.test(createExperience),
@@ -204,7 +216,8 @@ check("nor framed as a panel", !/rounded-\[14px\] border/.test(code(structured))
 
 /* ── 6. the options themselves stay compact ──────────────────────────────── */
 
-check("options are stacked rows", /className="choice-stack"/.test(createExperience));
+check("options are chips, not full-width rows",
+  /<AskStrip/.test(createExperience) && !/className="choice-stack"/.test(createExperience));
 check("never columns", !/grid-cols-/.test(createCode));
 const css = read("src/app/globals.css");
 check("a row is one line of supporting text", /\.choice-row-hint \{[\s\S]{0,220}white-space: nowrap/.test(css));

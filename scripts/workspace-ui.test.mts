@@ -146,8 +146,20 @@ check(
   !/sm:grid-cols-|md:grid-cols-|lg:grid-cols-/.test(createCode),
   "a responsive column grid is back",
 );
-check("the proposal renders as a stack", /className="choice-stack"/.test(createExperience));
-check("with one row component per direction", /<DirectionRow/.test(createExperience));
+/*
+ * THE OPTIONS LEFT THE TRANSCRIPT.
+ *
+ * They used to render inside the latest assistant turn, which is why they had
+ * to be gated on being the latest one — options belonging to an older question
+ * must never still be clickable. They are a strip docked above the composer
+ * now, rendered straight from the CURRENT `turn`, so staleness is structurally
+ * impossible rather than guarded: there is only ever one strip and it always
+ * describes the question being asked.
+ */
+check("the proposal renders in the composer-attached strip",
+  /\{showDirections && \(\s*<AskStrip/.test(createExperience));
+check("with one chip per direction",
+  /turn\?\.directions \?\? \[\]\)\.map/.test(createExperience));
 check("and the large card is gone", !/direction-card|DirectionCard/.test(createCode));
 /**
  * Two stacked surfaces now, not three: the proposal and the discovery choices.
@@ -158,7 +170,9 @@ check("and the large card is gone", !/direction-card|DirectionCard/.test(createC
  * the weight of a suggestion. The rule they existed to satisfy still holds and
  * is asserted below: nothing on this screen is a column grid on a phone.
  */
-check("discovery choices stack too", (createExperience.match(/choice-stack/g) ?? []).length >= 2, "expected two stacked surfaces");
+check("discovery choices use the same strip",
+  (createExperience.match(/<AskStrip/g) ?? []).length >= 2,
+  "clarifications and proposals must not drift into two presentations again");
 /**
  * DELIBERATELY REVERSED, and worth stating rather than quietly editing.
  *

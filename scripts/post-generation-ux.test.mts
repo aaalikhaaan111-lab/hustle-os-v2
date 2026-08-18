@@ -46,15 +46,24 @@ const publishing = read("src/lib/actions/publishing.ts");
  * navigation that happened to sit nearby. The test is structural: the options
  * must be inside the branch that renders one assistant turn.
  */
-const assistantTurn = createExperience.slice(
-  createExperience.indexOf("isLatestAssistant && showDirections"),
-  createExperience.indexOf("})}", createExperience.indexOf("isLatestAssistant && showDirections")),
-);
-check("choices render inside the assistant turn", /isLatestAssistant && showChoices/.test(createExperience));
-check("directions render inside the assistant turn", assistantTurn.includes("<DirectionRow"));
+/*
+ * THE OPTIONS LEFT THE TRANSCRIPT.
+ *
+ * They used to render inside the latest assistant turn, which is why they had
+ * to be gated on being the latest one — options belonging to an older question
+ * must never still be clickable. They are a strip docked above the composer
+ * now, rendered straight from the CURRENT `turn`, so staleness is structurally
+ * impossible rather than guarded: there is only ever one strip and it always
+ * describes the question being asked.
+ */
+check("choices render in the strip attached to the composer",
+  /\{showChoices && \(\s*<AskStrip/.test(createExperience));
+check("directions render in that same strip",
+  /\{showDirections && \(\s*<AskStrip/.test(createExperience));
 check(
-  "and are gated on being the latest message",
-  /isLatestAssistant && showDirections && \(/.test(createExperience),
+  "and staleness is structural rather than gated",
+  !/isLatestAssistant/.test(createExperience),
+  "the strip is built from the current turn, so there is no older turn to guard",
 );
 check(
   "no options block trails the conversation",
@@ -75,7 +84,7 @@ check("selection ends them", /setSelectedDirection\(index\)/.test(createExperien
 check("sending a message ends them", /setTurn\(null\)/.test(createExperience));
 check("a new turn replaces them", /setTurn\(result\.turn\)/.test(createExperience));
 
-check("options stay compact rows", /className="choice-stack"/.test(createExperience));
+check("options stay compact chips", /className="s-chip"/.test(read("src/components/create/AskStrip.tsx")));
 check("and never become columns", !/grid-cols-/.test(code(createExperience)));
 
 /* ── 2. the preview cannot go white in silence ───────────────────────────── */
