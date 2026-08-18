@@ -127,15 +127,21 @@ export function WorkspaceComposer({
       />
 
       <div className="flex items-center gap-1 pt-1">
+        {/* NOT PRE-DISABLED ON A CAPABILITY GUESS. The check that decides
+            "supported" runs on the client after the server has already
+            rendered "no", and any hiccup in that handover left a permanently
+            dead microphone captioned "not supported in this browser" on
+            browsers that support it perfectly well. The button stays live; the
+            click does the real check and reports what it finds. */}
         {voice && (
           <button
             type="button"
-            disabled={disabled || !voice.supported}
-            onClick={voice.supported ? voice.onToggle : undefined}
-            aria-label={voice.supported ? voice.label : voice.unsupportedLabel}
+            disabled={disabled}
+            onClick={voice.onToggle}
+            aria-label={voice.listening ? voice.listeningLabel : voice.label}
             aria-pressed={voice.listening}
-            className="s-btn s-btn--ghost s-btn--icon h-9 w-9"
-            style={voice.listening ? { color: "var(--color-accent)" } : undefined}
+            data-state={voice.state}
+            className="s-btn s-btn--ghost s-btn--icon s-mic h-9 w-9"
           >
             <IconMic className="h-[18px] w-[18px]" />
           </button>

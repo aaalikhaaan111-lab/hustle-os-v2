@@ -59,6 +59,43 @@ function hasMediaDevices(): boolean {
  */
 export type VoiceAvailability = "available" | "insecure" | "unsupported";
 
+/**
+ * THESE TWO MUST BE MODULE-LEVEL, and that is the whole bug.
+ *
+ * They used to be inline arrows — `() => () => {}` and `() => "unsupported"` —
+ * so every render handed `useSyncExternalStore` a brand-new `subscribe`
+ * identity. React tears down and re-subscribes whenever that reference
+ * changes, and the post-hydration reconciliation that promotes the CLIENT
+ * snapshot over the server one never settled. The value stayed at the server
+ * snapshot, `"unsupported"`, permanently.
+ *
+ * The visible result was the reported bug: on a browser with
+ * `SpeechRecognition`, `getUserMedia` and a secure context — all three verified
+ * present at runtime — the microphone button rendered disabled, labelled "voice
+ * input is not supported in this browser". The capability check was correct;
+ * its answer just never reached the component.
+ *
+ * There is nothing to subscribe TO here: whether the browser has the API does
+ * not change during a session. The subscription is a stable no-op, and being
+ * stable is the entire point.
+ */
+const subscribeCapability = (onStoreChange: () => void) => {
+  // ONE NOTIFICATION, right after mount.
+  //
+  // The server cannot know what the browser supports, so `getServerSnapshot`
+  // answers "unsupported" and the markup ships with the button disabled. A
+  // store that never notifies gives React no reason to go back and read the
+  // client snapshot, so that placeholder answer is the one that stays on
+  // screen — which is why a browser with full dictation support rendered
+  // "voice input is not supported in this browser".
+  //
+  // Capability genuinely never changes during a session, so this fires once
+  // and then goes quiet.
+  const id = requestAnimationFrame(onStoreChange);
+  return () => cancelAnimationFrame(id);
+};
+const readServerAvailability = (): VoiceAvailability => "unsupported";
+
 function readAvailability(): VoiceAvailability {
   if (typeof window === "undefined") return "unsupported";
   if (!window.isSecureContext) return "insecure";
@@ -108,6 +145,7 @@ export type VoiceInputError =
   | "no-speech"
   | "failed"
   | "insecure"
+  | "unsupported"
   | null;
 
 /**
@@ -128,6 +166,8 @@ export function voiceErrorKey(error: VoiceInputError): string | null {
       return "voiceNoSpeech";
     case "insecure":
       return "voiceInsecure";
+    case "unsupported":
+      return "voiceUnsupported";
     case "failed":
       return "voiceFailed";
     default:
@@ -161,9 +201,9 @@ export function useVoiceInput({ lang, onTranscript, disabled }: UseVoiceInputOpt
   // synchronise: useSyncExternalStore gives the client answer after hydration
   // and a stable `false` on the server, with no effect and no extra render.
   const availability = useSyncExternalStore(
-    () => () => {},
+    subscribeCapability,
     readAvailability,
-    () => "unsupported" as VoiceAvailability
+    readServerAvailability
   );
   const supported = availability === "available";
 
@@ -285,6 +325,11 @@ export function useVoiceInput({ lang, onTranscript, disabled }: UseVoiceInputOpt
       return;
     }
     if (available === "unsupported") {
+      // Said out loud rather than left as a disabled button. The capability
+      // probe runs before the browser has necessarily finished exposing the
+      // API, so a pre-emptively dead control can be wrong; a control that
+      // tries and then explains cannot be.
+      setError("unsupported");
       setState("unsupported");
       return;
     }

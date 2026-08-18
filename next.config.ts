@@ -40,7 +40,27 @@ const nextConfig: NextConfig = {
             : []),
           { key: "X-Content-Type-Options", value: "nosniff" },
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
-          { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=(), payment=(), usb=()" },
+          /**
+           * `microphone=(self)`, not `microphone=()`.
+           *
+           * THIS HEADER WAS THE VOICE-INPUT BUG. An empty allowlist disables
+           * the microphone for the whole origin: `getUserMedia` rejects with
+           * NotAllowedError before any prompt is drawn, and Chrome reports the
+           * permission as "denied" forever. So the product's own dictation
+           * button could never work, the native permission request could never
+           * appear, and the hook — which was correct — kept reporting a refusal
+           * it had no way to attribute.
+           *
+           * `(self)` grants it to this origin only. Cross-origin frames still
+           * get nothing, and the generated-app sandbox is not delegated the
+           * feature (that needs an explicit `allow="microphone"` on the iframe,
+           * which is deliberately not set), so a generated app still cannot
+           * reach the microphone. Every other feature stays fully disabled.
+           */
+          {
+            key: "Permissions-Policy",
+            value: "camera=(), microphone=(self), geolocation=(), payment=(), usb=()",
+          },
           { key: "X-Frame-Options", value: "DENY" },
         ],
       },
