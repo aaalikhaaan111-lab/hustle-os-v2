@@ -1156,3 +1156,47 @@ body:has([data-slot="sheet-content"][data-state="open"]) .studio-frame {
   color: var(--color-ink);
   font-weight: 500;
 }
+
+/* ── motion, as one system ──────────────────────────────────────────────── */
+
+/**
+ * RESTRAINT IS THE RULE. Every transition below is under 200ms and moves a
+ * short distance, because the job is to explain a change of state — where a
+ * panel came from, what just became active — not to be noticed. Anything that
+ * would still be moving after a fifth of a second is too slow to help.
+ *
+ * The blanket `prefers-reduced-motion` rule earlier in this file turns all of
+ * it off, so none of this is load-bearing.
+ */
+
+/* The rail itself. Width is the only thing that changes, and it eases rather
+   than snapping, so the eye can follow the labels leaving. */
+.studio [data-slot="sidebar-gap"],
+.studio [data-slot="sidebar-container"] {
+  transition:
+    width var(--t-base) var(--ease),
+    left var(--t-base) var(--ease),
+    right var(--t-base) var(--ease);
+}
+
+/* Sidebar rows: the label and the active fill settle together. */
+.studio [data-sidebar="menu-button"] {
+  transition:
+    background-color var(--t-fast) var(--ease),
+    color var(--t-fast) var(--ease);
+}
+
+/* Public navigation: the same hover language as the rail, so the two halves of
+   the product feel related rather than separately designed. */
+.s-nav-item {
+  transition:
+    background-color var(--t-fast) var(--ease),
+    color var(--t-fast) var(--ease);
+}
+
+/* Cards lift very slightly on hover — the only motion in the gallery, and it
+   is there because a card is a link to somewhere. */
+@media (hover: hover) {
+  .studio .group\/card { transition: transform var(--t-fast) var(--ease); }
+  .studio .group\/card:hover { transform: translateY(-2px); }
+}

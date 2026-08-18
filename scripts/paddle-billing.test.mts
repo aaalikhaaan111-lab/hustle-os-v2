@@ -140,7 +140,17 @@ check("nor is the webhook secret",
 const pricing = read("src/app/pricing/page.tsx");
 check("Pro advertises $19", /pro: "\$19"/.test(pricing));
 check("Paddle checkout is only offered for Pro", /plan === "pro" && paddle/.test(pricing));
-check("Studio stays a pending state", /billingPending/.test(pricing));
+/*
+ * Studio still has no checkout, which is what matters. The button used to say
+ * so in its own label — "Upgrade to Studio (not open yet)" — and a call to
+ * action advertising its implementation status makes the page read as
+ * unfinished, so the reason moved to the note it points at. The state itself
+ * is unchanged: disabled, and described by that note.
+ */
+check("Studio stays a pending state",
+  /<button type="button" disabled aria-describedby="billing-note"/.test(pricing));
+check("and the reason is still stated on the page",
+  /id="billing-note"/.test(pricing) && /billingSoon/.test(pricing));
 
 /* ── report ──────────────────────────────────────────────────────────────── */
 

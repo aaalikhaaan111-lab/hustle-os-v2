@@ -150,11 +150,13 @@ export default async function PricingPage() {
       );
     }
     return (
-      /* "Upgrade to Pro — Upgrade pending" said upgrade twice. The state is
-         that billing is not open yet, so the button says the plan and the note
-         under the table says why it cannot be pressed. */
-      <button type="button" disabled aria-describedby="billing-note" className="s-btn s-btn--secondary w-full">
-        {cta[plan]} ({t("billingPending")})
+      /* THE BUTTON NAMES THE PLAN, NOT THE ROADMAP.
+         It used to read "Upgrade to Pro (not open yet)" — a call to action
+         advertising its own implementation status, which makes the whole page
+         read as unfinished. The state is unchanged: it is still disabled and
+         still described by the note below, which is where "why" belongs. */
+      <button type="button" disabled aria-describedby="billing-note" className="s-btn s-btn--primary w-full">
+        {cta[plan]}
       </button>
     );
   };
