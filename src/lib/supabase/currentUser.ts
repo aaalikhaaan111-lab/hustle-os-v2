@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { headers } from "next/headers";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/supabase";
@@ -13,7 +14,22 @@ export interface CurrentUser {
 // navigation. If the header is ever absent (route reached outside the normal
 // middleware matcher, for instance) this falls back to the original
 // getUser() call, so security is identical either way, never weaker.
-export async function getCurrentUser(
+/**
+ * DEDUPED PER REQUEST.
+ *
+ * On a protected route the header path below costs nothing, so this changes
+ * nothing there. On a PUBLIC route there is no middleware header, and a
+ * signed-in visitor falls through to a live `auth.getUser()` — which is a
+ * network round-trip to Supabase Auth that fans out into five queries
+ * (sessions, mfa_amr_claims, mfa_factors, identities, users; ~27.5k of each in
+ * production). The homepage asked for the user twice on every render, once in
+ * `page.tsx` and once in `PublicShell`, so a signed-in visitor paid for two.
+ *
+ * `cache()` is React's per-request memo: same request, same answer, one call.
+ * It does not persist across requests or users, so it cannot leak one person's
+ * identity into another's render.
+ */
+export const getCurrentUser = cache(async function getCurrentUser(
   supabase: SupabaseClient<Database>
 ): Promise<CurrentUser | null> {
   const headerList = await headers();
@@ -57,4 +73,4 @@ export async function getCurrentUser(
     }));
     return null;
   }
-}
+});
