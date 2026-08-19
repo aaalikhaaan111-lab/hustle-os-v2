@@ -180,7 +180,8 @@
     "progressPreparing": "Working through your idea…",
     "progressGenerating": "Building the application…",
     "progressSaving": "Checking and saving the result…",
-    "progressCompleted": "Opening your app…"
+    "progressCompleted": "Opening your app…",
+    "errorTooFast": "You have started several builds in a short time. Give it a few minutes and try again."
   },
   "publishing": {
     "controlsLabel": "Publishing",
@@ -226,7 +227,8 @@
     "appRuntimeFailedBody": "The app itself is fine — Ventrio failed to deliver it. This is on our side, and reloading usually works.",
     "appReload": "Reload",
     "appStalledTitle": "This app is taking too long to start",
-    "appStalledBody": "It did not finish loading. Reloading often helps — on a phone, closing other tabs first can too."
+    "appStalledBody": "It did not finish loading. Reloading often helps — on a phone, closing other tabs first can too.",
+    "errorTooFast": "You have published several times in a short time. Give it a few minutes and try again."
   },
   "feedback": {
     "eyebrow": "Feedback loop",

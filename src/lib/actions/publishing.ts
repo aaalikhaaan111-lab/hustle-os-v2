@@ -2,6 +2,7 @@
 
 import { revalidatePath, updateTag } from "next/cache";
 import { getTranslations } from "next-intl/server";
+import { enforceRateLimit, rateLimitSubject } from "@/lib/security/rateLimit";
 import { isLocale } from "@/i18n/locale";
 import { getProjectById } from "@/lib/build/queries";
 import { parseStage3ProjectState, sanitizeStage3Output } from "@/lib/build/stage3Types";
@@ -97,6 +98,20 @@ async function successResult(
 }
 
 export async function publishProjectAction(projectId: string): Promise<PublicationActionResult> {
+  /* Publishing rewrites subdomain routing and public caches; a loop of it is
+     both expensive and visible to everyone. Quota caps how many projects may be
+     live, never how fast the state may be flipped. */
+  {
+    const supabase = await createClient();
+    const actor = await getCurrentUser(supabase);
+    if (actor) {
+      const burst = await enforceRateLimit("publish", rateLimitSubject(actor.id));
+      if (!burst.allowed) {
+        const tLimit = await getTranslations("publishing");
+        return { ok: false, error: tLimit("errorTooFast") } as never;
+      }
+    }
+  }
   const t = await getTranslations("publishing");
   if (!UUID_PATTERN.test(projectId)) return failure(t("errorInvalid"));
   const { supabase, user, project, output, app, name } = await ownedOutput(projectId);
@@ -186,6 +201,20 @@ export async function publishProjectAction(projectId: string): Promise<Publicati
 }
 
 export async function updatePublishedVersionAction(projectId: string): Promise<PublicationActionResult> {
+  /* Publishing rewrites subdomain routing and public caches; a loop of it is
+     both expensive and visible to everyone. Quota caps how many projects may be
+     live, never how fast the state may be flipped. */
+  {
+    const supabase = await createClient();
+    const actor = await getCurrentUser(supabase);
+    if (actor) {
+      const burst = await enforceRateLimit("publish", rateLimitSubject(actor.id));
+      if (!burst.allowed) {
+        const tLimit = await getTranslations("publishing");
+        return { ok: false, error: tLimit("errorTooFast") } as never;
+      }
+    }
+  }
   const t = await getTranslations("publishing");
   if (!UUID_PATTERN.test(projectId)) return failure(t("errorInvalid"));
   const { supabase, user, project, output, app } = await ownedOutput(projectId);
@@ -217,6 +246,20 @@ export async function updatePublishedVersionAction(projectId: string): Promise<P
 }
 
 export async function unpublishProjectAction(projectId: string): Promise<PublicationActionResult> {
+  /* Publishing rewrites subdomain routing and public caches; a loop of it is
+     both expensive and visible to everyone. Quota caps how many projects may be
+     live, never how fast the state may be flipped. */
+  {
+    const supabase = await createClient();
+    const actor = await getCurrentUser(supabase);
+    if (actor) {
+      const burst = await enforceRateLimit("publish", rateLimitSubject(actor.id));
+      if (!burst.allowed) {
+        const tLimit = await getTranslations("publishing");
+        return { ok: false, error: tLimit("errorTooFast") } as never;
+      }
+    }
+  }
   const t = await getTranslations("publishing");
   if (!UUID_PATTERN.test(projectId)) return failure(t("errorInvalid"));
   const { supabase, user, project } = await ownedOutput(projectId);

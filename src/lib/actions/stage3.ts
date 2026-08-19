@@ -19,6 +19,7 @@ import {
 } from "@/lib/build/stage3Types";
 import { isFeedbackRequest, loadFeedbackConversationContext } from "@/lib/feedback/context";
 import { consumeAiUsage, releaseAiUsage, type LimitReachedInfo } from "@/lib/ai/usage";
+import { enforceRateLimit, rateLimitSubject } from "@/lib/security/rateLimit";
 import {
   attemptsSoFar,
   beat,
@@ -447,6 +448,19 @@ export async function generateFirstVersionAction(
   const jobs = await jobsSoFar(projectId, user.id);
   if (attempts >= MAX_FIRST_VERSION_ATTEMPTS || jobs >= MAX_FIRST_VERSION_JOBS) {
     return { error: t("errorRetriesExhausted"), output: null, reply: null };
+  }
+
+  /**
+   * A BURST CEILING ACROSS THE WHOLE ACCOUNT.
+   *
+   * Everything above is per-PROJECT: the active-job check, `attempts`, `jobs`.
+   * None of them stops one person creating twenty projects and starting twenty
+   * generations in the same second, and each one is minutes of provider time.
+   * Quota caps the month; this caps the minute. Both must pass.
+   */
+  const burst = await enforceRateLimit("generation", rateLimitSubject(user.id));
+  if (!burst.allowed) {
+    return { error: t("errorTooFast"), output: null, reply: null };
   }
 
   // Which key matters depends on which renderer this deploy uses. The app

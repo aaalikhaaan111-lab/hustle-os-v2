@@ -1091,6 +1091,15 @@ export type Database = {
       }
     }
     Functions: {
+      consume_rate_limit: {
+        Args: {
+          p_action: string
+          p_limit: number
+          p_subject: string
+          p_window_seconds: number
+        }
+        Returns: Json
+      }
       consume_ai_usage: {
         Args: { p_limit: number; p_metric: string; p_user_id: string }
         Returns: {
