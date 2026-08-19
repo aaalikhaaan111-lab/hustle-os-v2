@@ -219,10 +219,26 @@ check("in the 180-240ms band, on the page's one easing",
   /animation: lp-nav-in 220ms var\(--lp-ease\)/.test(css) &&
   /animation: lp-nav-out 180ms var\(--lp-ease\)/.test(css));
 
-/* Moving between items is one surface resizing, not two swapping. */
-check("the panel morphs between items instead of jumping",
-  /transition:\s*\n?\s*width var\(--lp-base\)/.test(css) &&
-  /\[data-motion="from-start"\]/.test(css) && /\[data-motion="to-end"\]/.test(css));
+/**
+ * EVERY DROPDOWN USED TO OPEN IN THE SAME PLACE.
+ *
+ * The registry's default renders ONE shared `NavigationMenuViewport` and
+ * portals whichever item is open into it, so all four panels appeared at the
+ * same coordinates — "Questions" opened under "Pricing". `viewport={false}`
+ * makes Radix render each panel inside its own item, which is what lets the
+ * stylesheet anchor it to the trigger it belongs to.
+ */
+check("each panel is rendered inside its own item, not a shared viewport",
+  /viewport=\{false\}/.test(header) && !/navigation-menu-viewport/.test(css),
+  "one shared viewport is one position for four different triggers");
+check("and is anchored to that item rather than to the menu",
+  /\.lp-nav-list > li \{\s*\n\s*position: relative;/.test(css) &&
+  /\.lp-nav-panel \{[\s\S]{0,200}position: absolute;[\s\S]{0,120}top: 100%;/.test(css));
+/* No magic numbers: the edges pin to their own item's corner, not to an offset. */
+check("the outer items pin to a corner instead of a hard-coded offset",
+  /li:first-child \.lp-nav-panel \{\s*\n\s*left: 0;/.test(css) &&
+  /li:last-child \.lp-nav-panel \{[\s\S]{0,60}right: 0;/.test(css) &&
+  !/left: -?\d+px/.test(css));
 check("and the chevron keeps pace with the panel it belongs to",
   /\.lp-nav-trigger > svg \{ transition-duration: var\(--lp-fast\); \}/.test(css),
   "the registry sets 300ms, slower than the thing it is announcing");
@@ -269,21 +285,30 @@ check("the stage says out loud that it is an illustration, in both languages",
   /illustration/i.test(en.stageDemoNote) && /иллюстрация/i.test(ru.stageDemoNote),
   "a drawing of the product must not be mistaken for a recording of it");
 /* Each demonstration has to show the thing its topic claims, not a bar. */
-check("each topic demonstrates its own claim",
-  /demoWordsBefore/.test(stage) && /demoWordsAfter/.test(stage) &&
-  /demoDoesButton/.test(stage) && /demoReplyCount/.test(stage) && /demoAgainGap/.test(stage));
 /**
- * The scenes are built from the PLATFORM's components inside the platform's
- * token scope, not redrawn on the landing palette. That is what stops the
- * landing's picture of the product drifting away from the product.
+ * The stage shows the supplied artwork now. It held drawn posters, then scenes
+ * rebuilt from the platform's components; both were the product described
+ * rather than shown, which is the most a page can do while it waits for
+ * artwork.
  */
-check("the scenes run in the platform's own token scope",
-  /className="studio lp-scene/.test(stage));
-check("and use the workspace's real conversation, mark and composer",
-  /s-turn-user/.test(stage) && /s-turn-assistant/.test(stage) &&
-  /s-turn-mark/.test(stage) && /s-composer/.test(stage) && /VentrioMark/.test(stage));
-check("nothing in them is a stock image or an invented metric",
-  !/<img|background-image|unsplash/.test(stage));
+check("every topic has a still, and they are the supplied assets",
+  ["landing-1", "landing-2", "landing-3", "landing-4"].every((n) => stage.includes(`/landing-images/${n}.png`)) &&
+  /const STILL: Record<SectionId/.test(stage));
+check("nothing is recreated in CSS",
+  !/lp-scene|s-turn-user|s-turn-assistant/.test(stage) && !/\.lp-scene/.test(css),
+  "the brief was to use the PNGs directly, not to redraw them");
+/* Mixed aspect ratios in a fixed 16:10 stage: contain, never stretch or crop. */
+check("the artwork is contained, not stretched or cropped",
+  /\.lp-stage-img \{[\s\S]{0,200}object-fit: contain/.test(css));
+/* The messenger asset belongs to the one forward-looking section and nowhere
+   else — it carries a "Coming soon" badge of its own. */
+check("the messenger art appears once, in the messenger section only",
+  (landing.match(/landing-messenger\.png/g) ?? []).length === 1 &&
+  !/landing-messenger/.test(stage));
+check("and it is lazy, sized, and sharp on retina",
+  /loading="lazy"/.test(stage) && /sizes=/.test(stage) &&
+  /width=\{STILL\[current\.id\]\.width\}/.test(stage),
+  "intrinsic dimensions are what let the optimiser build a srcset");
 check("and the FAQ is a real single-open accordion, shared with /faq",
   /aria-expanded=/.test(faqComponent) &&
   /\.lp-faq-a \{[\s\S]{0,160}grid-template-rows: 0fr/.test(css) &&

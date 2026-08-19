@@ -165,7 +165,21 @@ export function PublicHeader({ isAuthenticated }: { isAuthenticated: boolean }) 
           Ventrio
         </Link>
 
-        <NavigationMenu className="lp-nav" aria-label={t("menuLabel")}>
+        {/**
+         * `viewport={false}` is the whole fix for "every dropdown opens in the
+         * same place".
+         *
+         * The registry's default renders ONE shared `NavigationMenuViewport`,
+         * absolutely positioned against the menu root, and portals whichever
+         * item is open into it. Every panel therefore appears at the same
+         * coordinates no matter which trigger opened it — and the rule that
+         * centred that viewport under the nav made all four land dead centre.
+         *
+         * Switched off, Radix renders each `NavigationMenuContent` inside its
+         * own `NavigationMenuItem`, which is what lets the stylesheet anchor a
+         * panel to the trigger it belongs to instead of to the menu.
+         */}
+        <NavigationMenu className="lp-nav" viewport={false} aria-label={t("menuLabel")}>
           <NavigationMenuList className="lp-nav-list">
             {menus.map((menu) => (
               <NavigationMenuItem key={menu.label}>

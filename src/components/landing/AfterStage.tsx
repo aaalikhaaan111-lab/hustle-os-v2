@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import { motion, useReducedMotion, type Transition } from "motion/react";
 import { useTranslations } from "next-intl";
-import { VentrioMark } from "@/components/workspace-ui/parts";
 
 /**
  * The after-launch section: selectable topics on the left, one media stage on
@@ -14,33 +14,53 @@ import { VentrioMark } from "@/components/workspace-ui/parts";
  * none of them. The stage is a fixed 16:10 box that never changes size, so
  * switching topics cannot move the page.
  *
- * WHAT THE STAGE SHOWS NOW, AND WHY IT LOOKS LIKE THE PRODUCT. The first
- * version of these scenes was drawn from scratch — generic bubbles and boxes
- * that happened to sit on the landing page's palette. They demonstrated the
- * right ideas in the wrong product's clothes.
+ * WHAT THE STAGE SHOWS NOW. Real product imagery, supplied as final assets.
  *
- * Each scene is now rendered inside `.studio`, the platform's own token scope,
- * and built from the platform's own classes: `s-turn-user` and
- * `s-turn-assistant` are the real conversation turns, `s-turn-mark` is the real
- * speaker mark, `s-composer` is the real input. Nothing here is a copy of those
- * shapes; they ARE those shapes, so the demo cannot drift away from the
- * workspace it is describing — restyling the product restyles the landing's
- * picture of it.
+ * It has held two things before this: drawn "posters" of grey bars, and then
+ * scenes rebuilt from the platform's own components. Both were the product
+ * described rather than the product shown, which is the most a page can do
+ * while it is waiting for artwork. The artwork exists now, so the stage shows
+ * it and nothing is recreated in CSS.
  *
- * THE MEDIA SLOT IS STILL THE POINT. Every section declares a `video` it will
- * play once one exists; while that is undefined the demonstration runs instead.
- * Dropping a clip in is a one-line change to `VIDEO` below and nothing else —
- * the stage, the crossfade and the aspect ratio are already built around it.
- * No clip is invented here: commissioning the messenger video was explicitly
- * out of scope, and inventing the other three would have been the same mistake.
+ * `object-fit: contain` because the four assets are not one aspect ratio —
+ * 16:10 for the first, 4:3 for the rest — and the stage is a fixed 16:10 box.
+ * Containing letterboxes the taller three against the stage surface, which is
+ * the honest trade: nothing is stretched and nothing is cropped away.
+ *
+ * THE VIDEO SLOT SURVIVES. A filename in `VIDEO` still takes precedence over
+ * the still, so the motion clips these images stand in for can arrive later
+ * without the section being rebuilt around them.
  */
 type SectionId = "words" | "device" | "feedback" | "anywhere";
 
 /**
- * Where the motion clips will go. Empty on purpose — a filename here replaces
- * that section's demonstration with the real thing, and changes nothing else.
+ * Where the motion clips will go. Empty on purpose — a filename here takes
+ * precedence over the still below and changes nothing else.
  */
 const VIDEO: Partial<Record<SectionId, string>> = {};
+
+/**
+ * The final artwork, matched to the topic each one actually shows.
+ *
+ *   words     landing-1  the workspace mid-conversation, the live preview
+ *                        beside it — asking, and the version updating.
+ *   device    landing-4  one request becoming a multi-page tool with its own
+ *                        Dashboard, Requests, Budgets and Asset Library:
+ *                        structure that was not there before.
+ *   feedback  landing-3  the PUBLISHED project, its tables and the people in
+ *                        them — what came back through the thing you shipped.
+ *   anywhere  landing-2  a half-formed idea carried through proposed
+ *                        directions into a built app: the thread continuing.
+ *
+ * Intrinsic sizes are declared so the optimiser can build a srcset and the box
+ * never has to be measured at runtime.
+ */
+const STILL: Record<SectionId, { src: string; width: number; height: number }> = {
+  words: { src: "/landing-images/landing-1.png", width: 1312, height: 816 },
+  device: { src: "/landing-images/landing-4.png", width: 1200, height: 896 },
+  feedback: { src: "/landing-images/landing-3.png", width: 1200, height: 896 },
+  anywhere: { src: "/landing-images/landing-2.png", width: 1200, height: 896 },
+};
 
 /* One easing for everything in this file: panels move in the 220-320ms band,
    the small things inside them in 160-220ms. */
@@ -106,7 +126,16 @@ export function AfterStage({
                 aria-label={current.title}
               />
             ) : (
-              <StageDemo id={current.id} reduce={Boolean(reduce)} t={t} />
+              <Image
+                src={STILL[current.id].src}
+                alt={current.title}
+                width={STILL[current.id].width}
+                height={STILL[current.id].height}
+                sizes="(max-width: 949px) calc(100vw - 2.5rem), 620px"
+                className="lp-stage-img"
+                /* Below the fold on every viewport this page is read at. */
+                loading="lazy"
+              />
             )}
           </motion.div>
         </div>
@@ -115,188 +144,5 @@ export function AfterStage({
       {/* These are drawings of the product, and they say so. */}
       <p className="lp-stage-note">{t("stageDemoNote")}</p>
     </>
-  );
-}
-
-type T = ReturnType<typeof useTranslations<"landing">>;
-
-/**
- * The workspace's own project preview, at stage scale.
- *
- * A bordered card on the platform's card surface with a hairline head — the
- * same framing a project wears everywhere else in Ventrio.
- */
-function Preview({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="lp-scene-preview">
-      <div className="lp-scene-preview-bar" aria-hidden>
-        <span />
-        <span />
-        <span />
-      </div>
-      <div className="lp-scene-preview-body">{children}</div>
-    </div>
-  );
-}
-
-/** Ventrio's reply, in the real assistant turn. */
-function Reply({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="s-turn-assistant">
-      <span className="s-turn-mark" aria-hidden>
-        <VentrioMark size={12} />
-      </span>
-      <div className="lp-scene-reply">{children}</div>
-    </div>
-  );
-}
-
-/** The person's turn, in the real user turn. */
-function Said({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="s-turn-user">
-      <div>{children}</div>
-    </div>
-  );
-}
-
-function StageDemo({ id, reduce, t }: { id: SectionId; reduce: boolean; t: T }) {
-  const d = (delay: number, duration = 0.26): Transition =>
-    reduce ? { duration: 0 } : { duration, ease: EASE, delay };
-
-  /* ── change the words ────────────────────────────────────────────────── */
-  if (id === "words") {
-    return (
-      <div className="studio lp-scene">
-        <Preview>
-          {/* Both headlines share one box, so the rewrite cannot resize the
-              page underneath itself. */}
-          <span className="lp-scene-headline">
-            <motion.span
-              className="lp-scene-h"
-              initial={{ opacity: 1, filter: "blur(0px)" }}
-              animate={{ opacity: 0, filter: reduce ? "blur(0px)" : "blur(4px)" }}
-              transition={d(0.55, 0.22)}
-            >
-              {t("demoWordsBefore")}
-            </motion.span>
-            <motion.span
-              className="lp-scene-h lp-scene-h--after"
-              initial={{ opacity: 0, filter: reduce ? "blur(0px)" : "blur(4px)" }}
-              animate={{ opacity: 1, filter: "blur(0px)" }}
-              transition={d(0.78, 0.26)}
-            >
-              {t("demoWordsAfter")}
-            </motion.span>
-          </span>
-          <span className="lp-scene-rule" />
-          <span className="lp-scene-rule lp-scene-rule--short" />
-        </Preview>
-
-        <motion.div
-          initial={{ opacity: 0, y: reduce ? 0 : 6 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={d(0.14, 0.24)}
-        >
-          <Said>{t("demoWordsSay")}</Said>
-        </motion.div>
-      </div>
-    );
-  }
-
-  /* ── change what it does ─────────────────────────────────────────────── */
-  if (id === "device") {
-    return (
-      <div className="studio lp-scene">
-        <Preview>
-          <span className="lp-scene-h lp-scene-h--after">{t("demoWordsAfter")}</span>
-          <span className="lp-scene-rule" />
-          {/* The section arrives into space already reserved for it. */}
-          <motion.span
-            className="lp-scene-form"
-            initial={{ opacity: 0, scale: reduce ? 1 : 0.97 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={d(0.6, 0.3)}
-          >
-            <span className="lp-scene-field" />
-            <span className="lp-scene-field" />
-            <span className="lp-scene-submit">{t("demoDoesButton")}</span>
-          </motion.span>
-        </Preview>
-
-        <motion.div
-          initial={{ opacity: 0, y: reduce ? 0 : 6 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={d(0.14, 0.24)}
-        >
-          <Said>{t("demoDoesSay")}</Said>
-        </motion.div>
-      </div>
-    );
-  }
-
-  /* ── see what came back ──────────────────────────────────────────────── */
-  if (id === "feedback") {
-    const replies = [t("demoReply1"), t("demoReply2"), t("demoReply3")];
-    return (
-      <div className="studio lp-scene lp-scene--panel">
-        <div className="lp-scene-head">
-          <span className="lp-scene-head-title">{t("after3")}</span>
-          <motion.span
-            className="lp-scene-count"
-            initial={{ opacity: 0, y: reduce ? 0 : -4 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={d(0.1, 0.22)}
-          >
-            {t("demoReplyCount", { count: replies.length })}
-          </motion.span>
-        </div>
-        <div className="lp-scene-rows">
-          {replies.map((reply, i) => (
-            <motion.span
-              key={reply}
-              className="lp-scene-row"
-              initial={{ opacity: 0, y: reduce ? 0 : 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={d(0.24 + i * 0.11, 0.26)}
-            >
-              {reply}
-            </motion.span>
-          ))}
-        </div>
-      </div>
-    );
-  }
-
-  /* ── start again from anywhere ───────────────────────────────────────── */
-  return (
-    <div className="studio lp-scene lp-scene--thread">
-      <Said>{t("demoAgainOld")}</Said>
-      <Reply>{t("demoAgainReply")}</Reply>
-      <motion.span
-        className="lp-scene-gap"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={d(0.42, 0.24)}
-      >
-        {t("demoAgainGap")}
-      </motion.span>
-      <motion.div
-        initial={{ opacity: 0, y: reduce ? 0 : 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={d(0.64, 0.28)}
-      >
-        <Said>{t("demoAgainNew")}</Said>
-      </motion.div>
-      {/* The composer the conversation is picked back up in. */}
-      <motion.div
-        className="s-composer lp-scene-composer"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={d(0.86, 0.24)}
-      >
-        <span>{t("demoAgainPlaceholder")}</span>
-      </motion.div>
-    </div>
   );
 }

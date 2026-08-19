@@ -292,12 +292,6 @@
  * The viewport is Radix's, positioned under the centred list, so the panel
  * cannot leave the window on either side.
  */
-.lp-nav-panel {
-  width: 22rem;
-  max-width: calc(100vw - var(--lp-gutter) * 2);
-  padding: 1rem;
-}
-
 .lp-nav-lead {
   font-size: 0.8125rem;
   line-height: 1.5;
@@ -323,36 +317,79 @@
 .lp-nav-card-desc { font-size: 0.78125rem; line-height: 1.4; color: var(--muted-foreground); }
 
 /* Radix's viewport, styled to this page rather than the demo. */
+/* ── navigation panels, anchored to their own triggers ──────────────────── */
+
 /**
- * The registry's viewport wrapper is `absolute left-0` with no width of its
- * own, so its `justify-center` has nothing to centre inside it and the panel
- * lands on the nav's LEFT EDGE. On narrow screens the nav starts at the page
- * gutter, so the panel sat flush against the window while every other band
- * kept its margin. Centre the wrapper on the nav instead: the panel is then
- * centred under the items it belongs to, at every width.
+ * WHY EVERY DROPDOWN USED TO OPEN IN THE SAME PLACE.
+ *
+ * The registry's default renders ONE shared `NavigationMenuViewport` and
+ * portals whichever item is open into it. Every panel therefore appeared at
+ * the same coordinates regardless of which trigger opened it, and the rule that
+ * centred that viewport under the nav put all four dead centre — "Questions"
+ * opened under "Pricing".
+ *
+ * `viewport={false}` on the root makes Radix render each panel inside its own
+ * `NavigationMenuItem`, so the item is the positioning context and the panel
+ * hangs off the trigger it belongs to. No offsets are hard-coded anywhere; the
+ * anchor is the item's own box.
  */
-.lp-nav > div:has(> [data-slot="navigation-menu-viewport"]) {
-  left: 50%;
-  transform: translateX(-50%);
+.lp-nav-list > li {
+  position: relative;
 }
 
-.lp-header [data-slot="navigation-menu-viewport"] {
+.lp-nav-panel {
+  position: absolute;
+  top: 100%;
+  /* Centred on ITS OWN trigger. */
+  left: 50%;
+  transform: translateX(-50%);
+  margin-top: 0.5rem;
+  width: 22rem;
+  max-width: calc(100vw - var(--lp-gutter) * 2);
+  padding: 1rem;
+  border: 1px solid var(--border);
   border-radius: 0.875rem;
-  border-color: var(--border);
+  background: var(--popover, var(--card));
+  color: var(--popover-foreground, var(--foreground));
   box-shadow: 0 24px 60px -32px oklch(0.153 0.006 107.1 / 0.4);
-  /**
-   * The box morphs between items instead of jumping.
-   *
-   * Radix writes the panel's measured size into
-   * `--radix-navigation-menu-viewport-{width,height}` on every change, so
-   * transitioning those two properties is what makes moving from "How it works"
-   * to "Questions" read as one surface resizing rather than two surfaces
-   * swapping. Transitions do not run on a freshly inserted element, so this
-   * costs nothing on the first open — that moment is the keyframe below.
-   */
-  transition:
-    width var(--lp-base) var(--lp-ease),
-    height var(--lp-base) var(--lp-ease);
+  z-index: 60;
+}
+
+/**
+ * The outermost items would hang off the page.
+ *
+ * A panel centred on the first or last trigger reaches half its width past
+ * them, which at 1024px and below is outside the viewport. `translate` is
+ * removed and the panel pinned to the nav-side edge of its own item instead —
+ * still anchored to the trigger, still no magic numbers, just the other corner.
+ */
+.lp-nav-list > li:first-child .lp-nav-panel {
+  left: 0;
+  transform: none;
+}
+
+.lp-nav-list > li:last-child .lp-nav-panel {
+  left: auto;
+  right: 0;
+  transform: none;
+}
+
+/**
+ * Where the nav wraps to its own full-width row there is no room to hang a
+ * 22rem panel off a trigger at all, so it spans the row instead. Still opened
+ * by its own trigger, still no offsets — the anchor is simply the row.
+ */
+@media (max-width: 879px) {
+  .lp-nav-panel,
+  .lp-nav-list > li:first-child .lp-nav-panel,
+  .lp-nav-list > li:last-child .lp-nav-panel {
+    position: fixed;
+    left: var(--lp-gutter);
+    right: var(--lp-gutter);
+    width: auto;
+    max-width: none;
+    transform: none;
+  }
 }
 
 /* ── navigation motion ──────────────────────────────────────────────────── */
@@ -360,20 +397,15 @@
 /**
  * WHY THIS IS HAND-WRITTEN RATHER THAN THE REGISTRY'S CLASSES.
  *
- * `navigation-menu.tsx` ships `animate-in`, `animate-out`, `zoom-in-90` and
- * `zoom-out-95` on the viewport. Those are `tw-animate-css` utilities, and this
+ * `navigation-menu.tsx` ships `animate-in`, `animate-out`, `zoom-in-95` and
+ * `fade-out-0` on the content. Those are `tw-animate-css` utilities, and this
  * project neither installs nor imports that package — so every one of them
  * compiled to NOTHING and the panel appeared and vanished in a single frame.
- * That is the whole of the "changes state too abruptly" report; there was no
- * animation to be too fast.
  *
  * THESE MUST BE @keyframes, NOT TRANSITIONS. Radix's Presence reads
  * `animationName` off the computed style to decide whether to keep a closing
  * node mounted long enough to animate. A transition on `[data-state="closed"]`
  * never gets to run, because the element is already gone.
- *
- * `zoom-in-90` would also have been wrong: a 10% scale jump on a 350px panel is
- * a pop. This travels 6px and 1.5%.
  */
 @keyframes lp-nav-in {
   from { opacity: 0; transform: translateY(-6px) scale(0.985); filter: blur(6px); }
@@ -385,30 +417,34 @@
   to { opacity: 0; transform: translateY(-4px) scale(0.99); filter: blur(4px); }
 }
 
-.lp-header [data-slot="navigation-menu-viewport"][data-state="open"] {
-  animation: lp-nav-in 220ms var(--lp-ease);
-}
-
-.lp-header [data-slot="navigation-menu-viewport"][data-state="closed"] {
-  animation: lp-nav-out 180ms var(--lp-ease);
-}
-
 /**
- * The contents, when the pointer moves from one item to the next.
- *
- * Radix marks the outgoing and incoming panels with `data-motion`, so the old
- * copy leaves while the box is still resizing and the new one arrives into it.
- * Without this the text swaps instantly inside a smoothly resizing box, which
- * reads as a glitch rather than as a transition.
+ * The centred panels animate from their own translated origin, so the keyframes
+ * that move on `transform` need the centring baked in or the panel jumps half
+ * its width as the animation takes over.
  */
-@keyframes lp-nav-panel-in { from { opacity: 0; transform: translateY(-2px); } to { opacity: 1; transform: none; } }
-@keyframes lp-nav-panel-out { from { opacity: 1; } to { opacity: 0; } }
+@keyframes lp-nav-in-centred {
+  from { opacity: 0; transform: translateX(-50%) translateY(-6px) scale(0.985); filter: blur(6px); }
+  to { opacity: 1; transform: translateX(-50%); filter: blur(0); }
+}
 
-.lp-nav-panel[data-motion="from-start"],
-.lp-nav-panel[data-motion="from-end"] { animation: lp-nav-panel-in 200ms var(--lp-ease); }
+@keyframes lp-nav-out-centred {
+  from { opacity: 1; transform: translateX(-50%); filter: blur(0); }
+  to { opacity: 0; transform: translateX(-50%) translateY(-4px) scale(0.99); filter: blur(4px); }
+}
 
-.lp-nav-panel[data-motion="to-start"],
-.lp-nav-panel[data-motion="to-end"] { animation: lp-nav-panel-out 160ms var(--lp-ease); }
+.lp-nav-panel[data-state="open"] { animation: lp-nav-in-centred 220ms var(--lp-ease); }
+.lp-nav-panel[data-state="closed"] { animation: lp-nav-out-centred 180ms var(--lp-ease); }
+
+.lp-nav-list > li:first-child .lp-nav-panel[data-state="open"],
+.lp-nav-list > li:last-child .lp-nav-panel[data-state="open"] { animation: lp-nav-in 220ms var(--lp-ease); }
+
+.lp-nav-list > li:first-child .lp-nav-panel[data-state="closed"],
+.lp-nav-list > li:last-child .lp-nav-panel[data-state="closed"] { animation: lp-nav-out 180ms var(--lp-ease); }
+
+@media (max-width: 879px) {
+  .lp-nav-panel[data-state="open"] { animation: lp-nav-in 220ms var(--lp-ease); }
+  .lp-nav-panel[data-state="closed"] { animation: lp-nav-out 180ms var(--lp-ease); }
+}
 
 /* The registry sets 300ms on the chevron, slower than the panel it belongs to. */
 .lp-nav-trigger > svg { transition-duration: var(--lp-fast); }
@@ -422,7 +458,13 @@
  * which is exactly what a 0.01ms duration does.
  */
 @media (prefers-reduced-motion: reduce) {
-  .lp-header [data-slot="navigation-menu-viewport"] { transition: none; }
+  /* The keyframes stay DECLARED and merely become instantaneous — Radix still
+     waits for `animationend` before unmounting a closing panel, so removing the
+     animation outright would leave it on screen. The blanket rule at the end of
+     this file already drops every duration to 0.01ms; this only kills the
+     travel, which is the part that causes discomfort. */
+  .lp-nav-panel { animation-name: none; opacity: 1; }
+  .lp-nav-list > li:not(:first-child):not(:last-child) .lp-nav-panel { transform: translateX(-50%); }
 }
 
 /* ── the hero canvas ────────────────────────────────────────────────────── */
@@ -938,192 +980,54 @@
  * something. No clip is commissioned yet and none is invented here.
  */
 /**
- * The scenes inside the stage.
+ * The artwork inside the stage.
  *
- * They render inside `.studio`, so `--card`, `--border`, `--secondary`,
- * `--radius` and the rest resolve to the PLATFORM's values, and the turns
- * themselves are the platform's own `s-turn-*` classes. What this block adds is
- * only the one thing the workspace never needs: scale. A conversation shown at
- * a sixth of its usual size still has to be legible, so the type and padding
- * step down with the stage — the shapes, colours and radii are untouched.
+ * The four assets are not one aspect ratio — 16:10 for the first, 4:3 for the
+ * rest — and the stage is a fixed 16:10 box, so `contain` is the only honest
+ * fit: the taller three letterbox against the stage surface rather than being
+ * stretched to fill it or cropped to match it.
+ *
+ * `object-position: center` keeps the letterboxing even. The stage itself
+ * already carries the border, the radius and the overflow clip, so the image
+ * needs no chrome of its own — one border, declared once.
  */
-.lp-scene {
+.lp-stage-img {
   position: absolute;
   inset: 0;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 0.625rem;
-  padding: clamp(1rem, 3cqw, 1.5rem);
-  background: var(--background);
-  /* Legibility first: the stage is ~600px wide on a desktop and these scenes
-     are the only place on the page where product copy has to be READ rather
-     than recognised. */
-  font-size: clamp(0.75rem, 2.1cqw, 0.9375rem);
-  line-height: 1.5;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: center;
 }
+
+/* ── a full-width product still ─────────────────────────────────────────── */
 
 /**
- * Scale only — the shapes and colours above are the platform's.
- *
- * `:last-child` in `.s-turn-assistant > div:last-child` gives the workspace
- * rule a higher specificity than a two-class override, so the reply kept its
- * full 15px next to an 11px bubble. Matching that shape is what makes the two
- * sides of the conversation the same size again.
+ * The messenger section's picture. Same surface language as the hero canvas and
+ * the stage: one hairline, the page's own radius, and a shadow that reaches
+ * down rather than out.
  */
-.lp-scene .s-turn-user > div,
-.lp-scene .s-turn-assistant > div:last-child {
-  font-size: inherit;
-  line-height: 1.5;
-}
-
-.lp-scene .s-turn-user > div { padding: 0.375rem 0.6875rem; }
-
-.lp-scene .s-turn-mark {
-  width: 1.25rem;
-  height: 1.25rem;
-  margin-top: 0.0625rem;
-}
-
-.lp-scene .s-turn-assistant { gap: 0.5rem; }
-
-/* ── the project preview, as the workspace frames it ────────────────────── */
-
-.lp-scene-preview {
+.lp-shot {
+  margin: 3rem 0 0;
   border: 1px solid var(--border);
-  border-radius: var(--radius);
-  background: var(--card);
+  border-radius: 1.25rem;
+  background: var(--muted);
   overflow: hidden;
 }
 
-.lp-scene-preview-bar {
-  display: flex;
-  align-items: center;
-  gap: 0.25rem;
-  padding: 0.4375rem 0.625rem;
-  border-bottom: 1px solid var(--border);
-  background: var(--muted);
+@media (min-width: 768px) {
+  .lp-shot { border-radius: 1.5rem; }
 }
 
-.lp-scene-preview-bar > span {
-  width: 0.375rem;
-  height: 0.375rem;
-  border-radius: 999px;
-  background: color-mix(in oklab, var(--foreground) 18%, transparent);
-}
-
-.lp-scene-preview-body { padding: 0.75rem 0.875rem 0.875rem; }
-
-/* Both headlines occupy one box so a rewrite cannot resize the page. */
-.lp-scene-headline { position: relative; display: block; min-height: 2.5em; }
-
-.lp-scene-h {
-  position: absolute;
-  inset: 0;
-  font-size: 1.15em;
-  font-weight: 600;
-  line-height: 1.25;
-  letter-spacing: -0.02em;
-  color: var(--foreground);
-}
-
-.lp-scene-h--after { font-size: 1.45em; }
-
-.lp-scene-preview-body > .lp-scene-h--after { position: static; display: block; }
-
-.lp-scene-rule {
+/**
+ * `height: auto` against the intrinsic `width`/`height` attributes is what
+ * keeps the aspect ratio exactly and reserves the box before the bytes land,
+ * so the section below it never jumps.
+ */
+.lp-shot-img {
   display: block;
-  height: 0.3125rem;
-  margin-top: 0.5rem;
-  border-radius: 999px;
-  background: var(--muted);
-}
-
-.lp-scene-rule--short { width: 42%; }
-
-/* The section that arrived because somebody asked for it. */
-.lp-scene-form {
-  display: block;
-  margin-top: 0.625rem;
-  padding: 0.625rem;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  background: var(--muted);
-}
-
-.lp-scene-field {
-  display: block;
-  height: 1.25rem;
-  border: 1px solid var(--border);
-  border-radius: calc(var(--radius) - 4px);
-  background: var(--background);
-}
-
-.lp-scene-field + .lp-scene-field { margin-top: 0.375rem; }
-
-.lp-scene-submit {
-  display: block;
-  margin-top: 0.5rem;
-  padding: 0.3125rem;
-  border-radius: 999px;
-  background: var(--primary);
-  color: var(--primary-foreground);
-  font-weight: 600;
-  text-align: center;
-}
-
-/* ── responses, as the product lists them ───────────────────────────────── */
-
-.lp-scene--panel { justify-content: flex-start; gap: 0.5rem; }
-
-.lp-scene-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem;
-  padding-bottom: 0.125rem;
-}
-
-.lp-scene-head-title { font-weight: 600; color: var(--foreground); }
-
-.lp-scene-count {
-  padding: 0.125rem 0.5rem;
-  border-radius: 999px;
-  background: var(--secondary);
-  color: var(--secondary-foreground);
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-}
-
-.lp-scene-rows { display: flex; flex-direction: column; }
-
-.lp-scene-row {
-  padding: 0.5rem 0.125rem;
-  border-top: 1px solid var(--border);
-  color: var(--foreground);
-}
-
-.lp-scene-row:first-child { border-top: 0; }
-
-/* ── the conversation picked back up ────────────────────────────────────── */
-
-.lp-scene--thread { justify-content: center; }
-
-.lp-scene-gap {
-  align-self: center;
-  margin-block: 0.125rem;
-  padding: 0.0625rem 0.5rem;
-  border-radius: 999px;
-  background: var(--muted);
-  color: var(--muted-foreground);
-  font-size: 0.85em;
-}
-
-/* The real composer, at stage scale and inert. */
-.lp-scene-composer {
-  margin-top: 0.25rem;
-  padding: 0.4375rem 0.625rem;
-  color: var(--muted-foreground);
+  width: 100%;
+  height: auto;
 }
 
 

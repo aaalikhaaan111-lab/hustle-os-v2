@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { getTranslations } from "next-intl/server";
 import { PLANS, type PlanId } from "@/lib/billing/plans";
 import { LandingComposer } from "@/components/landing/LandingComposer";
@@ -146,6 +147,23 @@ export async function Landing({ isAuthenticated }: { isAuthenticated: boolean })
             </div>
             <p>{t("chatLede")}</p>
           </div>
+
+        {/* The section carried no picture at all, which left the one
+            forward-looking claim on the page as bare prose. The asset shows the
+            change being asked for in a message and landing in the live product,
+            and carries its own "Coming soon" — the copy above says the same
+            thing, so the two agree. */}
+        <figure className="lp-shot">
+          <Image
+            src="/landing-images/landing-messenger.png"
+            alt={t("chatTitle")}
+            width={1312}
+            height={816}
+            sizes="(max-width: 767px) calc(100vw - 2.5rem), (max-width: 1199px) calc(100vw - 4rem), 1120px"
+            className="lp-shot-img"
+            loading="lazy"
+          />
+        </figure>
       </section>
 
       {/* ── pricing, from the real entitlements ──────────────────────────── */}
