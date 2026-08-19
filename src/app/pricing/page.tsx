@@ -12,7 +12,15 @@ import { getUserPlan } from "@/lib/billing/userPlan";
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("pricing");
-  return { title: t("pageTitle") };
+  const title = t("pageTitle");
+  /* Without its own `alternates` this page inherited the root canonical, which
+     told crawlers this URL IS the homepage — the one canonical mistake that
+     actively removes a page from an index. */
+  return {
+    title,
+    alternates: { canonical: "/pricing" },
+    openGraph: { title, url: "/pricing" },
+  };
 }
 
 /** The three plans, in the order they are shown. */

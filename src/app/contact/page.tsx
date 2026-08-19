@@ -6,7 +6,15 @@ import { legalConfig } from "@/config/legal";
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("legal.contact");
-  return { title: t("pageTitle") };
+  const title = t("pageTitle");
+  /* Without its own `alternates` this page inherited the root canonical, which
+     told crawlers this URL IS the homepage — the one canonical mistake that
+     actively removes a page from an index. */
+  return {
+    title,
+    alternates: { canonical: "/contact" },
+    openGraph: { title, url: "/contact" },
+  };
 }
 
 export default async function ContactPage() {

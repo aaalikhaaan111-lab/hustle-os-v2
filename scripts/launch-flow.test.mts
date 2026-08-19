@@ -205,8 +205,11 @@ const publishing = read("src/lib/actions/publishing.ts");
 check("publishing is an action, not a side effect of generating",
   /export async function publishProjectAction/.test(publishing));
 check("it refuses a project with nothing to publish", /if \(!payload \|\| !name\) return failure/.test(publishing));
+/* The window is generous because these actions now open with a burst-limit
+   guard; what matters is that the republish path still builds its payload from
+   what the project holds, not how many characters precede it. */
 check("republishing pushes whatever the project holds now",
-  /export async function updatePublishedVersionAction[\s\S]{0,900}?publishablePayload\(app, output\)/.test(publishing));
+  /export async function updatePublishedVersionAction[\s\S]{0,2000}?publishablePayload\(app, output\)/.test(publishing));
 check("unpublishing still exists", /export async function unpublishProjectAction/.test(publishing));
 
 // An application collects nothing through Ventrio, so the public form endpoint

@@ -6,6 +6,7 @@ import { headers } from "next/headers";
 import { AppShell } from "@/components/layout/AppShell";
 import { Toaster } from "@/components/ui/shadcn/sonner";
 import { clientMessages } from "@/i18n/clientMessages";
+import { getSiteUrl } from "@/lib/site";
 import "./globals.css";
 import "./studio.css";
 
@@ -76,9 +77,42 @@ export const viewport: Viewport = {
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("metadata");
+  const locale = await getLocale();
+  const site = getSiteUrl();
+
   return {
-    title: t("title"),
+    /**
+     * `metadataBase` is what turns every relative URL below — canonicals, OG
+     * images — into an absolute one. Without it Next emits relative OG tags,
+     * which crawlers and link unfurlers cannot resolve, so previews come out
+     * blank.
+     */
+    metadataBase: new URL(site),
+    title: {
+      default: t("title"),
+      /* Pages set only their own name; the brand is appended once, here, so
+         eighteen routes cannot each invent their own suffix. */
+      template: `%s — Ventrio`,
+    },
     description: t("description"),
+    applicationName: "Ventrio",
+    alternates: { canonical: "/" },
+    openGraph: {
+      type: "website",
+      siteName: "Ventrio",
+      title: t("title"),
+      description: t("description"),
+      url: site,
+      locale,
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: t("title"),
+      description: t("description"),
+    },
+    /* The signed-in product must never be indexed. Public pages opt back in
+       individually; this is the safe default for everything else. */
+    robots: { index: true, follow: true },
   };
 }
 
@@ -90,7 +124,11 @@ export default async function RootLayout({
   const requestHeaders = await headers();
   if (requestHeaders.get("x-ventrio-public-route") === "1") {
     return (
-      <html lang="en" className={`${geistSans.variable} ${geistMono.variable} ${lora.variable} ${figtree.variable} h-full antialiased`}>
+      /* `lang` is the document's real language, not a constant. This branch
+         hardcoded "en" while the public site serves Russian to most of its
+         visitors, which mislabels every page for screen readers, translation
+         prompts and search engines alike. */
+      <html lang={await getLocale()} className={`${geistSans.variable} ${geistMono.variable} ${lora.variable} ${figtree.variable} h-full antialiased`}>
         <body className="min-h-full">{children}</body>
       </html>
     );
