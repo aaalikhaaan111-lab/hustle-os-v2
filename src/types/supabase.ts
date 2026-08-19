@@ -1061,6 +1061,26 @@ export type Database = {
        * to another column, so `thumbnail_captured_at < updated_at` cannot be
        * written as a query parameter. Read by the worker only.
        */
+      /**
+       * The gallery's projection. Never carries `app_runtime.app.files`;
+       * `security_invoker = true` keeps the caller's RLS on `projects`.
+       */
+      project_cards: {
+        Row: {
+          id: string
+          user_id: string
+          name: string | null
+          project_type: string
+          status: string
+          created_at: string
+          updated_at: string
+          thumbnail_url: string | null
+          summary: string | null
+          card_content: Json | null
+          card_app: Json | null
+        }
+        Relationships: []
+      }
       projects_needing_thumbnail: {
         Row: {
           id: string

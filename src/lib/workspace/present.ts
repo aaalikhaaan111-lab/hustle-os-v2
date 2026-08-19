@@ -1,11 +1,8 @@
 import type { PreviewSpec, ProjectState } from "@/components/workspace-ui/parts";
-import { parseSnapshotFields } from "@/lib/build/snapshot";
-import { readAppState } from "@/lib/v2/app/projectState";
-import { parseStage3ProjectState } from "@/lib/build/stage3Types";
 import type { ProjectPublicationSummary } from "@/lib/publishing/queries";
 import type { Database } from "@/types/supabase";
 
-type ProjectRow = Database["public"]["Tables"]["projects"]["Row"];
+type ProjectCardRow = Database["public"]["Views"]["project_cards"]["Row"];
 
 /**
  * Turns a real project row into what the approved components need to draw it.
@@ -135,60 +132,88 @@ export function relativeAge(iso: string | null): RelativeAge {
   return { unit: "years", value: Math.floor(days / 365) };
 }
 
+/** The card projection's two jsonb columns, as the view builds them. */
+interface CardContent {
+  eyebrow?: string | null;
+  headline?: string | null;
+  subheadline?: string | null;
+  ctaLabel?: string | null;
+  palette?: unknown;
+  sections?: unknown;
+}
+interface CardApp {
+  name?: string | null;
+  description?: string | null;
+  routes?: unknown;
+}
+
+const strings = (value: unknown, max: number): string[] =>
+  Array.isArray(value)
+    ? value.filter((v): v is string => typeof v === "string" && v.length > 0).slice(0, max)
+    : [];
+
+/**
+ * A card, from the gallery projection.
+ *
+ * This used to take the whole `projects` row and re-derive everything from
+ * `snapshot_fields` — which meant the row had to CONTAIN `snapshot_fields`, and
+ * that is the generated application's source. The extraction now happens in the
+ * `project_cards` view, in SQL, so the source never leaves the database for a
+ * screen that only draws names and pictures.
+ *
+ * The rendered result is identical; only where the fields are computed moved.
+ */
 export function presentProject(
-  project: ProjectRow,
+  project: ProjectCardRow,
   publication?: ProjectPublicationSummary
 ): PresentedProject {
-  const snapshot = parseSnapshotFields(project.snapshot_fields);
-  const stage3 = parseStage3ProjectState(project.snapshot_fields);
+  const content = (project.card_content ?? null) as CardContent | null;
+  const app = (project.card_app ?? null) as CardApp | null;
+
   /**
    * A PROJECT HAS A VERSION IF EITHER PIPELINE PRODUCED ONE.
    *
-   * `hasOutput` only ever consulted `stage3.output`, but the v2 pipeline stores
-   * its generated application under a different key entirely
-   * (`snapshot_fields.app_runtime`). Every project built that way therefore
-   * reported "no first version yet" in the gallery — including published ones,
-   * whose version is not merely generated but live on the internet.
+   * `hasOutput` only ever consulted the stage-3 output, but the v2 pipeline
+   * stores its generated application under a different key entirely. Every
+   * project built that way reported "no first version yet" — including
+   * published ones, whose version is live on the internet. The view answers
+   * both halves, so the rule survives the move.
    */
-  const appState = readAppState(project.snapshot_fields);
-  const hasOutput = Boolean(stage3?.output) || appState !== null;
+  const hasOutput = content !== null || app !== null;
 
   return {
     id: project.id,
     // Left empty rather than filled with an English placeholder; the screens
     // supply the localised fallback.
     name: project.name?.trim() ?? "",
-    summary: stage3?.output?.identity.description ?? stage3?.direction?.concept ?? snapshot.solution ?? null,
+    summary: project.summary ?? null,
     // "proposal" is reserved for a real proposed next version. Nothing produces
     // one yet, so no project can be given that state by accident.
     state: publication?.isPublished ? "published" : "draft",
     updated: relativeAge(project.updated_at),
     hasOutput,
-    hasApp: appState !== null,
+    hasApp: app !== null,
     thumbnailUrl: project.thumbnail_url ?? null,
     preview: {
       shape: SHAPE_BY_TYPE[project.project_type] ?? "form",
       accent: accentFor(project.id),
     },
     slug: publication?.isPublished ? publication.slug : null,
-    app: appState
+    app: app
       ? {
-          name: appState.app.metadata.name,
-          description: appState.app.metadata.description,
-          routes: appState.app.routes.map((route) => route.title || route.path).slice(0, 5),
+          name: app.name ?? "",
+          description: app.description ?? "",
+          routes: strings(app.routes, 5),
         }
       : null,
-    content: stage3?.output
+    content: content
       ? {
-          eyebrow: stage3.output.hero.eyebrow,
-          headline: stage3.output.hero.headline,
-          subheadline: stage3.output.hero.subheadline,
-          ctaLabel: stage3.output.cta.label,
-          palette: stage3.output.visual.palette,
-          sections: stage3.output.sections
-            .map((section) => ("title" in section && typeof section.title === "string" ? section.title : ""))
-            .filter(Boolean)
-            .slice(0, 3),
+          eyebrow: content.eyebrow ?? "",
+          headline: content.headline ?? "",
+          subheadline: content.subheadline ?? "",
+          ctaLabel: content.ctaLabel ?? "",
+          palette: strings(content.palette, 3) as PresentedPreviewContent["palette"],
+          sections: strings(content.sections, 3),
         }
       : null,
   };

@@ -41,12 +41,33 @@ export async function getCurrentProject(supabase: Client, userId: string) {
 // widens projects.status), so there is nothing to hide today — the
 // hide-archived filter is added here once that status, and its generated type,
 // land.
+/**
+ * The most projects a gallery will load in one request.
+ *
+ * There was no bound at all: every project a person owned was fetched, so the
+ * payload grew with the account forever. Sixty is well past what anyone scrolls
+ * in one sitting and turns an unbounded query into a bounded one; the cards are
+ * ordered newest-first, so the cap drops the oldest rather than a random slice.
+ */
+export const PROJECT_LIST_LIMIT = 60;
+
+/**
+ * The gallery list.
+ *
+ * Reads `project_cards`, NOT `projects`. The table's `snapshot_fields` carries
+ * the generated application's source — ~90 kB per project — and `select("*")`
+ * shipped all of it to draw a grid of names and pictures: 494 kB for 19
+ * projects, 96% of it source code nothing on the screen reads. The view
+ * projects only what a card renders (16 kB for the same 19). The full document
+ * still loads, unchanged, when a project is opened.
+ */
 export async function listProjects(supabase: Client, userId: string) {
   const { data } = await supabase
-    .from("projects")
+    .from("project_cards")
     .select("*")
     .eq("user_id", userId)
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: false })
+    .limit(PROJECT_LIST_LIMIT);
   return data ?? [];
 }
 

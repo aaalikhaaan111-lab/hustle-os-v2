@@ -82,6 +82,10 @@ try {
   /* ── 1. B cannot READ A's rows ─────────────────────────────────────────── */
 
   const OWNED = [
+    /* The gallery projection is a VIEW. A view without `security_invoker`
+       executes as its owner and hands every caller every user's rows — RLS
+       silently bypassed — so it is probed exactly like a table. */
+    "project_cards",
     "projects", "project_publications", "project_ai_messages",
     "project_ai_conversations", "project_ai_memory", "generation_jobs",
     "user_ai_usage", "project_tasks", "project_outputs", "project_feedback_analyses",
