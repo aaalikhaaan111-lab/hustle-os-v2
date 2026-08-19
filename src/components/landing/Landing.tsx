@@ -155,7 +155,7 @@ export async function Landing({ isAuthenticated }: { isAuthenticated: boolean })
             thing, so the two agree. */}
         <figure className="lp-shot">
           <Image
-            src="/landing-images/landing-messenger.png"
+            src="/landing-images/landing-messenger.jpg"
             alt={t("chatTitle")}
             width={1312}
             height={816}

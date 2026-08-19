@@ -27,17 +27,13 @@ import { useTranslations } from "next-intl";
  * Containing letterboxes the taller three against the stage surface, which is
  * the honest trade: nothing is stretched and nothing is cropped away.
  *
- * THE VIDEO SLOT SURVIVES. A filename in `VIDEO` still takes precedence over
- * the still, so the motion clips these images stand in for can arrive later
- * without the section being rebuilt around them.
+ * THE ARTWORK IS AUTHORITATIVE. There is no longer a media slot that can take
+ * precedence over it. An empty `VIDEO` map used to sit in front of these
+ * images, which meant the four states were one stray filename away from
+ * showing something other than the approved assets; that indirection is gone
+ * and each state renders its own image directly.
  */
 type SectionId = "words" | "device" | "feedback" | "anywhere";
-
-/**
- * Where the motion clips will go. Empty on purpose — a filename here takes
- * precedence over the still below and changes nothing else.
- */
-const VIDEO: Partial<Record<SectionId, string>> = {};
 
 /**
  * The final artwork, matched to the topic each one actually shows.
@@ -53,13 +49,15 @@ const VIDEO: Partial<Record<SectionId, string>> = {};
  *                        directions into a built app: the thread continuing.
  *
  * Intrinsic sizes are declared so the optimiser can build a srcset and the box
- * never has to be measured at runtime.
+ * never has to be measured at runtime. The files are `.jpg` because their bytes
+ * are JPEG — they shipped named `.png`, which made the static server advertise
+ * a content type the payload did not match.
  */
 const STILL: Record<SectionId, { src: string; width: number; height: number }> = {
-  words: { src: "/landing-images/landing-1.png", width: 1312, height: 816 },
-  device: { src: "/landing-images/landing-4.png", width: 1200, height: 896 },
-  feedback: { src: "/landing-images/landing-3.png", width: 1200, height: 896 },
-  anywhere: { src: "/landing-images/landing-2.png", width: 1200, height: 896 },
+  words: { src: "/landing-images/landing-1.jpg", width: 1312, height: 816 },
+  device: { src: "/landing-images/landing-4.jpg", width: 1200, height: 896 },
+  feedback: { src: "/landing-images/landing-3.jpg", width: 1200, height: 896 },
+  anywhere: { src: "/landing-images/landing-2.jpg", width: 1200, height: 896 },
 };
 
 /* One easing for everything in this file: panels move in the 220-320ms band,
@@ -76,7 +74,7 @@ export function AfterStage({
   const [active, setActive] = useState<SectionId>("words");
 
   const current = items.find((s) => s.id === active) ?? items[0];
-  const video = VIDEO[current.id];
+  const still = STILL[current.id];
 
   const enter: Transition = reduce ? { duration: 0 } : { duration: 0.28, ease: EASE };
 
@@ -115,28 +113,16 @@ export function AfterStage({
             animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
             transition={enter}
           >
-            {video ? (
-              <video
-                className="lp-stage-video"
-                src={video}
-                autoPlay
-                muted
-                loop
-                playsInline
-                aria-label={current.title}
-              />
-            ) : (
-              <Image
-                src={STILL[current.id].src}
-                alt={current.title}
-                width={STILL[current.id].width}
-                height={STILL[current.id].height}
-                sizes="(max-width: 949px) calc(100vw - 2.5rem), 620px"
-                className="lp-stage-img"
-                /* Below the fold on every viewport this page is read at. */
-                loading="lazy"
-              />
-            )}
+            <Image
+              src={still.src}
+              alt={current.title}
+              width={still.width}
+              height={still.height}
+              sizes="(max-width: 949px) calc(100vw - 2.5rem), 620px"
+              className="lp-stage-img"
+              /* Below the fold on every viewport this page is read at. */
+              loading="lazy"
+            />
           </motion.div>
         </div>
       </div>

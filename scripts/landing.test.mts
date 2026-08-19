@@ -276,8 +276,7 @@ check("and honours reduced motion in its own transitions",
  * labelled as an example — Ventrio counts responses, it does not track
  * visitors, and the landing must not imply otherwise.
  */
-check("the media slot is declared but no asset is invented to fill it",
-  /const VIDEO: Partial<Record<SectionId, string>> = \{\};/.test(stage) &&
+check("no motion asset is invented to sit alongside the artwork",
   !/\.mp4|\.webm|\.gif/.test(stage),
   "the messenger clip was explicitly out of scope; inventing the other three is the same mistake");
 check("the stage says out loud that it is an illustration, in both languages",
@@ -292,8 +291,19 @@ check("the stage says out loud that it is an illustration, in both languages",
  * artwork.
  */
 check("every topic has a still, and they are the supplied assets",
-  ["landing-1", "landing-2", "landing-3", "landing-4"].every((n) => stage.includes(`/landing-images/${n}.png`)) &&
+  ["landing-1", "landing-2", "landing-3", "landing-4"].every((n) => stage.includes(`/landing-images/${n}.jpg`)) &&
   /const STILL: Record<SectionId/.test(stage));
+/**
+ * The artwork is authoritative: nothing may sit in front of it. An empty
+ * `VIDEO` map used to, which left the four approved states one stray filename
+ * away from showing something else.
+ */
+check("no media slot can outrank the artwork",
+  !/const VIDEO/.test(stage) && !/<video/.test(stage) && !/VIDEO\[/.test(stage),
+  "the images render directly, with no precedence check in front of them");
+/* The bytes are JPEG; the extension now says so. */
+check("the assets are referenced by their true type",
+  !/landing-images\/[a-z0-9-]+\.png/.test(stage) && !/landing-images\/[a-z0-9-]+\.png/.test(landing));
 check("nothing is recreated in CSS",
   !/lp-scene|s-turn-user|s-turn-assistant/.test(stage) && !/\.lp-scene/.test(css),
   "the brief was to use the PNGs directly, not to redraw them");
@@ -303,11 +313,11 @@ check("the artwork is contained, not stretched or cropped",
 /* The messenger asset belongs to the one forward-looking section and nowhere
    else — it carries a "Coming soon" badge of its own. */
 check("the messenger art appears once, in the messenger section only",
-  (landing.match(/landing-messenger\.png/g) ?? []).length === 1 &&
+  (landing.match(/landing-messenger\.jpg/g) ?? []).length === 1 &&
   !/landing-messenger/.test(stage));
 check("and it is lazy, sized, and sharp on retina",
   /loading="lazy"/.test(stage) && /sizes=/.test(stage) &&
-  /width=\{STILL\[current\.id\]\.width\}/.test(stage),
+  /width=\{still\.width\}/.test(stage) && /height=\{still\.height\}/.test(stage),
   "intrinsic dimensions are what let the optimiser build a srcset");
 check("and the FAQ is a real single-open accordion, shared with /faq",
   /aria-expanded=/.test(faqComponent) &&
