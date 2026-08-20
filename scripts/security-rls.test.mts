@@ -88,8 +88,14 @@ try {
     "project_cards",
     "projects", "project_publications", "project_ai_messages",
     "project_ai_conversations", "project_ai_memory", "generation_jobs",
-    "user_ai_usage", "project_tasks", "project_outputs", "project_feedback_analyses",
+    "user_ai_usage", "project_feedback_analyses",
   ] as const;
+
+/* project_tasks and project_outputs used to be probed here. They were dropped
+   on 2026-08-20 with the retired build system
+   (20260820160200_drop_retired_build_tables.sql); a probe against a table that
+   no longer exists reports "no rows" and would pass forever while proving
+   nothing. Section 6 asserts their absence instead. */
 
   for (const table of OWNED) {
     const { data, error } = await clientB.from(table).select("*").eq("user_id", A);
@@ -163,6 +169,56 @@ try {
 
   const { error: ownProfileError } = await clientB.from("profiles").select("id").eq("id", B);
   check("B can still reach its own profile row", !ownProfileError);
+
+  /* ── 6. a user cannot buy themselves a plan ────────────────────────────── */
+
+  /* THIS IS A REGRESSION TEST FOR A REAL HOLE, not a hypothetical. Until
+     20260820160400 the "Users can update own profile" policy scoped writes to
+     the right ROW but said nothing about which COLUMNS, because RLS has no
+     column dimension. A signed-in account could PATCH its own `plan` to "pro"
+     and unlock every paid entitlement — confirmed against production, then
+     reverted. The fix is a column-level GRANT, and this is what stops the next
+     billing column from silently widening that policy again. */
+  const escalation = await clientB.from("profiles")
+    .update({ plan: "pro" } as never).eq("id", B).select("plan");
+  check("B cannot grant itself a paid plan",
+    (escalation.data?.length ?? 0) === 0,
+    escalation.error ? `error ${escalation.error.code}` : "the update was accepted");
+
+  for (const column of ["paddle_customer_id", "paddle_subscription_id", "subscription_status"]) {
+    const billing = await clientB.from("profiles")
+      .update({ [column]: "forged" } as never).eq("id", B).select("id");
+    check(`B cannot write its own ${column}`,
+      (billing.data?.length ?? 0) === 0,
+      billing.error ? `error ${billing.error.code}` : "the update was accepted");
+  }
+
+  /* The plan must still read as it did — proof the attempts changed nothing. */
+  const { data: planAfter } = await admin.from("profiles").select("plan").eq("id", B).single();
+  check("B's plan is still free after the attempts", planAfter?.plan === "free",
+    `plan is now ${planAfter?.plan}`);
+
+  /* But the four fields Settings owns must still save, or the grant is too
+     tight and the panel is broken. */
+  const allowed = await clientB.from("profiles")
+    .update({ preferred_name: "rls-probe" }).eq("id", B).select("preferred_name");
+  check("B can still edit its own preferred name", (allowed.data?.length ?? 0) === 1,
+    allowed.error ? `error ${allowed.error.code}` : `${allowed.data?.length} row(s)`);
+  await clientB.from("profiles").update({ preferred_name: null }).eq("id", B);
+
+  /* ── 7. the retired tables are really gone ─────────────────────────────── */
+
+  /* A dropped table must fail as UNDEFINED, not as "empty". PostgREST answers
+     an unknown relation with PGRST205; anything else means the cleanup did not
+     apply, or something recreated them. */
+  for (const table of ["project_tasks", "project_outputs", "project_proofs",
+                       "ventures", "workshop_sessions", "workshop_participants",
+                       "workshop_answers", "workshops", "workshop_registrations",
+                       "challenges", "challenge_progress", "courses", "course_lessons"]) {
+    const { error } = await admin.from(table as never).select("*").limit(1);
+    check(`${table} no longer exists`, error?.code === "PGRST205",
+      error ? `error ${error.code}` : "the relation still answers queries");
+  }
 } finally {
   await cleanup();
 }
