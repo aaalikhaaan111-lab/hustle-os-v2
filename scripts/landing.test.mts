@@ -83,9 +83,26 @@ check("multi-column tracks cannot blow out",
   tracks.filter((t) => /repeat\(/.test(t)).every((t) => /minmax\(0/.test(t)),
   "a track without minmax(0,…) overflows on the first long word");
 check("the page has a mobile-first gutter", /--lp-gutter: 1\.25rem/.test(css));
-check("navigation survives on narrow screens",
-  !/\.lp-nav \{[^}]*display: none/.test(css),
-  "the destinations used to vanish under 880px with nothing in their place");
+/**
+ * The destinations must remain REACHABLE on a phone — which is what this always
+ * guarded. It used to do that by proving the desktop nav was never hidden, back
+ * when hiding it would have left nothing behind. Below 880px the nav is now
+ * removed from the layout on purpose and the same destinations live in a sheet
+ * behind one control, so the check is that the drawer exists and carries them.
+ *
+ * The nav wrapped onto its own full-width row and then onto two lines inside
+ * it, so the header stood three rows tall at 390px before any content.
+ */
+const publicHeader = read("src/components/public/PublicHeader.tsx");
+check("every destination is still reachable on a phone",
+  /<SheetContent/.test(publicHeader) && /lp-menu-link/.test(publicHeader) &&
+  /menus\.map/.test(publicHeader.slice(publicHeader.indexOf("SheetContent"))),
+  "the drawer must carry the same destinations the desktop nav does");
+check("and the desktop nav is removed from the layout rather than merely hidden",
+  /\.lp-header-inner > \.lp-nav \{ display: none; \}/.test(css),
+  "a hidden-but-laid-out nav still contributes width to its grid track");
+check("the phone header is one fixed row",
+  /@media \(max-width: 879px\) \{[\s\S]{0,400}height: 3\.5rem/.test(css));
 
 /* ── 5. motion answers the pointer, never the scroll ─────────────────────── */
 

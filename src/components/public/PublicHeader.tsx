@@ -4,6 +4,14 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { VentrioMark } from "@/components/workspace-ui/parts";
+import { Menu } from "lucide-react";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/shadcn/sheet";
 import {
   NavigationMenu,
   NavigationMenuContent,
@@ -114,6 +122,7 @@ function Arrow() {
 export function PublicHeader({ isAuthenticated }: { isAuthenticated: boolean }) {
   const t = useTranslations("landing");
   const [stuck, setStuck] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
     const onScroll = () => setStuck(window.scrollY > 8);
@@ -205,6 +214,47 @@ export function PublicHeader({ isAuthenticated }: { isAuthenticated: boolean }) 
             ))}
           </NavigationMenuList>
         </NavigationMenu>
+
+        {/**
+         * THE PHONE GETS A DRAWER, NOT A SECOND ROW.
+         *
+         * Four triggers cannot sit on one line at 390px, so the nav used to
+         * move to its own full-width row and wrap onto two — a header three
+         * rows tall before any content, on the viewport with the least of it.
+         * The desktop NavigationMenu is untouched above 880px; below it the
+         * same destinations live in a sheet behind one control, and the header
+         * is a fixed single row.
+         */}
+        <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
+          <SheetTrigger className="lp-menu-btn" aria-label={t("menuLabel")}>
+            <Menu size={20} aria-hidden />
+          </SheetTrigger>
+          <SheetContent side="right" className="lp-menu-sheet">
+            <SheetHeader>
+              <SheetTitle>{t("menuLabel")}</SheetTitle>
+            </SheetHeader>
+            <nav className="lp-menu-nav">
+              {menus.map((menu) => (
+                <div key={menu.label} className="lp-menu-group">
+                  <p className="lp-menu-group-title">{menu.label}</p>
+                  {menu.links.map((link) => (
+                    <Link
+                      key={link.href}
+                      href={link.href}
+                      className="lp-menu-link"
+                      /* A drawer that stays open over the page it just
+                         navigated to is a drawer nobody closed. */
+                      onClick={() => setMenuOpen(false)}
+                    >
+                      <span className="lp-menu-link-title">{link.title}</span>
+                      <span className="lp-menu-link-desc">{link.desc}</span>
+                    </Link>
+                  ))}
+                </div>
+              ))}
+            </nav>
+          </SheetContent>
+        </Sheet>
 
         <div className="lp-header-cta">
           <Chip
