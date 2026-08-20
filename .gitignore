@@ -43,3 +43,6 @@ next-env.d.ts
 # supabase cli
 /supabase/.temp/
 /.swc
+
+# Database exports (scripts/backup.mts). Never committed: real user data.
+backups/
