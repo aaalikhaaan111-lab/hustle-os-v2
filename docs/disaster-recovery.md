@@ -153,7 +153,7 @@ Order matters on load — `projects` before `project_publications` and the
 
 `handle_new_user()` provisions a profile inside the signup transaction. Since
 2026-08-20 it also **catches its own failures** rather than aborting the signup
-(`20260820160300_fix_new_user_profile_identity.sql`) — the account is created
+(`20260820150000_fix_new_user_profile_identity.sql`) — the account is created
 either way, and a failure is a `warning` in the Postgres log rather than a
 "Database error saving new user" shown to the person signing up.
 

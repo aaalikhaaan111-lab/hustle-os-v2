@@ -85,7 +85,7 @@ export async function updateProfileAction(
    * The row should always exist: handle_new_user() provisions one inside the
    * signup transaction. But that trigger now catches its own failures rather
    * than aborting a signup over a profile (see
-   * 20260820160300_fix_new_user_profile_identity.sql), which means a missing
+   * 20260820150000_fix_new_user_profile_identity.sql), which means a missing
    * row is rare instead of impossible — and a rare silent data-loss path is
    * worse than a common loud one.
    */
@@ -105,7 +105,7 @@ export async function updateProfileAction(
      * `profiles` has no INSERT policy and deliberately keeps none. Adding one
      * would let a client insert its own row, and a client-written profile row
      * could carry a `plan` value, which is precisely the escalation that
-     * 20260820160400 closes. Repairing it server-side keeps the write path
+     * 20260820150100 closes. Repairing it server-side keeps the write path
      * narrow: this code chooses the id and the four columns, not the caller.
      */
     const service = createServiceClient();

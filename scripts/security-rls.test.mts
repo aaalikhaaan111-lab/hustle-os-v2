@@ -173,7 +173,7 @@ try {
   /* ── 6. a user cannot buy themselves a plan ────────────────────────────── */
 
   /* THIS IS A REGRESSION TEST FOR A REAL HOLE, not a hypothetical. Until
-     20260820160400 the "Users can update own profile" policy scoped writes to
+     20260820150100 the "Users can update own profile" policy scoped writes to
      the right ROW but said nothing about which COLUMNS, because RLS has no
      column dimension. A signed-in account could PATCH its own `plan` to "pro"
      and unlock every paid entitlement — confirmed against production, then

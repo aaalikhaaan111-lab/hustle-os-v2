@@ -14,154 +14,19 @@ export type Database = {
   }
   public: {
     Tables: {
-      challenge_progress: {
-        Row: {
-          challenge_id: string
-          completed_at: string
-          id: string
-          profile_id: string
-          reflection_text: string | null
-        }
-        Insert: {
-          challenge_id: string
-          completed_at?: string
-          id?: string
-          profile_id: string
-          reflection_text?: string | null
-        }
-        Update: {
-          challenge_id?: string
-          completed_at?: string
-          id?: string
-          profile_id?: string
-          reflection_text?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "challenge_progress_challenge_id_fkey"
-            columns: ["challenge_id"]
-            isOneToOne: false
-            referencedRelation: "challenges"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "challenge_progress_profile_id_fkey"
-            columns: ["profile_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      challenges: {
-        Row: {
-          action_prompt: string
-          created_at: string
-          day_number: number
-          description: string
-          id: string
-          reflection_prompt: string
-          title: string
-        }
-        Insert: {
-          action_prompt: string
-          created_at?: string
-          day_number: number
-          description: string
-          id?: string
-          reflection_prompt: string
-          title: string
-        }
-        Update: {
-          action_prompt?: string
-          created_at?: string
-          day_number?: number
-          description?: string
-          id?: string
-          reflection_prompt?: string
-          title?: string
-        }
-        Relationships: []
-      }
-      course_lessons: {
-        Row: {
-          action_prompt: string
-          content: string
-          course_id: string
-          created_at: string
-          id: string
-          lesson_number: number
-          module_number: number
-          reflection_prompt: string
-          title: string
-        }
-        Insert: {
-          action_prompt: string
-          content: string
-          course_id: string
-          created_at?: string
-          id?: string
-          lesson_number: number
-          module_number: number
-          reflection_prompt: string
-          title: string
-        }
-        Update: {
-          action_prompt?: string
-          content?: string
-          course_id?: string
-          created_at?: string
-          id?: string
-          lesson_number?: number
-          module_number?: number
-          reflection_prompt?: string
-          title?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "course_lessons_course_id_fkey"
-            columns: ["course_id"]
-            isOneToOne: false
-            referencedRelation: "courses"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      courses: {
-        Row: {
-          created_at: string
-          description: string
-          id: string
-          title: string
-        }
-        Insert: {
-          created_at?: string
-          description: string
-          id?: string
-          title: string
-        }
-        Update: {
-          created_at?: string
-          description?: string
-          id?: string
-          title?: string
-        }
-        Relationships: []
-      }
       generation_jobs: {
         Row: {
           attempt_count: number
-          created_at: string
           cached_tokens: number | null
-          input_tokens: number | null
-          output_tokens: number | null
-          thoughts_tokens: number | null
+          created_at: string
           error_code: string | null
           error_message: string | null
           finished_at: string | null
           heartbeat_at: string | null
           id: string
+          input_tokens: number | null
           kind: string
+          output_tokens: number | null
           payload: Json | null
           progress_stage: string | null
           project_id: string
@@ -169,6 +34,7 @@ export type Database = {
           request_id: string
           started_at: string | null
           status: string
+          thoughts_tokens: number | null
           updated_at: string
           usage_released_at: string | null
           usage_reserved_at: string | null
@@ -176,17 +42,16 @@ export type Database = {
         }
         Insert: {
           attempt_count?: number
-          created_at?: string
           cached_tokens?: number | null
-          input_tokens?: number | null
-          output_tokens?: number | null
-          thoughts_tokens?: number | null
+          created_at?: string
           error_code?: string | null
           error_message?: string | null
           finished_at?: string | null
           heartbeat_at?: string | null
           id?: string
+          input_tokens?: number | null
           kind?: string
+          output_tokens?: number | null
           payload?: Json | null
           progress_stage?: string | null
           project_id: string
@@ -194,6 +59,7 @@ export type Database = {
           request_id: string
           started_at?: string | null
           status?: string
+          thoughts_tokens?: number | null
           updated_at?: string
           usage_released_at?: string | null
           usage_reserved_at?: string | null
@@ -201,17 +67,16 @@ export type Database = {
         }
         Update: {
           attempt_count?: number
-          created_at?: string
           cached_tokens?: number | null
-          input_tokens?: number | null
-          output_tokens?: number | null
-          thoughts_tokens?: number | null
+          created_at?: string
           error_code?: string | null
           error_message?: string | null
           finished_at?: string | null
           heartbeat_at?: string | null
           id?: string
+          input_tokens?: number | null
           kind?: string
+          output_tokens?: number | null
           payload?: Json | null
           progress_stage?: string | null
           project_id?: string
@@ -219,12 +84,20 @@ export type Database = {
           request_id?: string
           started_at?: string | null
           status?: string
+          thoughts_tokens?: number | null
           updated_at?: string
           usage_released_at?: string | null
           usage_reserved_at?: string | null
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "generation_jobs_project_owner_fk"
+            columns: ["project_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "project_cards"
+            referencedColumns: ["id", "user_id"]
+          },
           {
             foreignKeyName: "generation_jobs_project_owner_fk"
             columns: ["project_id", "user_id"]
@@ -238,51 +111,51 @@ export type Database = {
         Row: {
           created_at: string
           daily_minutes: number | null
-          paddle_customer_id: string | null
-          paddle_subscription_id: string | null
-          plan: string
-          subscription_status: string | null
           display_name: string | null
           id: string
           interests: string[] | null
           locale: string
           onboarding_completed_at: string | null
+          paddle_customer_id: string | null
+          paddle_subscription_id: string | null
           personal_instructions: string | null
+          plan: string
           preferred_name: string | null
+          subscription_status: string | null
           updated_at: string
           work_description: string | null
         }
         Insert: {
           created_at?: string
           daily_minutes?: number | null
-          paddle_customer_id?: string | null
-          paddle_subscription_id?: string | null
-          plan?: string
-          subscription_status?: string | null
           display_name?: string | null
           id: string
           interests?: string[] | null
           locale?: string
           onboarding_completed_at?: string | null
+          paddle_customer_id?: string | null
+          paddle_subscription_id?: string | null
           personal_instructions?: string | null
+          plan?: string
           preferred_name?: string | null
+          subscription_status?: string | null
           updated_at?: string
           work_description?: string | null
         }
         Update: {
           created_at?: string
           daily_minutes?: number | null
-          paddle_customer_id?: string | null
-          paddle_subscription_id?: string | null
-          plan?: string
-          subscription_status?: string | null
           display_name?: string | null
           id?: string
           interests?: string[] | null
           locale?: string
           onboarding_completed_at?: string | null
+          paddle_customer_id?: string | null
+          paddle_subscription_id?: string | null
           personal_instructions?: string | null
+          plan?: string
           preferred_name?: string | null
+          subscription_status?: string | null
           updated_at?: string
           work_description?: string | null
         }
@@ -318,7 +191,21 @@ export type Database = {
             foreignKeyName: "project_ai_conversations_project_id_fkey"
             columns: ["project_id"]
             isOneToOne: false
+            referencedRelation: "project_cards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_ai_conversations_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
             referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_ai_conversations_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects_needing_thumbnail"
             referencedColumns: ["id"]
           },
         ]
@@ -350,7 +237,21 @@ export type Database = {
             foreignKeyName: "project_ai_memory_project_id_fkey"
             columns: ["project_id"]
             isOneToOne: true
+            referencedRelation: "project_cards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_ai_memory_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: true
             referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_ai_memory_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: true
+            referencedRelation: "projects_needing_thumbnail"
             referencedColumns: ["id"]
           },
         ]
@@ -395,7 +296,21 @@ export type Database = {
             foreignKeyName: "project_ai_messages_project_id_fkey"
             columns: ["project_id"]
             isOneToOne: false
+            referencedRelation: "project_cards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_ai_messages_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
             referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_ai_messages_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects_needing_thumbnail"
             referencedColumns: ["id"]
           },
         ]
@@ -450,111 +365,6 @@ export type Database = {
           },
         ]
       }
-      project_outputs: {
-        Row: {
-          content: string
-          created_at: string
-          id: string
-          project_id: string
-          task_id: string
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          content: string
-          created_at?: string
-          id?: string
-          project_id: string
-          task_id: string
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          content?: string
-          created_at?: string
-          id?: string
-          project_id?: string
-          task_id?: string
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "project_outputs_project_id_fkey"
-            columns: ["project_id"]
-            isOneToOne: false
-            referencedRelation: "projects"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "project_outputs_task_id_fkey"
-            columns: ["task_id"]
-            isOneToOne: true
-            referencedRelation: "project_tasks"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      project_proofs: {
-        Row: {
-          created_at: string
-          description: string | null
-          file_path: string | null
-          id: string
-          project_id: string
-          stage: string | null
-          task_id: string | null
-          title: string
-          type: string
-          url: string | null
-          user_id: string
-          verification_status: string
-        }
-        Insert: {
-          created_at?: string
-          description?: string | null
-          file_path?: string | null
-          id?: string
-          project_id: string
-          stage?: string | null
-          task_id?: string | null
-          title: string
-          type: string
-          url?: string | null
-          user_id: string
-          verification_status?: string
-        }
-        Update: {
-          created_at?: string
-          description?: string | null
-          file_path?: string | null
-          id?: string
-          project_id?: string
-          stage?: string | null
-          task_id?: string | null
-          title?: string
-          type?: string
-          url?: string | null
-          user_id?: string
-          verification_status?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "project_proofs_project_id_fkey"
-            columns: ["project_id"]
-            isOneToOne: false
-            referencedRelation: "projects"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "project_proofs_task_id_fkey"
-            columns: ["task_id"]
-            isOneToOne: false
-            referencedRelation: "project_tasks"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       project_publications: {
         Row: {
           created_at: string
@@ -593,6 +403,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "project_publications_project_owner_fk"
+            columns: ["project_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "project_cards"
+            referencedColumns: ["id", "user_id"]
+          },
           {
             foreignKeyName: "project_publications_project_owner_fk"
             columns: ["project_id", "user_id"]
@@ -637,89 +454,6 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "project_publications"
             referencedColumns: ["id", "project_id", "user_id"]
-          },
-        ]
-      }
-      project_tasks: {
-        Row: {
-          action: string
-          completed_at: string | null
-          completion_criteria: string
-          created_at: string
-          estimated_time: string
-          expected_output: string
-          id: string
-          objective: string
-          order_index: number
-          output_kind: string
-          project_id: string
-          recommended_lesson_id: string | null
-          review: Json | null
-          review_status: string | null
-          stage: string
-          status: string
-          title: string
-          updated_at: string
-          user_id: string
-          why_it_matters: string
-          xp: number
-          xp_awarded: boolean
-        }
-        Insert: {
-          action: string
-          completed_at?: string | null
-          completion_criteria: string
-          created_at?: string
-          estimated_time: string
-          expected_output: string
-          id?: string
-          objective: string
-          order_index: number
-          output_kind?: string
-          project_id: string
-          recommended_lesson_id?: string | null
-          review?: Json | null
-          review_status?: string | null
-          stage: string
-          status?: string
-          title: string
-          updated_at?: string
-          user_id: string
-          why_it_matters: string
-          xp?: number
-          xp_awarded?: boolean
-        }
-        Update: {
-          action?: string
-          completed_at?: string | null
-          completion_criteria?: string
-          created_at?: string
-          estimated_time?: string
-          expected_output?: string
-          id?: string
-          objective?: string
-          order_index?: number
-          output_kind?: string
-          project_id?: string
-          recommended_lesson_id?: string | null
-          review?: Json | null
-          review_status?: string | null
-          stage?: string
-          status?: string
-          title?: string
-          updated_at?: string
-          user_id?: string
-          why_it_matters?: string
-          xp?: number
-          xp_awarded?: boolean
-        }
-        Relationships: [
-          {
-            foreignKeyName: "project_tasks_project_id_fkey"
-            columns: ["project_id"]
-            isOneToOne: false
-            referencedRelation: "projects"
-            referencedColumns: ["id"]
           },
         ]
       }
@@ -795,6 +529,27 @@ export type Database = {
         }
         Relationships: []
       }
+      rate_limit_events: {
+        Row: {
+          action: string
+          created_at: string
+          id: number
+          subject: string
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          id?: number
+          subject: string
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          id?: number
+          subject?: string
+        }
+        Relationships: []
+      }
       user_ai_usage: {
         Row: {
           created_at: string
@@ -819,278 +574,97 @@ export type Database = {
         }
         Relationships: []
       }
-      ventures: {
-        Row: {
-          budget: string | null
-          created_at: string
-          deadline: string | null
-          id: string
-          location: string | null
-          mission: string
-          owner_id: string
-          research_completed_at: string | null
-          research_report: Json | null
-          resources: string | null
-          status: string
-          updated_at: string
-        }
-        Insert: {
-          budget?: string | null
-          created_at?: string
-          deadline?: string | null
-          id?: string
-          location?: string | null
-          mission: string
-          owner_id: string
-          research_completed_at?: string | null
-          research_report?: Json | null
-          resources?: string | null
-          status?: string
-          updated_at?: string
-        }
-        Update: {
-          budget?: string | null
-          created_at?: string
-          deadline?: string | null
-          id?: string
-          location?: string | null
-          mission?: string
-          owner_id?: string
-          research_completed_at?: string | null
-          research_report?: Json | null
-          resources?: string | null
-          status?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
-      workshop_answers: {
-        Row: {
-          answered_at: string
-          id: string
-          is_correct: boolean
-          participant_id: string
-          points_awarded: number
-          question_index: number
-          response_ms: number
-          selected_option: number
-          session_id: string
-        }
-        Insert: {
-          answered_at?: string
-          id?: string
-          is_correct: boolean
-          participant_id: string
-          points_awarded?: number
-          question_index: number
-          response_ms: number
-          selected_option: number
-          session_id: string
-        }
-        Update: {
-          answered_at?: string
-          id?: string
-          is_correct?: boolean
-          participant_id?: string
-          points_awarded?: number
-          question_index?: number
-          response_ms?: number
-          selected_option?: number
-          session_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "workshop_answers_participant_id_fkey"
-            columns: ["participant_id"]
-            isOneToOne: false
-            referencedRelation: "workshop_participants"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "workshop_answers_session_id_fkey"
-            columns: ["session_id"]
-            isOneToOne: false
-            referencedRelation: "workshop_sessions"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      workshop_participants: {
-        Row: {
-          display_name: string
-          id: string
-          joined_at: string
-          session_id: string
-          user_id: string
-        }
-        Insert: {
-          display_name: string
-          id?: string
-          joined_at?: string
-          session_id: string
-          user_id: string
-        }
-        Update: {
-          display_name?: string
-          id?: string
-          joined_at?: string
-          session_id?: string
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "workshop_participants_session_id_fkey"
-            columns: ["session_id"]
-            isOneToOne: false
-            referencedRelation: "workshop_sessions"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      workshop_registrations: {
-        Row: {
-          id: string
-          profile_id: string
-          registered_at: string
-          workshop_id: string
-        }
-        Insert: {
-          id?: string
-          profile_id: string
-          registered_at?: string
-          workshop_id: string
-        }
-        Update: {
-          id?: string
-          profile_id?: string
-          registered_at?: string
-          workshop_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "workshop_registrations_profile_id_fkey"
-            columns: ["profile_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "workshop_registrations_workshop_id_fkey"
-            columns: ["workshop_id"]
-            isOneToOne: false
-            referencedRelation: "workshops"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      workshop_sessions: {
-        Row: {
-          code: string
-          created_at: string
-          current_question_index: number
-          host_id: string
-          id: string
-          question_started_at: string | null
-          status: string
-          updated_at: string
-          workshop_slug: string
-        }
-        Insert: {
-          code: string
-          created_at?: string
-          current_question_index?: number
-          host_id: string
-          id?: string
-          question_started_at?: string | null
-          status?: string
-          updated_at?: string
-          workshop_slug: string
-        }
-        Update: {
-          code?: string
-          created_at?: string
-          current_question_index?: number
-          host_id?: string
-          id?: string
-          question_started_at?: string | null
-          status?: string
-          updated_at?: string
-          workshop_slug?: string
-        }
-        Relationships: []
-      }
-      workshops: {
-        Row: {
-          created_at: string
-          description: string
-          duration_minutes: number
-          id: string
-          max_seats: number
-          meeting_url: string
-          scheduled_at: string
-          title: string
-        }
-        Insert: {
-          created_at?: string
-          description: string
-          duration_minutes?: number
-          id?: string
-          max_seats?: number
-          meeting_url: string
-          scheduled_at: string
-          title: string
-        }
-        Update: {
-          created_at?: string
-          description?: string
-          duration_minutes?: number
-          id?: string
-          max_seats?: number
-          meeting_url?: string
-          scheduled_at?: string
-          title?: string
-        }
-        Relationships: []
-      }
     }
     Views: {
       /**
-       * Projects whose stored picture is missing or older than the project.
+       * HAND-TIGHTENED, AND IT MUST STAY THAT WAY.
        *
-       * A view because PostgREST filters compare a column to a value and never
-       * to another column, so `thumbnail_captured_at < updated_at` cannot be
-       * written as a query parameter. Read by the worker only.
-       */
-      /**
-       * The gallery's projection. Never carries `app_runtime.app.files`;
-       * `security_invoker = true` keeps the caller's RLS on `projects`.
+       * `supabase gen types` marks EVERY column of a view nullable, because
+       * Postgres does not carry a NOT NULL guarantee through a view definition
+       * and the generator will not infer one. But this view is a plain
+       * projection of public.projects, where id, user_id, project_type, status,
+       * created_at and updated_at are all NOT NULL — so the generated `| null`
+       * is a lie that forces a null check at every call site for a value that
+       * cannot occur.
+       *
+       * If a regeneration reverts this, src/lib/workspace/shellNav.ts and
+       * present.ts stop compiling. That is the intended alarm: re-apply this
+       * block rather than adding null guards to satisfy it.
        */
       project_cards: {
         Row: {
+          card_app: Json | null
+          card_content: Json | null
+          created_at: string
           id: string
-          user_id: string
           name: string | null
           project_type: string
           status: string
-          created_at: string
-          updated_at: string
-          thumbnail_url: string | null
           summary: string | null
-          card_content: Json | null
-          card_app: Json | null
+          thumbnail_url: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          card_app?: never
+          card_content?: never
+          created_at?: string | null
+          id?: string | null
+          name?: string | null
+          project_type?: string | null
+          status?: string | null
+          summary?: never
+          thumbnail_url?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          card_app?: never
+          card_content?: never
+          created_at?: string | null
+          id?: string | null
+          name?: string | null
+          project_type?: string | null
+          status?: string | null
+          summary?: never
+          thumbnail_url?: string | null
+          updated_at?: string | null
+          user_id?: string | null
         }
         Relationships: []
       }
+      /** Same reasoning as project_cards above: a projection of NOT NULL columns. */
       projects_needing_thumbnail: {
         Row: {
           id: string
           snapshot_fields: Json | null
           updated_at: string
         }
+        Insert: {
+          id?: string | null
+          snapshot_fields?: Json | null
+          updated_at?: string | null
+        }
+        Update: {
+          id?: string | null
+          snapshot_fields?: Json | null
+          updated_at?: string | null
+        }
         Relationships: []
       }
     }
     Functions: {
+      claim_generation_provider_request: {
+        Args: { p_expected: number; p_job_id: string }
+        Returns: boolean
+      }
+      consume_ai_usage: {
+        Args: { p_limit: number; p_metric: string; p_user_id: string }
+        Returns: {
+          allowed: boolean
+          used_count: number
+        }[]
+      }
       consume_rate_limit: {
         Args: {
           p_action: string
@@ -1100,41 +674,50 @@ export type Database = {
         }
         Returns: Json
       }
-      consume_ai_usage: {
-        Args: { p_limit: number; p_metric: string; p_user_id: string }
-        Returns: {
-          allowed: boolean
-          used_count: number
-        }[]
-      }
-      claim_generation_provider_request: {
-        Args: {
-          p_expected: number
-          p_job_id: string
-        }
-        Returns: boolean
-      }
-      expire_stale_generation_jobs: {
-        Args: {
-          p_cutoff: string
-          p_kind: string
-          p_metric: string
-          p_metric_period: string
-          p_project_id: string
-          p_user_id: string
-        }
-        Returns: number
-      }
-      expire_stale_generation_jobs_for_user: {
-        Args: {
-          p_cutoff: string
-          p_kind: string
-          p_metric: string
-          p_metric_period: string
-          p_user_id: string
-        }
-        Returns: number
-      }
+      expire_stale_generation_jobs:
+        | {
+            Args: {
+              p_cutoff: string
+              p_kind: string
+              p_metric: string
+              p_metric_daily: boolean
+              p_project_id: string
+              p_user_id: string
+            }
+            Returns: number
+          }
+        | {
+            Args: {
+              p_cutoff: string
+              p_kind: string
+              p_metric: string
+              p_metric_period: string
+              p_project_id: string
+              p_user_id: string
+            }
+            Returns: number
+          }
+      expire_stale_generation_jobs_for_user:
+        | {
+            Args: {
+              p_cutoff: string
+              p_kind: string
+              p_metric: string
+              p_metric_daily: boolean
+              p_user_id: string
+            }
+            Returns: number
+          }
+        | {
+            Args: {
+              p_cutoff: string
+              p_kind: string
+              p_metric: string
+              p_metric_period: string
+              p_user_id: string
+            }
+            Returns: number
+          }
       get_public_project: {
         Args: { p_slug: string }
         Returns: {
@@ -1145,7 +728,6 @@ export type Database = {
           updated_at: string
         }[]
       }
-      is_workshop_member: { Args: { p_session_id: string }; Returns: boolean }
       owns_project: { Args: { p_project_id: string }; Returns: boolean }
       release_ai_usage: {
         Args: { p_metric: string; p_user_id: string }
@@ -1175,6 +757,23 @@ export type Database = {
         }
         Returns: string
       }
+      usage_key_for_job:
+        | {
+            Args: {
+              p_metric: string
+              p_metric_daily: boolean
+              p_reserved_at: string
+            }
+            Returns: string
+          }
+        | {
+            Args: {
+              p_metric: string
+              p_metric_period: string
+              p_reserved_at: string
+            }
+            Returns: string
+          }
     }
     Enums: {
       [_ in never]: never
