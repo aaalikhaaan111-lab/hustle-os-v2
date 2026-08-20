@@ -103,8 +103,10 @@ export function ProfileForm({
         {state.success && !state.error && <p className="text-sm text-success">{t("saved")}</p>}
 
         <div>
-          <Button type="submit" disabled={isPending}>
-            {isPending ? t("saving") : t("saveChanges")}
+          {/* The label no longer changes under the cursor; the spinner says
+              the work is happening and the width stays put. */}
+          <Button type="submit" pending={isPending}>
+            {t("saveChanges")}
           </Button>
         </div>
       </form>

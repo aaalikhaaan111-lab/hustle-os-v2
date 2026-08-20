@@ -1310,3 +1310,38 @@ body:has([data-slot="sheet-content"][data-state="open"]) .studio-frame {
 }
 
 [data-slot="tooltip-content"][data-state="closed"] { animation-duration: 90ms; }
+
+/* ── the drawer moves the page with it ──────────────────────────────────── */
+
+/**
+ * ON A PHONE THE SIDEBAR IS A SHEET THAT SLIDES OVER STATIC CONTENT, so opening
+ * it felt like a panel appearing in front of a photograph rather than a drawer
+ * pushing a surface aside. The content now travels a little with it.
+ *
+ * TRANSLATE ONLY, AND ONLY 20px. The drawer is 18rem; moving the page by that
+ * much would be a full page slide, which is not what this is. Twenty pixels is
+ * enough for the eye to read the two surfaces as connected and little enough
+ * that nothing important leaves the screen.
+ *
+ * WHY A TRANSFORM ON THIS ELEMENT IS SAFE. A transform makes its element the
+ * containing block for `position: fixed` descendants. The two fixed rules that
+ * hold the mobile keyboard layout together — `body:has(.studio-frame)` and the
+ * portalled tooltip — are both ABOVE or OUTSIDE this element, so neither is
+ * reparented. The only fixed descendants are a dropdown's backdrop and popup,
+ * which cannot be open at the same time as the drawer, and the transform is
+ * removed the moment the drawer closes.
+ */
+[data-slot="sidebar-wrapper"] [data-slot="sidebar-inset"] {
+  transition: transform 260ms var(--ease);
+  will-change: transform;
+}
+
+[data-slot="sidebar-wrapper"][data-mobile-open="true"] [data-slot="sidebar-inset"] {
+  transform: translate3d(1.25rem, 0, 0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* The state still changes; only the travel goes. */
+  [data-slot="sidebar-wrapper"] [data-slot="sidebar-inset"] { transition: none; }
+  [data-slot="sidebar-wrapper"][data-mobile-open="true"] [data-slot="sidebar-inset"] { transform: none; }
+}

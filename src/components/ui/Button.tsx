@@ -1,5 +1,6 @@
 import type { ButtonHTMLAttributes, ReactNode } from "react";
 import { VentrioButton, VentrioLinkButton } from "@/components/ui/VentrioButton";
+import { Spinner } from "@/components/ui/shadcn/spinner";
 
 type ButtonVariant = "primary" | "secondary" | "outline" | "ghost";
 type ButtonSize = "sm" | "md" | "lg";
@@ -30,6 +31,17 @@ interface BaseButtonProps {
   className?: string;
   children?: ReactNode;
   disabled?: boolean;
+  /**
+   * Work is in flight.
+   *
+   * Disabling alone tells somebody the control stopped responding, not that it
+   * is doing something — and swapping the label to "Saving…" moves the text
+   * under the cursor. This disables AND shows a spinner beside the label the
+   * button already had, so the control keeps its width and its meaning.
+   *
+   * It implies `disabled`, so a second click cannot submit the same form twice.
+   */
+  pending?: boolean;
 }
 
 interface ButtonAsButtonProps extends BaseButtonProps {
@@ -47,7 +59,7 @@ interface ButtonAsLinkProps extends BaseButtonProps {
 export type ButtonProps = ButtonAsButtonProps | ButtonAsLinkProps;
 
 export function Button(props: ButtonProps) {
-  const { variant = "primary", size = "md", className, children, disabled } = props;
+  const { variant = "primary", size = "md", className, children, disabled, pending } = props;
   const mapped = VARIANT[variant];
 
   if (props.href) {
@@ -71,11 +83,15 @@ export function Button(props: ButtonProps) {
     <VentrioButton
       type={buttonProps.type ?? "button"}
       onClick={buttonProps.onClick}
-      disabled={disabled}
+      /* Pending implies disabled: the guard against a double submit is the
+         same state that draws the spinner, so the two cannot disagree. */
+      disabled={disabled || pending}
+      aria-busy={pending || undefined}
       variant={mapped}
       size={size}
       className={className}
     >
+      {pending && <Spinner className="size-4" />}
       {children}
     </VentrioButton>
   );

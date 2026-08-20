@@ -131,6 +131,10 @@ function SidebarProvider({
       <TooltipProvider delayDuration={0}>
         <div
           data-slot="sidebar-wrapper"
+          /* So the stylesheet can move the main content with the drawer on a
+             phone. The sidebar itself is a Sheet that slides over static
+             content, which is what made opening it feel dead. */
+          data-mobile-open={isMobile && openMobile ? "true" : undefined}
           style={
             {
               "--sidebar-width": SIDEBAR_WIDTH,
