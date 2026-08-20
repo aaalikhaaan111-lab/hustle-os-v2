@@ -32,6 +32,22 @@ export function AppShell({ children, isAuthenticated }: { children: ReactNode; i
     pathname === "/workspace-lab";
 
   if (isPublic || isWorkspace) {
+    /**
+     * NO ENTRY ANIMATION HERE, DELIBERATELY.
+     *
+     * `animate-page-in` translates on the Y axis, and a transformed ancestor
+     * becomes the containing block for every `position: fixed` descendant. The
+     * workspace holds its mobile keyboard layout together with exactly that —
+     * `body:has(.studio-frame)` is fixed and `.studio-frame` is absolute inside
+     * it — so animating this wrapper would reparent the whole frame for the
+     * duration and snap it back at the end. On a phone that is a visible jump
+     * on every navigation.
+     *
+     * These routes get their perceived speed from `loading.tsx` instead, which
+     * is the better tool anyway: a skeleton in the shape of the real layout
+     * appears immediately, rather than delaying content by the length of a
+     * fade.
+     */
     return (
       <div className="relative min-h-screen">
         {children}
@@ -43,7 +59,13 @@ export function AppShell({ children, isAuthenticated }: { children: ReactNode; i
   return (
     <div className="studio studio-room relative flex min-h-screen flex-col">
       <StudioTopBar isAuthenticated={isAuthenticated} />
-      <main className="relative flex-1">{children}</main>
+      {/* `key` is what makes this a transition rather than a one-off: without
+          it the element survives navigation, and a CSS animation only replays
+          when the node is new. These routes — auth, profile, the previews —
+          have no fixed descendants, so the transform is safe here. */}
+      <main key={pathname} className="animate-page-in relative flex-1">
+        {children}
+      </main>
       <RoutePrefetcher isAuthenticated={isAuthenticated} />
     </div>
   );

@@ -49,7 +49,20 @@ function CommandDialog({
         <DialogDescription>{description}</DialogDescription>
       </DialogHeader>
       <DialogContent
-        className={cn("overflow-hidden p-0", className)}
+        /* Its own slot so the palette can be styled without reaching every
+           dialog in the product. */
+        data-slot="command-dialog"
+        className={cn(
+          "overflow-hidden p-0 gap-0",
+          /* ANCHORED HIGH, NOT CENTRED. A centred palette moves the whole box
+             every time the result list grows or shrinks under the cursor;
+             pinning the top edge means the list only ever grows downward. The
+             translate utilities are overridden here rather than in CSS because
+             Tailwind v4 compiles them to the `translate` property, which a
+             `transform` declaration cannot override. */
+          "top-[12vh] translate-y-0 sm:max-w-[40rem]",
+          className,
+        )}
         showCloseButton={showCloseButton}
       >
         <Command className="**:data-[slot=command-input-wrapper]:h-12 [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:text-muted-foreground [&_[cmdk-group]]:px-2 [&_[cmdk-group]:not([hidden])_~[cmdk-group]]:pt-0 [&_[cmdk-input-wrapper]_svg]:h-5 [&_[cmdk-input-wrapper]_svg]:w-5 [&_[cmdk-input]]:h-12 [&_[cmdk-item]]:px-2 [&_[cmdk-item]]:py-3 [&_[cmdk-item]_svg]:h-5 [&_[cmdk-item]_svg]:w-5">

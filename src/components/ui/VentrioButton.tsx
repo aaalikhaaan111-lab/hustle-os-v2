@@ -4,6 +4,7 @@ import Link from "next/link";
 import { forwardRef, type ButtonHTMLAttributes, type CSSProperties, type ReactNode } from "react";
 import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
+import { Spinner } from "@/components/ui/shadcn/spinner";
 import "./VentrioButton.css";
 
 /* ─────────────────────────────────────────────────────────────────────────────
@@ -71,6 +72,25 @@ interface CommonProps extends Omit<Variants, "shape"> {
   /** Side the CSS tooltip opens on. Omit for a plain title attribute instead. */
   tipSide?: "left" | "right";
   title?: string;
+  /**
+   * The action is in flight.
+   *
+   * DISABLING ALONE IS NOT A LOADING STATE. It says the control stopped
+   * responding, not that it is working — which reads as a broken button for
+   * exactly as long as the request takes. Nearly every async control in this
+   * product also swapped its label ("Save" to "Saving…"), which moves text
+   * under the cursor mid-click and changes the button's width while the pointer
+   * is still on it.
+   *
+   * `pending` shows a spinner BESIDE the label the button already had, so the
+   * width and the meaning both hold still. It also implies `disabled`, which is
+   * the point: the guard against a double submit and the thing that draws the
+   * spinner are one piece of state and cannot disagree.
+   *
+   * On icon-only variants the spinner replaces the icon, since there is no room
+   * for both and no label to keep steady.
+   */
+  pending?: boolean;
 }
 
 export interface VentrioButtonProps
@@ -110,7 +130,7 @@ function styleFor({ align, weight, style }: CommonProps): CSSProperties | undefi
 }
 
 export const VentrioButton = forwardRef<HTMLButtonElement, VentrioButtonProps>(function VentrioButton(
-  { variant, size, shape, on, className, children, label, tipSide, title, align, weight, style, ...rest },
+  { variant, size, shape, on, className, children, label, tipSide, title, align, weight, style, pending, ...rest },
   ref
 ) {
   const isIconOnly = variant === "icon" || variant === "composer";
@@ -120,12 +140,17 @@ export const VentrioButton = forwardRef<HTMLButtonElement, VentrioButtonProps>(f
       {...rest}
       style={styleFor({ align, weight, style })}
       type={rest.type ?? "button"}
+      disabled={rest.disabled || pending}
+      aria-busy={pending || undefined}
       aria-label={rest["aria-label"] ?? (isIconOnly ? label : undefined)}
       title={title ?? (tipSide ? undefined : isIconOnly ? label : undefined)}
       {...(tipSide && label ? { "data-tip": label, "data-tip-side": tipSide } : {})}
       className={cn(tipSide && label && "tip", classesFor({ variant, size, shape, on, className }))}
     >
-      {children}
+      {/* On an icon button the spinner IS the content: there is no label to
+          keep steady and no room to sit beside the glyph. */}
+      {pending && <Spinner className={isIconOnly ? "size-4" : "size-4 shrink-0"} />}
+      {pending && isIconOnly ? null : children}
     </button>
   );
 });

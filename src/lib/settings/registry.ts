@@ -36,8 +36,16 @@ export function isSettingsSection(value: unknown): value is SettingsSection {
   return (SETTINGS_SECTIONS as readonly unknown[]).includes(value);
 }
 
-/** The namespaces settings labels are drawn from. */
-export type SettingsNamespace = "workspace" | "profile" | "footer";
+/**
+ * The namespaces labels are drawn from.
+ *
+ * `nav` joined the three Settings uses when the command palette started
+ * resolving labels through this same type — it needs "Pricing", which only
+ * exists there. Every consumer dispatches on this union explicitly, so adding a
+ * namespace here without handling it fails to compile rather than falling back
+ * to a missing-key placeholder at runtime.
+ */
+export type SettingsNamespace = "workspace" | "profile" | "footer" | "nav";
 
 export interface SettingsLabelRef {
   ns: SettingsNamespace;

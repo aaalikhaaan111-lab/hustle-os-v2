@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useSyncExternalStore } from "react";
+import { Fragment, useEffect, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import {
@@ -13,7 +13,34 @@ import {
   CommandSeparator,
   CommandShortcut,
 } from "@/components/ui/shadcn/command";
-import { IconAnalytics, IconOverview, IconPlus, IconProjects, IconSettings } from "./parts";
+import {
+  IconAnalytics,
+  IconExternal,
+  IconGlobe,
+  IconOverview,
+  IconPalette,
+  IconPlus,
+  IconProjects,
+  IconSettings,
+  IconShield,
+  IconUser,
+} from "./parts";
+import { destinationsFor, type CommandIcon } from "@/lib/workspace/commandRegistry";
+import { useLabelResolver } from "@/lib/workspace/useLabelResolver";
+
+/** The registry names an icon; the palette owns the drawing. */
+const ICONS: Record<CommandIcon, (p: { className?: string }) => React.ReactNode> = {
+  plus: IconPlus,
+  overview: IconOverview,
+  projects: IconProjects,
+  settings: IconSettings,
+  analytics: IconAnalytics,
+  user: IconUser,
+  palette: IconPalette,
+  globe: IconGlobe,
+  shield: IconShield,
+  external: IconExternal,
+};
 
 export interface SearchProject {
   id: string;
@@ -30,8 +57,21 @@ export interface SearchProject {
  * project, from settings, from the middle of a conversation. That meant going
  * back to the gallery first, every time.
  *
- * It lists destinations and every project by name. Nothing here is invented:
- * each row navigates somewhere that already exists.
+ * WHAT IT SEARCHES. Everything the product has, not just projects: the one
+ * action worth taking from anywhere (new project), every route a signed-in
+ * person can reach, all six Settings sections, and each individual setting
+ * inside them — resolved from `commandRegistry`, which derives the Settings
+ * half from the same constants that build the Settings navigation. There is no
+ * second list to fall behind.
+ *
+ * KEYWORDS ARE WHY IT FINDS THINGS. cmdk matches the visible label unless you
+ * hand it aliases, and nobody types the label. "billing" is not a word in this
+ * product's UI, so without aliases it finds nothing while Pricing and the usage
+ * meters both sit one click away. The aliases live in `settingsSearchKeywords`
+ * per locale — the same object the Settings page's own search reads — so adding
+ * a way to reach something never touches this file.
+ *
+ * Nothing here is invented: each row navigates somewhere that already exists.
  */
 export function ProjectSearch({
   open,
@@ -46,7 +86,19 @@ export function ProjectSearch({
   projectId?: string;
 }) {
   const t = useTranslations("workspace");
+  const label = useLabelResolver();
   const router = useRouter();
+
+  /**
+   * The aliases, as one object per locale keyed by destination id.
+   *
+   * `t.raw` because this is data rather than a sentence: adding "billing" as a
+   * way to reach Pricing should not require touching the registry, and a
+   * missing entry is simply no aliases rather than an error.
+   */
+  const keywords = ((t as unknown as { raw: (key: string) => unknown }).raw(
+    "settingsSearchKeywords",
+  ) ?? {}) as Record<string, string>;
 
   // ⌘K / Ctrl-K, the binding people already try.
   useEffect(() => {
@@ -65,41 +117,59 @@ export function ProjectSearch({
     router.push(href);
   }
 
+  const destinations = destinationsFor(projectId);
+  const groups = [
+    { key: "action" as const, heading: t("searchGo") },
+    { key: "page" as const, heading: t("navLabel") },
+    { key: "settings" as const, heading: t("navSettings") },
+  ];
+
   return (
     <CommandDialog
       open={open}
       onOpenChange={onOpenChange}
       title={t("searchTitle")}
       description={t("searchHint")}
+      /* NO CLOSE BUTTON. It rendered inside the search row, level with the
+         caret, so the first thing in a palette built for typing was a target
+         for the mouse. Escape closes it, clicking the overlay closes it, and
+         choosing anything closes it — the ✕ was a fourth way that cost the
+         input its clean right edge. */
+      showCloseButton={false}
     >
       <CommandInput placeholder={t("searchPlaceholder")} />
       <CommandList>
         <CommandEmpty>{t("searchNoResults")}</CommandEmpty>
 
-        <CommandGroup heading={t("searchGo")}>
-          <CommandItem onSelect={() => go("/create?fresh=1")}>
-            <IconPlus className="h-4 w-4" />
-            {t("navNewProject")}
-          </CommandItem>
-          <CommandItem onSelect={() => go("/dashboard")}>
-            <IconOverview className="h-4 w-4" />
-            {t("navOverview")}
-          </CommandItem>
-          <CommandItem onSelect={() => go("/projects")}>
-            <IconProjects className="h-4 w-4" />
-            {t("projectsTitle")}
-          </CommandItem>
-          <CommandItem onSelect={() => go("/settings")}>
-            <IconSettings className="h-4 w-4" />
-            {t("navSettings")}
-          </CommandItem>
-          {projectId && (
-            <CommandItem onSelect={() => go(`/projects/${projectId}/analytics`)}>
-              <IconAnalytics className="h-4 w-4" />
-              {t("navAnalytics")}
-            </CommandItem>
-          )}
-        </CommandGroup>
+        {groups.map(({ key, heading }, index) => {
+          const rows = destinations.filter((d) => d.group === key);
+          if (rows.length === 0) return null;
+          return (
+            <Fragment key={key}>
+              {index > 0 && <CommandSeparator />}
+              <CommandGroup heading={heading}>
+                {rows.map((destination) => {
+                  const Icon = ICONS[destination.icon];
+                  const text = label(destination.label);
+                  return (
+                    <CommandItem
+                      key={destination.id}
+                      /* cmdk matches `value` and `keywords`. The label is the
+                         value so what someone reads is what matches; the
+                         aliases carry everything they might type instead. */
+                      value={text}
+                      keywords={(keywords[destination.id] ?? "").split(/\s+/).filter(Boolean)}
+                      onSelect={() => go(destination.href)}
+                    >
+                      <Icon className="h-4 w-4" />
+                      {text}
+                    </CommandItem>
+                  );
+                })}
+              </CommandGroup>
+            </Fragment>
+          );
+        })}
 
         {projects.length > 0 && (
           <>

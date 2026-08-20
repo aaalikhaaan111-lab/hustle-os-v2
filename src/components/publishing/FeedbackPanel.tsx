@@ -13,6 +13,7 @@ import type { Stage3ProjectOutput } from "@/lib/build/stage3Types";
 import type { ProjectPublicationState, ProjectResponseItem } from "@/lib/publishing/types";
 import type { FeedbackAnalysisState, FeedbackImprovementProposal } from "@/lib/feedback/types";
 import { cn } from "@/lib/utils";
+import { Spinner } from "@/components/ui/shadcn/spinner";
 
 interface FeedbackPanelProps {
   projectId: string;
@@ -123,7 +124,12 @@ export function FeedbackPanel({ projectId, projectLocale, publication, onDraftCh
               </strong>
               <p>{responseCount < 3 ? t("earlyEvidence") : feedback.isCurrent ? t("currentBody") : t("analysisReadyBody")}</p>
             </div>
+            {/* `feedback.analyzing` is the SERVER's view — an analysis another
+                tab or an earlier visit started and that is still running. The
+                spinner has to follow both, or reopening the panel mid-analysis
+                shows an idle button for work that is already happening. */}
             <button type="button" onClick={analyze} disabled={!canAnalyze} className="publication-primary">
+              {(isAnalyzing || feedback.analyzing) && <Spinner className="size-4" />}
               {isAnalyzing || feedback.analyzing ? t("analyzing") : feedback.analysis ? t("analyzeAgain") : t("analyze")}
             </button>
           </div>
@@ -177,7 +183,7 @@ export function FeedbackPanel({ projectId, projectLocale, publication, onDraftCh
               </div>
               <p className="feedback-proposal-note">{t("draftOnlyNote")}</p>
               <div className="feedback-proposal-actions">
-                <button type="button" className="publication-primary" disabled={isApplying} onClick={apply}>{isApplying ? t("applying") : t("apply")}</button>
+                <button type="button" className="publication-primary" disabled={isApplying} onClick={apply}>{isApplying && <Spinner className="size-4" />}{isApplying ? t("applying") : t("apply")}</button>
                 <button type="button" className="publication-secondary" disabled={isApplying} onClick={() => setProposal(null)}>{t("cancel")}</button>
               </div>
             </section>
@@ -190,7 +196,7 @@ export function FeedbackPanel({ projectId, projectLocale, publication, onDraftCh
                 <article key={response.id}>
                   <div className="feedback-response-meta">
                     <time dateTime={response.createdAt}>{new Intl.DateTimeFormat(projectLocale, { dateStyle: "medium", timeStyle: "short" }).format(new Date(response.createdAt))}</time>
-                    <button type="button" disabled={isDeleting} onClick={() => remove(response)}>{deletingId === response.id ? t("deleting") : t("delete")}</button>
+                    <button type="button" disabled={isDeleting} onClick={() => remove(response)}>{deletingId === response.id && <Spinner className="size-3" />}{deletingId === response.id ? t("deleting") : t("delete")}</button>
                   </div>
                   {Object.entries(response.payload).map(([key, value]) => <p key={key}><span>{fieldLabels.get(key) ?? key}</span>{value || "—"}</p>)}
                 </article>

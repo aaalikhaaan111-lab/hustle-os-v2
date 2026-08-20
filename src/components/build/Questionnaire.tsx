@@ -24,17 +24,20 @@ import {
  * icon placeholder swapped for the lucide icon this project already uses.
  * Nothing about the interaction is reimplemented here.
  *
- * WHAT THIS FILE ADDS is only placement. The question used to be drawn inside
- * the SAME border as the composer, so the text box appeared to grow upward to
- * hold it. The intent was that a question belongs to the composer; the result
- * was one tall surface in which the transcript, the question and the input all
- * looked like a single oversized card.
+ * WHAT THIS FILE ADDS is only placement, and placement has been wrong twice.
+ * First the question was drawn inside the SAME border as the composer, so the
+ * text box appeared to grow upward to hold it — one tall surface in which the
+ * transcript, the question and the input all looked like a single oversized
+ * card. Then it became its own bordered panel, which fixed the composer but
+ * introduced a third bordered box in a vertical stack of them: it read as a
+ * widget that had floated in rather than as part of the conversation.
  *
- * The question is its own bounded panel now, sitting above the composer with
- * ordinary spacing between them. The composer keeps its own border and its own
- * focus ring and never changes shape. Nothing about the interaction moved: the
- * `<Q>` block below is the registry component with the same items, the same
- * freeform row, the same skip and the same submit.
+ * It has no container at all now. The wrapper carries spacing and an entry
+ * animation and nothing else — no border, no fill, no radius, no focus ring —
+ * so the options themselves are the only bounded things, and the column reads
+ * as message, options, composer. Nothing about the interaction moved: the `<Q>`
+ * block below is the registry component with the same items, the same freeform
+ * row, the same skip and the same submit.
  *
  * With no question it returns the composer untouched — which is what keeps it
  * from ever being permanent furniture.

@@ -88,8 +88,8 @@ export function LoginForm() {
                 {displayError}
               </p>
             )}
-            <Button type="submit" disabled={isPending} className="mt-1">
-              {isPending ? t("loggingIn") : t("loginTitle")}
+            <Button type="submit" pending={isPending} className="mt-1">
+              {t("loginTitle")}
             </Button>
           </form>
         </CardContent>

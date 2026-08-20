@@ -12,10 +12,10 @@ export function LogoutButton() {
   return (
     <Button
       variant="secondary"
-      disabled={isPending}
+      pending={isPending}
       onClick={() => startTransition(() => signOutAction())}
     >
-      {isPending ? t("logoutPending") : t("logout")}
+      {t("logout")}
     </Button>
   );
 }

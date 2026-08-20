@@ -20,6 +20,9 @@ const read = (path: string) => readFileSync(new URL(`../${path}`, import.meta.ur
 
 const { SETTINGS_ENTRIES, SETTINGS_SECTIONS, SETTINGS_SECTION_LABELS, isSettingsSection } =
   await import("../src/lib/settings/registry");
+/* The palette derives its settings half from the registry above; both are
+   loaded so this file can assert they agree. */
+const { COMMAND_DESTINATIONS } = await import("../src/lib/workspace/commandRegistry");
 
 const en = JSON.parse(read("messages/en.json")) as Record<string, Record<string, unknown>>;
 const ru = JSON.parse(read("messages/ru.json")) as Record<string, Record<string, unknown>>;
@@ -86,9 +89,19 @@ for (const locale of [["en", en], ["ru", ru]] as const) {
   check(`every entry has ${name} aliases`,
     Boolean(kw) && SETTINGS_ENTRIES.every((entry) => typeof kw?.[entry.id] === "string" && kw[entry.id].length > 0),
     SETTINGS_ENTRIES.filter((e) => !kw?.[e.id]).map((e) => e.id).join(", "));
-  check(`the ${name} keyword table invents no settings`,
-    Boolean(kw) && Object.keys(kw ?? {}).every((id) => ids.includes(id)),
-    Object.keys(kw ?? {}).filter((id) => !ids.includes(id)).join(", "));
+  /**
+   * ONE ALIAS TABLE, TWO REGISTRIES.
+   *
+   * The command palette resolves the same object, so its destination ids are
+   * legitimate keys here — that is the point of sharing it rather than starting
+   * a second list that drifts. What must still hold is that every key names
+   * something real: an alias for an id no registry defines is a word that can
+   * never match anything, which is how a keyword table quietly rots.
+   */
+  const known = [...ids, ...COMMAND_DESTINATIONS.map((d) => d.id)];
+  check(`the ${name} keyword table invents nothing`,
+    Boolean(kw) && Object.keys(kw ?? {}).every((id) => known.includes(id)),
+    Object.keys(kw ?? {}).filter((id) => !known.includes(id)).join(", "));
 }
 
 /* ── 4. every destination is reachable ───────────────────────────────────── */
@@ -144,6 +157,51 @@ check("the platform's own search chrome is suppressed",
   /\.s-search \{[\s\S]{0,300}appearance: none/.test(studio));
 check("landing on a result is visible as well as programmatic",
   /\[data-found="true"\]/.test(studio) && /data-found/.test(client));
+
+/* ── the palette hands off to a CONTROL, not just a panel ────────────────── */
+
+/**
+ * `?focus=` is what makes a settings result in the command palette land on the
+ * field itself. Searching "dark mode" and arriving at the top of Appearance to
+ * hunt for the option is most of the way to not having search at all.
+ *
+ * These assert the wiring end to end because the browser could not: the anchor
+ * scroll fires once, during hydration, and the automation context reattaches to
+ * a stale document after a navigation often enough that observing it there was
+ * not trustworthy. What CAN be pinned is that every link the palette emits names
+ * an anchor the registry defines, that the route refuses anything else, and that
+ * the effect waits for real layout.
+ */
+check("the route accepts a focus parameter",
+  /searchParams: Promise<\{[^}]*focus\?: string/.test(route));
+check("and validates it against the registry rather than trusting it",
+  /SETTINGS_ENTRIES\.find\(\(entry\) => entry\.anchor === focus\)\?\.anchor/.test(route),
+  "this value reaches getElementById; only ids the registry names are legitimate");
+check("the validated anchor is handed to the client",
+  /initialAnchor=\{anchor\}/.test(route));
+
+/**
+ * THE RACE THIS GUARDS. The in-page path runs long after hydration and lands
+ * first time. `?focus=` fires on mount, when the section's markup can still be
+ * in React's hidden staging container — `getElementById` finds it there, so a
+ * naive version believes it succeeded while scrolling a `display: none` node and
+ * writing the highlight to markup about to be discarded. Observed in the browser
+ * before the fix: the deep link silently landed nowhere.
+ */
+check("the anchor effect waits for the node to be laid out, not merely present",
+  /!node\.offsetParent/.test(client) && /requestAnimationFrame\(settle\)/.test(client),
+  "presence is not layout; a streamed page has both a real node and a hidden one");
+check("and it gives up rather than spinning on an anchor that never appears",
+  /attempts\+\+ < \d+/.test(client));
+
+/* Every settings destination the palette emits must point at something real. */
+for (const destination of COMMAND_DESTINATIONS.filter((d) => d.group === "settings")) {
+  const anchor = /focus=([^&]+)/.exec(destination.href)?.[1];
+  if (!anchor) continue;
+  check(`the palette's "${destination.id}" link names a real anchor`,
+    SETTINGS_ENTRIES.some((entry) => entry.anchor === anchor),
+    `${anchor} is not an anchor any registry entry defines`);
+}
 
 /* ── report ──────────────────────────────────────────────────────────────── */
 

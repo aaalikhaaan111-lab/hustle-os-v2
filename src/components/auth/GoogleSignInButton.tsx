@@ -110,11 +110,14 @@ export function GoogleSignInButton({
         type="button"
         variant="outline"
         onClick={handleClick}
-        disabled={isPending}
+        pending={isPending}
         className="w-full"
       >
-        <GoogleIcon />
-        {isPending ? t("redirectingToGoogle") : (label ?? t("continueWithGoogle"))}
+        {/* The Google mark is the point of this button; the spinner joins it
+            rather than replacing it, so the destination stays legible while
+            the redirect is being arranged. */}
+        {!isPending && <GoogleIcon />}
+        {label ?? t("continueWithGoogle")}
       </Button>
       {error && (
         <p role="alert" className="text-[0.9375rem] text-danger">

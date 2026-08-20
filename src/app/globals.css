@@ -1,5 +1,24 @@
 @import "tailwindcss";
 
+/**
+ * THE ANIMATION LAYER EVERY OVERLAY IN THIS APP WAS ALREADY WRITTEN AGAINST.
+ *
+ * shadcn's Radix components ship with `data-[state=open]:animate-in`,
+ * `fade-in-0`, `zoom-in-95` and `slide-in-from-*` baked into their class lists
+ * — sixteen usages across dialog, alert-dialog, dropdown-menu, context-menu,
+ * navigation-menu, sheet and tooltip. Those utilities come from this package,
+ * which was never installed, so every one of them compiled to NOTHING. The
+ * built stylesheet contained only this project's hand-written `s-*` keyframes
+ * and no `enter`/`exit` at all.
+ *
+ * That is why the product felt static: not a missing design decision, a missing
+ * import. Every dialog, dropdown, tooltip and drawer appeared and vanished on a
+ * single frame. Adding it here activates the intent already expressed in those
+ * component files rather than reimplementing it — and it is why this is one
+ * line instead of eight sets of keyframes to keep in sync by hand.
+ */
+@import "tw-animate-css";
+
 @custom-variant dark (&:is(.dark *));
 
 /* ============================================================================
@@ -2113,6 +2132,51 @@ body {
 }
 .animate-pulse-soft {
   animation: pulse-soft 1.4s ease-in-out infinite;
+}
+
+/**
+ * SKELETON SHIMMER.
+ *
+ * The placeholders pulsed their opacity, which dims the whole page rhythmically
+ * and reads more like a fault than like loading. A shimmer travels, so it says
+ * "work is moving through this" instead of "this is blinking".
+ *
+ * The sweep is a pseudo-element rather than a background-position animation on
+ * the block itself, because the blocks set their own `background` from a token
+ * and a gradient would have to replace it — one skeleton would then stop
+ * matching the surface colour of every other.
+ *
+ * 1.6s is NOT the 150-250ms this product uses for transitions, and should not
+ * be: that band is for a state change a person is waiting on. This is ambient
+ * and loops, and at 200ms it would be a strobe.
+ */
+@keyframes ws-shimmer {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(100%); }
+}
+
+.ws-shimmer {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.ws-shimmer::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    color-mix(in oklab, var(--color-ink, #0e1016) 7%, transparent) 50%,
+    transparent 100%
+  );
+  animation: ws-shimmer 1.6s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* The placeholder still reads as a placeholder; only the travel stops. */
+  .ws-shimmer::after { animation: none; opacity: 0; }
 }
 
 @keyframes pop-in {

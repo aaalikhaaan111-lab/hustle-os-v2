@@ -341,9 +341,37 @@ check("the composer is a sibling of the panel, not a child of it",
 check("the combined shell is gone",
   !/s-ask-shell/.test(ask) && !/s-ask-shell/.test(studioCss) &&
   !/s-ask-seam/.test(ask) && !/s-ask-seam/.test(studioCss));
-check("the panel is bounded and separated from what follows it",
-  /\.s-ask-panel \{[\s\S]{0,320}border: 1px solid var\(--border\)/.test(studioCss) &&
-  /\.s-ask-panel \{[\s\S]{0,320}margin-bottom:/.test(studioCss));
+/**
+ * THE PANEL IS NOT BOUNDED ANY MORE, AND THAT IS THE FIX.
+ *
+ * Bounding it solved the first bug — the question no longer looked like part of
+ * the composer — but created a second: three bordered boxes stacked vertically
+ * (last message, panel, composer) read as a floating widget rather than as the
+ * assistant's turn. The container is gone entirely; the options carry the only
+ * borders, so the hierarchy a person sees is message, options, composer.
+ */
+check("the panel draws no container of its own",
+  /\.s-ask-panel \{[^}]*\}/.test(studioCss) &&
+  !/\.s-ask-panel \{[^}]*border:/.test(studioCss) &&
+  !/\.s-ask-panel \{[^}]*background:/.test(studioCss) &&
+  !/\.s-ask-panel:focus-within/.test(studioCss),
+  "a border, a fill or a focus ring here is what made it a floating card");
+check("it still carries spacing and an entry animation",
+  /\.s-ask-panel \{[^}]*margin-bottom:/.test(studioCss) &&
+  /\.s-ask-panel \{[^}]*animation: s-ask-in/.test(studioCss));
+check("and the form is flush, so the options line up with the conversation",
+  /\.s-ask-form \{ padding: 0 0 /.test(studioCss),
+  "horizontal padding here insets the options from the transcript's left edge");
+
+/* Each option is its own control now: a real border before you reach it, a
+   hover, a distinct selected state, and a transition between them. */
+check("every option has its own border rather than a transparent one",
+  /\.cn-questionnaire-choice \{[^}]*border: 1px solid var\(--border\)/.test(studioCss),
+  "a transparent border only looks clickable once the pointer is already there");
+check("options have hover, selected and a bounded transition",
+  /\.cn-questionnaire-choice:hover \{/.test(studioCss) &&
+  /\.cn-questionnaire-choice\[data-checked\] \{[^}]*border-color: var\(--color-accent\)/.test(studioCss) &&
+  /\.cn-questionnaire-choice \{[^}]*transition:[\s\S]{0,160}160ms/.test(studioCss));
 check("and the composer keeps its own border and focus ring",
   !/\.s-ask-panel \.s-composer/.test(studioCss),
   "the old rule stripped the composer's border so the two would merge");

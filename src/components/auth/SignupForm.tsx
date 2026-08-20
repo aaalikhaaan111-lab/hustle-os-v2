@@ -133,8 +133,8 @@ export function SignupForm() {
                 {state.error}
               </p>
             )}
-            <Button type="submit" disabled={isPending || !consent} className="mt-1">
-              {isPending ? t("creatingAccount") : t("createAccount")}
+            <Button type="submit" pending={isPending} disabled={!consent} className="mt-1">
+              {t("createAccount")}
             </Button>
           </form>
         </CardContent>

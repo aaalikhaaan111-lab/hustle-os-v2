@@ -688,12 +688,12 @@ export function CreateExperience({ userId, initialDraft, fresh = false }: Create
             </Alert>
           )}
 
-          {/* THE QUESTION AND THE ANSWER ARE ONE SURFACE.
-              Questionnaire takes the composer as a child and draws a single
-              border around both, so the text box visibly grows upward to hold
-              the question and shrinks back once it is answered. With no
-              question it returns the composer untouched, which is what stops
-              this ever becoming permanent furniture. */}
+          {/* THE OPTIONS SIT IN THE CONVERSATION, ABOVE THE COMPOSER.
+              Questionnaire takes the composer as a sibling and renders no
+              container of its own, so the order a person reads is the order
+              that exists: the assistant's message, then these options, then the
+              text box. With no question it returns the composer untouched,
+              which is what stops this ever becoming permanent furniture. */}
           <VentrioQuestionnaire
             question={askQuestion}
             options={askOptions}

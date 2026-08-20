@@ -25,11 +25,11 @@ import {
   CardTitle,
 } from "@/components/ui/shadcn/card";
 import type { WorkspaceUsage } from "@/lib/workspace/usage";
+import { useLabelResolver } from "@/lib/workspace/useLabelResolver";
 import {
   SETTINGS_ENTRIES,
   SETTINGS_SECTIONS,
   SETTINGS_SECTION_LABELS,
-  type SettingsLabelRef,
   type SettingsSection,
 } from "@/lib/settings/registry";
 
@@ -58,6 +58,7 @@ type Section = SettingsSection;
  */
 export function SettingsClient({
   initialSection,
+  initialAnchor,
   email,
   displayName,
   preferredName,
@@ -67,6 +68,12 @@ export function SettingsClient({
   embedded = false,
 }: {
   initialSection: Section;
+  /**
+   * A control to scroll to and highlight on mount, from `?focus=` — how the
+   * command palette hands off to a specific setting. Already validated against
+   * the registry by the route.
+   */
+  initialAnchor?: string;
   email: string;
   displayName: string;
   preferredName: string;
@@ -98,22 +105,9 @@ export function SettingsClient({
    */
   const [query, setQuery] = useState("");
 
-  /**
-   * Everything the search can resolve a label in.
-   *
-   * `useTranslations` is per-namespace, and the registry names its namespace
-   * per entry, so the three the settings surface draws from are opened once and
-   * dispatched by name. Adding a namespace to the registry without adding it
-   * here fails to compile, which is the point.
-   */
-  const label = (ref: SettingsLabelRef): string => {
-    /* Dispatched with three explicit calls rather than a lookup table: the
-       three translators are different generic types, and a union of them is
-       not callable. */
-    if (ref.ns === "profile") return tProfile(ref.key as never);
-    if (ref.ns === "footer") return tFooter(ref.key as never);
-    return t(ref.key as never);
-  };
+  /* Shared with the command palette, which resolves the same registry refs —
+     see useLabelResolver for why the dispatch lives in one place. */
+  const label = useLabelResolver();
 
   const ICONS: Record<Section, (p: { className?: string }) => ReactNode> = {
     profile: IconUser,
@@ -175,23 +169,60 @@ export function SettingsClient({
    * must still scroll and highlight, and `section` alone would not have
    * changed.
    */
-  const pendingAnchor = useRef<string | null>(null);
-  const [jump, setJump] = useState(0);
+  const pendingAnchor = useRef<string | null>(initialAnchor ?? null);
+  /* Starts at 1 when the palette handed us an anchor, so the effect below runs
+     on mount and consumes it — the same path an in-page search result takes,
+     rather than a second mechanism that could drift from it. */
+  const [jump, setJump] = useState(initialAnchor ? 1 : 0);
 
   useEffect(() => {
     const id = pendingAnchor.current;
     if (!id) return;
     pendingAnchor.current = null;
-    const node = document.getElementById(id);
-    if (!node) return;
-    node.scrollIntoView({ block: "center", behavior: "smooth" });
-    /* Focus where focus means something; the highlight is what makes a row
-       that cannot hold focus — a usage meter, the signed-in address — land in
-       the same place the search promised. */
-    node.focus({ preventScroll: true });
-    node.setAttribute("data-found", "true");
-    const clear = window.setTimeout(() => node.removeAttribute("data-found"), 1400);
-    return () => window.clearTimeout(clear);
+
+    let frame = 0;
+    let attempts = 0;
+    let clear = 0;
+
+    /**
+     * WAITING FOR LAYOUT, NOT JUST FOR THE NODE.
+     *
+     * The in-page path — clicking a search result — runs long after hydration
+     * and lands first time. The `?focus=` path does not: it fires on mount,
+     * and on a streamed page the section's markup can still be sitting in
+     * React's hidden staging container at that moment. `getElementById` finds
+     * it there, so a naive version thinks it succeeded — but the node has no
+     * box, `scrollIntoView` on a `display: none` element does nothing, and the
+     * highlight gets written to markup that is about to be thrown away. The
+     * result is a deep link that silently lands nowhere, which was exactly the
+     * behaviour observed in the browser.
+     *
+     * `offsetParent` is the cheap test for "this is actually laid out"; a
+     * displayed element always has one (barring `position: fixed`, which no
+     * settings control uses). Retrying by frame rather than on a timer means we
+     * act on the first paint where it is real, and the cap keeps a genuinely
+     * missing anchor from spinning forever.
+     */
+    const settle = () => {
+      const node = document.getElementById(id);
+      if (!node || !node.offsetParent) {
+        if (attempts++ < 30) frame = requestAnimationFrame(settle);
+        return;
+      }
+      node.scrollIntoView({ block: "center", behavior: "smooth" });
+      /* Focus where focus means something; the highlight is what makes a row
+         that cannot hold focus — a usage meter, the signed-in address — land in
+         the same place the search promised. */
+      node.focus({ preventScroll: true });
+      node.setAttribute("data-found", "true");
+      clear = window.setTimeout(() => node.removeAttribute("data-found"), 1400);
+    };
+
+    frame = requestAnimationFrame(settle);
+    return () => {
+      cancelAnimationFrame(frame);
+      if (clear) window.clearTimeout(clear);
+    };
   }, [jump]);
 
   function goTo(target: Section, anchor?: string) {

@@ -154,6 +154,92 @@
   outline: none;
 }
 
+/**
+ * THE COMMAND PALETTE'S "BROKEN" RING, AND WHY IT LOOKED LIKE THAT.
+ *
+ * `DialogContent` carries the `studio` class, so the rule above applied to
+ * everything inside the palette. The search input sits in a 36px row flush
+ * against the top of a dialog with `overflow-hidden`: a 2px outline drawn 2px
+ * OUTSIDE it has nowhere to go, so the top and side segments were clipped by
+ * the dialog's own rounded corner and what survived read as a broken box rather
+ * than a focus state.
+ *
+ * The input is also the only thing in a command palette that CAN take focus —
+ * cmdk keeps focus there permanently and moves a virtual `aria-selected`
+ * cursor through the list — so the ring was never telling anyone anything they
+ * did not already know.
+ *
+ * The row itself carries the state now, as a background and a border colour,
+ * which cannot be clipped because it is inside the box rather than outside it.
+ */
+[data-slot="command-input-wrapper"] :focus-visible { outline: none; }
+
+[data-slot="command-input-wrapper"] {
+  border-bottom: 1px solid var(--border);
+  transition: background-color 160ms var(--ease), border-color 160ms var(--ease);
+}
+
+[data-slot="command-input-wrapper"]:focus-within {
+  background: color-mix(in oklab, var(--ring) 6%, transparent);
+  border-bottom-color: var(--ring);
+}
+
+/* The magnifier brightens with the row instead of sitting at 50% forever. */
+[data-slot="command-input-wrapper"] svg {
+  opacity: 0.45;
+  transition: opacity 160ms var(--ease);
+}
+[data-slot="command-input-wrapper"]:focus-within svg { opacity: 0.85; }
+
+/**
+ * A COMMAND PALETTE IS NOT A DIALOG IN THE MIDDLE OF THE SCREEN.
+ *
+ * Linear, Vercel and VS Code all place it in the upper third, because that is
+ * where the eye already is and because a centred box makes a 400px list jump
+ * the whole page when it grows and shrinks under the cursor. Anchoring the top
+ * edge means the list only ever grows downward.
+ */
+/* Placement lives on the component (see command.tsx) because Tailwind v4
+   compiles translate utilities to the `translate` property; only the depth is
+   here. Three stacked shadows rather than one because a palette floats well
+   above the page and a single blur at that size reads as grey fog. */
+[data-slot="command-dialog"] {
+  border-radius: var(--r-lg);
+  box-shadow:
+    0 1px 2px rgb(0 0 0 / 0.08),
+    0 12px 32px -8px rgb(0 0 0 / 0.22),
+    0 32px 64px -24px rgb(0 0 0 / 0.30);
+}
+
+[data-slot="command-dialog"] [cmdk-item] {
+  border-radius: var(--r-sm);
+  transition: background-color 120ms var(--ease), color 120ms var(--ease);
+}
+
+/* cmdk drives selection with aria-selected, not :hover — the pointer and the
+   arrow keys have to land on the same visual state or the list reads as two
+   cursors fighting. */
+[data-slot="command-dialog"] [cmdk-item][data-selected="true"] {
+  background: var(--muted);
+  color: var(--foreground);
+}
+
+[data-slot="command-dialog"] [cmdk-group-heading] {
+  font-size: 0.6875rem;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-ink-muted);
+  padding-top: 0.375rem;
+  padding-bottom: 0.25rem;
+}
+
+[data-slot="command-dialog"] [cmdk-list] {
+  max-height: min(24rem, 60vh);
+  scroll-padding-block: 0.5rem;
+  padding: 0.375rem;
+}
+
 /* ═══════════════════════════════════════════════════════════════════════
    3. TYPE
    One family, five steps, hierarchy from size and weight. The editorial serif
@@ -814,9 +900,14 @@ body:has(.studio-frame) {
    ═══════════════════════════════════════════════════════════════════════ */
 
 @media (prefers-reduced-motion: reduce) {
-  .studio *,
-  .studio *::before,
-  .studio *::after {
+  /* NOT scoped to `.studio`. Every Radix overlay portals to <body>, outside
+     any `.studio` subtree — a dialog, a dropdown and a tooltip would all have
+     escaped a scoped rule, which is most of what this exists to quiet. The
+     existing per-feature reduced-motion rules elsewhere in the stylesheets stay
+     as they are; this is the floor beneath them, not a replacement. */
+  *,
+  *::before,
+  *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
@@ -913,18 +1004,28 @@ body:has(.studio-frame) {
  * the question is answered the panel simply leaves and the conversation is
  * exactly where it was.
  */
+/**
+ * THE QUESTION IS PART OF THE CONVERSATION, NOT A CARD PARKED ON TOP OF IT.
+ *
+ * This used to be a bordered, filled, rounded panel with its own focus glow —
+ * which made it read as a floating widget that had drifted in from somewhere
+ * else, rather than as the assistant's turn. Three borders stacked vertically
+ * (the last message, this panel, the composer) is what made the column look
+ * like a stack of unrelated boxes.
+ *
+ * There is no container now. The options carry the only borders, so the
+ * hierarchy a person sees is the hierarchy that exists:
+ *
+ *     assistant message  ->  these options  ->  the composer
+ *
+ * No border, no background, no radius, no shadow, and no focus ring: focus
+ * belongs to whichever option has it, and a ring around the group would be a
+ * second cursor. Left and right edges are inherited from the flow, so it lines
+ * up with the transcript above and the composer below without being told to.
+ */
 .s-ask-panel {
-  border: 1px solid var(--border);
-  border-radius: var(--r-lg);
-  background: var(--card);
-  overflow: hidden;
   margin-bottom: 0.625rem;
   animation: s-ask-in 180ms var(--ease) both;
-}
-
-.s-ask-panel:focus-within {
-  border-color: var(--ring);
-  box-shadow: 0 0 0 3px color-mix(in oklab, var(--ring) 40%, transparent);
 }
 
 @keyframes s-ask-in {
@@ -945,7 +1046,9 @@ body:has(.studio-frame) {
    form that takes the workspace over — so the surface is tight, the rows are
    single-line where they can be, and the whole thing stays near the height of
    a couple of messages. */
-.s-ask-form { padding: 0.625rem 0.75rem 0.5rem; }
+/* No horizontal padding: the panel that needed it is gone, and any inset here
+   would push the options off the conversation's left edge. */
+.s-ask-form { padding: 0 0 0.125rem; }
 .s-ask-form fieldset { display: flex; flex-direction: column; gap: 0.4375rem; border: 0; padding: 0; margin: 0; min-width: 0; }
 
 .cn-questionnaire-title {
@@ -956,28 +1059,52 @@ body:has(.studio-frame) {
   padding: 0;
 }
 
-.cn-questionnaire-choices { display: flex; flex-direction: column; gap: 0.125rem; }
+/* 0.125rem was right when a shared border held the group together. Standing on
+   their own the rows need enough air to read as separate controls. */
+.cn-questionnaire-choices { display: flex; flex-direction: column; gap: 0.375rem; }
 
 /* An answer is a row: full width so it can carry a sentence, one line tall so
    several still fit above a composer on a phone. */
+/* EACH ANSWER IS ITS OWN CONTROL. The border used to be transparent — the
+   group's shared border did the work — so a row only looked clickable once the
+   pointer was already on it. Now every option states that it is a target
+   before anyone reaches for it. */
 .cn-questionnaire-choice {
   gap: 0.5rem;
-  padding: 0.3125rem 0.5rem;
-  border: 1px solid transparent;
-  border-radius: var(--r-sm);
+  padding: 0.4375rem 0.625rem;
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--card);
   color: var(--foreground);
   font-size: 0.8438rem;
   min-height: 0;
+  cursor: pointer;
+  /* Not `all`: transitioning layout properties on a row that can wrap is how
+     option lists end up juddering as they mount. */
+  transition:
+    background-color 160ms var(--ease),
+    border-color 160ms var(--ease),
+    box-shadow 160ms var(--ease);
 }
 
 @media (hover: hover) {
-  .cn-questionnaire-choice:hover { background: var(--muted); }
+  .cn-questionnaire-choice:hover {
+    background: var(--muted);
+    border-color: color-mix(in oklab, var(--color-accent) 40%, var(--border));
+  }
 }
 
+/* SELECTED IS A THIRD STATE, not a louder hover. Accent border plus a soft
+   fill plus a ring, so it stays legible next to a hovered neighbour. */
 .cn-questionnaire-choice[data-checked] {
   background: var(--color-accent-soft);
   border-color: var(--color-accent);
+  box-shadow: 0 0 0 1px var(--color-accent) inset;
 }
+
+/* Keyboard focus is the outline the global rule already draws; it must not
+   also inherit the hover fill, or focus and hover become indistinguishable. */
+.cn-questionnaire-choice:active { transform: translateY(0.5px); }
 
 /* The radio/checkbox mark the component renders for itself. */
 .cn-questionnaire-choice-indicator {

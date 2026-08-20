@@ -209,14 +209,36 @@ check("and the anchor lands clear of the sticky header",
 /* ── 6c. the navigation actually animates ────────────────────────────────── */
 
 /**
+ * THE PACKAGE IS INSTALLED NOW, AND THE HAND-WRITTEN KEYFRAMES STILL WIN.
+ *
  * The registry ships `animate-in` / `zoom-in-90` / `animate-out` on the
- * viewport. Those are `tw-animate-css` utilities and this project neither
- * installs nor imports that package, so every one of them compiled to nothing
- * and the panel appeared and vanished in a single frame.
+ * viewport. Those are `tw-animate-css` utilities, and for a long time this
+ * project neither installed nor imported that package — so every one of them
+ * compiled to nothing, across every Radix overlay in the app, and the panels
+ * appeared and vanished in a single frame. That is why these landing keyframes
+ * were written by hand in the first place.
+ *
+ * An earlier version of this check said to delete them if the package ever
+ * arrived. That was the wrong instruction and it is being corrected rather than
+ * followed: the hand-written pair is RICHER than anything the utilities can
+ * express — it carries a blur, a specific translate and scale, the page's own
+ * easing, and separate centred and last-child variants for per-trigger
+ * anchoring. Deleting it would be a downgrade.
+ *
+ * They coexist safely because `.lp-nav-panel[data-state="open"]` is unlayered
+ * CSS and Tailwind's utilities live in a layer, so the hand-written
+ * `animation` shorthand wins outright and the utilities' `--tw-enter-*`
+ * variables are left inert. This asserts that precedence explicitly, so it is a
+ * decision on the record rather than a lucky accident.
  */
-check("the animation utilities the registry assumes are still absent",
-  !/tw-animate-css|tailwindcss-animate/.test(read("package.json")),
-  "if this is ever installed, delete the hand-written keyframes rather than stacking both");
+check("the animation layer the rest of the app relies on is installed",
+  /tw-animate-css/.test(read("package.json")) &&
+  /@import "tw-animate-css"/.test(read("src/app/globals.css")),
+  "without it every dialog, dropdown, sheet and tooltip animates on one frame");
+check("the landing nav keeps its own richer keyframes, unlayered so they win",
+  /@keyframes lp-nav-in/.test(css) &&
+  !/@layer[^{]*\{[\s\S]*\.lp-nav-panel\[data-state="open"\]/.test(css),
+  "layering these would hand the panel back to the generic utilities");
 check("so the panel carries its own enter and leave",
   /@keyframes lp-nav-in/.test(css) && /@keyframes lp-nav-out/.test(css) &&
   /\[data-state="open"\] \{\s*animation: lp-nav-in/.test(css) &&

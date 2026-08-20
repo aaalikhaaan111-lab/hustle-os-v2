@@ -14,8 +14,10 @@ import type { CSSProperties } from "react";
  * the entire page at the moment the data lands, which is the one thing a
  * skeleton exists to prevent.
  *
- * The only motion is `animate-pulse-soft`, which is the pulse the rest of the
- * app already uses; nothing here introduces a new animation.
+ * The motion is a shimmer that travels across each block. It replaced an
+ * opacity pulse, which dimmed the whole page in unison and read more like a
+ * fault than like loading — a moving highlight says work is passing through
+ * this space, which is what a person is actually waiting to learn.
  *
  * These are shapes, not content. They deliberately carry no text: a skeleton
  * that guesses at a heading is wrong more often than it is right, and it is the
@@ -26,7 +28,7 @@ const fill: CSSProperties = { background: "var(--color-surface-elevated)" };
 
 /** One placeholder block. Size it with `className`. */
 export function WsBlock({ className = "", radius = "var(--r-xs)" }: { className?: string; radius?: string }) {
-  return <div className={`animate-pulse-soft ${className}`} style={{ ...fill, borderRadius: radius }} />;
+  return <div className={`ws-shimmer ${className}`} style={{ ...fill, borderRadius: radius }} />;
 }
 
 /** The heading block every workspace page opens with, matching `PageHeading`. */
