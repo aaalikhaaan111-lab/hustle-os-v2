@@ -130,10 +130,32 @@ export function useFirstVersionJob(projectId: string, hasOutput: boolean): First
     setLocal(retry ? "retrying" : "creating_job");
   }, []);
 
+  /**
+   * The generation call has returned — reconcile with the row it created.
+   *
+   * THE RETRY BUG THIS FIXES. `setLocal(null)` fired immediately and `refresh()`
+   * resolved a round trip later. In that gap the optimistic "retrying" phase was
+   * already gone while `view` still held the FAILED row from before the click,
+   * so the screen fell straight back to the error and its Try again button — the
+   * exact state the person had just left. Worse, `inFlight` is derived from the
+   * same pair, so the poller tore down in that gap too: if the refresh then
+   * landed on a row the worker had not yet claimed, nothing was left running to
+   * ask again, and the failure stayed on screen until the browser was reloaded
+   * by hand. That is the reported "retry does not recover without a refresh".
+   *
+   * Clearing the local phase only once the authoritative row is in hand puts
+   * both writes in one commit, so there is no frame where the UI is describing a
+   * job that has been superseded. If the retry genuinely failed the row says so
+   * and the error returns honestly; if it was accepted the row is queued or
+   * running and the poller keeps going without ever having stopped.
+   */
   const settle = useCallback(() => {
-    setLocal(null);
-    refresh();
-  }, [refresh]);
+    void getFirstVersionJobAction(projectId).then((next) => {
+      if (!mounted.current) return;
+      setView(next);
+      setLocal(null);
+    });
+  }, [projectId]);
 
   const attemptsRemaining = view?.attemptsRemaining ?? MAX_FIRST_VERSION_ATTEMPTS;
 

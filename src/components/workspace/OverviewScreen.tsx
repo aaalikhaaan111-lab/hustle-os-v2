@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { IconBuild, IconPlus, StatusPill } from "@/components/workspace-ui/parts";
-import { HowItWorks } from "@/components/workspace-ui/HowItWorks";
 import { formatAge } from "@/lib/workspace/formatAge";
 import type { PresentedProject } from "@/lib/workspace/present";
 import { ProjectThumb, ProjectThumbEmpty } from "@/components/workspace/ProjectThumb";
@@ -71,7 +70,6 @@ export function OverviewScreen({ active, recent, activeResponses }: OverviewScre
             )}
           </div>
 
-          {!active && <HowItWorks className="mt-10" />}
         </div>
       </section>
 

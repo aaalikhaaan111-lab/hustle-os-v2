@@ -23,7 +23,6 @@ import { VentrioButton } from "@/components/ui/VentrioButton";
 import { useVoiceInput, voiceErrorKey } from "@/lib/workspace/useVoiceInput";
 import { cn } from "@/lib/utils";
 import { AssistantTurn, UserTurn } from "@/components/build/ConversationTurn";
-import { HowItWorks } from "@/components/workspace-ui/HowItWorks";
 import { Alert, AlertDescription } from "@/components/ui/shadcn/alert";
 
 const STARTING_POINTS: {
@@ -161,6 +160,24 @@ export function CreateExperience({ userId, initialDraft, fresh = false }: Create
     selectionLockRef.current = true;
     setGenerationRetry(null);
     setFallbackDirection(null);
+    /**
+     * THE CHOICE JOINS THE CONVERSATION.
+     *
+     * Every other answer in this screen goes through `send()`, which appends a
+     * user turn before it does anything else — so choosing a clarification, or
+     * several, reads back as something the person said. Choosing a DIRECTION did
+     * not: it persisted the selection and handed off to the workspace, and the
+     * options simply vanished. The transcript then showed the assistant
+     * proposing three directions and, immediately after, a project being built,
+     * with no record of which one had been picked or that anybody had picked
+     * anything.
+     *
+     * It cannot route through `send()` — that starts another discovery turn,
+     * and this answer ends discovery. So the turn is appended directly, before
+     * the await, so it is on screen in the same frame as the click rather than
+     * after a round trip.
+     */
+    setMessages((current) => [...current, { role: "user", content: direction.name }]);
     setCreationPhase("persisting");
     setNote(null);
     setNoteIsLimitReached(false);
@@ -527,10 +544,15 @@ export function CreateExperience({ userId, initialDraft, fresh = false }: Create
 
                So: the question, in the size of somebody asking it; one line
                saying what happens next in words with no jargon in them; the
-               five steps, once, because this is the one screen where the person
-               may not yet know the shape of the product; and the openings as
-               plain lines rather than capsules, because a row of pills reads as
-               a filter bar and these are ways to begin. */
+               the openings as plain lines rather than capsules, because a row
+               of pills reads as a filter bar and these are ways to begin.
+
+               NO FIVE-STEP EXPLAINER. It used to sit here as well, and on the
+               two other empty screens, in identical words — which is what made
+               it read as boilerplate rather than as help. This screen already
+               says what to do ("describe it in your own words") and offers five
+               ways to start; a numbered summary of the whole product underneath
+               that is a second answer to a question already answered. */
             <section className="flex min-h-[58vh] w-full flex-col justify-center gap-8 py-4">
               <div className="s-enter flex flex-col gap-4">
                 <p className="s-greet max-w-[16ch]">{t("emptyPrompt")}</p>
@@ -554,14 +576,24 @@ export function CreateExperience({ userId, initialDraft, fresh = false }: Create
                 ))}
               </div>
 
-              <HowItWorks className="s-enter mt-1" />
             </section>
           ) : (
             <section className="flex flex-col gap-6">
               {/* No `settled-state`: it dimmed the entire conversation to 24%
                   the moment options appeared, so the message explaining them
                   faded out exactly when it was needed. */}
-              <div className="flex flex-col gap-5">
+              {/* `mt-auto` KEEPS THE ANSWER NEXT TO THE QUESTION.
+                  The transcript is a `min-h-full` column inside a flex-1 scroll
+                  area, so with one or two turns it sat at the TOP and left the
+                  rest of the height empty — measured at 339px of nothing between
+                  the assistant asking something and the options answering it,
+                  which is a long way to travel to connect two halves of one
+                  exchange. It only ever showed on a short conversation, which is
+                  precisely a first-time user's.
+                  Pushing the column down costs nothing once there is enough to
+                  scroll: `margin-top: auto` distributes only leftover space, and
+                  past that point there is none. */}
+              <div className="mt-auto flex flex-col gap-5">
                 {messages.map((message, index) => {
                   return message.role === "user" ? (
                     <UserTurn key={index}>{message.content}</UserTurn>

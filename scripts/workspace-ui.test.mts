@@ -335,9 +335,27 @@ check("zeroes are not shown as measurements", /state === "live" \?/.test(analyti
 const ask = read("src/components/build/Questionnaire.tsx");
 const studioCss = read("src/app/studio.css");
 
-check("the composer is a sibling of the panel, not a child of it",
-  /<\/div>\s*\{composer\}\s*<\/>/.test(ask),
+/**
+ * ONE ACTION AT A TIME.
+ *
+ * The composer used to render as a sibling below the options — which fixed the
+ * original bug (it had been wrapped INSIDE the panel's border, making one
+ * oversized surface) but left the screen offering two ways forward at once: a
+ * set of options, and under them an open text box that would send whatever was
+ * typed as a new message, stepping over the question instead of answering it.
+ *
+ * While a question is open the composer is gone entirely. Nothing is lost —
+ * the questionnaire carries its own freeform row and a skip — and it returns
+ * the moment there is no question left, which is the early return below.
+ */
+check("the composer is never a child of the panel",
+  !/<div className="s-ask-panel"[\s\S]*\{composer\}[\s\S]*<\/div>/.test(ask),
   "wrapping the composer is what made one oversized surface");
+check("and it is absent entirely while options are on screen",
+  !/<\/div>\s*\{composer\}\s*<\/>/.test(ask),
+  "a text box beside a question is a second answer to which action matters");
+check("with no question it is returned untouched",
+  /if \(options\.length === 0\) return <>\{composer\}<\/>;/.test(ask));
 check("the combined shell is gone",
   !/s-ask-shell/.test(ask) && !/s-ask-shell/.test(studioCss) &&
   !/s-ask-seam/.test(ask) && !/s-ask-seam/.test(studioCss));

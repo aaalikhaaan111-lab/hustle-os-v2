@@ -1320,6 +1320,12 @@
 .feedback-before-after > div { background: var(--color-canvas); }
 .feedback-before-after > div.is-proposed { border-color: var(--color-accent-line); background: var(--color-accent-soft); }
 .feedback-response-meta button:hover { color: var(--color-danger); }
+/* The delete control above was already skinned for light; its sibling was not.
+   `.feedback-message.is-error` still carried the dark page's `#fca5a5`, a pale
+   pink chosen to sit on near-black, so a failed analysis reported itself in a
+   colour that barely registers on white. Success in this panel already uses
+   `--color-success`; failure now uses the matching token instead of a leftover. */
+.feedback-message.is-error { color: var(--color-danger); }
 
 .public-project-unavailable {
   display: grid;

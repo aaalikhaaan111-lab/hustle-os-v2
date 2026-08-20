@@ -257,6 +257,19 @@ export function PreOutputWorkspace({
     // up and leave the button silently dead.
     if (busy || hasVersion) return;
     setNote(null);
+    /**
+     * THE CONVERSATION CARRIES THE TRANSITION, NOT A CARD.
+     *
+     * Removing the "Ready to become real." confirmation left a silence exactly
+     * where the product used to speak: the last question is answered, the
+     * options disappear, and a progress indicator arrives with nothing having
+     * acknowledged what was decided. One line closes that — it belongs to the
+     * assistant, in the transcript, next to the answer that prompted it.
+     *
+     * Not on a retry: the failure and its Try again are already on screen, and
+     * repeating "I'll build this" underneath them says nothing new.
+     */
+    if (!retry) append("assistant", t("buildingNow"));
     // Before the round trip, so the button answers on the first frame rather
     // than after the job row exists.
     job.markStarting(retry);
@@ -298,6 +311,41 @@ export function PreOutputWorkspace({
         job.settle();
       }
     });
+  }
+
+  /**
+   * An intake answer, recorded before it is acted on.
+   *
+   * `intake.choose` moves the plan forward and can dispatch a generation, but
+   * it knows nothing about the transcript — so answering a question used to
+   * leave no trace of having answered it. The options disappeared and the next
+   * thing on screen was a build, with no record of what had been chosen. Every
+   * other answer in this product reads back as something the person said; these
+   * now do too.
+   *
+   * Three shapes, one path:
+   *
+   *   a chosen option   its own label, the words that were on the control
+   *   a skip            the step's defer label ("Let Ventrio decide"), because
+   *                     choosing not to choose is still an answer and hiding it
+   *                     makes the generation look unprompted
+   *   typed text        routed to `submit`, which appends it and decides what it
+   *                     means. This used to be DISCARDED — `onAnswer` read only
+   *                     `ids`, so anyone who typed into the question's own
+   *                     freeform row watched their sentence vanish
+   */
+  function answerIntake(optionId: string | null, text?: string) {
+    const typed = text?.trim();
+    if (typed) {
+      submit(typed);
+      return;
+    }
+    const step = intake.step;
+    if (step) {
+      const chosen = optionId ? step.options.find((option) => option.id === optionId) : undefined;
+      append("user", chosen ? tb(chosen.labelKey as never) : tb(step.deferKey as never));
+    }
+    intake.choose(optionId);
   }
 
   function submit(raw: string) {
@@ -540,7 +588,33 @@ export function PreOutputWorkspace({
                     In that window every other term here held, and the card
                     returned to offer creating an application that had just been
                     created. The job row is the earlier and truer signal. */}
-                {job.loaded && !hasVersion && job.phase !== "succeeded" && !job.active && !intake.step && (
+                {/* `hasFailed || outOfQuota` IS THE WHOLE REASON THIS CARD IS
+                    STILL HERE.
+                    It used to appear for the healthy path too, as "Ready to
+                    become real." with a Create first version button — a second
+                    confirmation for a decision already made. By the time anyone
+                    reaches it they have chosen a direction and answered the
+                    build question; asking again in a bordered box is a step that
+                    exists only to be clicked through, and it made the moment
+                    after choosing feel like paperwork rather than progress. The
+                    conversation carries that transition now: the assistant says
+                    it is building and the generation starts.
+                    What is NOT redundant is the same card after something went
+                    wrong, or when the plan has run out. Those are states a
+                    person cannot act on from the transcript — they need the
+                    direction still in front of them, a reason, and a retry — so
+                    the card is now exactly that and nothing else.
+
+                    `intake.dispatched && job.phase === "idle"` IS THE THIRD
+                    STATE, and leaving it out would have been a dead end. If the
+                    generation call errors BEFORE a job row exists — the action
+                    refuses, the network drops — there is no failed job for
+                    `hasFailed` to notice, the question is gone because it was
+                    answered, and without this term the screen would offer no way
+                    to try again at all. It was the healthy-path card that used
+                    to cover that by accident. This covers it on purpose. */}
+                {job.loaded && !hasVersion && job.phase !== "succeeded" && !job.active && !intake.step &&
+                  (hasFailed || outOfQuota || (intake.dispatched && job.phase === "idle")) && (
                   <div
                     className="rise rounded-[var(--r-lg)] border p-5"
                     style={{ borderColor: "var(--color-border-strong)", background: "var(--color-surface)" }}
@@ -694,8 +768,8 @@ export function PreOutputWorkspace({
                     preview: "preview" in option ? (option as { preview: DesignPreviewId }).preview : undefined,
                   }))}
                   submitLabel={tb("intakeContinue")}
-                  onAnswer={({ ids }) => intake.choose(ids[0] ?? null)}
-                  onSkip={intake.step ? () => intake.choose(null) : undefined}
+                  onAnswer={({ ids, text }) => answerIntake(ids[0] ?? null, text)}
+                  onSkip={intake.step ? () => answerIntake(null) : undefined}
                   skipLabel={intake.step ? tb(intake.step.deferKey as never) : undefined}
                   composer={
                 <WorkspaceComposer

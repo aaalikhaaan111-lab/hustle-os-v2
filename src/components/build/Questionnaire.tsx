@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
+import { DesignPreview } from "./DesignPreview";
+import type { DesignPreviewId } from "@/lib/build/intake";
 import {
   Questionnaire as Q,
   QuestionnaireActions,
@@ -35,9 +37,15 @@ import {
  * It has no container at all now. The wrapper carries spacing and an entry
  * animation and nothing else — no border, no fill, no radius, no focus ring —
  * so the options themselves are the only bounded things, and the column reads
- * as message, options, composer. Nothing about the interaction moved: the `<Q>`
+ * as message, then options. Nothing about the interaction moved: the `<Q>`
  * block below is the registry component with the same items, the same freeform
  * row, the same skip and the same submit.
+ *
+ * The composer is still a prop rather than a sibling the caller renders itself,
+ * because this component owns the decision of when it appears: while a question
+ * is open it is deliberately absent, and it comes back the moment there is no
+ * question left. Handing that choice back to four call sites would be four
+ * places to get it wrong.
  *
  * With no question it returns the composer untouched — which is what keeps it
  * from ever being permanent furniture.
@@ -46,6 +54,24 @@ export interface QuestionnaireOption {
   id: string;
   label: string;
   hint?: string;
+  /**
+   * A deterministic thumbnail for a visual-direction choice.
+   *
+   * THIS FIELD WENT MISSING AND TOOK THE FEATURE WITH IT. The pre-shadcn
+   * questionnaire rendered `<DesignPreview>` beside each option; the rewrite
+   * onto the registry component dropped it. `PreOutputWorkspace` never stopped
+   * passing `preview:` — but without this field the value is not part of the
+   * option type, so it was silently discarded on the way in and
+   * `DesignPreview.tsx` became dead code nothing imported.
+   *
+   * Nothing told anyone: no type error, because the value arrives through a
+   * `.map()` whose result is widened rather than excess-property checked, and
+   * no visual error, because a missing thumbnail just looks like a list. The
+   * result was six visual directions described only by two words each —
+   * "Brutalist / Hard edges, heavy type" — which is the complaint that a person
+   * cannot tell what they are choosing between.
+   */
+  preview?: DesignPreviewId;
 }
 
 export function VentrioQuestionnaire({
@@ -80,6 +106,20 @@ export function VentrioQuestionnaire({
 
   if (options.length === 0) return <>{composer}</>;
 
+  /**
+   * WHILE A QUESTION IS ON SCREEN, THE COMPOSER IS NOT.
+   *
+   * Both were rendered at once, so the screen offered two ways forward and said
+   * nothing about which one it wanted: a set of options above, and below them an
+   * open text box that would send whatever was typed into it as a new message —
+   * stepping over the question rather than answering it.
+   *
+   * Nothing is taken away. The questionnaire carries its own freeform row for an
+   * answer that is not one of the choices, and a skip for "you decide", so every
+   * way out of the question is still inside the question. The composer returns
+   * the moment `options` is empty, which is what happens as soon as this is
+   * answered or skipped.
+   */
   return (
     <>
       <div className="s-ask-panel" data-testid="questionnaire">
@@ -107,6 +147,15 @@ export function VentrioQuestionnaire({
                   value={option.id}
                   disabled={disabled}
                 >
+                  {/* The thumbnail leads, because it is the thing being
+                      chosen — the words are the caption for it, not the other
+                      way round. Small on purpose: it promises a treatment
+                      (contrast, density, rhythm), not a specific page. */}
+                  {option.preview && (
+                    <span className="s-ask-thumb" aria-hidden>
+                      <DesignPreview id={option.preview} />
+                    </span>
+                  )}
                   {option.label}
                   {option.hint && (
                     <QuestionnaireChoiceDescription>
@@ -144,7 +193,6 @@ export function VentrioQuestionnaire({
           </QuestionnaireItem>
         </Q>
       </div>
-      {composer}
     </>
   );
 }

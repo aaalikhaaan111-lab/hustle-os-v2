@@ -6,7 +6,6 @@ import { useTranslations } from "next-intl";
 import { IconPlus, IconSearch, StatusPill } from "@/components/workspace-ui/parts";
 import { formatAge } from "@/lib/workspace/formatAge";
 import type { PresentedProject } from "@/lib/workspace/present";
-import { HowItWorks } from "@/components/workspace-ui/HowItWorks";
 import { ProjectThumb, ProjectThumbEmpty } from "@/components/workspace/ProjectThumb";
 import { AppThumb } from "@/components/workspace/AppThumb";
 import { ProjectShot } from "@/components/workspace/ProjectShot";
@@ -95,19 +94,23 @@ export function ProjectsScreen({ projects }: { projects: PresentedProject[] }) {
 
       <div className="mx-auto w-full max-w-[1160px] px-5 pb-16 sm:px-10">
       {projects.length === 0 ? (
+        /* WHAT THIS SCREEN IS, not what the product is.
+           This used to end with the same five-step summary of Ventrio that
+           Overview and Create both carried, word for word. Three screens
+           reciting one paragraph does not teach anybody anything — it reads as
+           filler, and it answers a question ("what is this product?") that
+           somebody already inside the product is not asking. What they are
+           asking here is "why is this page empty?", so that is what it says. */
         <Empty className="py-10">
           <EmptyHeader>
-            <EmptyTitle>{t("startFirstTitle")}</EmptyTitle>
-            <EmptyDescription>{t("projectsNothingYet")}</EmptyDescription>
+            <EmptyTitle>{t("projectsEmptyTitle")}</EmptyTitle>
+            <EmptyDescription>{t("projectsEmptyBody")}</EmptyDescription>
           </EmptyHeader>
           <EmptyContent>
             <Link href="/create?fresh=1" className="s-btn s-btn--primary">
               <IconPlus className="h-4 w-4" />
               {t("navNewProject")}
             </Link>
-            {/* The one place the product has to explain itself: there is
-                nothing on the screen to infer it from. */}
-            <HowItWorks className="mt-6 justify-center" />
           </EmptyContent>
         </Empty>
       ) : (

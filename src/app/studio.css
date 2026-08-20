@@ -686,36 +686,6 @@
 }
 
 /* ═══════════════════════════════════════════════════════════════════════
-   11. THE FIVE STEPS
-   ═══════════════════════════════════════════════════════════════════════ */
-
-.s-steps { display: flex; flex-wrap: wrap; gap: 0.5rem 0.75rem; align-items: center; }
-
-.s-step {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  color: var(--color-ink-muted);
-  font-size: 0.8125rem;
-}
-
-.s-step-num {
-  display: grid;
-  place-items: center;
-  width: 1.25rem;
-  height: 1.25rem;
-  flex-shrink: 0;
-  border-radius: var(--r-full);
-  background: var(--secondary);
-  color: var(--secondary-foreground);
-  font-size: 0.6875rem;
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-}
-
-.s-step-sep { color: var(--border); }
-
-/* ═══════════════════════════════════════════════════════════════════════
    12. MOTION
    ═══════════════════════════════════════════════════════════════════════ */
 
@@ -1105,6 +1075,33 @@ body:has(.studio-frame) {
 /* Keyboard focus is the outline the global rule already draws; it must not
    also inherit the hover fill, or focus and hover become indistinguishable. */
 .cn-questionnaire-choice:active { transform: translateY(0.5px); }
+
+/**
+ * THE VISUAL-DIRECTION THUMBNAIL.
+ *
+ * Recovered along with the markup that draws it. 48x30 is deliberately small:
+ * these are abstractions of a treatment — contrast, density, rhythm — not
+ * samples of a page, and at card size they would start promising a specific
+ * layout the generation has not agreed to.
+ *
+ * The registry's choice is a flex row, so the thumbnail sits inline before the
+ * label with the indicator; `align-self: flex-start` keeps it level with the
+ * first line of text when a hint wraps to two.
+ */
+.s-ask-thumb {
+  display: block;
+  width: 3rem;
+  height: 1.875rem;
+  flex-shrink: 0;
+  align-self: flex-start;
+  overflow: hidden;
+  border-radius: 5px;
+  border: 1px solid var(--border);
+}
+
+/* With a thumbnail the row is taller than a line of text, so the label needs to
+   sit against it rather than float in the middle of the extra height. */
+.cn-questionnaire-choice:has(.s-ask-thumb) { align-items: flex-start; }
 
 /* The radio/checkbox mark the component renders for itself. */
 .cn-questionnaire-choice-indicator {
