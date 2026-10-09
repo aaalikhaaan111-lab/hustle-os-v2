@@ -34,7 +34,7 @@ import {
 } from "@/lib/jobs/generationJobs";
 import { enqueueRepair, type GenerateMessage, type RepairMessage } from "./generationQueue";
 import { appRepairEnabled } from "./renderProject";
-import type { DeadlineOptions } from "./stages";
+import type { DeadlineOptions, ProviderOutcome } from "./stages";
 import {
   beginGeneration,
   evaluateGeneration,
@@ -47,6 +47,11 @@ import {
   type Verdict,
 } from "./stages";
 import type { GeneratedAppV1 } from "./contract";
+import {
+  reportProviderCallTelemetry,
+  type TelemetryOperationStatus,
+  type TelemetryPhase,
+} from "@/lib/observability/telemetryClient";
 
 export type GenerationOutcome =
   | { outcome: "generated" }
@@ -73,6 +78,38 @@ export type GenerationOutcome =
 const GENERATE_EXPECTS = 0;
 const REPAIR_EXPECTS = 1;
 
+/**
+ * Reports one provider call's telemetry. Fire-and-forget in spirit (it can
+ * never fail this function, see reportProviderCallTelemetry's own
+ * fail-open contract) but awaited here so a test driving this module sees
+ * the report before the function returns.
+ *
+ * `attemptNumber` doubles as this integration's attempt counter: 1 for the
+ * generate call, 2 for the repair call, matching GENERATE_EXPECTS/
+ * REPAIR_EXPECTS + 1 — a repair is the one retry this pipeline ever makes.
+ */
+async function reportTelemetry(
+  ref: JobRef,
+  phase: TelemetryPhase,
+  attemptNumber: number,
+  model: string,
+  outcome: ProviderOutcome,
+  operationStatus: TelemetryOperationStatus,
+): Promise<void> {
+  await reportProviderCallTelemetry({
+    jobId: ref.jobId,
+    phase,
+    attemptNumber,
+    userId: ref.userId,
+    model,
+    latencyMs: outcome.latencyMs,
+    usage: outcome.usage,
+    callSucceeded: outcome.ok,
+    errorCode: outcome.ok ? undefined : outcome.code,
+    operationStatus,
+  });
+}
+
 export async function runGeneratePhase(
   message: GenerateMessage,
   options: DeadlineOptions = {},
@@ -96,11 +133,15 @@ export async function runGeneratePhase(
   if (!generated.ok) {
     // A transport failure says nothing about the project, so it never buys a
     // repair — the same rule the inline pipeline applied.
+    await reportTelemetry(ref, "generate", GENERATE_EXPECTS + 1, message.model, generated, "failed");
     return fail(ref, "provider_unavailable", generated.code, generated.message);
   }
 
   const verdict: Verdict = await evaluateGeneration(ref, generated.text);
-  if (verdict.ok) return persist(ref, verdict.app, message);
+  if (verdict.ok) {
+    await reportTelemetry(ref, "generate", GENERATE_EXPECTS + 1, message.model, generated, "succeeded");
+    return persist(ref, verdict.app, message);
+  }
 
   /**
    * A second request, only if this deploy allows one.
@@ -122,12 +163,19 @@ export async function runGeneratePhase(
       issues: verdict.issues,
       plan: verdict.plan,
     });
-    if (!queued.ok) return fail(ref, "invalid_output", verdict.code, verdict.message, verdict.issues);
+    if (!queued.ok) {
+      await reportTelemetry(ref, "generate", GENERATE_EXPECTS + 1, message.model, generated, "failed");
+      return fail(ref, "invalid_output", verdict.code, verdict.message, verdict.issues);
+    }
+    // The generate call itself succeeded and was billed; the job continues
+    // into a repair, so the OPERATION is still running, not yet concluded.
+    await reportTelemetry(ref, "generate", GENERATE_EXPECTS + 1, message.model, generated, "running");
     // Recorded even though the run continues: the first response's objections
     // are what a repair is answering, and they are gone by the time it lands.
     return { outcome: "queued-repair", stage: verdict.code, issues: verdict.issues };
   }
 
+  await reportTelemetry(ref, "generate", GENERATE_EXPECTS + 1, message.model, generated, "failed");
   return fail(ref, "invalid_output", verdict.code, verdict.message, verdict.issues);
 }
 
@@ -149,11 +197,20 @@ export async function runRepairPhase(
     issues: message.issues,
     plan: message.plan,
   }, options);
-  if (!repaired.ok) return fail(ref, "invalid_output", repaired.code, repaired.message);
+  if (!repaired.ok) {
+    await reportTelemetry(ref, "repair", REPAIR_EXPECTS + 1, message.model, repaired, "failed");
+    return fail(ref, "invalid_output", repaired.code, repaired.message);
+  }
 
   const verdict = await evaluateRepair(ref, { text: repaired.text, plan: message.plan });
-  if (!verdict.ok) return fail(ref, "invalid_output", verdict.code, verdict.message, verdict.issues);
+  if (!verdict.ok) {
+    // The repair call itself succeeded and was billed; it is the one retry
+    // this pipeline ever makes, so a rejected repair ends the job.
+    await reportTelemetry(ref, "repair", REPAIR_EXPECTS + 1, message.model, repaired, "failed");
+    return fail(ref, "invalid_output", verdict.code, verdict.message, verdict.issues);
+  }
 
+  await reportTelemetry(ref, "repair", REPAIR_EXPECTS + 1, message.model, repaired, "succeeded");
   return persist(ref, verdict.app, message);
 }
 
